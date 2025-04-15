@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\RouteController;
@@ -58,4 +59,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/vehicles', [VehicleController::class, 'store']);
     Route::put('/vehicles/{id}', [VehicleController::class, 'update']);
     Route::delete('/vehicles/{id}', [VehicleController::class, 'destroy']);
+});
+
+
+Route::post('/test', function (Request $request) {
+    return response()->json([
+        'message' => 'Berhasil akses route /test',
+        'data_dikirim' => $request->all(),
+    ]);
 });

@@ -158,23 +158,6 @@
         <div id="sidebar-wrapper">
             <div class="sidebar-heading">{{ config('app.name', 'Ferry Booking System') }}</div>
 
-            @if(Auth::guard('admin')->check() || Auth::guard('operator')->check())
-                <div class="sidebar-user">
-                    <div class="d-flex align-items-center">
-                        <div class="text-center">
-                            <i class="fas fa-user-circle fa-3x"></i>
-                            @if(Auth::guard('admin')->check())
-                                <div class="user-name">{{ Auth::guard('admin')->user()->name }}</div>
-                                <div class="badge bg-danger">Admin</div>
-                            @elseif(Auth::guard('operator')->check())
-                                <div class="user-name">{{ Auth::guard('operator')->user()->name }}</div>
-                                <div class="badge bg-primary">Operator</div>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-            @endif
-
             <div class="list-group list-group-flush">
                 @if(Auth::guard('admin')->check())
                     <!-- Admin Menu -->

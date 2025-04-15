@@ -10,13 +10,25 @@ use App\Http\Controllers\Admin\ScheduleController as AdminScheduleController;
 use App\Http\Controllers\Admin\BookingController as AdminBookingController;
 use App\Http\Controllers\Admin\ReportController as AdminReportController;
 use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Auth\AdminLoginController;
+use App\Http\Controllers\Auth\BackendLoginController;
 use App\Http\Controllers\Operator\DashboardController as OperatorDashboardController;
 use App\Http\Controllers\Operator\ScheduleController as OperatorScheduleController;
 use App\Http\Controllers\Operator\BookingController as OperatorBookingController;
 use App\Http\Controllers\Operator\ReportController as OperatorReportController;
-use App\Http\Controllers\Auth\OperatorLoginController;
-use App\Http\Controllers\Auth\BackendLoginController;
+
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register web routes for your application.
+|
+*/
+
+// Redirect root to admin login
+Route::get('/', function () {
+    return redirect()->route('admin.login');
+});
 
 // Admin Authentication
 Route::middleware('guest:admin')->group(function () {
@@ -36,22 +48,24 @@ Route::prefix('admin')->middleware(['auth:admin'])->group(function () {
         Route::resource('operators', OperatorController::class, ['as' => 'admin']);
     });
 
-    // Routes
+    // Routes Management
     Route::resource('routes', AdminRouteController::class, ['as' => 'admin']);
+    Route::put('/routes/{id}/status', [AdminRouteController::class, 'updateStatus'])->name('admin.routes.update-status');
 
-    // Ferries
+    // Ferries Management
     Route::resource('ferries', FerryController::class, ['as' => 'admin']);
 
-    // Schedules
+    // Schedules Management
     Route::resource('schedules', AdminScheduleController::class, ['as' => 'admin']);
     Route::get('/schedules/{id}/dates', [AdminScheduleController::class, 'dates'])->name('admin.schedules.dates');
     Route::put('/schedules/{id}/dates/{dateId}', [AdminScheduleController::class, 'updateDate'])->name('admin.schedules.update-date');
+    Route::post('/schedules/{id}/dates', [AdminScheduleController::class, 'addDates'])->name('admin.schedules.add-dates');
 
-    // Bookings
+    // Bookings Management
     Route::resource('bookings', AdminBookingController::class, ['as' => 'admin'])->except(['edit', 'update', 'destroy']);
     Route::put('/bookings/{id}/status', [AdminBookingController::class, 'updateStatus'])->name('admin.bookings.update-status');
 
-    // Users
+    // Users Management
     Route::resource('users', UserController::class, ['as' => 'admin'])->except(['create', 'store']);
 
     // Reports
@@ -78,6 +92,7 @@ Route::prefix('operator')->middleware(['auth:operator'])->group(function () {
     Route::get('/schedules/{id}', [OperatorScheduleController::class, 'show'])->name('operator.schedules.show');
     Route::get('/schedules/{id}/dates', [OperatorScheduleController::class, 'dates'])->name('operator.schedules.dates');
     Route::put('/schedules/{id}/dates/{dateId}/status', [OperatorScheduleController::class, 'updateDateStatus'])->name('operator.schedules.update-date-status');
+    Route::post('/schedules/check-availability', [OperatorScheduleController::class, 'checkAvailability'])->name('operator.schedules.check-availability');
 
     // Bookings
     Route::get('/bookings', [OperatorBookingController::class, 'index'])->name('operator.bookings.index');
@@ -85,8 +100,9 @@ Route::prefix('operator')->middleware(['auth:operator'])->group(function () {
     Route::put('/bookings/{id}/status', [OperatorBookingController::class, 'updateStatus'])->name('operator.bookings.update-status');
 
     // Check-in
-    Route::get('/check-in', [OperatorBookingController::class, 'checkIn'])->name('operator.bookings.check-in');
+    Route::get('/check-in', [OperatorBookingController::class, 'checkInForm'])->name('operator.bookings.check-in');
     Route::post('/check-in', [OperatorBookingController::class, 'processCheckIn'])->name('operator.bookings.process-check-in');
+    Route::post('/bookings/{id}/check-in', [OperatorBookingController::class, 'checkIn'])->name('operator.bookings.perform-check-in');
 
     // Reports
     Route::get('/reports', [OperatorReportController::class, 'index'])->name('operator.reports.index');

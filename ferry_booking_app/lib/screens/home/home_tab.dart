@@ -87,46 +87,54 @@ class HomeTab extends StatelessWidget {
 
           // Search Box
           SliverToBoxAdapter(
-            child: Container(
-              margin: const EdgeInsets.fromLTRB(16, -40, 16, 24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
+            child: Padding(
+              padding: const EdgeInsets.only(top: 0, left: 16, right: 16),
+              child: Transform.translate(
+                offset: const Offset(0, -40),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () {
-                    Navigator.pushNamed(context, '/booking/routes');
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      children: [
-                        Icon(Icons.search, color: AppTheme.primaryColor),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Cari rute perjalanan',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 16,
-                          ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        Navigator.pushNamed(context, '/booking/routes');
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Row(
+                          children: [
+                            Icon(Icons.search, color: AppTheme.primaryColor),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Cari rute perjalanan',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
           ),
+
+          // Spacing after search box - PERBAIKAN: SizedBox harus dibungkus SliverToBoxAdapter
+          SliverToBoxAdapter(child: SizedBox(height: 40)),
 
           // Quick Links
           SliverToBoxAdapter(

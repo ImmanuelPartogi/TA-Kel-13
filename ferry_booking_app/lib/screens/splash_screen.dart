@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ferry_booking_app/providers/auth_provider.dart';
-import 'package:ferry_booking_app/config/theme.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({Key? key}) : super(key: key);
@@ -14,70 +13,54 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _checkLoginStatus();
+    
+    // PENTING: Gunakan addPostFrameCallback untuk menunda operasi
+    // sampai setelah frame pertama selesai dirender
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkLoginStatus();
+    });
   }
 
   Future<void> _checkLoginStatus() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     await authProvider.checkLoginStatus();
     
-    // Wait for splash screen animation to complete
-    await Future.delayed(const Duration(seconds: 2));
-    
-    if (authProvider.isLoggedIn) {
-      Navigator.pushReplacementNamed(context, '/home');
-    } else {
-      Navigator.pushReplacementNamed(context, '/login');
+    if (mounted) {
+      if (authProvider.isLoggedIn) {
+        Navigator.of(context).pushReplacementNamed('/home');
+      } else {
+        Navigator.of(context).pushReplacementNamed('/login');
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.primaryColor,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Logo
+            // Logo aplikasi
             Container(
-              width: 150,
-              height: 150,
+              width: 120,
+              height: 120,
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(75),
+                color: Theme.of(context).primaryColor,
+                borderRadius: BorderRadius.circular(60),
               ),
-              child: Center(
-                child: Icon(
-                  Icons.directions_boat_rounded,
-                  size: 100,
-                  color: AppTheme.primaryColor,
-                ),
+              child: const Icon(
+                Icons.directions_boat_rounded,
+                size: 80,
+                color: Colors.white,
               ),
             ),
             const SizedBox(height: 24),
-            // App Name
-            const Text(
-              'Ferry Booking',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            const CircularProgressIndicator(),
             const SizedBox(height: 16),
-            // Tagline
-            const Text(
-              'Perjalanan Cepat & Nyaman',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 48),
-            // Loading indicator
-            const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            Text(
+              'Ferry Booking App',
+              style: Theme.of(context).textTheme.titleLarge,
             ),
           ],
         ),

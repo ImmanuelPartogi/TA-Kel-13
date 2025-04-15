@@ -12,6 +12,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Models\ActivityLog;
 
 class BookingController extends Controller
 {
@@ -209,7 +210,7 @@ class BookingController extends Controller
         }
     }
 
-    public function checkIn(Request $request)
+    public function checkInForm(Request $request)
     {
         $operator = Auth::guard('operator')->user();
         $assignedRouteIds = $operator->assigned_routes ?? [];
@@ -228,6 +229,27 @@ class BookingController extends Controller
         }
 
         return view('operator.bookings.check-in', compact('ticket'));
+    }
+
+    public function checkIn($bookingId)
+    {
+        $booking = Booking::findOrFail($bookingId);
+
+        // Proses check-in
+        $booking->status = 'CHECKED_IN';
+        $booking->save();
+
+        // Catat aktivitas
+        ActivityLog::create([
+            'user_id' => Auth::id(),
+            'activity_type' => 'Check-in Penumpang',
+            'description' => "Proses check-in tiket #{$booking->ticket_number} berhasil dilakukan",
+            'status' => 'SUCCESS',
+            'reference_id' => $booking->id,
+            'reference_type' => 'booking'
+        ]);
+
+        return redirect()->back()->with('success', 'Check-in berhasil dilakukan');
     }
 
     public function processCheckIn(Request $request)

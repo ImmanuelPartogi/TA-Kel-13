@@ -15,21 +15,28 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
-  
+
   final List<Widget> _tabs = [
     const HomeTab(),
     const TicketListScreen(),
     const ProfileScreen(),
   ];
-  
+
   @override
   void initState() {
     super.initState();
-    _loadUserData();
+
+    // Gunakan ini untuk menunda pemanggilan sampai setelah build selesai
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadUserData();
+    });
   }
-  
+
   Future<void> _loadUserData() async {
-    final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
+    final bookingProvider = Provider.of<BookingProvider>(
+      context,
+      listen: false,
+    );
     await bookingProvider.getBookings();
   }
 
@@ -45,18 +52,12 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         },
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Beranda',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Beranda'),
           BottomNavigationBarItem(
             icon: Icon(Icons.confirmation_number),
             label: 'Tiket',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profil',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
         ],
       ),
     );

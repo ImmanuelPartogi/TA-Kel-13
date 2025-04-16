@@ -40,4 +40,9 @@ class ScheduleDate extends Model
     {
         return $this->belongsTo(Admin::class, 'created_by');
     }
+
+    public function getDepartureDateAttribute()
+    {
+        return $this->date;
+    }
 }

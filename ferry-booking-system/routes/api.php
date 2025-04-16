@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\TicketController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\VehicleController;
+use App\Http\Controllers\Api\ChatbotController;
 
 // Public routes
 Route::post('/auth/register', [AuthController::class, 'register']);
@@ -17,6 +18,13 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 
 // Midtrans callback
 Route::post('/payments/notification', [PaymentController::class, 'notification']);
+
+// Chatbot routes yang dapat diakses publik
+Route::prefix('chatbot')->group(function () {
+    Route::post('/conversation', [ChatbotController::class, 'getConversation']);
+    Route::post('/send', [ChatbotController::class, 'sendMessage']);
+    Route::post('/feedback', [ChatbotController::class, 'sendFeedback']);
+});
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
@@ -59,8 +67,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/vehicles', [VehicleController::class, 'store']);
     Route::put('/vehicles/{id}', [VehicleController::class, 'update']);
     Route::delete('/vehicles/{id}', [VehicleController::class, 'destroy']);
-});
 
+    // Chatbot routes yang memerlukan autentikasi
+    Route::get('/chatbot/conversations', [ChatbotController::class, 'getUserConversations']);
+});
 
 Route::post('/test', function (Request $request) {
     return response()->json([

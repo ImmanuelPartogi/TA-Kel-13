@@ -17,11 +17,11 @@ class AuthApi {
     if (response['success']) {
       // Save token
       await _storage.write(key: 'token', value: response['data']['token']);
-      
+
       // Save user info
       final user = User.fromJson(response['data']['user']);
       await _storage.write(key: 'user', value: jsonEncode(user.toJson()));
-      
+
       return user;
     } else {
       throw Exception(response['message']);
@@ -29,7 +29,12 @@ class AuthApi {
   }
 
   // Register user
-  Future<User> register(String name, String email, String phone, String password) async {
+  Future<User> register(
+    String name,
+    String email,
+    String phone,
+    String password,
+  ) async {
     final response = await _apiService.post('auth/register', {
       'name': name,
       'email': email,
@@ -40,11 +45,11 @@ class AuthApi {
     if (response['success']) {
       // Save token
       await _storage.write(key: 'token', value: response['data']['token']);
-      
+
       // Save user info
       final user = User.fromJson(response['data']['user']);
       await _storage.write(key: 'user', value: jsonEncode(user.toJson()));
-      
+
       return user;
     } else {
       throw Exception(response['message']);
@@ -55,17 +60,17 @@ class AuthApi {
   Future<bool> logout() async {
     try {
       await _apiService.post('auth/logout', {});
-      
+
       // Clear storage
       await _storage.delete(key: 'token');
       await _storage.delete(key: 'user');
-      
+
       return true;
     } catch (e) {
       // Still clear storage even if API call fails
       await _storage.delete(key: 'token');
       await _storage.delete(key: 'user');
-      
+
       return false;
     }
   }
@@ -109,5 +114,26 @@ class AuthApi {
       return User.fromJson(jsonDecode(userString));
     }
     return null;
+  }
+
+  Future<bool> updatePassword(
+    String currentPassword,
+    String newPassword,
+  ) async {
+    try {
+      final response = await _apiService.put('auth/password', {
+        'current_password': currentPassword,
+        'password': newPassword,
+        'password_confirmation': newPassword,
+      });
+
+      if (response['success']) {
+        return true;
+      } else {
+        throw Exception(response['message']);
+      }
+    } catch (e) {
+      throw Exception(e.toString());
+    }
   }
 }

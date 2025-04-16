@@ -45,6 +45,10 @@ dependencies:
   qr_flutter: ^4.1.0
   flutter_svg: ^2.0.5
   flutter_local_notifications: ^14.0.0+1
+  timeago: ^3.3.0
+  package_info_plus: ^1.4.2
+  device_info_plus: ^8.1.0
+  uuid: ^3.0.7
 
 dev_dependencies:
   flutter_test:

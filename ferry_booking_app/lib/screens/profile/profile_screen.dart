@@ -1,3 +1,7 @@
+import 'package:ferry_booking_app/screens/help/help_screen.dart';
+import 'package:ferry_booking_app/screens/profile/about_app_screen.dart';
+import 'package:ferry_booking_app/screens/profile/notification_settings_screen.dart';
+import 'package:ferry_booking_app/screens/profile/change_password_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ferry_booking_app/providers/auth_provider.dart';
@@ -11,11 +15,9 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final user = authProvider.user;
-    
+
     if (user == null) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     return Scaffold(
@@ -67,14 +69,14 @@ class ProfileScreen extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     user.email,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                   ),
                   const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: AppTheme.primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
@@ -102,14 +104,11 @@ class ProfileScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 32),
-            
+
             // Personal Information
             const Text(
               'Informasi Pribadi',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             Card(
@@ -120,30 +119,14 @@ class ProfileScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
-                    _buildProfileInfo(
-                      'Nama Lengkap',
-                      user.name,
-                      Icons.person,
-                    ),
+                    _buildProfileInfo('Nama Lengkap', user.name, Icons.person),
                     const Divider(),
-                    _buildProfileInfo(
-                      'Email',
-                      user.email,
-                      Icons.email,
-                    ),
+                    _buildProfileInfo('Email', user.email, Icons.email),
                     const Divider(),
-                    _buildProfileInfo(
-                      'Nomor Telepon',
-                      user.phone,
-                      Icons.phone,
-                    ),
+                    _buildProfileInfo('Nomor Telepon', user.phone, Icons.phone),
                     if (user.address != null && user.address!.isNotEmpty) ...[
                       const Divider(),
-                      _buildProfileInfo(
-                        'Alamat',
-                        user.address!,
-                        Icons.home,
-                      ),
+                      _buildProfileInfo('Alamat', user.address!, Icons.home),
                     ],
                     if (user.idNumber != null && user.idNumber!.isNotEmpty) ...[
                       const Divider(),
@@ -174,14 +157,11 @@ class ProfileScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 32),
-            
+
             // Account Statistics
             const Text(
               'Statistik Akun',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             Card(
@@ -199,11 +179,7 @@ class ProfileScreen extends StatelessWidget {
                         Icons.directions_boat,
                       ),
                     ),
-                    Container(
-                      height: 50,
-                      width: 1,
-                      color: Colors.grey[300],
-                    ),
+                    Container(height: 50, width: 1, color: Colors.grey[300]),
                     Expanded(
                       child: _buildStatItem(
                         'Poin Loyalitas',
@@ -216,14 +192,11 @@ class ProfileScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 32),
-            
+
             // Account Options
             const Text(
               'Pengaturan Akun',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             Card(
@@ -232,68 +205,78 @@ class ProfileScreen extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  _buildMenuOption(
-                    'Ubah Profil',
-                    Icons.edit,
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const EditProfileScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildMenuOption(
-                    'Ubah Password',
-                    Icons.lock,
-                    () {
-                      // Navigate to change password screen
-                    },
-                  ),
-                  _buildMenuOption(
-                    'Notifikasi',
-                    Icons.notifications,
-                    () {
-                      // Navigate to notification settings
-                    },
-                  ),
-                  _buildMenuOption(
-                    'Bantuan',
-                    Icons.help,
-                    () {
-                      // Navigate to help center
-                    },
-                  ),
-                  _buildMenuOption(
-                    'Tentang Aplikasi',
-                    Icons.info,
-                    () {
-                      // Show about dialog
-                    },
-                  ),
+                  _buildMenuOption('Ubah Profil', Icons.edit, () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const EditProfileScreen(),
+                      ),
+                    );
+                  }),
+                  _buildMenuOption('Ubah Password', Icons.lock, () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ChangePasswordScreen(),
+                      ),
+                    );
+                  }),
+                  _buildMenuOption('Notifikasi', Icons.notifications, () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (context) => const NotificationSettingsScreen(),
+                      ),
+                    );
+                  }),
+                  _buildMenuOption('Bantuan', Icons.help, () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const HelpScreen(),
+                      ),
+                    );
+                  }),
+
+                  // Ganti fungsi empty untuk menu "Tentang Aplikasi" dengan:
+                  _buildMenuOption('Tentang Aplikasi', Icons.info, () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AboutAppScreen(),
+                      ),
+                    );
+                  }),
                   _buildMenuOption(
                     'Logout',
                     Icons.logout,
                     () async {
-                      final result = await showDialog<bool>(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: const Text('Logout'),
-                          content: const Text('Apakah Anda yakin ingin keluar?'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, false),
-                              child: const Text('Tidak'),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, true),
-                              child: const Text('Ya'),
-                            ),
-                          ],
-                        ),
-                      ) ?? false;
-                      
+                      final result =
+                          await showDialog<bool>(
+                            context: context,
+                            builder:
+                                (context) => AlertDialog(
+                                  title: const Text('Logout'),
+                                  content: const Text(
+                                    'Apakah Anda yakin ingin keluar?',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed:
+                                          () => Navigator.pop(context, false),
+                                      child: const Text('Tidak'),
+                                    ),
+                                    TextButton(
+                                      onPressed:
+                                          () => Navigator.pop(context, true),
+                                      child: const Text('Ya'),
+                                    ),
+                                  ],
+                                ),
+                          ) ??
+                          false;
+
                       if (result && context.mounted) {
                         await authProvider.logout();
                         Navigator.pushReplacementNamed(context, '/login');
@@ -311,17 +294,13 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildProfileInfo(String label, String value, IconData icon) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
-          Icon(
-            icon,
-            size: 20,
-            color: AppTheme.primaryColor,
-          ),
+          Icon(icon, size: 20, color: AppTheme.primaryColor),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -329,10 +308,7 @@ class ProfileScreen extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -349,7 +325,7 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildStatItem(String label, String value, IconData icon) {
     return Column(
       children: [
@@ -359,60 +335,41 @@ class ProfileScreen extends StatelessWidget {
             color: AppTheme.primaryColor.withOpacity(0.1),
             shape: BoxShape.circle,
           ),
-          child: Icon(
-            icon,
-            color: AppTheme.primaryColor,
-          ),
+          child: Icon(icon, color: AppTheme.primaryColor),
         ),
         const SizedBox(height: 8),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 14,
-          ),
-        ),
+        Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
       ],
     );
   }
-  
-  Widget _buildMenuOption(String title, IconData icon, VoidCallback onTap, {Color? textColor, Color? iconColor}) {
+
+  Widget _buildMenuOption(
+    String title,
+    IconData icon,
+    VoidCallback onTap, {
+    Color? textColor,
+    Color? iconColor,
+  }) {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16.0,
-          vertical: 12.0,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: iconColor ?? AppTheme.primaryColor,
-              size: 24,
-            ),
+            Icon(icon, color: iconColor ?? AppTheme.primaryColor, size: 24),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
                 title,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: textColor,
-                ),
+                style: TextStyle(fontSize: 16, color: textColor),
               ),
             ),
-            const Icon(
-              Icons.chevron_right,
-              color: Colors.grey,
-            ),
+            const Icon(Icons.chevron_right, color: Colors.grey),
           ],
         ),
       ),

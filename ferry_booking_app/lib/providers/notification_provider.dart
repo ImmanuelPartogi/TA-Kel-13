@@ -1,3 +1,4 @@
+// lib/providers/notification_provider.dart
 import 'package:flutter/material.dart';
 import 'package:ferry_booking_app/api/notification_api.dart';
 import 'package:ferry_booking_app/models/notification.dart';
@@ -7,11 +8,11 @@ class NotificationProvider extends ChangeNotifier {
   
   bool _isLoading = false;
   String? _errorMessage;
-  List<UserNotification>? _notifications;
+  List<UserNotification> _notifications = [];
   
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
-  List<UserNotification>? get notifications => _notifications;
+  List<UserNotification> get notifications => _notifications;
   
   // Get all notifications
   Future<void> getNotifications() async {
@@ -26,81 +27,80 @@ class NotificationProvider extends ChangeNotifier {
     } catch (e) {
       _isLoading = false;
       _errorMessage = e.toString();
+      _notifications = [];
       notifyListeners();
     }
   }
   
   // Mark notification as read
-  Future<void> markAsRead(int notificationId) async {
+  Future<bool> markAsRead(int notificationId) async {
     try {
-      await _notificationApi.markAsRead(notificationId);
+      final success = await _notificationApi.markAsRead(notificationId);
       
-      // Update notification in the list
-      if (_notifications != null) {
-        final index = _notifications!.indexWhere((n) => n.id == notificationId);
+      if (success) {
+        // Update local notification
+        final index = _notifications.indexWhere((n) => n.id == notificationId);
         if (index != -1) {
-          final notification = _notifications![index];
-          _notifications![index] = UserNotification(
+          final notification = _notifications[index];
+          final updatedNotification = UserNotification(
             id: notification.id,
-            userId: notification.userId,
             title: notification.title,
             message: notification.message,
             type: notification.type,
+            userId: notification.userId,
+            bookingId: notification.bookingId,
             isRead: true,
-            priority: notification.priority,
-            data: notification.data,
-            sentVia: notification.sentVia,
             createdAt: notification.createdAt,
-            updatedAt: notification.updatedAt,
+            updatedAt: DateTime.now().toIso8601String(),
           );
+          
+          _notifications[index] = updatedNotification;
           notifyListeners();
         }
       }
+      
+      return success;
     } catch (e) {
       _errorMessage = e.toString();
       notifyListeners();
+      return false;
     }
   }
   
   // Mark all notifications as read
-  Future<void> markAllAsRead() async {
+  Future<bool> markAllAsRead() async {
     _isLoading = true;
-    _errorMessage = null;
     notifyListeners();
     
     try {
-      await _notificationApi.markAllAsRead();
+      final success = await _notificationApi.markAllAsRead();
       
-      // Update all notifications in the list
-      if (_notifications != null) {
-        _notifications = _notifications!.map((notification) => UserNotification(
-          id: notification.id,
-          userId: notification.userId,
-          title: notification.title,
-          message: notification.message,
-          type: notification.type,
-          isRead: true,
-          priority: notification.priority,
-          data: notification.data,
-          sentVia: notification.sentVia,
-          createdAt: notification.createdAt,
-          updatedAt: notification.updatedAt,
-        )).toList();
+      if (success) {
+        // Update all local notifications
+        _notifications = _notifications.map((notification) {
+          return UserNotification(
+            id: notification.id,
+            title: notification.title,
+            message: notification.message,
+            type: notification.type,
+            userId: notification.userId,
+            bookingId: notification.bookingId,
+            isRead: true,
+            createdAt: notification.createdAt,
+            updatedAt: DateTime.now().toIso8601String(),
+          );
+        }).toList();
       }
       
       _isLoading = false;
       notifyListeners();
+      return success;
     } catch (e) {
       _isLoading = false;
       _errorMessage = e.toString();
       notifyListeners();
+      return false;
     }
-  }
-  
-  // Get unread notification count
-  int getUnreadCount() {
-    if (_notifications == null) return 0;
-    return _notifications!.where((n) => !n.isRead).length;
   }
   
   // Clear error message

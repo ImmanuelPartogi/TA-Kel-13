@@ -29,12 +29,6 @@ class NotificationController extends Controller
             ->where('user_id', $user->id)
             ->firstOrFail();
 
-        // Mark as read if not read yet
-        if (!$notification->is_read) {
-            $notification->is_read = true;
-            $notification->save();
-        }
-
         return response()->json([
             'success' => true,
             'message' => 'Detail notifikasi berhasil diambil',
@@ -54,21 +48,21 @@ class NotificationController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Notifikasi berhasil ditandai sebagai dibaca',
+            'message' => 'Notifikasi berhasil ditandai telah dibaca',
             'data' => $notification
         ], 200);
     }
 
-    public function markAllAsRead()
+    public function markAllAsRead(Request $request)
     {
-        $user = request()->user();
+        $user = $request->user();
         Notification::where('user_id', $user->id)
             ->where('is_read', false)
             ->update(['is_read' => true]);
 
         return response()->json([
             'success' => true,
-            'message' => 'Semua notifikasi berhasil ditandai sebagai dibaca'
+            'message' => 'Semua notifikasi berhasil ditandai telah dibaca'
         ], 200);
     }
 }

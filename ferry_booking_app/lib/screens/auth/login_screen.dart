@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ferry_booking_app/providers/auth_provider.dart';
 import 'package:ferry_booking_app/widgets/custom_appbar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -27,12 +28,25 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_formKey.currentState!.validate()) {
       final email = _emailController.text.trim();
       final password = _passwordController.text.trim();
-      
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final success = await authProvider.login(email, password);
-      
-      if (success && mounted) {
-        Navigator.pushReplacementNamed(context, '/home');
+
+      try {
+        // Get device ID from shared preferences
+        final prefs = await SharedPreferences.getInstance();
+        final deviceId = prefs.getString('device_id') ?? '';
+
+        // Ensure device ID is a valid string before passing it
+        final String safeDeviceId = deviceId.isNotEmpty ? deviceId : '';
+
+        // Login with device ID
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        final success = await authProvider.login(email, password, safeDeviceId);
+
+        // Navigate to home page if login successful
+        if (success && mounted) {
+          Navigator.pushReplacementNamed(context, '/home');
+        }
+      } catch (e) {
+        // Error handled by provider
       }
     }
   }
@@ -40,12 +54,9 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
-    
+
     return Scaffold(
-      appBar: const CustomAppBar(
-        title: 'Login',
-        showBackButton: false,
-      ),
+      appBar: const CustomAppBar(title: 'Login', showBackButton: false),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Form(
@@ -70,7 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-              
+
               // Email Field
               TextFormField(
                 controller: _emailController,
@@ -83,14 +94,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   if (value == null || value.isEmpty) {
                     return 'Silakan masukkan email';
                   }
-                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                  if (!RegExp(
+                    r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                  ).hasMatch(value)) {
                     return 'Silakan masukkan email yang valid';
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 16),
-              
+
               // Password Field
               TextFormField(
                 controller: _passwordController,
@@ -100,7 +113,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   prefixIcon: const Icon(Icons.lock),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                      _obscurePassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
                     ),
                     onPressed: () {
                       setState(() {
@@ -120,7 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 },
               ),
               const SizedBox(height: 8),
-              
+
               // Forgot Password Link
               Align(
                 alignment: Alignment.centerRight,
@@ -132,23 +147,24 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              
+
               // Login Button
               ElevatedButton(
                 onPressed: authProvider.isLoading ? null : _login,
-                child: authProvider.isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.0,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text('MASUK'),
+                child:
+                    authProvider.isLoading
+                        ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.0,
+                            color: Colors.white,
+                          ),
+                        )
+                        : const Text('MASUK'),
               ),
               const SizedBox(height: 16),
-              
+
               // Register Link
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -162,7 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
               ),
-              
+
               // Error Message
               if (authProvider.errorMessage != null)
                 Container(

@@ -62,7 +62,7 @@ class ScheduleController extends Controller
 
         // Validasi jadwal duplikat untuk feri yang sama
         $existingSchedule = Schedule::where('ferry_id', $request->ferry_id)
-            ->where(function($query) use ($request) {
+            ->where(function ($query) use ($request) {
                 $query->whereRaw("STR_TO_DATE(?, '%H:%i') BETWEEN departure_time AND arrival_time", [$request->departure_time])
                     ->orWhereRaw("STR_TO_DATE(?, '%H:%i') BETWEEN departure_time AND arrival_time", [$request->arrival_time]);
             })
@@ -130,7 +130,7 @@ class ScheduleController extends Controller
         // Validasi jadwal duplikat untuk feri yang sama kecuali jadwal ini sendiri
         $existingSchedule = Schedule::where('ferry_id', $request->ferry_id)
             ->where('id', '!=', $id)
-            ->where(function($query) use ($request) {
+            ->where(function ($query) use ($request) {
                 $query->whereRaw("STR_TO_DATE(?, '%H:%i') BETWEEN departure_time AND arrival_time", [$request->departure_time])
                     ->orWhereRaw("STR_TO_DATE(?, '%H:%i') BETWEEN departure_time AND arrival_time", [$request->arrival_time]);
             })
@@ -242,5 +242,37 @@ class ScheduleController extends Controller
 
         return redirect()->route('admin.schedules.dates', $id)
             ->with('success', 'Status tanggal jadwal berhasil diperbarui');
+    }
+
+    public function storeDate(Request $request, $id)
+    {
+        $schedule = Schedule::findOrFail($id);
+
+        $request->validate([
+            'date' => 'required|date|after_or_equal:today',
+            'status' => 'required|in:AVAILABLE,UNAVAILABLE,CANCELLED,WEATHER_ISSUE',
+            'status_reason' => 'nullable|string|max:191',
+        ]);
+
+        $scheduleDate = new ScheduleDate([
+            'schedule_id' => $schedule->id,
+            'date' => Carbon::parse($request->date),
+            'status' => $request->status,
+            'status_reason' => $request->status_reason,
+            'passenger_count' => 0,
+            'motorcycle_count' => 0,
+            'car_count' => 0,
+            'bus_count' => 0,
+            'truck_count' => 0,
+        ]);
+
+        if ($request->status === 'WEATHER_ISSUE' && $request->has('status_expiry_date')) {
+            $scheduleDate->status_expiry_date = Carbon::parse($request->status_expiry_date);
+        }
+
+        $scheduleDate->save();
+
+        return redirect()->route('admin.schedules.dates', $id)
+            ->with('success', 'Tanggal jadwal berhasil ditambahkan');
     }
 }

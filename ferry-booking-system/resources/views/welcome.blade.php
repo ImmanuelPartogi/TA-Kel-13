@@ -1,273 +1,154 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+@extends('layouts.frontend')
 
-    <title>{{ config('app.name', 'Ferry Booking System') }}</title>
-
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        'poppins': ['Poppins', 'sans-serif'],
-                    },
-                    colors: {
-                        primary: {
-                            DEFAULT: '#2563eb',
-                            dark: '#1d4ed8',
-                        },
-                        sidebar: {
-                            DEFAULT: '#0f172a',
-                            hover: '#1e293b',
-                            active: '#334155',
-                        },
-                        admin: '#dc2626',
-                        operator: '#0284c7',
-                    }
-                }
-            }
-        }
-    </script>
-
-    <!-- Font Awesome for icons -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-</head>
-<body class="bg-slate-100 font-poppins text-slate-800 antialiased">
-    <div id="wrapper" class="flex">
-        <!-- Sidebar -->
-        <div id="sidebar-wrapper" class="fixed h-screen w-72 -ml-72 overflow-y-auto transition-all duration-300 ease-in-out bg-sidebar text-slate-400 shadow-lg z-40 md:ml-0">
-            <div class="{{ Auth::guard('admin')->check() ? 'bg-admin' : (Auth::guard('operator')->check() ? 'bg-operator' : 'bg-primary') }} text-white text-lg font-bold py-6 px-4 uppercase border-b border-slate-700 flex items-center justify-center">
-                <i class="fas fa-ship mr-3 text-xl"></i>
-                <span>{{ config('app.name', 'Ferry Booking') }}</span>
-            </div>
-
-            @if(Auth::guard('admin')->check() || Auth::guard('operator')->check())
-            <div class="py-6 px-4 border-b border-slate-700/50 text-center">
-                <div class="w-16 h-16 rounded-full bg-slate-600 mx-auto flex items-center justify-center mb-3">
-                    <i class="fas fa-user text-white text-2xl"></i>
+@section('content')
+    <div class="min-h-screen bg-gradient-to-b from-blue-900 to-blue-700 pt-16">
+        <div class="container mx-auto px-4">
+            <!-- Hero Section -->
+            <div class="flex flex-col md:flex-row items-center justify-between py-12">
+                <div class="md:w-1/2 text-white mb-8 md:mb-0">
+                    <h1 class="text-4xl md:text-5xl font-bold mb-4">Ferry Booking System</h1>
+                    <p class="text-xl mb-8">Pesan tiket kapal ferry dengan mudah, cepat, dan aman!</p>
+                    <div class="flex space-x-4">
+                        <a href="{{ route('admin.login') }}"
+                            class="bg-white text-blue-700 hover:bg-blue-100 px-6 py-3 rounded-lg font-medium transition duration-200">
+                            Login Admin
+                        </a>
+                        <a href="{{ route('operator.login') }}"
+                            class="border border-white text-white hover:bg-white hover:text-blue-700 px-6 py-3 rounded-lg font-medium transition duration-200">
+                            Login Operator
+                        </a>
+                    </div>
                 </div>
-                <div class="text-white font-semibold text-lg">
-                    {{ Auth::guard('admin')->check() ? Auth::guard('admin')->user()->name : Auth::guard('operator')->user()->name }}
-                </div>
-                <div class="text-sm text-slate-400">
-                    {{ Auth::guard('admin')->check() ? 'Administrator' : 'Operator' }}
+                <div class="md:w-1/2">
+                    <img src="https://placehold.co/600x400?text=Ferry+Illustration" alt="Ferry Illustration"
+                        class="w-full h-auto">
                 </div>
             </div>
-            @endif
 
-            <div class="py-4">
-                @if(Auth::guard('admin')->check())
-                    <!-- Admin Menu -->
-                    <a href="{{ route('admin.dashboard') }}" class="flex items-center px-6 py-3 mx-3 my-1 rounded-lg text-sm font-medium {{ request()->routeIs('admin.dashboard') ? 'bg-sidebar-active text-white' : 'text-slate-400 hover:bg-sidebar-hover hover:text-white hover:translate-x-1' }} transition-all duration-200">
-                        <i class="fas fa-tachometer-alt w-5 mr-3"></i> Dashboard
-                    </a>
-                    <a href="{{ route('admin.routes.index') }}" class="flex items-center px-6 py-3 mx-3 my-1 rounded-lg text-sm font-medium {{ request()->routeIs('admin.routes.*') ? 'bg-sidebar-active text-white' : 'text-slate-400 hover:bg-sidebar-hover hover:text-white hover:translate-x-1' }} transition-all duration-200">
-                        <i class="fas fa-route w-5 mr-3"></i> Rute
-                    </a>
-                    <a href="{{ route('admin.ferries.index') }}" class="flex items-center px-6 py-3 mx-3 my-1 rounded-lg text-sm font-medium {{ request()->routeIs('admin.ferries.*') ? 'bg-sidebar-active text-white' : 'text-slate-400 hover:bg-sidebar-hover hover:text-white hover:translate-x-1' }} transition-all duration-200">
-                        <i class="fas fa-ship w-5 mr-3"></i> Kapal
-                    </a>
-                    <a href="{{ route('admin.schedules.index') }}" class="flex items-center px-6 py-3 mx-3 my-1 rounded-lg text-sm font-medium {{ request()->routeIs('admin.schedules.*') ? 'bg-sidebar-active text-white' : 'text-slate-400 hover:bg-sidebar-hover hover:text-white hover:translate-x-1' }} transition-all duration-200">
-                        <i class="fas fa-calendar-alt w-5 mr-3"></i> Jadwal
-                    </a>
-                    <a href="{{ route('admin.bookings.index') }}" class="flex items-center px-6 py-3 mx-3 my-1 rounded-lg text-sm font-medium {{ request()->routeIs('admin.bookings.*') ? 'bg-sidebar-active text-white' : 'text-slate-400 hover:bg-sidebar-hover hover:text-white hover:translate-x-1' }} transition-all duration-200">
-                        <i class="fas fa-ticket-alt w-5 mr-3"></i> Booking
-                    </a>
-                    <a href="{{ route('admin.reports.index') }}" class="flex items-center px-6 py-3 mx-3 my-1 rounded-lg text-sm font-medium {{ request()->routeIs('admin.reports.*') ? 'bg-sidebar-active text-white' : 'text-slate-400 hover:bg-sidebar-hover hover:text-white hover:translate-x-1' }} transition-all duration-200">
-                        <i class="fas fa-chart-bar w-5 mr-3"></i> Laporan
-                    </a>
-                    <a href="{{ route('admin.users.index') }}" class="flex items-center px-6 py-3 mx-3 my-1 rounded-lg text-sm font-medium {{ request()->routeIs('admin.users.*') ? 'bg-sidebar-active text-white' : 'text-slate-400 hover:bg-sidebar-hover hover:text-white hover:translate-x-1' }} transition-all duration-200">
-                        <i class="fas fa-users w-5 mr-3"></i> Pengguna
-                    </a>
-
-                    @if(auth()->guard('admin')->user()->is_super_admin ?? false)
-                    <button id="adminMenuToggle" class="w-full flex items-center justify-between px-6 py-3 mx-3 my-1 rounded-lg text-sm font-medium {{ request()->routeIs('admin.admins.*') || request()->routeIs('admin.operators.*') ? 'bg-sidebar-active text-white' : 'text-slate-400 hover:bg-sidebar-hover hover:text-white' }} transition-all duration-200">
-                        <div class="flex items-center">
-                            <i class="fas fa-user-cog w-5 mr-3"></i>
-                            <span>Manajemen Admin</span>
+            <!-- Searching Panel -->
+            <div class="bg-white rounded-lg shadow-xl p-6 -mb-12 relative z-10">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">Cari Tiket</h2>
+                <form action="{{ route('search-schedule') }}" method="GET">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Rute</label>
+                            <select name="route_id"
+                                class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">Pilih Rute</option>
+                                @foreach ($routes as $route)
+                                    <option value="{{ $route->id }}">{{ $route->origin }} - {{ $route->destination }}
+                                    </option>
+                                @endforeach
+                            </select>
                         </div>
-                        <i class="fas fa-angle-down transition-transform" id="adminMenuArrow"></i>
-                    </button>
-                    <div class="pl-4 {{ request()->routeIs('admin.admins.*') || request()->routeIs('admin.operators.*') ? 'block' : 'hidden' }}" id="adminSubmenu">
-                        <a href="{{ route('admin.admins.index') }}" class="flex items-center px-6 py-2 mx-3 my-1 rounded-lg text-sm font-medium {{ request()->routeIs('admin.admins.*') ? 'bg-sidebar-active text-white' : 'text-slate-400 hover:bg-sidebar-hover hover:text-white hover:translate-x-1' }} transition-all duration-200">
-                            <i class="fas fa-user-shield w-5 mr-3"></i> Admin
-                        </a>
-                        <a href="{{ route('admin.operators.index') }}" class="flex items-center px-6 py-2 mx-3 my-1 rounded-lg text-sm font-medium {{ request()->routeIs('admin.operators.*') ? 'bg-sidebar-active text-white' : 'text-slate-400 hover:bg-sidebar-hover hover:text-white hover:translate-x-1' }} transition-all duration-200">
-                            <i class="fas fa-user-tie w-5 mr-3"></i> Operator
-                        </a>
+                        <div>
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Tanggal Keberangkatan</label>
+                            <input type="date" name="departure_date" min="{{ date('Y-m-d') }}"
+                                class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div class="flex items-end">
+                            <button type="submit"
+                                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200">
+                                <i class="fas fa-search mr-2"></i> Cari
+                            </button>
+                        </div>
                     </div>
-                    @endif
-
-                @elseif(Auth::guard('operator')->check())
-                    <!-- Operator Menu -->
-                    <a href="{{ route('operator.dashboard') }}" class="flex items-center px-6 py-3 mx-3 my-1 rounded-lg text-sm font-medium {{ request()->routeIs('operator.dashboard') ? 'bg-sidebar-active text-white' : 'text-slate-400 hover:bg-sidebar-hover hover:text-white hover:translate-x-1' }} transition-all duration-200">
-                        <i class="fas fa-tachometer-alt w-5 mr-3"></i> Dashboard
-                    </a>
-                    <a href="{{ route('operator.schedules.index') }}" class="flex items-center px-6 py-3 mx-3 my-1 rounded-lg text-sm font-medium {{ request()->routeIs('operator.schedules.*') ? 'bg-sidebar-active text-white' : 'text-slate-400 hover:bg-sidebar-hover hover:text-white hover:translate-x-1' }} transition-all duration-200">
-                        <i class="fas fa-calendar-alt w-5 mr-3"></i> Jadwal
-                    </a>
-                    <a href="{{ route('operator.bookings.index') }}" class="flex items-center px-6 py-3 mx-3 my-1 rounded-lg text-sm font-medium {{ request()->routeIs('operator.bookings.*') ? 'bg-sidebar-active text-white' : 'text-slate-400 hover:bg-sidebar-hover hover:text-white hover:translate-x-1' }} transition-all duration-200">
-                        <i class="fas fa-ticket-alt w-5 mr-3"></i> Booking
-                    </a>
-                    <a href="{{ route('operator.bookings.check-in') }}" class="flex items-center px-6 py-3 mx-3 my-1 rounded-lg text-sm font-medium {{ request()->routeIs('operator.bookings.check-in') ? 'bg-sidebar-active text-white' : 'text-slate-400 hover:bg-sidebar-hover hover:text-white hover:translate-x-1' }} transition-all duration-200">
-                        <i class="fas fa-clipboard-check w-5 mr-3"></i> Check-in
-                    </a>
-                    <a href="{{ route('operator.reports.index') }}" class="flex items-center px-6 py-3 mx-3 my-1 rounded-lg text-sm font-medium {{ request()->routeIs('operator.reports.*') ? 'bg-sidebar-active text-white' : 'text-slate-400 hover:bg-sidebar-hover hover:text-white hover:translate-x-1' }} transition-all duration-200">
-                        <i class="fas fa-chart-bar w-5 mr-3"></i> Laporan
-                    </a>
-                @else
-                    <!-- Guest Menu -->
-                    <div class="px-6 py-3 mx-3 text-white font-medium">
-                        <h6 class="mb-0">Login Sebagai</h6>
-                    </div>
-                    <a href="{{ route('admin.login') }}" class="flex items-center px-6 py-3 mx-3 my-1 rounded-lg text-sm font-medium text-slate-400 hover:bg-sidebar-hover hover:text-white hover:translate-x-1 transition-all duration-200">
-                        <i class="fas fa-user-shield w-5 mr-3"></i> Admin
-                    </a>
-                    <a href="{{ route('operator.login') }}" class="flex items-center px-6 py-3 mx-3 my-1 rounded-lg text-sm font-medium text-slate-400 hover:bg-sidebar-hover hover:text-white hover:translate-x-1 transition-all duration-200">
-                        <i class="fas fa-user-tie w-5 mr-3"></i> Operator
-                    </a>
-                @endif
+                </form>
             </div>
-
-            @if(Auth::guard('admin')->check() || Auth::guard('operator')->check())
-                <div class="mt-auto border-t border-slate-700/50 p-6">
-                    @if(Auth::guard('admin')->check())
-                        <form id="logout-form" action="{{ route('admin.logout') }}" method="POST">
-                            @csrf
-                            <button type="submit" class="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200">
-                                <i class="fas fa-sign-out-alt"></i> Logout
-                            </button>
-                        </form>
-                    @elseif(Auth::guard('operator')->check())
-                        <form id="logout-form" action="{{ route('operator.logout') }}" method="POST">
-                            @csrf
-                            <button type="submit" class="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200">
-                                <i class="fas fa-sign-out-alt"></i> Logout
-                            </button>
-                        </form>
-                    @endif
-                </div>
-            @endif
         </div>
-        <!-- /#sidebar-wrapper -->
 
-        <!-- Page Content -->
-        <div id="page-content-wrapper" class="flex-1 transition-all duration-300 md:ml-72">
-            <nav class="bg-white shadow-sm px-6 py-3">
-                <div class="flex items-center justify-between">
-                    <button class="text-slate-600 hover:text-slate-900 focus:outline-none" id="menu-toggle">
-                        <i class="fas fa-bars text-xl"></i>
-                    </button>
+        <!-- Upcoming Schedules -->
+        <div class="bg-gray-100 pt-24 pb-12">
+            <div class="container mx-auto px-4">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Jadwal Mendatang</h2>
 
-                    <div class="flex items-center">
-                        @if(Auth::guard('admin')->check())
-                            <span class="text-slate-600 font-medium ml-2">
-                                <i class="fas fa-user-shield mr-1"></i> Admin Panel
-                            </span>
-                        @elseif(Auth::guard('operator')->check())
-                            <span class="text-slate-600 font-medium ml-2">
-                                <i class="fas fa-user-tie mr-1"></i> Operator Panel
-                            </span>
-                        @endif
-                    </div>
-                </div>
-            </nav>
-
-            <div class="p-6">
-                <div class="animate-fade-in">
-                    @yield('content')
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    @forelse($upcomingSchedules as $scheduleDate)
+                        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                            <div class="bg-blue-600 text-white p-4">
+                                <div class="flex justify-between items-center">
+                                    <h3 class="font-bold">{{ $scheduleDate->schedule->route->origin }} -
+                                        {{ $scheduleDate->schedule->route->destination }}</h3>
+                                    <span
+                                        class="text-sm bg-blue-700 px-2 py-1 rounded">{{ $scheduleDate->schedule->ferry->name }}</span>
+                                </div>
+                            </div>
+                            <div class="p-4">
+                                <div class="flex justify-between mb-2">
+                                    <div>
+                                        <span class="text-gray-500 text-sm">Tanggal</span>
+                                        <p class="font-medium">
+                                            {{ \Carbon\Carbon::parse($scheduleDate->date)->format('d M Y') }}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-500 text-sm">Jam</span>
+                                        <p class="font-medium">
+                                            {{ \Carbon\Carbon::parse($scheduleDate->departure_time)->format('H:i') }}</p>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between">
+                                    <div>
+                                        <span class="text-gray-500 text-sm">Harga</span>
+                                        <p class="font-medium">Rp
+                                            {{ number_format($scheduleDate->schedule->price, 0, ',', '.') }}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-500 text-sm">Kapasitas</span>
+                                        <p class="font-medium">{{ $scheduleDate->schedule->ferry->capacity }} penumpang</p>
+                                    </div>
+                                </div>
+                                <a href="{{ route('book', ['schedule_date_id' => $scheduleDate->id]) }}"
+                                    class="mt-4 block text-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200">
+                                    Pesan Sekarang
+                                </a>
+                            </div>
+                        </div>
+                    @empty
+                        <div class="col-span-3 text-center py-8">
+                            <p class="text-gray-500">Tidak ada jadwal mendatang yang tersedia.</p>
+                        </div>
+                    @endforelse
                 </div>
             </div>
         </div>
-        <!-- /#page-content-wrapper -->
+
+        <!-- Features Section -->
+        <div class="py-12 bg-white">
+            <div class="container mx-auto px-4">
+                <h2 class="text-2xl font-bold text-gray-800 mb-12 text-center">Kenapa Memilih Kami?</h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div class="text-center p-6">
+                        <div
+                            class="bg-blue-100 text-blue-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-ticket-alt text-2xl"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Pemesanan Mudah</h3>
+                        <p class="text-gray-600">Pesan tiket kapan saja dan dimana saja dengan mudah melalui platform kami.
+                        </p>
+                    </div>
+
+                    <div class="text-center p-6">
+                        <div
+                            class="bg-blue-100 text-blue-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-shield-alt text-2xl"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Pembayaran Aman</h3>
+                        <p class="text-gray-600">Nikmati transaksi yang aman dan terpercaya dengan berbagai metode
+                            pembayaran.</p>
+                    </div>
+
+                    <div class="text-center p-6">
+                        <div
+                            class="bg-blue-100 text-blue-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-headset text-2xl"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Layanan 24/7</h3>
+                        <p class="text-gray-600">Tim customer service kami siap membantu Anda 24 jam setiap hari.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    <!-- /#wrapper -->
-
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ asset('js/app.js') }}" defer></script>
-
-    <!-- Menu Toggle Script -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Menu toggle functionality
-            const menuToggle = document.getElementById('menu-toggle');
-            const wrapper = document.getElementById('wrapper');
-            const sidebar = document.getElementById('sidebar-wrapper');
-            const pageContent = document.getElementById('page-content-wrapper');
-
-            if(menuToggle && wrapper) {
-                menuToggle.addEventListener('click', function(e) {
-                    e.preventDefault();
-
-                    // For desktop
-                    if (window.innerWidth >= 768) {
-                        if (sidebar.classList.contains('md:ml-0')) {
-                            sidebar.classList.remove('md:ml-0');
-                            sidebar.classList.add('md:-ml-72');
-                            pageContent.classList.remove('md:ml-72');
-                            pageContent.classList.add('md:ml-0');
-                        } else {
-                            sidebar.classList.remove('md:-ml-72');
-                            sidebar.classList.add('md:ml-0');
-                            pageContent.classList.remove('md:ml-0');
-                            pageContent.classList.add('md:ml-72');
-                        }
-                    }
-                    // For mobile
-                    else {
-                        if (sidebar.classList.contains('-ml-72')) {
-                            sidebar.classList.remove('-ml-72');
-                            sidebar.classList.add('ml-0');
-                        } else {
-                            sidebar.classList.remove('ml-0');
-                            sidebar.classList.add('-ml-72');
-                        }
-                    }
-                });
-            }
-
-            // Admin submenu toggle
-            const adminMenuToggle = document.getElementById('adminMenuToggle');
-            const adminSubmenu = document.getElementById('adminSubmenu');
-            const adminMenuArrow = document.getElementById('adminMenuArrow');
-
-            if(adminMenuToggle && adminSubmenu) {
-                adminMenuToggle.addEventListener('click', function() {
-                    adminSubmenu.classList.toggle('hidden');
-                    adminMenuArrow.classList.toggle('rotate-180');
-                });
-            }
-
-            // Add animation classes to content elements
-            const contentElements = document.querySelectorAll('.animate-fade-in');
-            contentElements.forEach((element, index) => {
-                element.style.animationDelay = `${index * 0.1}s`;
-            });
-        });
-    </script>
-
-    <style>
-        /* Animation for fade in */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in {
-            animation: fadeIn 0.5s ease-out forwards;
-        }
-    </style>
-
-    @yield('scripts')
-</body>
-</html>
+@endsection

@@ -1,3 +1,4 @@
+// lib/api/notification_api.dart
 import 'package:ferry_booking_app/api/api_service.dart';
 import 'package:ferry_booking_app/models/notification.dart';
 
@@ -17,20 +18,35 @@ class NotificationApi {
     }
   }
 
+  // Get notification details
+  Future<UserNotification> getNotificationDetails(int notificationId) async {
+    final response = await _apiService.get('notifications/$notificationId');
+
+    if (response['success']) {
+      return UserNotification.fromJson(response['data']);
+    } else {
+      throw Exception(response['message']);
+    }
+  }
+
   // Mark notification as read
-  Future<void> markAsRead(int notificationId) async {
+  Future<bool> markAsRead(int notificationId) async {
     final response = await _apiService.post('notifications/$notificationId/read', {});
 
-    if (!response['success']) {
+    if (response['success']) {
+      return true;
+    } else {
       throw Exception(response['message']);
     }
   }
 
   // Mark all notifications as read
-  Future<void> markAllAsRead() async {
+  Future<bool> markAllAsRead() async {
     final response = await _apiService.post('notifications/mark-all-read', {});
 
-    if (!response['success']) {
+    if (response['success']) {
+      return true;
+    } else {
       throw Exception(response['message']);
     }
   }

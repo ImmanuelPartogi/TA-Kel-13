@@ -49,4 +49,29 @@ class User extends Authenticatable
     {
         return $this->hasMany(Notification::class);
     }
+
+    /**
+     * Mendapatkan semua percakapan pengguna
+     */
+    public function conversations()
+    {
+        return $this->hasMany(ChatConversation::class, 'user_id');
+    }
+
+    /**
+     * Mengaitkan percakapan tamu ke akun pengguna setelah login
+     */
+    public function linkGuestConversation($sessionId)
+    {
+        $guestConversation = ChatConversation::where('session_id', $sessionId)
+            ->whereNull('user_id')
+            ->first();
+
+        if ($guestConversation) {
+            $guestConversation->update(['user_id' => $this->id]);
+            return $guestConversation;
+        }
+
+        return null;
+    }
 }

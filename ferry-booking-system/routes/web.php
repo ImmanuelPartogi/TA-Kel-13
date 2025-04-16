@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\OperatorController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\Admin\BookingController as AdminBookingController;
 use App\Http\Controllers\Admin\ReportController as AdminReportController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\BackendLoginController;
+use App\Http\Controllers\Controller;
 use App\Http\Controllers\Operator\DashboardController as OperatorDashboardController;
 use App\Http\Controllers\Operator\ScheduleController as OperatorScheduleController;
 use App\Http\Controllers\Operator\BookingController as OperatorBookingController;
@@ -25,10 +27,17 @@ use App\Http\Controllers\Operator\ReportController as OperatorReportController;
 |
 */
 
-// Redirect root to admin login
-Route::get('/', function () {
-    return redirect()->route('admin.login');
-});
+// Landing page routes
+Route::get('/', [LandingPageController::class, 'index'])->name('home');
+Route::get('/schedules', [LandingPageController::class, 'schedules'])->name('schedules');
+Route::get('/contact', [LandingPageController::class, 'contact'])->name('contact');
+Route::get('/search', [LandingPageController::class, 'searchSchedule'])->name('search-schedule');
+Route::get('/book/{schedule_date_id}', [LandingPageController::class, 'bookingForm'])->name('book');
+
+// // Redirect root to admin login
+// Route::get('/', function () {
+//     return redirect()->route('admin.login');
+// });
 
 // Admin Authentication
 Route::middleware('guest:admin')->group(function () {
@@ -60,6 +69,8 @@ Route::prefix('admin')->middleware(['auth:admin'])->group(function () {
     Route::get('/schedules/{id}/dates', [AdminScheduleController::class, 'dates'])->name('admin.schedules.dates');
     Route::put('/schedules/{id}/dates/{dateId}', [AdminScheduleController::class, 'updateDate'])->name('admin.schedules.update-date');
     Route::post('/schedules/{id}/dates', [AdminScheduleController::class, 'addDates'])->name('admin.schedules.add-dates');
+    Route::post('/admin/schedules/{id}/dates', [AdminScheduleController::class, 'storeDate'])->name('admin.schedules.store-date');
+    Route::put('/admin/schedules/{schedule}/dates/{dateId}', [AdminScheduleController::class, 'updateDate'])->name('admin.schedules.update-date');
 
     // Bookings Management
     Route::resource('bookings', AdminBookingController::class, ['as' => 'admin'])->except(['edit', 'update', 'destroy']);

@@ -1,3 +1,6 @@
+import 'package:ferry_booking_app/screens/help/help_screen.dart';
+import 'package:ferry_booking_app/screens/history/history_screen.dart';
+import 'package:ferry_booking_app/screens/notification/notification_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ferry_booking_app/providers/auth_provider.dart';
@@ -143,25 +146,35 @@ class HomeTab extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildQuickLink(
-                    context,
-                    Icons.confirmation_number_outlined,
-                    'Tiket Saya',
-                    () => Navigator.pushNamed(context, '/tickets'),
-                  ),
-                  _buildQuickLink(context, Icons.history, 'Riwayat', () {}),
+                  _buildQuickLink(context, Icons.history, 'Riwayat', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const HistoryScreen(),
+                      ),
+                    );
+                  }),
                   _buildQuickLink(
                     context,
                     Icons.notifications_outlined,
                     'Notifikasi',
-                    () {},
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const NotificationScreen(),
+                        ),
+                      );
+                    },
                   ),
-                  _buildQuickLink(
-                    context,
-                    Icons.help_outline,
-                    'Bantuan',
-                    () {},
-                  ),
+                  _buildQuickLink(context, Icons.help_outline, 'Bantuan', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const HelpScreen(),
+                      ),
+                    );
+                  }),
                 ],
               ),
             ),

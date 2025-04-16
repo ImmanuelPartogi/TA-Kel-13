@@ -5,6 +5,7 @@ import 'package:ferry_booking_app/providers/booking_provider.dart';
 import 'package:ferry_booking_app/screens/home/home_tab.dart';
 import 'package:ferry_booking_app/screens/tickets/ticket_list_screen.dart';
 import 'package:ferry_booking_app/screens/profile/profile_screen.dart';
+import 'package:ferry_booking_app/widgets/chatbot_fab.dart'; // Tambahkan import
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -60,6 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
         ],
       ),
+      floatingActionButton: const ChatbotFAB(),
     );
   }
 }

@@ -8,21 +8,17 @@ use App\Models\ScheduleDate;
 use Carbon\Carbon;
 use Illuminate\Routing\Controller;
 
-class LandingPageController extends Controller
+class WelcomeController extends Controller
 {
     public function index()
     {
         // Ambil rute aktif
-        $routes = Route::where('status', 'ACTIVE')->get();
+        $allRoutes = Route::where('status', 'ACTIVE')->get();
 
-        // Ambil jadwal mendatang
-        $upcomingSchedules = ScheduleDate::with(['schedule', 'schedule.route', 'schedule.ferry'])
-            ->where('date', '>=', Carbon::today())
-            ->orderBy('date')
-            ->limit(5)
-            ->get();
+        // Mengambil setting
+        $settings = $this->getSettings();
 
-        return view('welcome', compact('routes', 'upcomingSchedules'));
+        return view('welcome', compact('allRoutes', 'settings'));
     }
 
     public function schedules()
@@ -59,5 +55,15 @@ class LandingPageController extends Controller
             ->findOrFail($scheduleDate_id);
 
         return view('booking-form', compact('scheduleDate'));
+    }
+
+    private function getSettings()
+    {
+        return [
+            'hero_title' => 'Jelajahi Keindahan Danau dengan Layanan Ferry Kami',
+            'hero_subtitle' => 'Pesan tiket ferry Anda secara online untuk pengalaman perjalanan yang mulus.',
+            'hero_image' => 'https://images.unsplash.com/photo-1523292562811-8fa7962a78c8?q=80&w=2070',
+            
+        ];
     }
 }

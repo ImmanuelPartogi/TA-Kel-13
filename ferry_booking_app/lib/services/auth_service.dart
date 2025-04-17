@@ -1,210 +1,133 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
-
-class User {
-  final int id;
-  final String name;
-  final String email;
-  final String phone;
-
-  User({
-    required this.id,
-    required this.name,
-    required this.email,
-    required this.phone,
-  });
-
-  factory User.fromJson(Map<String, dynamic> json) {
-    return User(
-      id: json['id'],
-      name: json['name'],
-      email: json['email'],
-      phone: json['phone'],
-    );
-  }
-}
+import 'package:ferry_booking_app/models/user.dart';
+import '../services/api_service.dart';
 
 class AuthService {
-  final String baseUrl =
-      'http://127.0.0.1:8000/api'; // Ganti dengan URL server Anda
-  String? _token;
-  User? _user;
-
-  String? get token => _token;
-  User? get user => _user;
-
-  // Headers dengan otentikasi
-  Map<String, String> get headers {
-    final Map<String, String> headers = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    };
-
-    if (_token != null) {
-      headers['Authorization'] = 'Bearer $_token';
-    }
-
-    return headers;
-  }
-
-  // Cek apakah user sudah login
-  Future<bool> isLoggedIn() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-
-    if (token != null) {
-      _token = token;
-
-      // Ambil data user dari storage
-      final userData = prefs.getString('user');
-      if (userData != null) {
-        _user = User.fromJson(jsonDecode(userData));
-      }
-
-      return true;
-    }
-
-    return false;
-  }
-
-  // Login
-  Future<bool> login(String email, String password) async {
-    // Ambil device ID untuk mengaitkan percakapan tamu
-    final prefs = await SharedPreferences.getInstance();
-    final deviceId = prefs.getString('device_id');
-
-    final url = Uri.parse('$baseUrl/login');
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: jsonEncode({
+  final ApiService _apiService = ApiService();
+  
+  // Login user
+  Future<Map<String, dynamic>> login(String email, String password) async {
+    try {
+      final data = {
         'email': email,
         'password': password,
-        'device_id': deviceId,
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-
-      if (data['success']) {
-        _token = data['token'];
-        _user = User.fromJson(data['data']);
-
-        // Simpan token dan data user
-        await prefs.setString('token', _token!);
-        await prefs.setString('user', jsonEncode(data['data']));
-
-        return true;
+      };
+      
+      final response = await _apiService.post('auth/login', data);
+      
+      if (response['success'] == true && 
+          response['data'] != null && 
+          response['data']['token'] != null) {
+        
+        // Explicitly save token to secure storage
+        await _apiService.saveToken(response['data']['token']);
+        
+        // Return user data and token
+        return {
+          'user': User.fromJson(response['data']['user']),
+          'token': response['data']['token'],
+        };
       } else {
-        throw Exception(data['message'] ?? 'Login gagal');
+        throw Exception(response['message'] ?? 'Login failed');
       }
-    } else {
-      throw Exception('Gagal terhubung ke server: ${response.statusCode}');
+    } catch (e) {
+      print('Login exception: $e');
+      rethrow;
     }
   }
-
-  // Register
-  Future<bool> register(
-    String name,
-    String email,
-    String phone,
-    String password,
-    String passwordConfirmation,
-  ) async {
-    final url = Uri.parse('$baseUrl/register');
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: jsonEncode({
-        'name': name,
-        'email': email,
-        'phone': phone,
-        'password': password,
-        'password_confirmation': passwordConfirmation,
-      }),
-    );
-
-    if (response.statusCode == 201) {
-      final data = jsonDecode(response.body);
-
-      if (data['success']) {
-        _token = data['token'];
-        _user = User.fromJson(data['data']);
-
-        // Simpan token dan data user
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', _token!);
-        await prefs.setString('user', jsonEncode(data['data']));
-
-        return true;
+  
+  // Register new user
+  Future<User> register(Map<String, dynamic> userData) async {
+    try {
+      final response = await _apiService.post('auth/register', userData);
+      
+      if (response['success'] == true && response['data'] != null) {
+        return User.fromJson(response['data']);
       } else {
-        throw Exception(data['message'] ?? 'Registrasi gagal');
+        throw Exception(response['message'] ?? 'Registration failed');
       }
-    } else {
-      final data = jsonDecode(response.body);
-      throw Exception(
-        data['message'] ?? 'Gagal terhubung ke server: ${response.statusCode}',
-      );
+    } catch (e) {
+      print('Register exception: $e');
+      rethrow;
     }
   }
-
-  // Logout
+  
+  // Get current user profile
+  Future<User> getCurrentUser() async {
+    try {
+      final response = await _apiService.get('auth/user');
+      
+      if (response['success'] == true && response['data'] != null) {
+        return User.fromJson(response['data']);
+      } else {
+        throw Exception(response['message'] ?? 'Failed to get user profile');
+      }
+    } catch (e) {
+      print('Get current user exception: $e');
+      rethrow;
+    }
+  }
+  
+  // Update user profile
+  Future<User> updateProfile(Map<String, dynamic> userData) async {
+    try {
+      final response = await _apiService.put('auth/user', userData);
+      
+      if (response['success'] == true && response['data'] != null) {
+        return User.fromJson(response['data']);
+      } else {
+        throw Exception(response['message'] ?? 'Failed to update profile');
+      }
+    } catch (e) {
+      print('Update profile exception: $e');
+      rethrow;
+    }
+  }
+  
+  // Change password
+  Future<bool> changePassword(String currentPassword, String newPassword) async {
+    try {
+      final data = {
+        'current_password': currentPassword,
+        'password': newPassword,
+        'password_confirmation': newPassword,
+      };
+      
+      final response = await _apiService.put('auth/password', data);
+      
+      return response['success'] == true;
+    } catch (e) {
+      print('Change password exception: $e');
+      rethrow;
+    }
+  }
+  
+  // Logout user
   Future<bool> logout() async {
-    if (_token == null) {
-      return false;
-    }
-
-    final url = Uri.parse('$baseUrl/logout');
-    final response = await http.post(url, headers: headers);
-
-    if (response.statusCode == 200) {
-      _token = null;
-      _user = null;
-
-      // Hapus token dan data user
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('token');
-      await prefs.remove('user');
-
-      return true;
-    } else {
-      return false;
+    try {
+      final response = await _apiService.post('auth/logout', {});
+      
+      // Clear token regardless of response
+      await _apiService.clearToken();
+      
+      return response['success'] == true;
+    } catch (e) {
+      // Ensure token is cleared even if API call fails
+      await _apiService.clearToken();
+      print('Logout exception: $e');
+      rethrow;
     }
   }
-
-  // Ambil profile
-  Future<User> getProfile() async {
-    if (_token == null) {
-      throw Exception('User tidak login');
-    }
-
-    final url = Uri.parse('$baseUrl/profile');
-    final response = await http.get(url, headers: headers);
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-
-      if (data['success']) {
-        _user = User.fromJson(data['data']);
-
-        // Update data user di storage
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('user', jsonEncode(data['data']));
-
-        return _user!;
-      } else {
-        throw Exception(data['message'] ?? 'Gagal mendapatkan profil');
-      }
-    } else {
-      throw Exception('Gagal terhubung ke server: ${response.statusCode}');
+  
+  // Check if user is logged in
+  Future<bool> isLoggedIn() async {
+    try {
+      // Try to get user profile, if successful then user is logged in
+      await getCurrentUser();
+      return true;
+    } catch (e) {
+      // If an error occurs, user is probably not logged in
+      return false;
     }
   }
 }

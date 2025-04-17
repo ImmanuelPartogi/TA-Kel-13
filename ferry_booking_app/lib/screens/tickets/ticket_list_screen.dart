@@ -17,7 +17,11 @@ class _TicketListScreenState extends State<TicketListScreen> with SingleTickerPr
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _loadBookings();
+    
+    // Use post-frame callback to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadBookings();
+    });
   }
   
   @override

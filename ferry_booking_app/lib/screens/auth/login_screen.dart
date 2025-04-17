@@ -37,15 +37,21 @@ class _LoginScreenState extends State<LoginScreen> {
         // Ensure device ID is a valid string before passing it
         final String safeDeviceId = deviceId.isNotEmpty ? deviceId : '';
 
+        print('Attempting login with email: $email and deviceId: $safeDeviceId');
+
         // Login with device ID
         final authProvider = Provider.of<AuthProvider>(context, listen: false);
         final success = await authProvider.login(email, password, safeDeviceId);
 
         // Navigate to home page if login successful
         if (success && mounted) {
+          print('Login successful, navigating to home screen');
           Navigator.pushReplacementNamed(context, '/home');
+        } else {
+          print('Login failed');
         }
       } catch (e) {
+        print('Error during login process: $e');
         // Error handled by provider
       }
     }
@@ -151,17 +157,16 @@ class _LoginScreenState extends State<LoginScreen> {
               // Login Button
               ElevatedButton(
                 onPressed: authProvider.isLoading ? null : _login,
-                child:
-                    authProvider.isLoading
-                        ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.0,
-                            color: Colors.white,
-                          ),
-                        )
-                        : const Text('MASUK'),
+                child: authProvider.isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.0,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('MASUK'),
               ),
               const SizedBox(height: 16),
 

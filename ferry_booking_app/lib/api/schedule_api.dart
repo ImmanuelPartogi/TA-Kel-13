@@ -1,4 +1,4 @@
-import 'package:ferry_booking_app/api/api_service.dart';
+import 'package:ferry_booking_app/services/api_service.dart';
 import 'package:ferry_booking_app/models/schedule.dart';
 
 class ScheduleApi {

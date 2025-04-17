@@ -4,15 +4,17 @@ import 'package:http/http.dart' as http;
 import 'package:ferry_booking_app/api/auth_api.dart';
 import 'package:ferry_booking_app/models/user.dart';
 import 'package:ferry_booking_app/config/app_config.dart';
+import 'package:ferry_booking_app/services/token_storage_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthApi _authApi = AuthApi();
+  final TokenStorageService _tokenStorage = TokenStorageService();
 
   bool _isLoading = false;
   bool _isLoggedIn = false;
   User? _user;
   String? _errorMessage;
-  String? _token; // Menambahkan variabel _token yang hilang
+  String? _token;
 
   bool get isLoading => _isLoading;
   bool get isLoggedIn => _isLoggedIn;
@@ -26,19 +28,35 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final isLoggedIn = await _authApi.isLoggedIn();
-      _isLoggedIn = isLoggedIn;
+      // Get token from storage
+      final storedToken = await _tokenStorage.getToken();
+      
+      // If token exists, validate it by getting user profile
+      if (storedToken != null && storedToken.isNotEmpty) {
+        _token = storedToken; // Set token in memory
+        final isLoggedIn = await _authApi.isLoggedIn();
+        _isLoggedIn = isLoggedIn;
 
-      if (isLoggedIn) {
-        _user = await _authApi.getProfile();
+        if (isLoggedIn) {
+          // If token is valid, get user profile
+          _user = await _authApi.getProfile();
+        } else {
+          // If token is invalid, clear it
+          await _tokenStorage.clearToken();
+          _token = null;
+        }
+      } else {
+        _isLoggedIn = false;
       }
 
       _isLoading = false;
       _errorMessage = null;
       notifyListeners();
     } catch (e) {
+      print('Error checking login status: $e');
       _isLoading = false;
       _isLoggedIn = false;
+      _token = null;
       _errorMessage = e.toString();
       notifyListeners();
     }
@@ -77,7 +95,16 @@ class AuthProvider extends ChangeNotifier {
       }
 
       if (response.statusCode == 200 && data['success']) {
+        // Get token from response
         _token = data['data']['token'];
+        
+        // Save token using TokenStorageService
+        await _tokenStorage.saveToken(_token!);
+        
+        // Print token after saving for debugging
+        print('Token saved successfully: $_token');
+        
+        // Set user data and login state
         _user = User.fromJson(data['data']['user']);
         _isLoggedIn = true;
         _isLoading = false;
@@ -91,6 +118,7 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
     } catch (e) {
+      print('Login error: $e');
       _isLoading = false;
       _errorMessage = e.toString();
       notifyListeners();
@@ -111,6 +139,9 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       _user = await _authApi.register(name, email, phone, password);
+      
+      // Get token after registration
+      _token = await _tokenStorage.getToken();
       _isLoggedIn = true;
       _isLoading = false;
       notifyListeners();
@@ -133,7 +164,7 @@ class AuthProvider extends ChangeNotifier {
       final result = await _authApi.logout();
       _isLoggedIn = false;
       _user = null;
-      _token = null; // Hapus token saat logout
+      _token = null;
       _isLoading = false;
       _errorMessage = null;
       notifyListeners();
@@ -141,6 +172,12 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       _isLoading = false;
       _errorMessage = e.toString();
+      
+      // Still clear token and user data on error
+      _isLoggedIn = false;
+      _user = null;
+      _token = null;
+      
       notifyListeners();
       return false;
     }

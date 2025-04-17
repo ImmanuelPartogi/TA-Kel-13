@@ -1,5 +1,5 @@
 // lib/api/notification_api.dart
-import 'package:ferry_booking_app/api/api_service.dart';
+import 'package:ferry_booking_app/services/api_service.dart';
 import 'package:ferry_booking_app/models/notification.dart';
 
 class NotificationApi {

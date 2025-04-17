@@ -14,11 +14,15 @@ class RouteSelectionScreen extends StatefulWidget {
 class _RouteSelectionScreenState extends State<RouteSelectionScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _loadRoutes();
+    // Gunakan addPostFrameCallback untuk memastikan build selesai sebelum memanggil provider
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadRoutes();
+    });
   }
 
   @override
@@ -29,7 +33,18 @@ class _RouteSelectionScreenState extends State<RouteSelectionScreen> {
 
   Future<void> _loadRoutes() async {
     final scheduleProvider = Provider.of<ScheduleProvider>(context, listen: false);
-    await scheduleProvider.getRoutes();
+    try {
+      await scheduleProvider.getRoutes();
+      // Set flag untuk menunjukkan bahwa data sudah di-load
+      if (mounted) {
+        setState(() {
+          _isInitialized = true;
+        });
+      }
+    } catch (e) {
+      // Handle error if needed
+      print('Error loading routes: $e');
+    }
   }
 
   @override
@@ -81,67 +96,79 @@ class _RouteSelectionScreenState extends State<RouteSelectionScreen> {
           
           // Routes List
           Expanded(
-            child: scheduleProvider.isLoading
+            child: !_isInitialized
                 ? const Center(child: CircularProgressIndicator())
-                : routes == null || routes.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.directions_boat_outlined,
-                              size: 64,
-                              color: Colors.grey[400],
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Tidak ada rute tersedia',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : filteredRoutes!.isEmpty
+                : scheduleProvider.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : routes == null || routes.isEmpty
                         ? Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(
-                                  Icons.search_off,
+                                  Icons.directions_boat_outlined,
                                   size: 64,
                                   color: Colors.grey[400],
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
-                                  'Rute tidak ditemukan',
+                                  'Tidak ada rute tersedia',
                                   style: TextStyle(
                                     color: Colors.grey[600],
                                     fontSize: 16,
                                   ),
                                 ),
+                                const SizedBox(height: 16),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    _loadRoutes(); // Refresh data
+                                  },
+                                  child: const Text('Muat Ulang'),
+                                ),
                               ],
                             ),
                           )
-                        : ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                            itemCount: filteredRoutes.length,
-                            itemBuilder: (context, index) {
-                              final route = filteredRoutes[index];
-                              return RouteCard(
-                                route: route,
-                                onTap: () {
-                                  Navigator.pushNamed(
-                                    context, 
-                                    '/booking/schedules',
-                                    arguments: route,
-                                  );
-                                },
-                              );
-                            },
-                          ),
+                        : filteredRoutes!.isEmpty
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.search_off,
+                                      size: 64,
+                                      color: Colors.grey[400],
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Rute tidak ditemukan',
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : RefreshIndicator(
+                                onRefresh: _loadRoutes,
+                                child: ListView.builder(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                  itemCount: filteredRoutes.length,
+                                  itemBuilder: (context, index) {
+                                    final route = filteredRoutes[index];
+                                    return RouteCard(
+                                      route: route,
+                                      onTap: () {
+                                        Navigator.pushNamed(
+                                          context, 
+                                          '/booking/schedules',
+                                          arguments: route,
+                                        );
+                                      },
+                                    );
+                                  },
+                                ),
+                              ),
           ),
         ],
       ),

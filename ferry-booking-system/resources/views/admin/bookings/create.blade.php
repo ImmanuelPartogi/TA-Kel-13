@@ -1,168 +1,277 @@
-@extends('layouts.sidebar')
+@extends('layouts.app')
 
 @section('content')
-<div class="container-fluid">
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Buat Booking Baru</h1>
-        <a href="{{ route('admin.bookings.index') }}" class="d-none d-sm-inline-block btn btn-secondary shadow-sm">
-            <i class="fas fa-arrow-left fa-sm text-white-50"></i> Kembali
-        </a>
+<div class="container mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Buat Booking Baru</h1>
+            <p class="mt-1 text-gray-600">Buat reservasi tiket kapal ferry baru</p>
+        </div>
+        <div class="mt-4 md:mt-0">
+            <a href="{{ route('admin.bookings.index') }}" class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg text-white transition-colors shadow-sm">
+                <i class="fas fa-arrow-left mr-2 text-sm"></i> Kembali
+            </a>
+        </div>
     </div>
 
+    <!-- Alert for Errors -->
     @if($errors->any())
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <ul class="mb-0">
-                @foreach($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-md">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-exclamation-circle text-red-500"></i>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-red-800">Ada beberapa kesalahan:</h3>
+                    <ul class="mt-2 text-sm text-red-700 list-disc list-inside">
+                        @foreach($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+                <div class="ml-auto pl-3">
+                    <div class="-mx-1.5 -my-1.5">
+                        <button type="button" onclick="this.parentElement.parentElement.parentElement.parentElement.style.display='none'" class="inline-flex bg-red-50 rounded-md p-1.5 text-red-500 hover:bg-red-100">
+                            <span class="sr-only">Dismiss</span>
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     @endif
 
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Form Booking</h6>
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h2 class="font-semibold text-xl text-gray-800">Form Booking</h2>
         </div>
-        <div class="card-body">
-            <form id="bookingForm" action="{{ route('admin.bookings.store') }}" method="POST">
+        <div class="p-6">
+            <form id="bookingForm" action="{{ route('admin.bookings.store') }}" method="POST" class="space-y-6">
                 @csrf
-                <div class="row">
-                    <div class="col-md-6">
-                        <h5 class="mb-3">Informasi Perjalanan</h5>
-                        <div class="mb-3">
-                            <label for="route_id" class="form-label">Rute <span class="text-danger">*</span></label>
-                            <select class="form-control" id="route_id" name="route_id" required>
-                                <option value="">Pilih Rute</option>
-                                @foreach($routes as $route)
-                                    <option value="{{ $route->id }}" {{ old('route_id') == $route->id ? 'selected' : '' }}>
-                                        {{ $route->origin }} - {{ $route->destination }} ({{ $route->route_code }})
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="booking_date" class="form-label">Tanggal Keberangkatan <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control" id="booking_date" name="booking_date" value="{{ old('booking_date') ?? date('Y-m-d') }}" required min="{{ date('Y-m-d') }}">
-                        </div>
-                        <div class="mb-3">
-                            <label for="schedule_id" class="form-label">Jadwal <span class="text-danger">*</span></label>
-                            <select class="form-control" id="schedule_id" name="schedule_id" required disabled>
-                                <option value="">Pilih rute dan tanggal terlebih dahulu</option>
-                            </select>
-                            <div id="scheduleInfo" class="small mt-2"></div>
-                        </div>
-                        <div class="mb-3">
-                            <button type="button" id="checkScheduleBtn" class="btn btn-primary">
-                                <i class="fas fa-search"></i> Cek Jadwal
-                            </button>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <h5 class="mb-3">Informasi Penumpang Utama</h5>
-                        <div class="mb-3">
-                            <label for="user_search" class="form-label">Cari Pengguna <span class="text-danger">*</span></label>
-                            <div class="input-group">
-                                <input type="text" class="form-control" id="user_search" placeholder="Masukkan nama, email, atau telepon">
-                                <button class="btn btn-primary" type="button" id="searchUserBtn">
-                                    <i class="fas fa-search"></i>
-                                </button>
-                            </div>
-                            <small class="form-text text-muted">Minimal 3 karakter</small>
-                        </div>
-                        <div id="searchResults" class="mb-3" style="display: none;">
-                            <label class="form-label">Hasil Pencarian</label>
-                            <div class="list-group" id="userList"></div>
-                        </div>
-                        <div id="selectedUser" class="mb-3" style="display: none;">
-                            <label class="form-label">Pengguna Terpilih</label>
-                            <div class="card">
-                                <div class="card-body py-2">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h6 class="mb-0" id="selectedUserName"></h6>
-                                            <small class="text-muted" id="selectedUserEmail"></small><br>
-                                            <small class="text-muted" id="selectedUserPhone"></small>
-                                        </div>
-                                        <button type="button" id="changeUserBtn" class="btn btn-sm btn-outline-secondary">Ganti</button>
-                                    </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Left Column: Travel Information -->
+                    <div class="space-y-6">
+                        <div class="bg-blue-50 rounded-lg border border-blue-100 p-4">
+                            <h3 class="text-lg font-semibold text-blue-800 mb-4">Informasi Perjalanan</h3>
+
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="route_id" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Rute <span class="text-red-500">*</span>
+                                    </label>
+                                    <select class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                        id="route_id" name="route_id" required>
+                                        <option value="">Pilih Rute</option>
+                                        @foreach($routes as $route)
+                                            <option value="{{ $route->id }}" {{ old('route_id') == $route->id ? 'selected' : '' }}>
+                                                {{ $route->origin }} - {{ $route->destination }} ({{ $route->route_code }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label for="booking_date" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Tanggal Keberangkatan <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="date" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                        id="booking_date" name="booking_date" value="{{ old('booking_date') ?? date('Y-m-d') }}" required min="{{ date('Y-m-d') }}">
+                                </div>
+
+                                <div>
+                                    <label for="schedule_id" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Jadwal <span class="text-red-500">*</span>
+                                    </label>
+                                    <select class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                        id="schedule_id" name="schedule_id" required disabled>
+                                        <option value="">Pilih rute dan tanggal terlebih dahulu</option>
+                                    </select>
+                                    <div id="scheduleInfo" class="mt-2 text-sm"></div>
+                                </div>
+
+                                <div>
+                                    <button type="button" id="checkScheduleBtn" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md shadow-sm transition-colors">
+                                        <i class="fas fa-search mr-2"></i> Cek Jadwal
+                                    </button>
                                 </div>
                             </div>
-                            <input type="hidden" id="user_id" name="user_id">
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Passenger Information -->
+                    <div class="space-y-6">
+                        <div class="bg-green-50 rounded-lg border border-green-100 p-4">
+                            <h3 class="text-lg font-semibold text-green-800 mb-4">Informasi Penumpang Utama</h3>
+
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="user_search" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Cari Pengguna <span class="text-red-500">*</span>
+                                    </label>
+                                    <div class="flex">
+                                        <input type="text" class="flex-grow rounded-l-md border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                            id="user_search" placeholder="Masukkan nama, email, atau telepon">
+                                        <button class="inline-flex items-center px-3 py-2 border border-l-0 border-gray-300 bg-gray-50 text-gray-700 rounded-r-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                                            type="button" id="searchUserBtn">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                    </div>
+                                    <p class="mt-1 text-xs text-gray-500">Minimal 3 karakter</p>
+                                </div>
+
+                                <div id="searchResults" class="hidden mt-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Hasil Pencarian</label>
+                                    <div class="list-group overflow-y-auto max-h-48 border rounded-md divide-y divide-gray-200" id="userList"></div>
+                                </div>
+
+                                <div id="selectedUser" class="hidden mt-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Pengguna Terpilih</label>
+                                    <div class="bg-white rounded-md border border-gray-200 shadow-sm">
+                                        <div class="p-3">
+                                            <div class="flex justify-between items-center">
+                                                <div>
+                                                    <h6 class="font-medium text-gray-900" id="selectedUserName"></h6>
+                                                    <p class="text-sm text-gray-500" id="selectedUserEmail"></p>
+                                                    <p class="text-sm text-gray-500" id="selectedUserPhone"></p>
+                                                </div>
+                                                <button type="button" id="changeUserBtn" class="text-sm px-3 py-1 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                                                    Ganti
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <input type="hidden" id="user_id" name="user_id">
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div id="bookingDetails" style="display: none;">
-                    <hr>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h5 class="mb-3">Penumpang & Kendaraan</h5>
-                            <div class="mb-3">
-                                <label for="passenger_count" class="form-label">Jumlah Penumpang <span class="text-danger">*</span></label>
-                                <div class="input-group">
-                                    <button class="btn btn-outline-secondary" type="button" id="decreasePassenger">-</button>
-                                    <input type="number" class="form-control text-center" id="passenger_count" name="passenger_count" value="1" min="1" max="10" required>
-                                    <button class="btn btn-outline-secondary" type="button" id="increasePassenger">+</button>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="vehicle_count" class="form-label">Jumlah Kendaraan</label>
-                                <div class="input-group">
-                                    <button class="btn btn-outline-secondary" type="button" id="decreaseVehicle">-</button>
-                                    <input type="number" class="form-control text-center" id="vehicle_count" name="vehicle_count" value="0" min="0" max="5">
-                                    <button class="btn btn-outline-secondary" type="button" id="increaseVehicle">+</button>
-                                </div>
-                            </div>
+                <!-- Booking Details (initially hidden) -->
+                <div id="bookingDetails" class="hidden space-y-6">
+                    <div class="border-t border-gray-200 my-6"></div>
 
-                            <div id="vehicleContainer" style="display: none;"></div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Passengers & Vehicles -->
+                        <div class="bg-gray-50 rounded-lg border border-gray-200 p-4">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4">Penumpang & Kendaraan</h3>
+
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="passenger_count" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Jumlah Penumpang <span class="text-red-500">*</span>
+                                    </label>
+                                    <div class="flex">
+                                        <button class="inline-flex items-center justify-center px-3 py-2 border border-r-0 border-gray-300 bg-gray-50 text-gray-700 rounded-l-md hover:bg-gray-100"
+                                            type="button" id="decreasePassenger">
+                                            <i class="fas fa-minus"></i>
+                                        </button>
+                                        <input type="number" class="flex-grow text-center border-gray-300"
+                                            id="passenger_count" name="passenger_count" value="1" min="1" max="10" required>
+                                        <button class="inline-flex items-center justify-center px-3 py-2 border border-l-0 border-gray-300 bg-gray-50 text-gray-700 rounded-r-md hover:bg-gray-100"
+                                            type="button" id="increasePassenger">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label for="vehicle_count" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Jumlah Kendaraan
+                                    </label>
+                                    <div class="flex">
+                                        <button class="inline-flex items-center justify-center px-3 py-2 border border-r-0 border-gray-300 bg-gray-50 text-gray-700 rounded-l-md hover:bg-gray-100"
+                                            type="button" id="decreaseVehicle">
+                                            <i class="fas fa-minus"></i>
+                                        </button>
+                                        <input type="number" class="flex-grow text-center border-gray-300"
+                                            id="vehicle_count" name="vehicle_count" value="0" min="0" max="5">
+                                        <button class="inline-flex items-center justify-center px-3 py-2 border border-l-0 border-gray-300 bg-gray-50 text-gray-700 rounded-r-md hover:bg-gray-100"
+                                            type="button" id="increaseVehicle">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Vehicle container will be populated dynamically -->
+                                <div id="vehicleContainer" class="hidden space-y-4"></div>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <h5 class="mb-3">Pembayaran</h5>
-                            <div class="mb-3">
-                                <label for="payment_method" class="form-label">Metode Pembayaran <span class="text-danger">*</span></label>
-                                <select class="form-control" id="payment_method" name="payment_method" required>
-                                    <option value="">Pilih Metode Pembayaran</option>
-                                    <option value="CASH" {{ old('payment_method') == 'CASH' ? 'selected' : '' }}>Tunai</option>
-                                    <option value="BANK_TRANSFER" {{ old('payment_method') == 'BANK_TRANSFER' ? 'selected' : '' }}>Transfer Bank</option>
-                                    <option value="VIRTUAL_ACCOUNT" {{ old('payment_method') == 'VIRTUAL_ACCOUNT' ? 'selected' : '' }}>Virtual Account</option>
-                                    <option value="E_WALLET" {{ old('payment_method') == 'E_WALLET' ? 'selected' : '' }}>E-Wallet</option>
-                                    <option value="CREDIT_CARD" {{ old('payment_method') == 'CREDIT_CARD' ? 'selected' : '' }}>Kartu Kredit</option>
-                                </select>
-                            </div>
-                            <div class="mb-3" id="paymentChannelContainer" style="display: none;">
-                                <label for="payment_channel" class="form-label">Channel Pembayaran <span class="text-danger">*</span></label>
-                                <select class="form-control" id="payment_channel" name="payment_channel" required>
-                                    <option value="">Pilih Channel Pembayaran</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="notes" class="form-label">Catatan</label>
-                                <textarea class="form-control" id="notes" name="notes" rows="3">{{ old('notes') }}</textarea>
+
+                        <!-- Payment Information -->
+                        <div class="bg-gray-50 rounded-lg border border-gray-200 p-4">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4">Pembayaran</h3>
+
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="payment_method" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Metode Pembayaran <span class="text-red-500">*</span>
+                                    </label>
+                                    <select class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                        id="payment_method" name="payment_method" required>
+                                        <option value="">Pilih Metode Pembayaran</option>
+                                        <option value="CASH" {{ old('payment_method') == 'CASH' ? 'selected' : '' }}>Tunai</option>
+                                        <option value="BANK_TRANSFER" {{ old('payment_method') == 'BANK_TRANSFER' ? 'selected' : '' }}>Transfer Bank</option>
+                                        <option value="VIRTUAL_ACCOUNT" {{ old('payment_method') == 'VIRTUAL_ACCOUNT' ? 'selected' : '' }}>Virtual Account</option>
+                                        <option value="E_WALLET" {{ old('payment_method') == 'E_WALLET' ? 'selected' : '' }}>E-Wallet</option>
+                                        <option value="CREDIT_CARD" {{ old('payment_method') == 'CREDIT_CARD' ? 'selected' : '' }}>Kartu Kredit</option>
+                                    </select>
+                                </div>
+
+                                <div id="paymentChannelContainer" class="hidden">
+                                    <label for="payment_channel" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Channel Pembayaran <span class="text-red-500">*</span>
+                                    </label>
+                                    <select class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                        id="payment_channel" name="payment_channel" required>
+                                        <option value="">Pilih Channel Pembayaran</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Catatan
+                                    </label>
+                                    <textarea class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                        id="notes" name="notes" rows="3">{{ old('notes') }}</textarea>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <hr>
-                    <div id="passengerContainer">
-                        <h5 class="mb-3">Data Penumpang</h5>
-                        <div class="card mb-3 passenger-card" data-index="0">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0">Penumpang 1 (Utama)</h6>
+                    <div class="border-t border-gray-200 my-6"></div>
+
+                    <!-- Passenger Data Section -->
+                    <div id="passengerContainer" class="space-y-4">
+                        <h3 class="text-lg font-semibold text-gray-800">Data Penumpang</h3>
+
+                        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden passenger-card" data-index="0">
+                            <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                                <h4 class="font-medium text-gray-800">Penumpang 1 (Utama)</h4>
                             </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-4 mb-3">
-                                        <label for="passengers[0][name]" class="form-label">Nama <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" id="passengers[0][name]" name="passengers[0][name]" required>
+                            <div class="p-4">
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label for="passengers[0][name]" class="block text-sm font-medium text-gray-700 mb-1">
+                                            Nama <span class="text-red-500">*</span>
+                                        </label>
+                                        <input type="text" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                            id="passengers[0][name]" name="passengers[0][name]" required>
                                     </div>
-                                    <div class="col-md-4 mb-3">
-                                        <label for="passengers[0][id_number]" class="form-label">Nomor Identitas <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" id="passengers[0][id_number]" name="passengers[0][id_number]" required>
+                                    <div>
+                                        <label for="passengers[0][id_number]" class="block text-sm font-medium text-gray-700 mb-1">
+                                            Nomor Identitas <span class="text-red-500">*</span>
+                                        </label>
+                                        <input type="text" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                            id="passengers[0][id_number]" name="passengers[0][id_number]" required>
                                     </div>
-                                    <div class="col-md-4 mb-3">
-                                        <label for="passengers[0][id_type]" class="form-label">Jenis Identitas <span class="text-danger">*</span></label>
-                                        <select class="form-control" id="passengers[0][id_type]" name="passengers[0][id_type]" required>
+                                    <div>
+                                        <label for="passengers[0][id_type]" class="block text-sm font-medium text-gray-700 mb-1">
+                                            Jenis Identitas <span class="text-red-500">*</span>
+                                        </label>
+                                        <select class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                            id="passengers[0][id_type]" name="passengers[0][id_type]" required>
                                             <option value="KTP">KTP</option>
                                             <option value="SIM">SIM</option>
                                             <option value="PASPOR">Paspor</option>
@@ -173,30 +282,60 @@
                         </div>
                     </div>
 
-                    <div class="card shadow mb-4">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">Ringkasan Booking</h6>
+                    <!-- Booking Summary Section -->
+                    <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                        <div class="px-4 py-3 bg-blue-50 border-b border-blue-100">
+                            <h3 class="font-semibold text-blue-800">Ringkasan Booking</h3>
                         </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <p class="mb-1"><strong>Rute:</strong> <span id="summaryRoute">-</span></p>
-                                    <p class="mb-1"><strong>Tanggal:</strong> <span id="summaryDate">-</span></p>
-                                    <p class="mb-1"><strong>Jadwal:</strong> <span id="summarySchedule">-</span></p>
-                                    <p class="mb-1"><strong>Kapal:</strong> <span id="summaryFerry">-</span></p>
+                        <div class="p-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="space-y-2">
+                                    <div class="flex items-start">
+                                        <div class="w-28 text-sm font-medium text-gray-500">Rute:</div>
+                                        <div class="flex-1 text-sm font-medium text-gray-900" id="summaryRoute">-</div>
+                                    </div>
+                                    <div class="flex items-start">
+                                        <div class="w-28 text-sm font-medium text-gray-500">Tanggal:</div>
+                                        <div class="flex-1 text-sm font-medium text-gray-900" id="summaryDate">-</div>
+                                    </div>
+                                    <div class="flex items-start">
+                                        <div class="w-28 text-sm font-medium text-gray-500">Jadwal:</div>
+                                        <div class="flex-1 text-sm font-medium text-gray-900" id="summarySchedule">-</div>
+                                    </div>
+                                    <div class="flex items-start">
+                                        <div class="w-28 text-sm font-medium text-gray-500">Kapal:</div>
+                                        <div class="flex-1 text-sm font-medium text-gray-900" id="summaryFerry">-</div>
+                                    </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <p class="mb-1"><strong>Penumpang:</strong> <span id="summaryPassengers">1</span> orang</p>
-                                    <p class="mb-1"><strong>Kendaraan:</strong> <span id="summaryVehicles">0</span></p>
-                                    <p class="mb-1"><strong>Pembayaran:</strong> <span id="summaryPayment">-</span></p>
-                                    <p class="mb-1"><strong>Total:</strong> <span id="summaryTotal">Rp 0</span></p>
+                                <div class="space-y-2">
+                                    <div class="flex items-start">
+                                        <div class="w-28 text-sm font-medium text-gray-500">Penumpang:</div>
+                                        <div class="flex-1 text-sm font-medium text-gray-900">
+                                            <span id="summaryPassengers">1</span> orang
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start">
+                                        <div class="w-28 text-sm font-medium text-gray-500">Kendaraan:</div>
+                                        <div class="flex-1 text-sm font-medium text-gray-900" id="summaryVehicles">-</div>
+                                    </div>
+                                    <div class="flex items-start">
+                                        <div class="w-28 text-sm font-medium text-gray-500">Pembayaran:</div>
+                                        <div class="flex-1 text-sm font-medium text-gray-900" id="summaryPayment">-</div>
+                                    </div>
+                                    <div class="flex items-start">
+                                        <div class="w-28 text-sm font-medium text-gray-500">Total:</div>
+                                        <div class="flex-1 text-lg font-bold text-blue-600" id="summaryTotal">Rp 0</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary btn-lg">Buat Booking</button>
+                    <!-- Submit Button -->
+                    <div class="pt-4">
+                        <button type="submit" class="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white text-center font-medium rounded-lg shadow-sm transition-colors">
+                            <i class="fas fa-check-circle mr-2"></i> Buat Booking
+                        </button>
                     </div>
                 </div>
             </form>
@@ -277,7 +416,7 @@
                         schedule_id.innerHTML = '<option value="">Pilih Jadwal</option>';
 
                         if (scheduleData.length === 0) {
-                            scheduleInfo.innerHTML = '<div class="text-danger">Tidak ada jadwal tersedia untuk tanggal yang dipilih</div>';
+                            scheduleInfo.innerHTML = '<div class="text-sm text-red-600"><i class="fas fa-exclamation-circle mr-1"></i> Tidak ada jadwal tersedia untuk tanggal yang dipilih</div>';
                         } else {
                             scheduleData.forEach(schedule => {
                                 const option = document.createElement('option');
@@ -286,7 +425,7 @@
                                 schedule_id.appendChild(option);
                             });
 
-                            scheduleInfo.innerHTML = '<div class="text-success">Jadwal tersedia, silakan pilih jadwal</div>';
+                            scheduleInfo.innerHTML = '<div class="text-sm text-green-600"><i class="fas fa-check-circle mr-1"></i> Jadwal tersedia, silakan pilih jadwal</div>';
                         }
 
                         schedule_id.disabled = scheduleData.length === 0;
@@ -305,9 +444,9 @@
             updateBookingSummary();
 
             if (this.value && user_id.value) {
-                bookingDetails.style.display = 'block';
+                bookingDetails.classList.remove('hidden');
             } else {
-                bookingDetails.style.display = 'none';
+                bookingDetails.classList.add('hidden');
             }
 
             if (this.value) {
@@ -320,12 +459,12 @@
                     truckPrice = selectedSchedule.route.truck_price;
 
                     scheduleInfo.innerHTML = `
-                        <div class="text-success">
-                            <div>Kapasitas Penumpang: ${selectedSchedule.available_passenger} tersedia</div>
-                            <div>Kapasitas Motor: ${selectedSchedule.available_motorcycle} tersedia</div>
-                            <div>Kapasitas Mobil: ${selectedSchedule.available_car} tersedia</div>
-                            <div>Kapasitas Bus: ${selectedSchedule.available_bus} tersedia</div>
-                            <div>Kapasitas Truk: ${selectedSchedule.available_truck} tersedia</div>
+                        <div class="mt-3 text-sm text-green-600 space-y-1">
+                            <div><i class="fas fa-users mr-1"></i> Kapasitas Penumpang: <span class="font-medium">${selectedSchedule.available_passenger}</span> tersedia</div>
+                            <div><i class="fas fa-motorcycle mr-1"></i> Kapasitas Motor: <span class="font-medium">${selectedSchedule.available_motorcycle}</span> tersedia</div>
+                            <div><i class="fas fa-car mr-1"></i> Kapasitas Mobil: <span class="font-medium">${selectedSchedule.available_car}</span> tersedia</div>
+                            <div><i class="fas fa-bus mr-1"></i> Kapasitas Bus: <span class="font-medium">${selectedSchedule.available_bus}</span> tersedia</div>
+                            <div><i class="fas fa-truck mr-1"></i> Kapasitas Truk: <span class="font-medium">${selectedSchedule.available_truck}</span> tersedia</div>
                         </div>
                     `;
                 }
@@ -348,23 +487,23 @@
                         userList.innerHTML = '';
 
                         if (data.data.length === 0) {
-                            userList.innerHTML = '<div class="list-group-item">Tidak ada pengguna ditemukan</div>';
+                            userList.innerHTML = '<div class="px-4 py-3 text-sm text-gray-700">Tidak ada pengguna ditemukan</div>';
                         } else {
                             data.data.forEach(user => {
                                 const item = document.createElement('a');
                                 item.href = '#';
-                                item.className = 'list-group-item list-group-item-action';
+                                item.className = 'block px-4 py-3 hover:bg-gray-50';
                                 item.dataset.id = user.id;
                                 item.dataset.name = user.name;
                                 item.dataset.email = user.email;
                                 item.dataset.phone = user.phone || 'Tidak ada nomor telepon';
 
                                 item.innerHTML = `
-                                    <div class="d-flex w-100 justify-content-between">
-                                        <h6 class="mb-1">${user.name}</h6>
+                                    <div class="flex justify-between">
+                                        <h6 class="text-sm font-medium text-gray-900">${user.name}</h6>
                                     </div>
-                                    <p class="mb-1">${user.email}</p>
-                                    <small>${user.phone || 'Tidak ada nomor telepon'}</small>
+                                    <p class="text-sm text-gray-600">${user.email}</p>
+                                    <p class="text-xs text-gray-500">${user.phone || 'Tidak ada nomor telepon'}</p>
                                 `;
 
                                 item.addEventListener('click', function(e) {
@@ -375,8 +514,8 @@
                                     selectedUserPhone.textContent = this.dataset.phone;
                                     user_id.value = this.dataset.id;
 
-                                    searchResults.style.display = 'none';
-                                    selectedUser.style.display = 'block';
+                                    searchResults.classList.add('hidden');
+                                    selectedUser.classList.remove('hidden');
 
                                     // Auto fill first passenger
                                     if (document.querySelector('[name="passengers[0][name]"]')) {
@@ -384,7 +523,7 @@
                                     }
 
                                     if (schedule_id.value) {
-                                        bookingDetails.style.display = 'block';
+                                        bookingDetails.classList.remove('hidden');
                                     }
 
                                     updateBookingSummary();
@@ -394,7 +533,7 @@
                             });
                         }
 
-                        searchResults.style.display = 'block';
+                        searchResults.classList.remove('hidden');
                     } else {
                         alert('Gagal mendapatkan data pengguna');
                     }
@@ -407,10 +546,10 @@
 
         // Change User Button
         changeUserBtn.addEventListener('click', function() {
-            selectedUser.style.display = 'none';
-            searchResults.style.display = 'block';
+            selectedUser.classList.add('hidden');
+            searchResults.classList.remove('hidden');
             user_id.value = '';
-            bookingDetails.style.display = 'none';
+            bookingDetails.classList.add('hidden');
         });
 
         // Passenger Counter
@@ -484,26 +623,35 @@
             // Add new cards
             for (let i = 1; i < count; i++) {
                 const card = document.createElement('div');
-                card.className = 'card mb-3 passenger-card';
+                card.className = 'bg-white rounded-lg border border-gray-200 overflow-hidden passenger-card';
                 card.dataset.index = i;
 
                 card.innerHTML = `
-                    <div class="card-header bg-light">
-                        <h6 class="mb-0">Penumpang ${i + 1}</h6>
+                    <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                        <h4 class="font-medium text-gray-800">Penumpang ${i + 1}</h4>
                     </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label for="passengers[${i}][name]" class="form-label">Nama <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="passengers[${i}][name]" name="passengers[${i}][name]" required>
+                    <div class="p-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label for="passengers[${i}][name]" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Nama <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                    id="passengers[${i}][name]" name="passengers[${i}][name]" required>
                             </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="passengers[${i}][id_number]" class="form-label">Nomor Identitas <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="passengers[${i}][id_number]" name="passengers[${i}][id_number]" required>
+                            <div>
+                                <label for="passengers[${i}][id_number]" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Nomor Identitas <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                    id="passengers[${i}][id_number]" name="passengers[${i}][id_number]" required>
                             </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="passengers[${i}][id_type]" class="form-label">Jenis Identitas <span class="text-danger">*</span></label>
-                                <select class="form-control" id="passengers[${i}][id_type]" name="passengers[${i}][id_type]" required>
+                            <div>
+                                <label for="passengers[${i}][id_type]" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Jenis Identitas <span class="text-red-500">*</span>
+                                </label>
+                                <select class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                    id="passengers[${i}][id_type]" name="passengers[${i}][id_type]" required>
                                     <option value="KTP">KTP</option>
                                     <option value="SIM">SIM</option>
                                     <option value="PASPOR">Paspor</option>
@@ -522,23 +670,26 @@
             const count = parseInt(vehicle_count.value);
 
             if (count > 0) {
-                vehicleContainer.style.display = 'block';
+                vehicleContainer.classList.remove('hidden');
                 vehicleContainer.innerHTML = '';
 
                 for (let i = 0; i < count; i++) {
                     const card = document.createElement('div');
-                    card.className = 'card mb-3 vehicle-card';
+                    card.className = 'bg-white rounded-lg border border-gray-200 overflow-hidden vehicle-card';
                     card.dataset.index = i;
 
                     card.innerHTML = `
-                        <div class="card-header bg-light">
-                            <h6 class="mb-0">Kendaraan ${i + 1}</h6>
+                        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                            <h4 class="font-medium text-gray-800">Kendaraan ${i + 1}</h4>
                         </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-3 mb-3">
-                                    <label for="vehicles[${i}][type]" class="form-label">Jenis <span class="text-danger">*</span></label>
-                                    <select class="form-control vehicle-type" id="vehicles[${i}][type]" name="vehicles[${i}][type]" required data-index="${i}">
+                        <div class="p-4">
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div>
+                                    <label for="vehicles[${i}][type]" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Jenis <span class="text-red-500">*</span>
+                                    </label>
+                                    <select class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 vehicle-type"
+                                        id="vehicles[${i}][type]" name="vehicles[${i}][type]" required data-index="${i}">
                                         <option value="">Pilih Jenis</option>
                                         <option value="MOTORCYCLE">Motor</option>
                                         <option value="CAR">Mobil</option>
@@ -546,17 +697,26 @@
                                         <option value="TRUCK">Truk</option>
                                     </select>
                                 </div>
-                                <div class="col-md-3 mb-3">
-                                    <label for="vehicles[${i}][license_plate]" class="form-label">Plat Nomor <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="vehicles[${i}][license_plate]" name="vehicles[${i}][license_plate]" required>
+                                <div>
+                                    <label for="vehicles[${i}][license_plate]" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Plat Nomor <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="text" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                        id="vehicles[${i}][license_plate]" name="vehicles[${i}][license_plate]" required>
                                 </div>
-                                <div class="col-md-3 mb-3">
-                                    <label for="vehicles[${i}][brand]" class="form-label">Merk</label>
-                                    <input type="text" class="form-control" id="vehicles[${i}][brand]" name="vehicles[${i}][brand]">
+                                <div>
+                                    <label for="vehicles[${i}][brand]" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Merk
+                                    </label>
+                                    <input type="text" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                        id="vehicles[${i}][brand]" name="vehicles[${i}][brand]">
                                 </div>
-                                <div class="col-md-3 mb-3">
-                                    <label for="vehicles[${i}][model]" class="form-label">Model</label>
-                                    <input type="text" class="form-control" id="vehicles[${i}][model]" name="vehicles[${i}][model]">
+                                <div>
+                                    <label for="vehicles[${i}][model]" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Model
+                                    </label>
+                                    <input type="text" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                        id="vehicles[${i}][model]" name="vehicles[${i}][model]">
                                 </div>
                             </div>
                         </div>
@@ -572,7 +732,7 @@
                     });
                 });
             } else {
-                vehicleContainer.style.display = 'none';
+                vehicleContainer.classList.add('hidden');
             }
         }
 
@@ -581,7 +741,7 @@
             const method = payment_method.value;
 
             if (method) {
-                paymentChannelContainer.style.display = 'block';
+                paymentChannelContainer.classList.remove('hidden');
                 payment_channel.innerHTML = '<option value="">Pilih Channel Pembayaran</option>';
 
                 switch (method) {
@@ -621,7 +781,7 @@
                         break;
                 }
             } else {
-                paymentChannelContainer.style.display = 'none';
+                paymentChannelContainer.classList.add('hidden');
             }
         }
 

@@ -1,33 +1,50 @@
-@extends('layouts.sidebar')
+@extends('layouts.app')
 
 @section('content')
-<div class="container-fluid">
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Manajemen Booking</h1>
-        <a href="{{ route('admin.bookings.create') }}" class="d-none d-sm-inline-block btn btn-primary shadow-sm">
-            <i class="fas fa-plus fa-sm text-white-50"></i> Tambah Booking
-        </a>
+<div class="container mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Manajemen Booking</h1>
+            <p class="mt-1 text-gray-600">Kelola semua booking tiket kapal ferry</p>
+        </div>
+        <div class="mt-4 md:mt-0">
+            <a href="{{ route('admin.bookings.create') }}" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white transition-colors shadow-sm">
+                <i class="fas fa-plus mr-2 text-sm"></i> Tambah Booking
+            </a>
+        </div>
     </div>
 
     <!-- Search Form -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Filter Booking</h6>
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h2 class="font-semibold text-gray-800">Filter Booking</h2>
         </div>
-        <div class="card-body">
+        <div class="p-6">
             <form action="{{ route('admin.bookings.index') }}" method="GET">
-                <div class="row">
-                    <div class="col-md-3 mb-3">
-                        <label for="booking_code">Kode Booking</label>
-                        <input type="text" class="form-control" id="booking_code" name="booking_code" value="{{ request('booking_code') }}">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                    <div>
+                        <label for="booking_code" class="block text-sm font-medium text-gray-700 mb-1">
+                            Kode Booking
+                        </label>
+                        <input type="text" id="booking_code" name="booking_code" value="{{ request('booking_code') }}"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
                     </div>
-                    <div class="col-md-3 mb-3">
-                        <label for="user_name">Nama Pengguna</label>
-                        <input type="text" class="form-control" id="user_name" name="user_name" value="{{ request('user_name') }}">
+
+                    <div>
+                        <label for="user_name" class="block text-sm font-medium text-gray-700 mb-1">
+                            Nama Pengguna
+                        </label>
+                        <input type="text" id="user_name" name="user_name" value="{{ request('user_name') }}"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
                     </div>
-                    <div class="col-md-3 mb-3">
-                        <label for="route_id">Rute</label>
-                        <select class="form-control" id="route_id" name="route_id">
+
+                    <div>
+                        <label for="route_id" class="block text-sm font-medium text-gray-700 mb-1">
+                            Rute
+                        </label>
+                        <select id="route_id" name="route_id"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
                             <option value="">Semua Rute</option>
                             @foreach($routes as $route)
                                 <option value="{{ $route->id }}" {{ request('route_id') == $route->id ? 'selected' : '' }}>
@@ -36,9 +53,13 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-3 mb-3">
-                        <label for="status">Status</label>
-                        <select class="form-control" id="status" name="status">
+
+                    <div>
+                        <label for="status" class="block text-sm font-medium text-gray-700 mb-1">
+                            Status
+                        </label>
+                        <select id="status" name="status"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
                             <option value="">Semua Status</option>
                             <option value="PENDING" {{ request('status') == 'PENDING' ? 'selected' : '' }}>Pending</option>
                             <option value="CONFIRMED" {{ request('status') == 'CONFIRMED' ? 'selected' : '' }}>Confirmed</option>
@@ -48,21 +69,30 @@
                         </select>
                     </div>
                 </div>
-                <div class="row">
-                    <div class="col-md-3 mb-3">
-                        <label for="booking_date_from">Tanggal Booking Dari</label>
-                        <input type="date" class="form-control" id="booking_date_from" name="booking_date_from" value="{{ request('booking_date_from') }}">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                    <div>
+                        <label for="booking_date_from" class="block text-sm font-medium text-gray-700 mb-1">
+                            Tanggal Booking Dari
+                        </label>
+                        <input type="date" id="booking_date_from" name="booking_date_from" value="{{ request('booking_date_from') }}"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
                     </div>
-                    <div class="col-md-3 mb-3">
-                        <label for="booking_date_to">Tanggal Booking Sampai</label>
-                        <input type="date" class="form-control" id="booking_date_to" name="booking_date_to" value="{{ request('booking_date_to') }}">
+
+                    <div>
+                        <label for="booking_date_to" class="block text-sm font-medium text-gray-700 mb-1">
+                            Tanggal Booking Sampai
+                        </label>
+                        <input type="date" id="booking_date_to" name="booking_date_to" value="{{ request('booking_date_to') }}"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
                     </div>
-                    <div class="col-md-6 mb-3 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary me-2">
-                            <i class="fas fa-search fa-sm"></i> Cari
+
+                    <div class="lg:col-span-2 flex items-end space-x-2">
+                        <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md shadow-sm">
+                            <i class="fas fa-search mr-2"></i> Cari
                         </button>
-                        <a href="{{ route('admin.bookings.index') }}" class="btn btn-secondary">
-                            <i class="fas fa-sync-alt fa-sm"></i> Reset
+                        <a href="{{ route('admin.bookings.index') }}" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md shadow-sm">
+                            <i class="fas fa-sync-alt mr-2"></i> Reset
                         </a>
                     </div>
                 </div>
@@ -71,67 +101,122 @@
     </div>
 
     <!-- Booking List -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Daftar Booking</h6>
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h2 class="font-semibold text-gray-800">Daftar Booking</h2>
         </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-bordered" width="100%" cellspacing="0">
-                    <thead>
+        <div class="p-6">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
                         <tr>
-                            <th>Kode Booking</th>
-                            <th>Pengguna</th>
-                            <th>Rute</th>
-                            <th>Tanggal</th>
-                            <th>Jumlah Penumpang</th>
-                            <th>Jumlah Kendaraan</th>
-                            <th>Total</th>
-                            <th>Status</th>
-                            <th>Dibuat Pada</th>
-                            <th>Aksi</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Kode Booking
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Pengguna
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Rute
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Tanggal
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Penumpang
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Kendaraan
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Total
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Status
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Dibuat Pada
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Aksi
+                            </th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody class="bg-white divide-y divide-gray-200">
                         @forelse($bookings as $booking)
-                            <tr>
-                                <td>{{ $booking->booking_code }}</td>
-                                <td>{{ $booking->user->name }}</td>
-                                <td>{{ $booking->schedule->route->origin }} - {{ $booking->schedule->route->destination }}</td>
-                                <td>{{ \Carbon\Carbon::parse($booking->booking_date)->format('d M Y') }}</td>
-                                <td>{{ $booking->passenger_count }}</td>
-                                <td>{{ $booking->vehicle_count }}</td>
-                                <td>Rp {{ number_format($booking->total_amount, 0, ',', '.') }}</td>
-                                <td>
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                                    {{ $booking->booking_code }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                                    {{ $booking->user->name }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                    {{ $booking->schedule->route->origin }} - {{ $booking->schedule->route->destination }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                    {{ \Carbon\Carbon::parse($booking->booking_date)->format('d M Y') }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                    {{ $booking->passenger_count }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                    {{ $booking->vehicle_count }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800">
+                                    Rp {{ number_format($booking->total_amount, 0, ',', '.') }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
                                     @if($booking->status == 'PENDING')
-                                        <span class="badge bg-warning text-dark">Pending</span>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                            Pending
+                                        </span>
                                     @elseif($booking->status == 'CONFIRMED')
-                                        <span class="badge bg-success">Confirmed</span>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            Confirmed
+                                        </span>
                                     @elseif($booking->status == 'CANCELLED')
-                                        <span class="badge bg-danger">Cancelled</span>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                            Cancelled
+                                        </span>
                                     @elseif($booking->status == 'COMPLETED')
-                                        <span class="badge bg-info">Completed</span>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            Completed
+                                        </span>
                                     @elseif($booking->status == 'REFUNDED')
-                                        <span class="badge bg-secondary">Refunded</span>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                            Refunded
+                                        </span>
                                     @endif
                                 </td>
-                                <td>{{ $booking->created_at->format('d M Y H:i') }}</td>
-                                <td>
-                                    <a href="{{ route('admin.bookings.show', $booking->id) }}" class="btn btn-info btn-sm">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                    {{ $booking->created_at->format('d M Y H:i') }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <a href="{{ route('admin.bookings.show', $booking->id) }}" class="text-blue-600 hover:text-blue-900 bg-blue-100 hover:bg-blue-200 p-2 rounded-lg">
                                         <i class="fas fa-eye"></i>
                                     </a>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="10" class="text-center">Tidak ada data booking</td>
+                                <td colspan="10" class="px-6 py-10 text-center text-gray-500">
+                                    <div class="flex flex-col items-center">
+                                        <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                        <p class="text-lg">Tidak ada data booking</p>
+                                        <p class="text-sm text-gray-400 mt-1">Buat booking baru dengan mengklik tombol "Tambah Booking"</p>
+                                    </div>
+                                </td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
 
-            <div class="mt-3">
+            <!-- Pagination -->
+            <div class="mt-6">
                 {{ $bookings->appends(request()->except('page'))->links() }}
             </div>
         </div>

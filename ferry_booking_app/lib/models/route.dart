@@ -30,13 +30,21 @@ class FerryRoute {
   });
 
   factory FerryRoute.fromJson(Map<String, dynamic> json) {
+    // Hapus token dari json jika ada (ini menghindari konflik dengan proses deserialisasi)
+    if (json.containsKey('token')) {
+      json.remove('token');
+    }
+
     return FerryRoute(
-      id: json['id'],
+      id: int.parse(json['id'].toString()),
       origin: json['origin'],
       destination: json['destination'],
       routeCode: json['route_code'],
-      distance: json['distance'] != null ? double.parse(json['distance'].toString()) : null,
-      duration: json['duration'],
+      distance:
+          json['distance'] != null
+              ? double.parse(json['distance'].toString())
+              : null,
+      duration: int.parse(json['duration'].toString()),
       basePrice: double.parse(json['base_price'].toString()),
       motorcyclePrice: double.parse(json['motorcycle_price'].toString()),
       carPrice: double.parse(json['car_price'].toString()),

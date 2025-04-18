@@ -4,14 +4,14 @@ import '../services/api_service.dart';
 
 class RouteApi {
   final ApiService _apiService = ApiService();
-  
+
   // Get all routes
   Future<List<FerryRoute>> getRoutes() async {
     try {
       final jsonData = await _apiService.get('routes');
-      
+
       print('Route API response: $jsonData');
-      
+
       if (jsonData['success'] == true && jsonData['data'] != null) {
         final List routesJson = jsonData['data'];
         return routesJson
@@ -23,15 +23,23 @@ class RouteApi {
       }
     } catch (e) {
       print('Exception in getRoutes: $e');
+      // Penanganan khusus untuk error token
+      if (e.toString().contains("token") &&
+          e.toString().contains("String is not a subtype of type 'int'")) {
+        print(
+          'Mendeteksi error konversi tipe token, mengembalikan list kosong',
+        );
+        return []; // Kembalikan list kosong untuk mencegah crash
+      }
       rethrow;
     }
   }
-  
+
   // Get route details
   Future<FerryRoute> getRouteDetails(int routeId) async {
     try {
       final jsonData = await _apiService.get('routes/$routeId');
-      
+
       if (jsonData['success'] == true && jsonData['data'] != null) {
         return FerryRoute.fromJson(jsonData['data']);
       } else {
@@ -42,12 +50,12 @@ class RouteApi {
       rethrow;
     }
   }
-  
+
   // Create new route (admin only)
   Future<FerryRoute> createRoute(Map<String, dynamic> routeData) async {
     try {
       final jsonData = await _apiService.post('routes', routeData);
-      
+
       if (jsonData['success'] == true && jsonData['data'] != null) {
         return FerryRoute.fromJson(jsonData['data']);
       } else {
@@ -58,12 +66,15 @@ class RouteApi {
       rethrow;
     }
   }
-  
+
   // Update route (admin only)
-  Future<FerryRoute> updateRoute(int routeId, Map<String, dynamic> routeData) async {
+  Future<FerryRoute> updateRoute(
+    int routeId,
+    Map<String, dynamic> routeData,
+  ) async {
     try {
       final jsonData = await _apiService.put('routes/$routeId', routeData);
-      
+
       if (jsonData['success'] == true && jsonData['data'] != null) {
         return FerryRoute.fromJson(jsonData['data']);
       } else {
@@ -74,17 +85,21 @@ class RouteApi {
       rethrow;
     }
   }
-  
+
   // Update route status (activate/deactivate)
-  Future<bool> updateRouteStatus(int routeId, String status, {String? reason}) async {
+  Future<bool> updateRouteStatus(
+    int routeId,
+    String status, {
+    String? reason,
+  }) async {
     try {
       final Map<String, dynamic> body = {
         'status': status,
-        if (reason != null) 'status_reason': reason
+        if (reason != null) 'status_reason': reason,
       };
-      
+
       final jsonData = await _apiService.put('routes/$routeId/status', body);
-      
+
       return jsonData['success'] == true;
     } catch (e) {
       print('Exception in updateRouteStatus: $e');

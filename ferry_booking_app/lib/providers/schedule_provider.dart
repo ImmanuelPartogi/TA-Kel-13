@@ -43,28 +43,31 @@ class ScheduleProvider extends ChangeNotifier {
   }
   
   // Get schedules for a specific route and date
-  Future<void> getSchedules(int routeId, DateTime date) async {
-    if (_isLoading) return; // Prevent multiple simultaneous calls
+ Future<void> getSchedules(int routeId, DateTime date) async {
+  if (_isLoading) return; // Prevent multiple simultaneous calls
+  
+  _isLoading = true;
+  _errorMessage = null;
+  notifyListeners();
+  
+  try {
+    final dateString = date.toIso8601String().split('T')[0];
+    print('Fetching schedules for route: $routeId, date: $dateString');
     
-    _isLoading = true;
-    _errorMessage = null;
+    final schedules = await _scheduleApi.getSchedules(routeId, dateString);
+    
+    // Pastikan widget masih mounted sebelum update state
+    _schedules = schedules;
+    _isLoading = false;
     notifyListeners();
-    
-    try {
-      final dateString = date.toIso8601String().split('T')[0];
-      print('Fetching schedules for route: $routeId, date: $dateString');
-      
-      _schedules = await _scheduleApi.getSchedules(routeId, dateString);
-      _isLoading = false;
-      notifyListeners();
-    } catch (e) {
-      print('Error fetching schedules: $e');
-      _isLoading = false;
-      _errorMessage = 'Gagal memuat jadwal: ${e.toString()}';
-      _schedules = [];
-      notifyListeners();
-    }
+  } catch (e) {
+    print('Error fetching schedules: $e');
+    _isLoading = false;
+    _errorMessage = 'Gagal memuat jadwal: ${e.toString()}';
+    _schedules = [];
+    notifyListeners();
   }
+}
   
   // Get route details
   Future<FerryRoute?> getRouteDetails(int routeId) async {

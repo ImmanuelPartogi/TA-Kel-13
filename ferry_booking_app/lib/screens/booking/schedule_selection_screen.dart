@@ -6,6 +6,7 @@ import 'package:ferry_booking_app/providers/booking_provider.dart';
 import 'package:ferry_booking_app/providers/schedule_provider.dart';
 import 'package:ferry_booking_app/widgets/custom_appbar.dart';
 import 'package:ferry_booking_app/widgets/schedule_card.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 class ScheduleSelectionScreen extends StatefulWidget {
   final FerryRoute route;
@@ -25,7 +26,18 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
   @override
   void initState() {
     super.initState();
-    _loadSchedules();
+    
+    // Inisialisasi format tanggal Indonesia
+    initializeDateFormatting('id_ID', null);
+    
+    // Set route di booking provider dengan aman
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
+      bookingProvider.setSelectedRoute(widget.route);
+      
+      // Panggil load schedules setelah build selesai
+      _loadSchedules();
+    });
   }
   
   Future<void> _loadSchedules() async {
@@ -57,8 +69,8 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
     final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
     final schedules = scheduleProvider.schedules;
     
-    // Store selected route in booking provider
-    bookingProvider.setSelectedRoute(widget.route);
+    // JANGAN memanggil setter di dalam build
+    // bookingProvider.setSelectedRoute(widget.route); <-- HAPUS BARIS INI
     
     return Scaffold(
       appBar: CustomAppBar(

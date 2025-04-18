@@ -1,38 +1,46 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container-fluid">
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Edit Jadwal</h1>
-        <a href="{{ route('admin.schedules.index') }}" class="d-none d-sm-inline-block btn btn-secondary shadow-sm">
-            <i class="fas fa-arrow-left fa-sm text-white-50"></i> Kembali
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-4 md:mb-0">Edit Jadwal</h1>
+        <a href="{{ route('admin.schedules.index') }}" class="inline-flex items-center px-4 py-2 bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 active:bg-gray-900 focus:outline-none focus:border-gray-900 focus:ring focus:ring-gray-300 transition ease-in-out duration-150">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Kembali
         </a>
     </div>
 
     @if($errors->any())
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <ul class="mb-0">
+        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded" role="alert">
+            <div class="font-medium">Terjadi kesalahan:</div>
+            <ul class="mt-1.5 ml-4 list-disc list-inside">
                 @foreach($errors->all() as $error)
                     <li>{{ $error }}</li>
                 @endforeach
             </ul>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <button type="button" class="float-right -mt-4 text-red-700" data-bs-dismiss="alert" aria-label="Close">
+                <span class="text-2xl" aria-hidden="true">&times;</span>
+            </button>
         </div>
     @endif
 
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Form Edit Jadwal</h6>
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="px-6 py-4 bg-gradient-to-r from-blue-500 to-blue-600 border-b border-gray-200">
+            <h2 class="text-lg font-semibold text-white">Form Edit Jadwal</h2>
         </div>
-        <div class="card-body">
+        <div class="p-6">
             <form action="{{ route('admin.schedules.update', $schedule->id) }}" method="POST">
                 @csrf
                 @method('PUT')
 
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="route_id" class="form-label">Rute <span class="text-danger">*</span></label>
-                        <select class="form-control" id="route_id" name="route_id" required>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="route_id" class="block text-sm font-medium text-gray-700 mb-1">
+                            Rute <span class="text-red-500">*</span>
+                        </label>
+                        <select class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" id="route_id" name="route_id" required>
                             <option value="">Pilih Rute</option>
                             @foreach($routes as $route)
                                 <option value="{{ $route->id }}" {{ old('route_id', $schedule->route_id) == $route->id ? 'selected' : '' }}>
@@ -41,9 +49,11 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="ferry_id" class="form-label">Kapal <span class="text-danger">*</span></label>
-                        <select class="form-control" id="ferry_id" name="ferry_id" required>
+                    <div>
+                        <label for="ferry_id" class="block text-sm font-medium text-gray-700 mb-1">
+                            Kapal <span class="text-red-500">*</span>
+                        </label>
+                        <select class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" id="ferry_id" name="ferry_id" required>
                             <option value="">Pilih Kapal</option>
                             @foreach($ferries as $ferry)
                                 <option value="{{ $ferry->id }}" {{ old('ferry_id', $schedule->ferry_id) == $ferry->id ? 'selected' : '' }}>
@@ -54,78 +64,107 @@
                     </div>
                 </div>
 
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="departure_time" class="form-label">Waktu Keberangkatan <span class="text-danger">*</span></label>
-                        <input type="time" class="form-control" id="departure_time" name="departure_time" value="{{ old('departure_time', $schedule->departure_time ? $schedule->departure_time->format('H:i') : '') }}" required>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    <div>
+                        <label for="departure_time" class="block text-sm font-medium text-gray-700 mb-1">
+                            Waktu Keberangkatan <span class="text-red-500">*</span>
+                        </label>
+                        <input type="time" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" id="departure_time" name="departure_time" value="{{ old('departure_time', $schedule->departure_time ? $schedule->departure_time->format('H:i') : '') }}" required>
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="arrival_time" class="form-label">Waktu Kedatangan <span class="text-danger">*</span></label>
-                        <input type="time" class="form-control" id="arrival_time" name="arrival_time" value="{{ old('arrival_time', $schedule->arrival_time ? $schedule->arrival_time->format('H:i') : '') }}" required>
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Hari Operasi <span class="text-danger">*</span></label>
-                    <div class="d-flex flex-wrap">
-                        <div class="form-check me-4 mb-2">
-                            <input class="form-check-input" type="checkbox" name="days[]" value="1" id="day-1" {{ in_array('1', $days) ? 'checked' : '' }}>
-                            <label class="form-check-label" for="day-1">Senin</label>
-                        </div>
-                        <div class="form-check me-4 mb-2">
-                            <input class="form-check-input" type="checkbox" name="days[]" value="2" id="day-2" {{ in_array('2', $days) ? 'checked' : '' }}>
-                            <label class="form-check-label" for="day-2">Selasa</label>
-                        </div>
-                        <div class="form-check me-4 mb-2">
-                            <input class="form-check-input" type="checkbox" name="days[]" value="3" id="day-3" {{ in_array('3', $days) ? 'checked' : '' }}>
-                            <label class="form-check-label" for="day-3">Rabu</label>
-                        </div>
-                        <div class="form-check me-4 mb-2">
-                            <input class="form-check-input" type="checkbox" name="days[]" value="4" id="day-4" {{ in_array('4', $days) ? 'checked' : '' }}>
-                            <label class="form-check-label" for="day-4">Kamis</label>
-                        </div>
-                        <div class="form-check me-4 mb-2">
-                            <input class="form-check-input" type="checkbox" name="days[]" value="5" id="day-5" {{ in_array('5', $days) ? 'checked' : '' }}>
-                            <label class="form-check-label" for="day-5">Jumat</label>
-                        </div>
-                        <div class="form-check me-4 mb-2">
-                            <input class="form-check-input" type="checkbox" name="days[]" value="6" id="day-6" {{ in_array('6', $days) ? 'checked' : '' }}>
-                            <label class="form-check-label" for="day-6">Sabtu</label>
-                        </div>
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" name="days[]" value="7" id="day-7" {{ in_array('7', $days) ? 'checked' : '' }}>
-                            <label class="form-check-label" for="day-7">Minggu</label>
-                        </div>
+                    <div>
+                        <label for="arrival_time" class="block text-sm font-medium text-gray-700 mb-1">
+                            Waktu Kedatangan <span class="text-red-500">*</span>
+                        </label>
+                        <input type="time" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" id="arrival_time" name="arrival_time" value="{{ old('arrival_time', $schedule->arrival_time ? $schedule->arrival_time->format('H:i') : '') }}" required>
                     </div>
                 </div>
 
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
-                        <select class="form-control" id="status" name="status" required>
+                <div class="mt-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Hari Operasi <span class="text-red-500">*</span>
+                    </label>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                        <div class="flex items-center">
+                            <input class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" type="checkbox" name="days[]" value="1" id="day-1" {{ in_array('1', $days) ? 'checked' : '' }}>
+                            <label class="ml-2 block text-sm text-gray-700" for="day-1">Senin</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" type="checkbox" name="days[]" value="2" id="day-2" {{ in_array('2', $days) ? 'checked' : '' }}>
+                            <label class="ml-2 block text-sm text-gray-700" for="day-2">Selasa</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" type="checkbox" name="days[]" value="3" id="day-3" {{ in_array('3', $days) ? 'checked' : '' }}>
+                            <label class="ml-2 block text-sm text-gray-700" for="day-3">Rabu</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" type="checkbox" name="days[]" value="4" id="day-4" {{ in_array('4', $days) ? 'checked' : '' }}>
+                            <label class="ml-2 block text-sm text-gray-700" for="day-4">Kamis</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" type="checkbox" name="days[]" value="5" id="day-5" {{ in_array('5', $days) ? 'checked' : '' }}>
+                            <label class="ml-2 block text-sm text-gray-700" for="day-5">Jumat</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" type="checkbox" name="days[]" value="6" id="day-6" {{ in_array('6', $days) ? 'checked' : '' }}>
+                            <label class="ml-2 block text-sm text-gray-700" for="day-6">Sabtu</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" type="checkbox" name="days[]" value="7" id="day-7" {{ in_array('7', $days) ? 'checked' : '' }}>
+                            <label class="ml-2 block text-sm text-gray-700" for="day-7">Minggu</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    <div>
+                        <label for="status" class="block text-sm font-medium text-gray-700 mb-1">
+                            Status <span class="text-red-500">*</span>
+                        </label>
+                        <select class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" id="status" name="status" required>
                             <option value="ACTIVE" {{ old('status', $schedule->status) == 'ACTIVE' ? 'selected' : '' }}>Aktif</option>
                             <option value="CANCELLED" {{ old('status', $schedule->status) == 'CANCELLED' ? 'selected' : '' }}>Dibatalkan</option>
                             <option value="DELAYED" {{ old('status', $schedule->status) == 'DELAYED' ? 'selected' : '' }}>Ditunda</option>
                             <option value="FULL" {{ old('status', $schedule->status) == 'FULL' ? 'selected' : '' }}>Penuh</option>
                         </select>
                     </div>
-                    <div class="col-md-6 mb-3" id="reasonContainer" style="{{ old('status', $schedule->status) == 'ACTIVE' ? 'display: none;' : '' }}">
-                        <label for="status_reason" class="form-label">Alasan Status</label>
-                        <input type="text" class="form-control" id="status_reason" name="status_reason" value="{{ old('status_reason', $schedule->status_reason) }}">
+                    <div id="reasonContainer" class="{{ old('status', $schedule->status) == 'ACTIVE' ? 'hidden' : '' }}">
+                        <label for="status_reason" class="block text-sm font-medium text-gray-700 mb-1">
+                            Alasan Status
+                        </label>
+                        <input type="text" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" id="status_reason" name="status_reason" value="{{ old('status_reason', $schedule->status_reason) }}">
                     </div>
                 </div>
 
-                <div class="mb-3" id="expiryDateContainer" style="{{ old('status', $schedule->status) == 'DELAYED' ? '' : 'display: none;' }}">
-                    <label for="status_expiry_date" class="form-label">Tanggal Berakhir Status</label>
-                    <input type="datetime-local" class="form-control" id="status_expiry_date" name="status_expiry_date" value="{{ old('status_expiry_date', $schedule->status_expiry_date ? $schedule->status_expiry_date->format('Y-m-d\TH:i') : '') }}">
-                    <small class="form-text text-muted">Isi jika status akan berakhir pada waktu tertentu. Khusus untuk status Ditunda (DELAYED).</small>
+                <div id="expiryDateContainer" class="mt-6 {{ old('status', $schedule->status) == 'DELAYED' ? '' : 'hidden' }}">
+                    <label for="status_expiry_date" class="block text-sm font-medium text-gray-700 mb-1">
+                        Tanggal Berakhir Status
+                    </label>
+                    <input type="datetime-local" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" id="status_expiry_date" name="status_expiry_date" value="{{ old('status_expiry_date', $schedule->status_expiry_date ? $schedule->status_expiry_date->format('Y-m-d\TH:i') : '') }}">
+                    <p class="mt-1 text-sm text-gray-500">Isi jika status akan berakhir pada waktu tertentu. Khusus untuk status Ditunda (DELAYED).</p>
                 </div>
 
-                <div class="alert alert-warning" id="warningMessage" style="{{ old('status', $schedule->status) == 'ACTIVE' ? 'display: none;' : '' }}">
-                    <strong>Perhatian!</strong> Mengubah status jadwal akan mempengaruhi tanggal-tanggal jadwal yang sudah ada. Perubahan status menjadi Dibatalkan atau Ditunda akan secara otomatis mengubah status semua tanggal jadwal di masa mendatang.
+                <div id="warningMessage" class="mt-6 {{ old('status', $schedule->status) == 'ACTIVE' ? 'hidden' : '' }}">
+                    <div class="p-4 rounded-md bg-yellow-50 border-l-4 border-yellow-400">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-yellow-700">
+                                    <strong>Perhatian!</strong> Mengubah status jadwal akan mempengaruhi tanggal-tanggal jadwal yang sudah ada. Perubahan status menjadi Dibatalkan atau Ditunda akan secara otomatis mengubah status semua tanggal jadwal di masa mendatang.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                <div class="mt-8">
+                    <button type="submit" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-md text-white font-medium">
+                        Simpan Perubahan
+                    </button>
+                </div>
             </form>
         </div>
     </div>
@@ -142,17 +181,17 @@
 
         function updateContainers() {
             if (statusSelect.value === 'ACTIVE') {
-                reasonContainer.style.display = 'none';
-                expiryDateContainer.style.display = 'none';
-                warningMessage.style.display = 'none';
+                reasonContainer.classList.add('hidden');
+                expiryDateContainer.classList.add('hidden');
+                warningMessage.classList.add('hidden');
             } else {
-                reasonContainer.style.display = 'block';
-                warningMessage.style.display = 'block';
+                reasonContainer.classList.remove('hidden');
+                warningMessage.classList.remove('hidden');
 
                 if (statusSelect.value === 'DELAYED') {
-                    expiryDateContainer.style.display = 'block';
+                    expiryDateContainer.classList.remove('hidden');
                 } else {
-                    expiryDateContainer.style.display = 'none';
+                    expiryDateContainer.classList.add('hidden');
                 }
             }
         }

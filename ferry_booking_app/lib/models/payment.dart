@@ -1,34 +1,32 @@
 class Payment {
   final int id;
   final int bookingId;
+  final String paymentCode;
   final double amount;
-  final String paymentMethod;
-  final String paymentChannel;
-  final String? transactionId;
-  final String? externalReference;
   final String status;
-  final String? paymentDate;
-  final String? expiryDate;
-  final double? refundAmount;
-  final String? refundDate;
-  final String? payload;
+  final String paymentMethod;
+  final String paymentType;
+  final String? virtualAccountNumber;
+  final String? deepLinkUrl;
+  final String? qrCodeUrl;
+  final DateTime? expiryTime;
+  final DateTime? paymentTime;
   final String createdAt;
   final String updatedAt;
 
   Payment({
     required this.id,
     required this.bookingId,
+    required this.paymentCode,
     required this.amount,
-    required this.paymentMethod,
-    required this.paymentChannel,
-    this.transactionId,
-    this.externalReference,
     required this.status,
-    this.paymentDate,
-    this.expiryDate,
-    this.refundAmount,
-    this.refundDate,
-    this.payload,
+    required this.paymentMethod,
+    required this.paymentType,
+    this.virtualAccountNumber,
+    this.deepLinkUrl,
+    this.qrCodeUrl,
+    this.expiryTime,
+    this.paymentTime,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -37,19 +35,16 @@ class Payment {
     return Payment(
       id: json['id'],
       bookingId: json['booking_id'],
+      paymentCode: json['payment_code'],
       amount: double.parse(json['amount'].toString()),
-      paymentMethod: json['payment_method'],
-      paymentChannel: json['payment_channel'],
-      transactionId: json['transaction_id'],
-      externalReference: json['external_reference'],
       status: json['status'],
-      paymentDate: json['payment_date'],
-      expiryDate: json['expiry_date'],
-      refundAmount: json['refund_amount'] != null 
-          ? double.parse(json['refund_amount'].toString()) 
-          : null,
-      refundDate: json['refund_date'],
-      payload: json['payload'],
+      paymentMethod: json['payment_method'],
+      paymentType: json['payment_type'],
+      virtualAccountNumber: json['virtual_account_number'],
+      deepLinkUrl: json['deep_link_url'],
+      qrCodeUrl: json['qr_code_url'],
+      expiryTime: json['expiry_time'] != null ? DateTime.parse(json['expiry_time']) : null,
+      paymentTime: json['payment_time'] != null ? DateTime.parse(json['payment_time']) : null,
       createdAt: json['created_at'],
       updatedAt: json['updated_at'],
     );

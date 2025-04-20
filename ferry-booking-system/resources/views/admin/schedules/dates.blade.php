@@ -224,18 +224,32 @@
                                     {{ $date->updated_at->format('d M Y H:i') }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <button type="button" class="text-white bg-blue-600 hover:bg-blue-700 rounded-full p-1.5 inline-flex items-center justify-center editDateBtn"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#editDateModal"
-                                        data-id="{{ $date->id }}"
-                                        data-date="{{ \Carbon\Carbon::parse($date->date)->format('d M Y') }}"
-                                        data-status="{{ $date->status }}"
-                                        data-reason="{{ $date->status_reason }}"
-                                        data-expiry="{{ $date->status_expiry_date ? \Carbon\Carbon::parse($date->status_expiry_date)->format('Y-m-d\TH:i') : '' }}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                        </svg>
-                                    </button>
+                                    <div class="flex space-x-1 justify-end">
+                                        <!-- Tombol Edit -->
+                                        <button type="button" class="text-white bg-blue-600 hover:bg-blue-700 rounded-full p-1.5 inline-flex items-center justify-center editDateBtn"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editDateModal"
+                                            data-id="{{ $date->id }}"
+                                            data-date="{{ \Carbon\Carbon::parse($date->date)->format('d M Y') }}"
+                                            data-status="{{ $date->status }}"
+                                            data-reason="{{ $date->status_reason }}"
+                                            data-expiry="{{ $date->status_expiry_date ? \Carbon\Carbon::parse($date->status_expiry_date)->format('Y-m-d\TH:i') : '' }}">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                        </button>
+
+                                        <!-- Tombol Hapus -->
+                                        <form action="{{ route('admin.schedules.destroy-date', [$schedule->id, $date->id]) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus tanggal jadwal ini?');" class="inline-block">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-white bg-red-600 hover:bg-red-700 rounded-full p-1.5 inline-flex items-center justify-center">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </form>
+                                    </div>
                                 </td>
                             </tr>
                         @empty
@@ -276,12 +290,62 @@
                         <div class="mt-4">
                             <form action="{{ route('admin.schedules.store-date', $schedule->id) }}" method="POST">
                                 @csrf
+
+                                <!-- Tipe Penambahan Tanggal -->
+                                <div class="mb-4">
+                                    <label for="date_type" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Tipe Penambahan <span class="text-red-500">*</span>
+                                    </label>
+                                    <select class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" id="date_type" name="date_type" required>
+                                        <option value="single">Tanggal Tunggal</option>
+                                        <option value="range">Rentang Tanggal</option>
+                                    </select>
+                                </div>
+
+                                <!-- Informasi Hari Operasi -->
+                                <div class="mb-4 p-3 bg-blue-50 rounded-md">
+                                    <p class="text-sm text-blue-700">
+                                        <span class="font-semibold">Hari Operasi:</span>
+                                        @php
+                                            $days = explode(',', $schedule->days);
+                                            $dayNames = [
+                                                1 => 'Senin',
+                                                2 => 'Selasa',
+                                                3 => 'Rabu',
+                                                4 => 'Kamis',
+                                                5 => 'Jumat',
+                                                6 => 'Sabtu',
+                                                7 => 'Minggu'
+                                            ];
+                                            $dayList = [];
+                                            foreach($days as $day) {
+                                                $dayList[] = $dayNames[$day] ?? '';
+                                            }
+                                            echo implode(', ', $dayList);
+                                        @endphp
+                                    </p>
+                                    <p class="text-xs text-blue-600 mt-1">
+                                        <i>Catatan: Jika menggunakan rentang tanggal, hanya tanggal yang sesuai dengan hari operasi yang akan dibuat.</i>
+                                    </p>
+                                </div>
+
+                                <!-- Tanggal Awal -->
                                 <div class="mb-4">
                                     <label for="date" class="block text-sm font-medium text-gray-700 mb-1">
                                         Tanggal <span class="text-red-500">*</span>
                                     </label>
                                     <input type="date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" id="date" name="date" required min="{{ date('Y-m-d') }}">
                                 </div>
+
+                                <!-- Tanggal Akhir (untuk rentang) -->
+                                <div class="mb-4 hidden" id="endDateContainer">
+                                    <label for="end_date" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Tanggal Akhir <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" id="end_date" name="end_date" min="{{ date('Y-m-d') }}">
+                                </div>
+
+                                <!-- Status -->
                                 <div class="mb-4">
                                     <label for="status" class="block text-sm font-medium text-gray-700 mb-1">
                                         Status <span class="text-red-500">*</span>
@@ -293,12 +357,16 @@
                                         <option value="WEATHER_ISSUE">Masalah Cuaca</option>
                                     </select>
                                 </div>
+
+                                <!-- Alasan Status -->
                                 <div class="mb-4 hidden" id="addReasonContainer">
                                     <label for="status_reason" class="block text-sm font-medium text-gray-700 mb-1">
                                         Alasan Status
                                     </label>
                                     <input type="text" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" id="status_reason" name="status_reason">
                                 </div>
+
+                                <!-- Tanggal Berakhir Status -->
                                 <div class="mb-4 hidden" id="addExpiryDateContainer">
                                     <label for="status_expiry_date" class="block text-sm font-medium text-gray-700 mb-1">
                                         Tanggal Berakhir Status
@@ -387,6 +455,149 @@
 @section('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Inisialisasi semua modal Bootstrap
+        var modals = document.querySelectorAll('.modal');
+        var modalInstances = {};
+
+        // Fungsi untuk menginisialisasi modal secara manual
+        function initializeModalFunctionality() {
+            // Menangani modal "Tambah Tanggal"
+            const addDateModal = document.getElementById('addDateModal');
+            const addDateBtn = document.querySelector('[data-bs-target="#addDateModal"]');
+            const addDateCloseBtns = addDateModal.querySelectorAll('[data-bs-dismiss="modal"]');
+
+            // Fungsi untuk menampilkan modal
+            function showModal(modal) {
+                modal.classList.remove('hidden');
+                document.body.classList.add('overflow-hidden');
+                setTimeout(() => {
+                    modal.querySelector('.inline-block').classList.add('transform-show');
+                }, 10);
+            }
+
+            // Fungsi untuk menyembunyikan modal
+            function hideModal(modal) {
+                modal.querySelector('.inline-block').classList.remove('transform-show');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    document.body.classList.remove('overflow-hidden');
+                }, 100);
+            }
+
+            // Event listener untuk tombol tambah tanggal
+            if (addDateBtn && addDateModal) {
+                addDateBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    showModal(addDateModal);
+                });
+
+                // Event listener untuk tombol close/cancel di modal tambah tanggal
+                addDateCloseBtns.forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        hideModal(addDateModal);
+                    });
+                });
+
+                // Menutup modal jika klik di luar konten modal
+                addDateModal.addEventListener('click', function(e) {
+                    if (e.target === addDateModal) {
+                        hideModal(addDateModal);
+                    }
+                });
+            }
+
+            // Menangani modal "Edit Tanggal"
+            const editDateModal = document.getElementById('editDateModal');
+            const editBtns = document.querySelectorAll('.editDateBtn');
+            const editDateCloseBtns = editDateModal.querySelectorAll('[data-bs-dismiss="modal"]');
+
+            // Event listener untuk tombol edit tanggal
+            if (editBtns.length > 0 && editDateModal) {
+                editBtns.forEach(button => {
+                    button.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const id = this.dataset.id;
+                        const date = this.dataset.date;
+                        const status = this.dataset.status;
+                        const reason = this.dataset.reason;
+                        const expiry = this.dataset.expiry;
+
+                        // Set data ke form edit
+                        document.getElementById('editDateForm').action = `{{ url('admin/schedules') }}/${{{ $schedule->id }}}/dates/${id}`;
+                        document.getElementById('editDateText').textContent = `Tanggal: ${date}`;
+                        document.getElementById('edit_status').value = status;
+                        document.getElementById('edit_status_reason').value = reason || '';
+                        document.getElementById('edit_status_expiry_date').value = expiry || '';
+
+                        // Update containers berdasarkan status terpilih
+                        updateEditContainers();
+
+                        // Tampilkan modal
+                        showModal(editDateModal);
+                    });
+                });
+
+                // Event listener untuk tombol close/cancel di modal edit tanggal
+                editDateCloseBtns.forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        hideModal(editDateModal);
+                    });
+                });
+
+                // Menutup modal jika klik di luar konten modal
+                editDateModal.addEventListener('click', function(e) {
+                    if (e.target === editDateModal) {
+                        hideModal(editDateModal);
+                    }
+                });
+            }
+        }
+
+        // Panggil fungsi inisialisasi
+        initializeModalFunctionality();
+
+        // Menangani perubahan tipe penambahan tanggal (tunggal/rentang)
+        const dateTypeSelect = document.getElementById('date_type');
+        const endDateContainer = document.getElementById('endDateContainer');
+        const endDateInput = document.getElementById('end_date');
+        const startDateInput = document.getElementById('date');
+
+        if (dateTypeSelect) {
+            dateTypeSelect.addEventListener('change', function() {
+                if (this.value === 'range') {
+                    endDateContainer.classList.remove('hidden');
+                    endDateInput.setAttribute('required', 'required');
+
+                    // Set tanggal akhir minimal sama dengan tanggal awal
+                    if (startDateInput.value) {
+                        endDateInput.min = startDateInput.value;
+
+                        // Jika tanggal akhir kosong atau kurang dari tanggal awal, set ke tanggal awal
+                        if (!endDateInput.value || endDateInput.value < startDateInput.value) {
+                            endDateInput.value = startDateInput.value;
+                        }
+                    }
+                } else {
+                    endDateContainer.classList.add('hidden');
+                    endDateInput.removeAttribute('required');
+                }
+            });
+        }
+
+        // Update tanggal minimal pada tanggal akhir ketika tanggal awal berubah
+        if (startDateInput) {
+            startDateInput.addEventListener('change', function() {
+                if (endDateInput) {
+                    endDateInput.min = this.value;
+
+                    // Jika tanggal akhir diisi dan kurang dari tanggal awal, update ke tanggal awal
+                    if (endDateInput.value && endDateInput.value < this.value) {
+                        endDateInput.value = this.value;
+                    }
+                }
+            });
+        }
+
         // Add Date Status Change
         const addStatus = document.getElementById('status');
         const addReasonContainer = document.getElementById('addReasonContainer');
@@ -438,32 +649,24 @@
             // Add event listener
             editStatus.addEventListener('change', updateEditContainers);
         }
-
-        // Edit Date Modal
-        const editButtons = document.querySelectorAll('.editDateBtn');
-        const editDateForm = document.getElementById('editDateForm');
-        const editDateText = document.getElementById('editDateText');
-        const editStatusReason = document.getElementById('edit_status_reason');
-        const editStatusExpiryDate = document.getElementById('edit_status_expiry_date');
-
-        editButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const id = this.dataset.id;
-                const date = this.dataset.date;
-                const status = this.dataset.status;
-                const reason = this.dataset.reason;
-                const expiry = this.dataset.expiry;
-
-                editDateForm.action = `{{ url('admin/schedules') }}/${{{ $schedule->id }}}/dates/${id}`;
-                editDateText.textContent = `Tanggal: ${date}`;
-                editStatus.value = status;
-                editStatusReason.value = reason || '';
-                editStatusExpiryDate.value = expiry || '';
-
-                // Update containers based on selected status
-                updateEditContainers();
-            });
-        });
     });
 </script>
+
+<style>
+    /* CSS untuk animasi modal */
+    .modal .inline-block {
+        transition: all 0.3s ease-out;
+        transform: scale(0.9);
+        opacity: 0;
+    }
+
+    .modal .transform-show {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    .modal.hidden {
+        display: none;
+    }
+</style>
 @endsection

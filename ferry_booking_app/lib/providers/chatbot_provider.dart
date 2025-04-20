@@ -23,6 +23,9 @@ class ChatbotProvider with ChangeNotifier {
 
   // Muat percakapan
   Future<void> loadConversation() async {
+    // Cek jika sedang loading, jangan lakukan operasi berulang
+    if (_isLoading) return;
+
     _isLoading = true;
     notifyListeners();
 
@@ -30,7 +33,7 @@ class ChatbotProvider with ChangeNotifier {
       final data = await _chatbotService.getConversation();
       _conversation = data['conversation'];
       _messages = data['messages'];
-      
+
       // Tambahkan pesan sambutan jika belum ada pesan
       if (_messages.isEmpty) {
         _messages.add(
@@ -62,7 +65,7 @@ class ChatbotProvider with ChangeNotifier {
         _conversation!.id,
         message,
       );
-      
+
       _messages.add(result['userMessage']!);
       _messages.add(result['botMessage']!);
     } catch (e) {

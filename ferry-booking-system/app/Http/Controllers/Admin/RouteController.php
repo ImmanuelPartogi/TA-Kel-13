@@ -72,6 +72,12 @@ class RouteController extends Controller
             ->with('success', 'Rute berhasil ditambahkan');
     }
 
+    public function show($id)
+    {
+        $route = Route::findOrFail($id);
+        return view('admin.routes.show', compact('route'));
+    }
+
     public function edit($id)
     {
         $route = Route::findOrFail($id);

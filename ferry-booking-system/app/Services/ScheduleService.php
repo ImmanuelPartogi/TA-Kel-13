@@ -162,21 +162,19 @@ class ScheduleService
             ];
         }
 
-        // Check if schedule date exists and is available
-        $scheduleDate = ScheduleDate::firstOrCreate(
-            [
-                'schedule_id' => $schedule->id,
-                'date' => $date->format('Y-m-d'),
-            ],
-            [
-                'passenger_count' => 0,
-                'motorcycle_count' => 0,
-                'car_count' => 0,
-                'bus_count' => 0,
-                'truck_count' => 0,
-                'status' => 'AVAILABLE',
-            ]
-        );
+        // PERUBAHAN PENTING: Cek apakah schedule date sudah ada, JANGAN buat baru
+        $scheduleDate = ScheduleDate::where('schedule_id', $schedule->id)
+            ->where('date', $date->format('Y-m-d'))
+            ->first();
+
+        // Jika schedule date tidak ada, kembalikan not available
+        if (!$scheduleDate) {
+            return [
+                'available' => false,
+                'reason' => 'Jadwal tidak tersedia untuk tanggal yang dipilih',
+                'scheduleDate' => null,
+            ];
+        }
 
         if ($scheduleDate->status !== 'AVAILABLE') {
             return [

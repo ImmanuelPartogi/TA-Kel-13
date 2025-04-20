@@ -1,81 +1,77 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container-fluid">
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Detail Pengguna</h1>
-        <div>
-            <a href="{{ route('admin.users.edit', $user->id) }}" class="btn btn-primary shadow-sm">
-                <i class="fas fa-edit fa-sm text-white-50"></i> Edit
+<div class="container px-4 py-6 mx-auto">
+    <div class="flex flex-col md:flex-row items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Detail Pengguna</h1>
+        <div class="mt-3 md:mt-0 flex space-x-2">
+            <a href="{{ route('admin.users.edit', $user->id) }}" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-md">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Edit
             </a>
-            <a href="{{ route('admin.users.index') }}" class="btn btn-secondary shadow-sm">
-                <i class="fas fa-arrow-left fa-sm text-white-50"></i> Kembali
+            <a href="{{ route('admin.users.index') }}" class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-all shadow-md">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Kembali
             </a>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-lg-4">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-1">
             <!-- User Profile Card -->
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Profil Pengguna</h6>
+            <div class="bg-white rounded-lg shadow-lg overflow-hidden mb-6">
+                <div class="border-b border-gray-200 bg-gray-50 px-6 py-3">
+                    <h2 class="text-lg font-semibold text-blue-600">Profil Pengguna</h2>
                 </div>
-                <div class="card-body">
-                    <div class="text-center mb-4">
+                <div class="p-6">
+                    <div class="flex flex-col items-center mb-6">
                         @if($user->profile_picture)
-                            <img src="{{ asset('storage/' . $user->profile_picture) }}" alt="{{ $user->name }}" class="img-profile rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
+                            <img src="{{ asset('storage/' . $user->profile_picture) }}" alt="{{ $user->name }}" class="h-32 w-32 rounded-full object-cover">
                         @else
-                            <div class="img-profile rounded-circle d-flex justify-content-center align-items-center bg-primary text-white mx-auto" style="width: 150px; height: 150px; font-size: 4rem;">
+                            <div class="h-32 w-32 rounded-full bg-blue-600 text-white flex items-center justify-center text-4xl font-bold">
                                 {{ strtoupper(substr($user->name, 0, 1)) }}
                             </div>
                         @endif
-                        <h4 class="mt-3">{{ $user->name }}</h4>
-                        <p class="text-muted">
+                        <h4 class="mt-4 text-xl font-semibold text-gray-800">{{ $user->name }}</h4>
+                        <p class="text-sm text-gray-500">
                             Member sejak {{ $user->created_at->format('d M Y') }}
                         </p>
                     </div>
 
-                    <div class="mb-2 row">
-                        <label class="col-sm-4 col-form-label fw-bold">Email:</label>
-                        <div class="col-sm-8">
-                            <p class="form-control-static">{{ $user->email }}</p>
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="col-span-1 text-sm font-medium text-gray-500">Email:</span>
+                            <span class="col-span-2 text-sm text-gray-900">{{ $user->email }}</span>
                         </div>
-                    </div>
-                    <div class="mb-2 row">
-                        <label class="col-sm-4 col-form-label fw-bold">Telepon:</label>
-                        <div class="col-sm-8">
-                            <p class="form-control-static">{{ $user->phone ?? 'Tidak ada' }}</p>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="col-span-1 text-sm font-medium text-gray-500">Telepon:</span>
+                            <span class="col-span-2 text-sm text-gray-900">{{ $user->phone ?? 'Tidak ada' }}</span>
                         </div>
-                    </div>
-                    <div class="mb-2 row">
-                        <label class="col-sm-4 col-form-label fw-bold">Alamat:</label>
-                        <div class="col-sm-8">
-                            <p class="form-control-static">{{ $user->address ?? 'Tidak ada' }}</p>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="col-span-1 text-sm font-medium text-gray-500">Alamat:</span>
+                            <span class="col-span-2 text-sm text-gray-900">{{ $user->address ?? 'Tidak ada' }}</span>
                         </div>
-                    </div>
-                    <div class="mb-2 row">
-                        <label class="col-sm-4 col-form-label fw-bold">Nomor Identitas:</label>
-                        <div class="col-sm-8">
-                            <p class="form-control-static">
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="col-span-1 text-sm font-medium text-gray-500">Identitas:</span>
+                            <span class="col-span-2 text-sm text-gray-900">
                                 @if($user->id_number && $user->id_type)
                                     {{ $user->id_type }}: {{ $user->id_number }}
                                 @else
                                     Tidak ada
                                 @endif
-                            </p>
+                            </span>
                         </div>
-                    </div>
-                    <div class="mb-2 row">
-                        <label class="col-sm-4 col-form-label fw-bold">Tanggal Lahir:</label>
-                        <div class="col-sm-8">
-                            <p class="form-control-static">{{ $user->date_of_birthday ? $user->date_of_birthday->format('d M Y') : 'Tidak ada' }}</p>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="col-span-1 text-sm font-medium text-gray-500">Tanggal Lahir:</span>
+                            <span class="col-span-2 text-sm text-gray-900">{{ $user->date_of_birthday ? $user->date_of_birthday->format('d M Y') : 'Tidak ada' }}</span>
                         </div>
-                    </div>
-                    <div class="mb-2 row">
-                        <label class="col-sm-4 col-form-label fw-bold">Jenis Kelamin:</label>
-                        <div class="col-sm-8">
-                            <p class="form-control-static">
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="col-span-1 text-sm font-medium text-gray-500">Jenis Kelamin:</span>
+                            <span class="col-span-2 text-sm text-gray-900">
                                 @if($user->gender == 'MALE')
                                     Laki-laki
                                 @elseif($user->gender == 'FEMALE')
@@ -83,88 +79,74 @@
                                 @else
                                     Tidak ada
                                 @endif
-                            </p>
+                            </span>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- User Stats Card -->
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Statistik Pengguna</h6>
+            <div class="bg-white rounded-lg shadow-lg overflow-hidden mb-6">
+                <div class="border-b border-gray-200 bg-gray-50 px-6 py-3">
+                    <h2 class="text-lg font-semibold text-blue-600">Statistik Pengguna</h2>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <div class="card border-left-primary shadow h-100 py-2">
-                                <div class="card-body">
-                                    <div class="row no-gutters align-items-center">
-                                        <div class="col mr-2">
-                                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                                Total Booking</div>
-                                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $user->bookings->count() }}</div>
-                                        </div>
-                                        <div class="col-auto">
-                                            <i class="fas fa-calendar fa-2x text-gray-300"></i>
-                                        </div>
-                                    </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-white rounded-lg shadow-md overflow-hidden border-l-4 border-blue-500 p-4">
+                            <div class="flex items-center">
+                                <div class="flex-1">
+                                    <div class="text-xs font-bold text-blue-600 uppercase mb-1">Total Booking</div>
+                                    <div class="text-xl font-bold text-gray-800">{{ $user->bookings->count() }}</div>
+                                </div>
+                                <div>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <div class="card border-left-success shadow h-100 py-2">
-                                <div class="card-body">
-                                    <div class="row no-gutters align-items-center">
-                                        <div class="col mr-2">
-                                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                                Booking Aktif</div>
-                                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                                {{ $user->bookings->whereIn('status', ['PENDING', 'CONFIRMED'])->count() }}
-                                            </div>
-                                        </div>
-                                        <div class="col-auto">
-                                            <i class="fas fa-clipboard-check fa-2x text-gray-300"></i>
-                                        </div>
+                        <div class="bg-white rounded-lg shadow-md overflow-hidden border-l-4 border-green-500 p-4">
+                            <div class="flex items-center">
+                                <div class="flex-1">
+                                    <div class="text-xs font-bold text-green-600 uppercase mb-1">Booking Aktif</div>
+                                    <div class="text-xl font-bold text-gray-800">
+                                        {{ $user->bookings->whereIn('status', ['PENDING', 'CONFIRMED'])->count() }}
                                     </div>
+                                </div>
+                                <div>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                    </svg>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <div class="card border-left-info shadow h-100 py-2">
-                                <div class="card-body">
-                                    <div class="row no-gutters align-items-center">
-                                        <div class="col mr-2">
-                                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                                Booking Selesai</div>
-                                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                                {{ $user->bookings->where('status', 'COMPLETED')->count() }}
-                                            </div>
-                                        </div>
-                                        <div class="col-auto">
-                                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
-                                        </div>
+                        <div class="bg-white rounded-lg shadow-md overflow-hidden border-l-4 border-indigo-500 p-4">
+                            <div class="flex items-center">
+                                <div class="flex-1">
+                                    <div class="text-xs font-bold text-indigo-600 uppercase mb-1">Booking Selesai</div>
+                                    <div class="text-xl font-bold text-gray-800">
+                                        {{ $user->bookings->where('status', 'COMPLETED')->count() }}
                                     </div>
+                                </div>
+                                <div>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <div class="card border-left-warning shadow h-100 py-2">
-                                <div class="card-body">
-                                    <div class="row no-gutters align-items-center">
-                                        <div class="col mr-2">
-                                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                                Booking Dibatalkan</div>
-                                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                                {{ $user->bookings->where('status', 'CANCELLED')->count() }}
-                                            </div>
-                                        </div>
-                                        <div class="col-auto">
-                                            <i class="fas fa-ban fa-2x text-gray-300"></i>
-                                        </div>
+                        <div class="bg-white rounded-lg shadow-md overflow-hidden border-l-4 border-red-500 p-4">
+                            <div class="flex items-center">
+                                <div class="flex-1">
+                                    <div class="text-xs font-bold text-red-600 uppercase mb-1">Booking Dibatalkan</div>
+                                    <div class="text-xl font-bold text-gray-800">
+                                        {{ $user->bookings->where('status', 'CANCELLED')->count() }}
                                     </div>
+                                </div>
+                                <div>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
                                 </div>
                             </div>
                         </div>
@@ -173,53 +155,62 @@
             </div>
         </div>
 
-        <div class="col-lg-8">
+        <div class="lg:col-span-2">
             <!-- User Bookings -->
-            <div class="card shadow mb-4">
-                <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                    <h6 class="m-0 font-weight-bold text-primary">Riwayat Booking</h6>
+            <div class="bg-white rounded-lg shadow-lg overflow-hidden mb-6">
+                <div class="border-b border-gray-200 bg-gray-50 px-6 py-3">
+                    <h2 class="text-lg font-semibold text-blue-600">Riwayat Booking</h2>
                 </div>
-                <div class="card-body">
+                <div class="p-6">
                     @if($user->bookings->isEmpty())
-                        <p class="text-center py-3">Pengguna ini belum memiliki booking</p>
+                        <div class="flex flex-col items-center justify-center py-8">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                            </svg>
+                            <p class="text-gray-500">Pengguna ini belum memiliki booking</p>
+                        </div>
                     @else
-                        <div class="table-responsive">
-                            <table class="table table-bordered" width="100%" cellspacing="0">
-                                <thead>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
                                     <tr>
-                                        <th>Kode Booking</th>
-                                        <th>Rute</th>
-                                        <th>Tanggal</th>
-                                        <th>Jumlah Penumpang</th>
-                                        <th>Total</th>
-                                        <th>Status</th>
-                                        <th>Aksi</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode Booking</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rute</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Penumpang</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody class="bg-white divide-y divide-gray-200">
                                     @foreach($user->bookings as $booking)
-                                        <tr>
-                                            <td>{{ $booking->booking_code }}</td>
-                                            <td>{{ $booking->schedule->route->origin }} - {{ $booking->schedule->route->destination }}</td>
-                                            <td>{{ \Carbon\Carbon::parse($booking->booking_date)->format('d M Y') }}</td>
-                                            <td>{{ $booking->passenger_count }}</td>
-                                            <td>Rp {{ number_format($booking->total_amount, 0, ',', '.') }}</td>
-                                            <td>
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $booking->booking_code }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $booking->schedule->route->origin }} - {{ $booking->schedule->route->destination }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ \Carbon\Carbon::parse($booking->booking_date)->format('d M Y') }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $booking->passenger_count }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Rp {{ number_format($booking->total_amount, 0, ',', '.') }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
                                                 @if($booking->status == 'PENDING')
-                                                    <span class="badge bg-warning text-dark">Pending</span>
+                                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">Pending</span>
                                                 @elseif($booking->status == 'CONFIRMED')
-                                                    <span class="badge bg-success">Confirmed</span>
+                                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Konfirmasi</span>
                                                 @elseif($booking->status == 'CANCELLED')
-                                                    <span class="badge bg-danger">Cancelled</span>
+                                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">Dibatalkan</span>
                                                 @elseif($booking->status == 'COMPLETED')
-                                                    <span class="badge bg-info">Completed</span>
+                                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">Selesai</span>
                                                 @elseif($booking->status == 'REFUNDED')
-                                                    <span class="badge bg-secondary">Refunded</span>
+                                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">Dikembalikan</span>
                                                 @endif
                                             </td>
-                                            <td>
-                                                <a href="{{ route('admin.bookings.show', $booking->id) }}" class="btn btn-info btn-sm">
-                                                    <i class="fas fa-eye"></i>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <a href="{{ route('admin.bookings.show', $booking->id) }}" class="inline-flex items-center px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-md shadow-sm transition-colors">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                    Detail
                                                 </a>
                                             </td>
                                         </tr>
@@ -232,41 +223,46 @@
             </div>
 
             <!-- User Vehicles -->
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Kendaraan Terdaftar</h6>
+            <div class="bg-white rounded-lg shadow-lg overflow-hidden mb-6">
+                <div class="border-b border-gray-200 bg-gray-50 px-6 py-3">
+                    <h2 class="text-lg font-semibold text-blue-600">Kendaraan Terdaftar</h2>
                 </div>
-                <div class="card-body">
+                <div class="p-6">
                     @if($user->vehicles->isEmpty())
-                        <p class="text-center py-3">Pengguna ini belum mendaftarkan kendaraan</p>
+                        <div class="flex flex-col items-center justify-center py-8">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                            </svg>
+                            <p class="text-gray-500">Pengguna ini belum mendaftarkan kendaraan</p>
+                        </div>
                     @else
-                        <div class="table-responsive">
-                            <table class="table table-bordered" width="100%" cellspacing="0">
-                                <thead>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
                                     <tr>
-                                        <th>Jenis</th>
-                                        <th>Plat Nomor</th>
-                                        <th>Merk</th>
-                                        <th>Model</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenis</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plat Nomor</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Merk</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody class="bg-white divide-y divide-gray-200">
                                     @foreach($user->vehicles->unique('license_plate') as $vehicle)
-                                        <tr>
-                                            <td>
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-6 py-4 whitespace-nowrap">
                                                 @if($vehicle->type == 'MOTORCYCLE')
-                                                    <span class="badge bg-primary">Motor</span>
+                                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">Motor</span>
                                                 @elseif($vehicle->type == 'CAR')
-                                                    <span class="badge bg-success">Mobil</span>
+                                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Mobil</span>
                                                 @elseif($vehicle->type == 'BUS')
-                                                    <span class="badge bg-warning text-dark">Bus</span>
+                                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">Bus</span>
                                                 @elseif($vehicle->type == 'TRUCK')
-                                                    <span class="badge bg-danger">Truk</span>
+                                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">Truk</span>
                                                 @endif
                                             </td>
-                                            <td>{{ $vehicle->license_plate }}</td>
-                                            <td>{{ $vehicle->brand ?? 'N/A' }}</td>
-                                            <td>{{ $vehicle->model ?? 'N/A' }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $vehicle->license_plate }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $vehicle->brand ?? 'N/A' }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $vehicle->model ?? 'N/A' }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>

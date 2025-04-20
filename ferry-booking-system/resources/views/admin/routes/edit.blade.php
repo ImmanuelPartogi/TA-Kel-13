@@ -56,7 +56,6 @@
                     </div>
                 </div>
 
-                <!-- Lanjutan form seperti di Form Tambah Rute dengan value yang disesuaikan -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                     <div>
                         <label for="distance" class="block text-sm font-medium text-gray-700 mb-1">Jarak (km)</label>
@@ -71,7 +70,60 @@
                 </div>
 
                 <h3 class="text-lg font-semibold text-gray-700 mt-8 mb-4">Harga Tiket</h3>
-                <!-- Form harga tiket seperti di form tambah rute dengan value yang disesuaikan -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div>
+                        <label for="base_price" class="block text-sm font-medium text-gray-700 mb-1">Harga Dasar <span class="text-red-500">*</span></label>
+                        <input type="number" id="base_price" name="base_price" value="{{ old('base_price', $route->base_price) }}" step="0.01" min="0" required
+                               class="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label for="motorcycle_price" class="block text-sm font-medium text-gray-700 mb-1">Harga Motor <span class="text-red-500">*</span></label>
+                        <input type="number" id="motorcycle_price" name="motorcycle_price" value="{{ old('motorcycle_price', $route->motorcycle_price) }}" step="0.01" min="0" required
+                               class="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label for="car_price" class="block text-sm font-medium text-gray-700 mb-1">Harga Mobil <span class="text-red-500">*</span></label>
+                        <input type="number" id="car_price" name="car_price" value="{{ old('car_price', $route->car_price) }}" step="0.01" min="0" required
+                               class="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label for="bus_price" class="block text-sm font-medium text-gray-700 mb-1">Harga Bus <span class="text-red-500">*</span></label>
+                        <input type="number" id="bus_price" name="bus_price" value="{{ old('bus_price', $route->bus_price) }}" step="0.01" min="0" required
+                               class="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label for="truck_price" class="block text-sm font-medium text-gray-700 mb-1">Harga Truk <span class="text-red-500">*</span></label>
+                        <input type="number" id="truck_price" name="truck_price" value="{{ old('truck_price', $route->truck_price) }}" step="0.01" min="0" required
+                               class="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                </div>
+
+                <h3 class="text-lg font-semibold text-gray-700 mt-8 mb-4">Status Rute</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status <span class="text-red-500">*</span></label>
+                        <select id="status" name="status" required
+                                class="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="ACTIVE" {{ old('status', $route->status) == 'ACTIVE' ? 'selected' : '' }}>Aktif</option>
+                            <option value="INACTIVE" {{ old('status', $route->status) == 'INACTIVE' ? 'selected' : '' }}>Tidak Aktif</option>
+                            <option value="WEATHER_ISSUE" {{ old('status', $route->status) == 'WEATHER_ISSUE' ? 'selected' : '' }}>Masalah Cuaca</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="reasonContainer" class="mt-4 {{ old('status', $route->status) == 'ACTIVE' ? 'hidden' : '' }}">
+                    <label for="status_reason" class="block text-sm font-medium text-gray-700 mb-1">Alasan Perubahan Status</label>
+                    <textarea id="status_reason" name="status_reason" rows="2"
+                              class="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">{{ old('status_reason', $route->status_reason) }}</textarea>
+                </div>
+
+                <div id="expiryDateContainer" class="mt-4 {{ old('status', $route->status) == 'WEATHER_ISSUE' ? '' : 'hidden' }}">
+                    <label for="status_expiry_date" class="block text-sm font-medium text-gray-700 mb-1">Tanggal Berakhir Status</label>
+                    <input type="date" id="status_expiry_date" name="status_expiry_date"
+                           value="{{ old('status_expiry_date', $route->status_expiry_date ? $route->status_expiry_date->format('Y-m-d') : '') }}"
+                           class="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <p class="mt-1 text-xs text-gray-500">Biarkan kosong jika tidak ada tanggal berakhir yang ditentukan.</p>
+                </div>
 
                 <div class="mt-8">
                     <button type="submit" class="inline-flex justify-center py-2 px-6 border border-transparent shadow-md text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">

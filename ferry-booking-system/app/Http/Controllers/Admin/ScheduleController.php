@@ -249,30 +249,113 @@ class ScheduleController extends Controller
         $schedule = Schedule::findOrFail($id);
 
         $request->validate([
+            'date_type' => 'required|in:single,range',
             'date' => 'required|date|after_or_equal:today',
+            'end_date' => 'nullable|date|after_or_equal:date',
             'status' => 'required|in:AVAILABLE,UNAVAILABLE,CANCELLED,WEATHER_ISSUE',
             'status_reason' => 'nullable|string|max:191',
         ]);
 
-        $scheduleDate = new ScheduleDate([
-            'schedule_id' => $schedule->id,
-            'date' => Carbon::parse($request->date),
-            'status' => $request->status,
-            'status_reason' => $request->status_reason,
-            'passenger_count' => 0,
-            'motorcycle_count' => 0,
-            'car_count' => 0,
-            'bus_count' => 0,
-            'truck_count' => 0,
-        ]);
+        // Single date
+        if ($request->date_type === 'single') {
+            $scheduleDate = new ScheduleDate([
+                'schedule_id' => $schedule->id,
+                'date' => Carbon::parse($request->date),
+                'status' => $request->status,
+                'status_reason' => $request->status_reason,
+                'passenger_count' => 0,
+                'motorcycle_count' => 0,
+                'car_count' => 0,
+                'bus_count' => 0,
+                'truck_count' => 0,
+            ]);
 
-        if ($request->status === 'WEATHER_ISSUE' && $request->has('status_expiry_date')) {
-            $scheduleDate->status_expiry_date = Carbon::parse($request->status_expiry_date);
+            if ($request->status === 'WEATHER_ISSUE' && $request->has('status_expiry_date')) {
+                $scheduleDate->status_expiry_date = Carbon::parse($request->status_expiry_date);
+            }
+
+            $scheduleDate->save();
+
+            return redirect()->route('admin.schedules.dates', $id)
+                ->with('success', 'Tanggal jadwal berhasil ditambahkan');
         }
 
-        $scheduleDate->save();
+        // Range dates
+        if ($request->date_type === 'range' && $request->has('end_date')) {
+            // Get schedule days
+            $scheduleDays = explode(',', $schedule->days);
+            $startDate = Carbon::parse($request->date);
+            $endDate = Carbon::parse($request->end_date);
+            $currentDate = $startDate->copy();
+            $createdDates = 0;
+
+            // Generate dates for the specified range, but only for days of week that match the schedule days
+            while ($currentDate->lte($endDate)) {
+                $dayOfWeek = $currentDate->dayOfWeek + 1; // Convert to 1-7 (Monday-Sunday)
+
+                if (in_array($dayOfWeek, $scheduleDays)) {
+                    // Check if this date already exists
+                    $existingDate = ScheduleDate::where('schedule_id', $schedule->id)
+                        ->where('date', $currentDate->format('Y-m-d'))
+                        ->first();
+
+                    if (!$existingDate) {
+                        $scheduleDate = new ScheduleDate([
+                            'schedule_id' => $schedule->id,
+                            'date' => $currentDate->copy(),
+                            'status' => $request->status,
+                            'status_reason' => $request->status_reason,
+                            'passenger_count' => 0,
+                            'motorcycle_count' => 0,
+                            'car_count' => 0,
+                            'bus_count' => 0,
+                            'truck_count' => 0,
+                        ]);
+
+                        if ($request->status === 'WEATHER_ISSUE' && $request->has('status_expiry_date')) {
+                            $scheduleDate->status_expiry_date = Carbon::parse($request->status_expiry_date);
+                        }
+
+                        $scheduleDate->save();
+                        $createdDates++;
+                    }
+                }
+
+                $currentDate->addDay();
+            }
+
+            return redirect()->route('admin.schedules.dates', $id)
+                ->with('success', $createdDates . ' tanggal jadwal berhasil ditambahkan sesuai dengan hari operasi jadwal');
+        }
 
         return redirect()->route('admin.schedules.dates', $id)
-            ->with('success', 'Tanggal jadwal berhasil ditambahkan');
+            ->with('error', 'Terjadi kesalahan saat menambahkan tanggal jadwal');
     }
+
+    /**
+ * Menghapus tanggal jadwal tertentu
+ */
+public function destroyDate($id, $dateId)
+{
+    $scheduleDate = ScheduleDate::where('schedule_id', $id)
+        ->where('id', $dateId)
+        ->firstOrFail();
+
+    // Periksa apakah tanggal jadwal memiliki penumpang atau kendaraan
+    $hasBookings = $scheduleDate->passenger_count > 0 ||
+                  $scheduleDate->motorcycle_count > 0 ||
+                  $scheduleDate->car_count > 0 ||
+                  $scheduleDate->bus_count > 0 ||
+                  $scheduleDate->truck_count > 0;
+
+    if ($hasBookings) {
+        return redirect()->route('admin.schedules.dates', $id)
+            ->with('error', 'Tanggal jadwal tidak dapat dihapus karena memiliki booking terkait');
+    }
+
+    $scheduleDate->delete();
+
+    return redirect()->route('admin.schedules.dates', $id)
+        ->with('success', 'Tanggal jadwal berhasil dihapus');
+}
 }

@@ -7,63 +7,92 @@ use App\Models\Schedule;
 use App\Models\ScheduleDate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class ScheduleController extends Controller
 {
     public function index(Request $request)
     {
-        $routeId = $request->route_id;
-        $date = $request->date ? Carbon::parse($request->date) : Carbon::today();
-        $dayOfWeek = $date->dayOfWeek + 1; // Konversi ke format 1-7 (Senin-Minggu)
+        try {
+            $routeId = $request->route_id;
+            $date = $request->date ? Carbon::parse($request->date) : Carbon::today();
+            $dayOfWeek = $date->dayOfWeek + 1; // Konversi ke format 1-7 (Senin-Minggu)
 
-        $schedules = Schedule::where('route_id', $routeId)
-            ->where('status', 'ACTIVE')
-            ->whereRaw("FIND_IN_SET('$dayOfWeek', days)")
-            ->with(['ferry', 'route'])
-            ->get();
+            Log::info('Mencari jadwal', [
+                'route_id' => $routeId,
+                'date' => $date->format('Y-m-d'),
+                'day_of_week' => $dayOfWeek
+            ]);
 
-        $scheduleIds = $schedules->pluck('id');
+            $schedules = Schedule::where('route_id', $routeId)
+                ->where('status', 'ACTIVE')
+                ->whereRaw("FIND_IN_SET('$dayOfWeek', days)")
+                ->with(['ferry', 'route'])
+                ->get();
 
-        // Ambil ketersediaan untuk tanggal yang dipilih
-        $scheduleDates = ScheduleDate::whereIn('schedule_id', $scheduleIds)
-            ->where('date', $date->format('Y-m-d'))
-            ->get()
-            ->keyBy('schedule_id');
+            $scheduleIds = $schedules->pluck('id');
 
-        $result = $schedules->map(function ($schedule) use ($scheduleDates, $date) {
-            $scheduleDate = $scheduleDates->get($schedule->id);
+            // PERUBAHAN PENTING: Hanya ambil yang sudah ada, JANGAN membuat baru
+            $scheduleDates = ScheduleDate::whereIn('schedule_id', $scheduleIds)
+                ->where('date', $date->format('Y-m-d'))
+                ->get()
+                ->keyBy('schedule_id');
 
-            // Kalau tidak ada data specifik untuk tanggal tersebut,
-            // tambahkan data default
-            if (!$scheduleDate) {
-                $scheduleDate = new ScheduleDate([
-                    'schedule_id' => $schedule->id,
-                    'date' => $date->format('Y-m-d'),
-                    'passenger_count' => 0,
-                    'motorcycle_count' => 0,
-                    'car_count' => 0,
-                    'bus_count' => 0,
-                    'truck_count' => 0,
-                    'status' => 'AVAILABLE'
-                ]);
-            }
+            Log::info('Schedule dates ditemukan', ['count' => $scheduleDates->count()]);
 
-            // Gabungkan data jadwal dengan ketersediaan
-            $schedule->available_passenger = $schedule->ferry->capacity_passenger - $scheduleDate->passenger_count;
-            $schedule->available_motorcycle = $schedule->ferry->capacity_vehicle_motorcycle - $scheduleDate->motorcycle_count;
-            $schedule->available_car = $schedule->ferry->capacity_vehicle_car - $scheduleDate->car_count;
-            $schedule->available_bus = $schedule->ferry->capacity_vehicle_bus - $scheduleDate->bus_count;
-            $schedule->available_truck = $schedule->ferry->capacity_vehicle_truck - $scheduleDate->truck_count;
-            $schedule->schedule_date_status = $scheduleDate->status;
+            $result = $schedules->map(function ($schedule) use ($scheduleDates, $date) {
+                $scheduleDate = $scheduleDates->get($schedule->id);
 
-            return $schedule;
-        });
+                // PERUBAHAN PENTING: Jika tidak ada schedule_date, tandai sebagai NOT_AVAILABLE
+                if (!$scheduleDate) {
+                    Log::info('Schedule date tidak ditemukan untuk jadwal', [
+                        'schedule_id' => $schedule->id
+                    ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Daftar jadwal berhasil diambil',
-            'data' => $result
-        ], 200);
+                    // Isi dengan data dummy tapi tidak simpan ke database
+                    $schedule->available_passenger = 0;
+                    $schedule->available_motorcycle = 0;
+                    $schedule->available_car = 0;
+                    $schedule->available_bus = 0;
+                    $schedule->available_truck = 0;
+                    $schedule->schedule_date_status = 'NOT_AVAILABLE';
+
+                    return $schedule;
+                }
+
+                // Jika ada, proses seperti biasa
+                $schedule->available_passenger = $schedule->ferry->capacity_passenger - $scheduleDate->passenger_count;
+                $schedule->available_motorcycle = $schedule->ferry->capacity_vehicle_motorcycle - $scheduleDate->motorcycle_count;
+                $schedule->available_car = $schedule->ferry->capacity_vehicle_car - $scheduleDate->car_count;
+                $schedule->available_bus = $schedule->ferry->capacity_vehicle_bus - $scheduleDate->bus_count;
+                $schedule->available_truck = $schedule->ferry->capacity_vehicle_truck - $scheduleDate->truck_count;
+                $schedule->schedule_date_status = $scheduleDate->status;
+
+                return $schedule;
+            });
+
+            // PERUBAHAN PENTING: Filter hanya jadwal yang tersedia
+            $availableSchedules = $result->filter(function ($schedule) {
+                return $schedule->schedule_date_status === 'AVAILABLE';
+            })->values();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Daftar jadwal berhasil diambil',
+                'data' => $availableSchedules
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Error mengambil jadwal', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengambil jadwal',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function show($id)

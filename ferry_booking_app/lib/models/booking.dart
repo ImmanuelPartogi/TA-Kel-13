@@ -12,16 +12,20 @@ class Booking {
   final int passengerCount;
   final int vehicleCount;
   final double totalAmount;
-  final String status;
+  String status;
   final String? cancellationReason;
   final String bookedBy;
   final String? bookingChannel;
   final String? notes;
   final String createdAt;
   final Schedule? schedule;
-  final List<Payment>? payments;
+  List<Payment>? payments;
   final List<Ticket>? tickets;
   final List<Vehicle>? vehicles;
+  
+  // Properti transient untuk metode pembayaran yang dipilih
+  String? paymentMethod;
+  String? paymentType;
 
   Booking({
     required this.id,
@@ -42,6 +46,8 @@ class Booking {
     this.payments,
     this.tickets,
     this.vehicles,
+    this.paymentMethod,
+    this.paymentType,
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
@@ -71,5 +77,26 @@ class Booking {
           ? List<Vehicle>.from(json['vehicles'].map((x) => Vehicle.fromJson(x)))
           : null,
     );
+  }
+  
+  // Mendapatkan payment terakhir
+  Payment? get latestPayment {
+    if (payments == null || payments!.isEmpty) {
+      return null;
+    }
+    
+    // Urutkan payments berdasarkan created_at terbaru
+    payments!.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return payments!.first;
+  }
+  
+  // Mendapatkan waktu kedaluwarsa dari payment terakhir
+  DateTime? get expiryTime {
+    final payment = latestPayment;
+    if (payment == null) {
+      return null;
+    }
+    
+    return payment.expiryTime;
   }
 }

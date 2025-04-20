@@ -31,10 +31,6 @@ use App\Http\Controllers\Operator\ReportController as OperatorReportController;
 Route::get('/', [WelcomeController::class, 'index'])->name('home');
 Route::get('/search', [WelcomeController::class, 'searchSchedule'])->name('search.schedule');
 Route::get('/booking/{route_id}', [WelcomeController::class, 'bookingForm'])->name('booking.form');
-// // Redirect root to admin login
-// Route::get('/', function () {
-//     return redirect()->route('admin.login');
-// });
 
 // Admin Authentication
 Route::middleware('guest:admin')->group(function () {
@@ -48,11 +44,18 @@ Route::prefix('admin')->middleware(['auth:admin'])->group(function () {
     Route::get('/', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
 
-    // Admin Management (Super Admin only)
-    Route::middleware(['super_admin'])->group(function () {
-        Route::resource('admins', AdminController::class, ['as' => 'admin']);
-        Route::resource('operators', OperatorController::class, ['as' => 'admin']);
-    });
+
+    Route::resource('admins', AdminController::class, ['as' => 'admin']);
+
+    Route::get('operators/create', [OperatorController::class, 'create'])->name('admin.operators.create');
+    Route::post('operators', [OperatorController::class, 'store'])->name('admin.operators.store');
+
+    // Operators Management (Semua Admin bisa melakukan operasi selain create/store)
+    Route::get('operators', [OperatorController::class, 'index'])->name('admin.operators.index');
+    Route::get('operators/{operator}', [OperatorController::class, 'show'])->name('admin.operators.show');
+    Route::get('operators/{operator}/edit', [OperatorController::class, 'edit'])->name('admin.operators.edit');
+    Route::put('operators/{operator}', [OperatorController::class, 'update'])->name('admin.operators.update');
+    Route::delete('operators/{operator}', [OperatorController::class, 'destroy'])->name('admin.operators.destroy');
 
     // Routes Management
     Route::resource('routes', AdminRouteController::class, ['as' => 'admin']);
@@ -68,7 +71,8 @@ Route::prefix('admin')->middleware(['auth:admin'])->group(function () {
     Route::post('/schedules/{id}/dates', [AdminScheduleController::class, 'addDates'])->name('admin.schedules.add-dates');
     Route::post('/admin/schedules/{id}/dates', [AdminScheduleController::class, 'storeDate'])->name('admin.schedules.store-date');
     Route::put('/admin/schedules/{schedule}/dates/{dateId}', [AdminScheduleController::class, 'updateDate'])->name('admin.schedules.update-date');
-
+    Route::delete('/admin/schedules/{schedule}/dates/{date}', [AdminScheduleController::class, 'destroyDate'])->name('admin.schedules.destroy-date');
+    
     // Bookings Management
     Route::resource('bookings', AdminBookingController::class, ['as' => 'admin'])->except(['edit', 'update', 'destroy']);
     Route::put('/bookings/{id}/status', [AdminBookingController::class, 'updateStatus'])->name('admin.bookings.update-status');
@@ -82,6 +86,16 @@ Route::prefix('admin')->middleware(['auth:admin'])->group(function () {
     Route::get('/reports/revenue', [AdminReportController::class, 'revenueReport'])->name('admin.reports.revenue');
     Route::get('/reports/schedule', [AdminReportController::class, 'scheduleReport'])->name('admin.reports.schedule');
 });
+
+/*|--------------------------------------------------------------------------
+| Operator Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register operator routes for your application.
+|
+| These routes are protected by the 'auth:operator' middleware.
+| Only authenticated operators can access these routes.
+|--------------------------------------------------------------------------|*/
 
 // Operator Authentication
 Route::middleware('guest:operator')->group(function () {

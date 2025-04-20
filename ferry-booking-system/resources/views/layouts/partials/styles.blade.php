@@ -1,229 +1,13 @@
+<!-- layouts/partials/styles.blade.php -->
 <style>
-    /* Base Styles */
-    body {
-        font-family: 'Nunito', sans-serif;
-        overflow-x: hidden;
-        /* Prevent horizontal scrolling from blobs */
+    [x-cloak] {
+        display: none !important;
     }
 
-    /* Smooth Scrolling */
-    html {
-        scroll-behavior: smooth;
-        scroll-padding-top: 80px;
-        /* Add padding for fixed header */
-    }
-
-    /* Wave Animation */
-    .wave-animation {
-        animation: wave 8s ease-in-out infinite;
-    }
-
-    @keyframes wave {
-
-        0%,
-        100% {
-            transform: translateY(0);
-        }
-
-        50% {
-            transform: translateY(-15px);
-        }
-    }
-
-    /* Boat Animation */
-    .boat-animation {
-        animation: boat 6s ease-in-out infinite;
-    }
-
-    @keyframes boat {
-
-        0%,
-        100% {
-            transform: translateY(0) rotate(-2deg);
-        }
-
-        50% {
-            transform: translateY(-10px) rotate(2deg);
-        }
-    }
-
-    /* Blob Animation */
-    .blob-animation {
-        animation: blob 10s ease-in-out infinite alternate;
-    }
-
-    @keyframes blob {
-        0% {
-            transform: translateY(0) scale(1);
-        }
-
-        50% {
-            transform: translateY(-5px) scale(1.05);
-        }
-
-        100% {
-            transform: translateY(5px) scale(0.95);
-        }
-    }
-
-    /* Floating Blob Animation */
-    .floating-blob {
-        animation: floating 15s ease-in-out infinite alternate;
-    }
-
-    @keyframes floating {
-        0% {
-            transform: translate(0, 0) rotate(0deg);
-        }
-
-        33% {
-            transform: translate(10px, 15px) rotate(5deg);
-        }
-
-        66% {
-            transform: translate(-10px, 5px) rotate(-5deg);
-        }
-
-        100% {
-            transform: translate(5px, -15px) rotate(2deg);
-        }
-    }
-
-    /* Rotating Blob Animation */
-    .rotating-blob {
-        animation: rotating 30s linear infinite;
-        transform-origin: center center;
-    }
-
-    @keyframes rotating {
-        0% {
-            transform: rotate(0deg);
-        }
-
-        100% {
-            transform: rotate(360deg);
-        }
-    }
-
-    /* Pulsing Blob Animation */
-    .pulsing-blob {
-        animation: pulsing 8s ease-in-out infinite;
-        transform-origin: center center;
-    }
-
-    @keyframes pulsing {
-
-        0%,
-        100% {
-            transform: scale(1);
-            opacity: 0.7;
-        }
-
-        50% {
-            transform: scale(1.05);
-            opacity: 0.9;
-        }
-    }
-
-    /* Bounce Animation for QR */
-    .bounce-animation {
-        animation: bounce 2s ease-in-out infinite;
-    }
-
-    @keyframes bounce {
-
-        0%,
-        100% {
-            transform: translateY(0);
-        }
-
-        50% {
-            transform: translateY(-10px);
-        }
-    }
-
-    /* Fade-in Animation for Modal */
-    .modal-fade-in {
-        animation: fadeIn 0.3s ease-out forwards;
-    }
-
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(-20px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    /* Smooth navbar transitions */
-    #navbar {
-        transition: transform 0.3s ease-in-out, background-color 0.3s ease, box-shadow 0.3s ease;
-    }
-
-    /* Active nav item transition */
-    .nav-link,
-    .mobile-nav-link {
-        transition: color 0.3s ease, border-color 0.3s ease, background-color 0.3s ease;
-    }
-
-    /* Blob positioning helpers */
-    .section-blob {
-        position: absolute;
-        pointer-events: none;
-        /* Make sure it doesn't interfere with clicks */
-        z-index: 0;
-    }
-
-    /* Custom Swiper Styles */
-    .appSwiper {
-        width: 100%;
-        height: 100%;
-        margin: 0 auto;
-    }
-
-    .swiper-slide {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        transition: all 0.3s ease;
-    }
-
-    .swiper-pagination-bullet {
-        width: 8px;
-        height: 8px;
-        background: #cbd5e1;
-        opacity: 0.5;
-    }
-
-    .swiper-pagination-bullet-active {
-        background: #0ea5e9;
-        opacity: 1;
-    }
-
-    /* Phone frame animation */
-    @keyframes float {
-
-        0%,
-        100% {
-            transform: translateY(0);
-        }
-
-        50% {
-            transform: translateY(-5px);
-        }
-    }
-
-    .phone-float {
-        animation: float 3s ease-in-out infinite;
-    }
-
-    /* Custom Scrollbar */
+    /* Scrollbar Styles */
     ::-webkit-scrollbar {
-        width: 10px;
+        width: 6px;
+        height: 6px;
     }
 
     ::-webkit-scrollbar-track {
@@ -231,32 +15,217 @@
     }
 
     ::-webkit-scrollbar-thumb {
-        background: #0ea5e9;
-        border-radius: 5px;
+        background: #94a3b8;
+        border-radius: 3px;
     }
 
     ::-webkit-scrollbar-thumb:hover {
-        background: #0284c7;
+        background: #64748b;
     }
 
-    /* Touch optimization for mobile */
-    @media (max-width: 640px) {
-        .touch-target {
-            min-height: 44px;
-            min-width: 44px;
+    /* Animation classes */
+    .nav-item {
+        transition: all 0.2s ease;
+    }
+
+    .nav-item:hover {
+        transform: translateX(5px);
+    }
+
+    .nav-icon {
+        transition: all 0.2s ease;
+    }
+
+    .nav-item:hover .nav-icon {
+        transform: scale(1.2);
+    }
+
+    .alert-fade {
+        animation: fadeOut 5s forwards;
+    }
+
+    @keyframes fadeOut {
+        90% {
+            opacity: 1;
         }
 
-        /* Adjust blobs for mobile */
-        .section-blob {
-            transform: scale(0.7);
-            opacity: 0.5;
+        100% {
+            opacity: 0;
         }
     }
 
-    /* Fix for mobile hover effects */
-    @media (hover: hover) {
-        .hover\:scale-105:hover {
-            transform: scale(1.05);
+    /* Blob Animations */
+    @keyframes float {
+        0% {
+            transform: translateY(0px);
         }
+
+        50% {
+            transform: translateY(-15px);
+        }
+
+        100% {
+            transform: translateY(0px);
+        }
+    }
+
+    @keyframes drift {
+        0% {
+            transform: translate(0px, 0px);
+        }
+
+        25% {
+            transform: translate(10px, -5px);
+        }
+
+        50% {
+            transform: translate(0px, -10px);
+        }
+
+        75% {
+            transform: translate(-10px, -5px);
+        }
+
+        100% {
+            transform: translate(0px, 0px);
+        }
+    }
+
+    @keyframes morph {
+        0% {
+            border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+        }
+
+        50% {
+            border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
+        }
+
+        100% {
+            border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+        }
+    }
+
+    @keyframes waves {
+        0% {
+            transform: scaleY(1) scaleX(1);
+        }
+
+        25% {
+            transform: scaleY(1.05) scaleX(0.95);
+        }
+
+        50% {
+            transform: scaleY(0.95) scaleX(1.05);
+        }
+
+        75% {
+            transform: scaleY(1.05) scaleX(0.95);
+        }
+
+        100% {
+            transform: scaleY(1) scaleX(1);
+        }
+    }
+
+    @keyframes bounce-slow {
+        0%,
+        100% {
+            transform: translateY(-5%);
+            animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+        }
+
+        50% {
+            transform: translateY(0);
+            animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+        }
+    }
+
+    @keyframes drift-right {
+        0% {
+            transform: translateX(0);
+        }
+
+        50% {
+            transform: translateX(15px);
+        }
+
+        100% {
+            transform: translateX(0);
+        }
+    }
+
+    @keyframes drift-left {
+        0% {
+            transform: translateX(0);
+        }
+
+        50% {
+            transform: translateX(-15px);
+        }
+
+        100% {
+            transform: translateX(0);
+        }
+    }
+
+    .animate-float {
+        animation: float 6s ease-in-out infinite;
+    }
+
+    .animate-float-slow {
+        animation: float 8s ease-in-out infinite;
+    }
+
+    .animate-drift {
+        animation: drift 10s ease-in-out infinite;
+    }
+
+    .animate-spin-slow {
+        animation: spin 15s linear infinite;
+    }
+
+    .animate-morph {
+        animation: morph 10s ease-in-out infinite;
+    }
+
+    .animate-morph-slow {
+        animation: morph 15s ease-in-out infinite;
+    }
+
+    .animate-waves {
+        animation: waves 12s ease-in-out infinite;
+    }
+
+    .animate-bounce-slow {
+        animation: bounce-slow 8s ease-in-out infinite;
+    }
+
+    .animate-drift-right {
+        animation: drift-right 12s ease-in-out infinite;
+    }
+
+    .animate-drift-left {
+        animation: drift-left 12s ease-in-out infinite;
+    }
+
+    .blob-wrapper {
+        overflow: hidden;
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    .content-wrapper {
+        position: relative;
+        z-index: 10;
+    }
+
+    .blob {
+        transform-origin: center center;
+        will-change: transform;
     }
 </style>

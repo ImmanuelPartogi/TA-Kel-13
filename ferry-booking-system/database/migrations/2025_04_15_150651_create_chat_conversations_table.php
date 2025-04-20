@@ -13,7 +13,12 @@ return new class extends Migration
     {
         Schema::create('chat_conversations', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('cascade');
+            $table->string('session_id')->nullable();
             $table->timestamps();
+
+            // Tambahkan index untuk mempercepat query
+            $table->index('session_id');
         });
     }
 

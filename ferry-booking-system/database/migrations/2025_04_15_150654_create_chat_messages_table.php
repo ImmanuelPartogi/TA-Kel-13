@@ -13,6 +13,11 @@ return new class extends Migration
     {
         Schema::create('chat_messages', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('conversation_id')->constrained('chat_conversations');
+            $table->boolean('is_from_user')->default(false);
+            $table->text('message');
+            $table->unsignedBigInteger('matched_template_id')->nullable();
+            $table->decimal('confidence_score', 5, 2)->nullable();
             $table->timestamps();
         });
     }

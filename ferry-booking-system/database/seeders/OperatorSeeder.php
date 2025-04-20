@@ -22,7 +22,7 @@ class OperatorSeeder extends Seeder
             // If there are no routes yet, seed with null assigned_routes
             // The assigned_routes can be updated later
             Operator::create([
-                'email' => 'operator1@ferrybooking.com',
+                'email' => 'operator@gmail.com',
                 'company_name' => 'Ferry Line Operator 1',
                 'phone_number' => '081234567890',
                 'license_number' => 'FL-2023-001',

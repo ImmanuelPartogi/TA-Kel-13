@@ -10,41 +10,83 @@ import 'package:intl/date_symbol_data_local.dart';
 
 class ScheduleSelectionScreen extends StatefulWidget {
   final FerryRoute route;
-  
-  const ScheduleSelectionScreen({
-    Key? key,
-    required this.route,
-  }) : super(key: key);
+
+  const ScheduleSelectionScreen({Key? key, required this.route})
+    : super(key: key);
 
   @override
-  _ScheduleSelectionScreenState createState() => _ScheduleSelectionScreenState();
+  _ScheduleSelectionScreenState createState() =>
+      _ScheduleSelectionScreenState();
 }
 
 class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
   DateTime _selectedDate = DateTime.now();
-  
+
   @override
   void initState() {
     super.initState();
-    
+
     // Inisialisasi format tanggal Indonesia
     initializeDateFormatting('id_ID', null);
-    
+
     // Set route di booking provider dengan aman
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
+      final bookingProvider = Provider.of<BookingProvider>(
+        context,
+        listen: false,
+      );
       bookingProvider.setSelectedRoute(widget.route);
-      
+
       // Panggil load schedules setelah build selesai
       _loadSchedules();
     });
   }
-  
-  Future<void> _loadSchedules() async {
-    final scheduleProvider = Provider.of<ScheduleProvider>(context, listen: false);
-    await scheduleProvider.getSchedules(widget.route.id, _selectedDate);
+
+  // Tambahkan method untuk menampilkan pesan jika tidak ada jadwal
+  void _showNoSchedulesMessage() {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Tidak ada jadwal tersedia untuk tanggal ini. Silakan pilih tanggal lain.',
+          ),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
   }
-  
+
+  // Modifikasi method _loadSchedules()
+  Future<void> _loadSchedules() async {
+    final scheduleProvider = Provider.of<ScheduleProvider>(
+      context,
+      listen: false,
+    );
+    try {
+      print(
+        'DEBUG: Loading schedules for route ${widget.route.id} on date $_selectedDate',
+      );
+      await scheduleProvider.getSchedules(widget.route.id, _selectedDate);
+
+      // Jika tidak ada jadwal, tampilkan pesan
+      if (scheduleProvider.schedules?.isEmpty ?? true) {
+        print('DEBUG: No schedules available for this date');
+        _showNoSchedulesMessage();
+      } else {
+        print(
+          'DEBUG: Successfully loaded ${scheduleProvider.schedules!.length} schedules',
+        );
+      }
+    } catch (e) {
+      print('ERROR: Failed to load schedules: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal memuat jadwal: $e')));
+      }
+    }
+  }
+
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -52,13 +94,16 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 90)),
     );
-    
+
     if (picked != null && picked != _selectedDate) {
       setState(() {
         _selectedDate = picked;
       });
-      
-      final scheduleProvider = Provider.of<ScheduleProvider>(context, listen: false);
+
+      final scheduleProvider = Provider.of<ScheduleProvider>(
+        context,
+        listen: false,
+      );
       await scheduleProvider.getSchedules(widget.route.id, _selectedDate);
     }
   }
@@ -66,12 +111,15 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     final scheduleProvider = Provider.of<ScheduleProvider>(context);
-    final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
+    final bookingProvider = Provider.of<BookingProvider>(
+      context,
+      listen: false,
+    );
     final schedules = scheduleProvider.schedules;
-    
+
     // JANGAN memanggil setter di dalam build
     // bookingProvider.setSelectedRoute(widget.route); <-- HAPUS BARIS INI
-    
+
     return Scaffold(
       appBar: CustomAppBar(
         title: '${widget.route.origin} - ${widget.route.destination}',
@@ -97,10 +145,7 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
               children: [
                 const Text(
                   'Tanggal Keberangkatan',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 const SizedBox(height: 8),
                 InkWell(
@@ -118,7 +163,10 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(_selectedDate),
+                          DateFormat(
+                            'EEEE, d MMMM yyyy',
+                            'id_ID',
+                          ).format(_selectedDate),
                           style: const TextStyle(fontSize: 16),
                         ),
                         const Icon(Icons.calendar_today),
@@ -129,59 +177,57 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
               ],
             ),
           ),
-          
+
           // Schedules List
           Expanded(
-            child: scheduleProvider.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : schedules == null || schedules.isEmpty
+            child:
+                scheduleProvider.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : schedules == null || schedules.isEmpty
                     ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.timer_off,
-                              size: 64,
-                              color: Colors.grey[400],
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.timer_off,
+                            size: 64,
+                            color: Colors.grey[400],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Tidak ada jadwal tersedia untuk tanggal ini',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 16,
                             ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Tidak ada jadwal tersedia untuk tanggal ini',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 16,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            ElevatedButton(
-                              onPressed: () => _selectDate(context),
-                              child: const Text('Pilih Tanggal Lain'),
-                            ),
-                          ],
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16.0),
-                        itemCount: schedules.length,
-                        itemBuilder: (context, index) {
-                          final schedule = schedules[index];
-                          return ScheduleCard(
-                            schedule: schedule,
-                            date: _selectedDate,
-                            onTap: () {
-                              // Store selected schedule and date in booking provider
-                              bookingProvider.setSelectedSchedule(schedule);
-                              bookingProvider.setSelectedDate(_selectedDate);
-                              
-                              // Navigate to passenger details screen
-                              Navigator.pushNamed(
-                                context, 
-                                '/booking/passengers',
-                              );
-                            },
-                          );
-                        },
+                          ),
+                          const SizedBox(height: 8),
+                          ElevatedButton(
+                            onPressed: () => _selectDate(context),
+                            child: const Text('Pilih Tanggal Lain'),
+                          ),
+                        ],
                       ),
+                    )
+                    : ListView.builder(
+                      padding: const EdgeInsets.all(16.0),
+                      itemCount: schedules.length,
+                      itemBuilder: (context, index) {
+                        final schedule = schedules[index];
+                        return ScheduleCard(
+                          schedule: schedule,
+                          date: _selectedDate,
+                          onTap: () {
+                            // Store selected schedule and date in booking provider
+                            bookingProvider.setSelectedSchedule(schedule);
+                            bookingProvider.setSelectedDate(_selectedDate);
+
+                            // Navigate to passenger details screen
+                            Navigator.pushNamed(context, '/booking/passengers');
+                          },
+                        );
+                      },
+                    ),
           ),
         ],
       ),

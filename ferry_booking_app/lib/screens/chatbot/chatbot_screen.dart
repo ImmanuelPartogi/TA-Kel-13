@@ -28,8 +28,10 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
       _chatbotProvider.setToken(_authProvider.token);
     }
     
-    // Muat percakapan
-    _chatbotProvider.loadConversation();
+    // Gunakan addPostFrameCallback untuk memuat percakapan setelah build selesai
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _chatbotProvider.loadConversation();
+    });
   }
   
   // Scroll ke bawah untuk melihat pesan terbaru
@@ -112,9 +114,13 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _scrollToBottom();
-          });
+          // Perbaikan: Jangan panggil addPostFrameCallback di dalam build
+          // Sebagai gantinya, gunakan useEffect untuk memanggil _scrollToBottom
+          // hanya ketika messages berubah
+          if (provider.messages.isNotEmpty) {
+            // Jadwalkan scroll setelah build selesai jika ada pesan
+            WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+          }
           
           return Column(
             children: [

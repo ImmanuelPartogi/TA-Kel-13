@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:ferry_booking_app/providers/booking_provider.dart';
-import 'package:ferry_booking_app/widgets/custom_appbar.dart';
+import '../../providers/booking_provider.dart';
+import '../../widgets/custom_appbar.dart';
 
 class BookingSummaryScreen extends StatefulWidget {
   const BookingSummaryScreen({Key? key}) : super(key: key);
@@ -12,396 +12,608 @@ class BookingSummaryScreen extends StatefulWidget {
 }
 
 class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _notesController = TextEditingController();
-  
-  @override
-  void dispose() {
-    _notesController.dispose();
-    super.dispose();
-  }
-  
-  Future<void> _createBooking() async {
-    final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
-    
-    final result = await bookingProvider.createBooking();
-    
-    if (result && mounted) {
-      Navigator.pushNamed(context, '/booking/payment');
-    }
-  }
+  bool _isLoading = false;
+  bool _isSuccessful = false;
 
   @override
   Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: const CustomAppBar(title: 'Ringkasan Pemesanan'),
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _buildContent(),
+    );
+  }
+
+  Widget _buildContent() {
     final bookingProvider = Provider.of<BookingProvider>(context);
-    final route = bookingProvider.selectedRoute;
-    final schedule = bookingProvider.selectedSchedule;
-    final date = bookingProvider.selectedDate;
-    final passengers = bookingProvider.passengers;
-    final vehicles = bookingProvider.vehicles;
-    
-    // Validate booking data
-    if (route == null || schedule == null || date == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pushReplacementNamed(context, '/booking/routes');
-      });
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+    final selectedRoute = bookingProvider.selectedRoute;
+    final selectedSchedule = bookingProvider.selectedSchedule;
+    final selectedDate = bookingProvider.selectedDate;
+
+    if (selectedRoute == null ||
+        selectedSchedule == null ||
+        selectedDate == null) {
+      return const Center(child: Text('Data pemesanan tidak lengkap.'));
     }
 
-    // Format values
+    // Format tanggal dan waktu
     final dateFormat = DateFormat('EEEE, d MMMM yyyy', 'id_ID');
+    final timeFormat = DateFormat('HH:mm', 'id_ID');
+
+    // Format mata uang
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp ',
       decimalDigits: 0,
     );
-    
-    return Scaffold(
-      appBar: const CustomAppBar(
-        title: 'Ringkasan Pemesanan',
-        showBackButton: true,
-      ),
-      body: Form(
-        key: _formKey,
-        child: Column(
-          children: [
-            // Booking Summary
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+
+    // Hitung info dari jadwal
+    final departureTime = DateTime.parse(selectedSchedule.departureTime);
+    final arrivalTime = DateTime.parse(selectedSchedule.arrivalTime);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Informasi Rute & Jadwal
+          _buildSection(
+            title: 'Informasi Rute & Jadwal',
+            child: Column(
+              children: [
+                // Pelabuhan & Waktu
+                Row(
                   children: [
-                    // Route Details
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Detail Perjalanan',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            selectedRoute.origin,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
                             ),
-                            const Divider(),
-                            const SizedBox(height: 8),
-                            _buildInfoRow(
-                              'Rute',
-                              '${route.origin} - ${route.destination}',
-                            ),
-                            const SizedBox(height: 8),
-                            _buildInfoRow(
-                              'Tanggal',
-                              dateFormat.format(date),
-                            ),
-                            const SizedBox(height: 8),
-                            _buildInfoRow(
-                              'Waktu',
-                              '${schedule.departureTime} - ${schedule.arrivalTime}',
-                            ),
-                            const SizedBox(height: 8),
-                            _buildInfoRow(
-                              'Kapal',
-                              schedule.ferry?.name ?? '-',
-                            ),
-                            const SizedBox(height: 8),
-                            _buildInfoRow(
-                              'Durasi',
-                              '${route.duration ~/ 60} jam ${route.duration % 60} menit',
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Passenger Details
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  'Penumpang',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                Text(
-                                  '${passengers.length} orang',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const Divider(),
-                            ...passengers.asMap().entries.map((entry) {
-                              final index = entry.key;
-                              final passenger = entry.value;
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 8.0),
-                                child: _buildInfoRow(
-                                  'Penumpang ${index + 1}',
-                                  passenger['name'],
-                                ),
-                              );
-                            }).toList(),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Vehicle Details (if any)
-                    if (vehicles.isNotEmpty)
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text(
-                                    'Kendaraan',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                  Text(
-                                    '${vehicles.length} unit',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const Divider(),
-                              ...vehicles.map((vehicle) {
-                                String vehicleType;
-                                switch (vehicle['type']) {
-                                  case 'MOTORCYCLE':
-                                    vehicleType = 'Motor';
-                                    break;
-                                  case 'CAR':
-                                    vehicleType = 'Mobil';
-                                    break;
-                                  case 'BUS':
-                                    vehicleType = 'Bus';
-                                    break;
-                                  case 'TRUCK':
-                                    vehicleType = 'Truk';
-                                    break;
-                                  default:
-                                    vehicleType = 'Kendaraan';
-                                }
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 8.0),
-                                  child: _buildInfoRow(
-                                    vehicleType,
-                                    vehicle['license_plate'],
-                                  ),
-                                );
-                              }).toList(),
-                            ],
                           ),
-                        ),
-                      ),
-                    const SizedBox(height: 16),
-                    
-                    // Notes Field
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Catatan Tambahan',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            TextFormField(
-                              controller: _notesController,
-                              maxLines: 3,
-                              decoration: const InputDecoration(
-                                hintText: 'Tambahkan catatan jika diperlukan (opsional)',
-                              ),
-                            ),
-                          ],
-                        ),
+                          const SizedBox(height: 4),
+                          Text(
+                            timeFormat.format(departureTime),
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    
-                    // Price Details
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Rincian Harga',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            const Divider(),
-                            _buildPriceRow(
-                              'Penumpang (${passengers.length} x ${currencyFormat.format(route.basePrice)})',
-                              bookingProvider.passengerCost,
-                            ),
-                            if (vehicles.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              const Divider(height: 1),
-                              const SizedBox(height: 8),
-                              _buildPriceRow(
-                                'Kendaraan',
-                                bookingProvider.vehicleCost,
-                              ),
-                            ],
-                            const SizedBox(height: 16),
-                            _buildPriceRow(
-                              'Total',
-                              bookingProvider.totalCost,
-                              isTotal: true,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
-            // Bottom Bar
-            Container(
-              padding: const EdgeInsets.all(16.0),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 5,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    Column(
                       children: [
-                        const Text(
-                          'Total Pembayaran',
-                          style: TextStyle(
-                            fontSize: 14,
-                          ),
-                        ),
+                        const Icon(Icons.arrow_forward, color: Colors.grey),
                         Text(
-                          currencyFormat.format(bookingProvider.totalCost),
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).primaryColor,
+                          '${selectedRoute.duration} min',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: bookingProvider.isLoading ? null : _createBooking,
-                      child: bookingProvider.isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.0,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text('Lanjutkan ke Pembayaran'),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            selectedRoute.destination,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                            textAlign: TextAlign.end,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            timeFormat.format(arrivalTime),
+                            style: const TextStyle(fontSize: 14),
+                            textAlign: TextAlign.end,
+                          ),
+                        ],
+                      ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Divider(),
+                const SizedBox(height: 12),
+
+                // Tanggal Keberangkatan
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Tanggal Keberangkatan'),
+                    Text(
+                      dateFormat.format(selectedDate),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // Kode Rute
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Kode Rute'),
+                    Text(
+                      selectedRoute.routeCode,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // Nama Kapal
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Nama Kapal'),
+                    Text(
+                      selectedSchedule.ferry?.name ?? 'Tidak diketahui',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Detail Penumpang
+          _buildSection(
+            title: 'Detail Penumpang',
+            child: Column(
+              children: [
+                // Header
+                Row(
+                  children: const [
+                    Expanded(
+                      flex: 5,
+                      child: Text(
+                        'Kategori',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        'Jumlah',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    Expanded(
+                      flex: 4,
+                      child: Text(
+                        'Harga',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                        textAlign: TextAlign.end,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Divider(),
+
+                // Daftar Kategori Penumpang
+                _buildPassengerCategory(
+                  context,
+                  'Dewasa',
+                  'Usia 12 tahun ke atas',
+                  bookingProvider.passengerCounts['adult'] ?? 0,
+                  selectedRoute.basePrice,
+                  currencyFormat,
+                ),
+                
+                if ((bookingProvider.passengerCounts['child'] ?? 0) > 0)
+                  _buildPassengerCategory(
+                    context,
+                    'Anak-anak',
+                    'Usia 2-11 tahun',
+                    bookingProvider.passengerCounts['child'] ?? 0,
+                    selectedRoute.basePrice * 0.75, // 75% dari harga dewasa
+                    currencyFormat,
+                  ),
+                
+                if ((bookingProvider.passengerCounts['infant'] ?? 0) > 0)
+                  _buildPassengerCategory(
+                    context,
+                    'Bayi',
+                    'Usia di bawah 2 tahun',
+                    bookingProvider.passengerCounts['infant'] ?? 0,
+                    selectedRoute.basePrice * 0.1, // 10% dari harga dewasa
+                    currencyFormat,
+                  ),
+
+                const SizedBox(height: 12),
+                const Divider(),
+                const SizedBox(height: 4),
+                
+                // Total Penumpang
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Total Penumpang: ${bookingProvider.totalPassengers}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      currencyFormat.format(bookingProvider.passengerCost),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+
+                if (bookingProvider.vehicles.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Divider(thickness: 2),
+                  const SizedBox(height: 12),
+
+                  // Header Kendaraan
+                  Row(
+                    children: const [
+                      Expanded(
+                        flex: 6,
+                        child: Text(
+                          'Kendaraan',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          'Plat Nomor',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          'Harga',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                          textAlign: TextAlign.end,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Divider(),
+
+                  // Daftar Kendaraan
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: bookingProvider.vehicles.length,
+                    separatorBuilder: (context, index) => const Divider(),
+                    itemBuilder: (context, index) {
+                      final vehicle = bookingProvider.vehicles[index];
+                      double price;
+
+                      switch (vehicle['type']) {
+                        case 'MOTORCYCLE':
+                          price = selectedRoute.motorcyclePrice;
+                          break;
+                        case 'CAR':
+                          price = selectedRoute.carPrice;
+                          break;
+                        case 'BUS':
+                          price = selectedRoute.busPrice;
+                          break;
+                        case 'TRUCK':
+                          price = selectedRoute.truckPrice;
+                          break;
+                        default:
+                          price = 0;
+                      }
+
+                      return Row(
+                        children: [
+                          Expanded(
+                            flex: 6,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${vehicle['brand']} ${vehicle['model']}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  _getVehicleTypeName(vehicle['type']),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            flex: 3,
+                            child: Text(
+                              vehicle['license_plate'],
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              currencyFormat.format(price),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.end,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ],
-              ),
+              ],
             ),
+          ),
+          const SizedBox(height: 16),
+
+          // Rincian Biaya
+          _buildSection(
+            title: 'Rincian Biaya',
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Penumpang (${bookingProvider.totalPassengers} orang)',
+                    ),
+                    Text(currencyFormat.format(bookingProvider.passengerCost)),
+                  ],
+                ),
+                if (bookingProvider.vehicles.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Kendaraan (${bookingProvider.vehicles.length} unit)',
+                      ),
+                      Text(currencyFormat.format(bookingProvider.vehicleCost)),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 8),
+                const Divider(),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Total Pembayaran',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      currencyFormat.format(bookingProvider.totalCost),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).primaryColor,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          _buildActionButtons(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPassengerCategory(
+    BuildContext context,
+    String title,
+    String subtitle,
+    int count,
+    double price,
+    NumberFormat formatter,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 5,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              count.toString(),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          Expanded(
+            flex: 4,
+            child: Text(
+              formatter.format(price * count),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+              textAlign: TextAlign.end,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSection({required String title, required Widget child}) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            child,
           ],
         ),
       ),
     );
   }
-  
-  Widget _buildInfoRow(String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+
+  Widget _buildActionButtons(BuildContext context) {
+    return Column(
       children: [
+        // Pesan Tiket
         SizedBox(
-          width: 120,
-          child: Text(
-            label,
-            style: const TextStyle(
-              color: Colors.grey,
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed:
+                _isLoading || _isSuccessful
+                    ? null
+                    : () => _createBooking(context),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              backgroundColor: Theme.of(context).primaryColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              _isSuccessful ? 'Pemesanan Berhasil' : 'Pesan Tiket',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
         ),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
+        const SizedBox(height: 12),
+        // Ubah Data
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed:
+                _isLoading || _isSuccessful
+                    ? null
+                    : () => Navigator.of(context).pop(),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              side: BorderSide(color: Theme.of(context).primaryColor),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text(
+              'Ubah Data',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
         ),
       ],
     );
   }
-  
-  Widget _buildPriceRow(String label, double price, {bool isTotal = false}) {
-    final currencyFormat = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: 'Rp ',
-      decimalDigits: 0,
+
+  // Konversi tipe kendaraan ke nama yang lebih mudah dibaca
+  String _getVehicleTypeName(String type) {
+    switch (type) {
+      case 'MOTORCYCLE':
+        return 'Motor';
+      case 'CAR':
+        return 'Mobil';
+      case 'BUS':
+        return 'Bus';
+      case 'TRUCK':
+        return 'Truk';
+      default:
+        return type;
+    }
+  }
+
+  // Proses pembuatan booking
+  Future<void> _createBooking(BuildContext context) async {
+    final bookingProvider = Provider.of<BookingProvider>(
+      context,
+      listen: false,
     );
-    
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontWeight: isTotal ? FontWeight.bold : null,
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    // Create booking di API
+    final success = await bookingProvider.createBooking();
+
+    setState(() {
+      _isLoading = false;
+      _isSuccessful = success;
+    });
+
+    if (success) {
+      // PERBAIKAN: Cek apakah booking berhasil, maka lanjut ke halaman metode pembayaran
+      Navigator.pushNamed(context, '/booking/payment-method');
+    } else {
+      // Tampilkan error
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              bookingProvider.errorMessage ?? 'Gagal membuat pemesanan',
+            ),
+            backgroundColor: Colors.red,
           ),
-        ),
-        Text(
-          currencyFormat.format(price),
-          style: TextStyle(
-            fontWeight: isTotal ? FontWeight.bold : null,
-            color: isTotal ? Theme.of(context).primaryColor : null,
-          ),
-        ),
-      ],
-    );
+        );
+      }
+    }
   }
 }

@@ -6,14 +6,24 @@ class ScheduleApi {
 
   // Get schedules for a route and date
   Future<List<Schedule>> getSchedules(int routeId, String date) async {
-    final response = await _apiService.get('schedules?route_id=$routeId&date=$date');
+    try {
+      print('DEBUG: API Request - GET schedules?route_id=$routeId&date=$date');
+      final response = await _apiService.get(
+        'schedules?route_id=$routeId&date=$date',
+      );
+      print('DEBUG: API Response - success: ${response['success']}');
 
-    if (response['success']) {
-      return (response['data'] as List)
-          .map((json) => Schedule.fromJson(json))
-          .toList();
-    } else {
-      throw Exception(response['message']);
+      if (response['success']) {
+        final data = response['data'] as List;
+        print('DEBUG: Received ${data.length} schedule records');
+        return data.map((json) => Schedule.fromJson(json)).toList();
+      } else {
+        print('ERROR: API returned error - ${response['message']}');
+        throw Exception(response['message']);
+      }
+    } catch (e) {
+      print('ERROR: Exception in getSchedules API: $e');
+      throw Exception('Gagal mengambil jadwal: $e');
     }
   }
 

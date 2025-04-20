@@ -7,6 +7,7 @@ use App\Models\Operator;
 use App\Models\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 class OperatorController extends Controller
@@ -51,6 +52,14 @@ class OperatorController extends Controller
 
         return redirect()->route('admin.operators.index')
             ->with('success', 'Operator berhasil ditambahkan');
+    }
+
+    // Tambahkan method show
+    public function show($id)
+    {
+        $operator = Operator::findOrFail($id);
+        $routes = Route::whereIn('id', is_array($operator->assigned_routes) ? $operator->assigned_routes : [])->get();
+        return view('admin.operators.show', compact('operator', 'routes'));
     }
 
     public function edit($id)

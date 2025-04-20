@@ -6,7 +6,7 @@
     <div class="mb-8">
         <h1 class="text-3xl font-bold text-gray-800">Dashboard Admin</h1>
         <p class="mt-2 text-gray-600">
-            Selamat datang, <span class="font-medium">{{ Auth::guard('admin')->user()->name }}</span>!
+            Selamat datang, <span class="font-medium">{{ Auth::guard('admin')->user()->name ?? 'Admin' }}</span>!
             <span class="text-sm ml-2 text-gray-500">{{ now()->format('l, d F Y') }}</span>
         </p>
     </div>
@@ -24,9 +24,11 @@
                         <p class="text-sm font-medium text-gray-500">Total Pengguna</p>
                         <div class="flex items-end">
                             <p class="text-2xl font-bold text-gray-800">{{ $users_count ?? 0 }}</p>
-                            <p class="ml-2 text-xs text-green-500 flex items-center">
-                                <i class="fas fa-arrow-up mr-1"></i> 12%
+                            @if(isset($userGrowth) && $userGrowth != 0)
+                            <p class="ml-2 text-xs {{ $userGrowth > 0 ? 'text-green-500' : 'text-red-500' }} flex items-center">
+                                <i class="fas fa-arrow-{{ $userGrowth > 0 ? 'up' : 'down' }} mr-1"></i> {{ abs($userGrowth) }}%
                             </p>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -127,9 +129,15 @@
             </div>
             <div class="bg-gray-50 px-5 py-3 flex items-center justify-between border-t border-gray-100">
                 <span class="text-xs text-gray-500">Dibandingkan bulan lalu</span>
-                <span class="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700">
-                    <i class="fas fa-arrow-up text-xs mr-1"></i>8.5%
+                @if(isset($bookingGrowth))
+                <span class="text-xs font-medium px-2 py-1 rounded-full {{ $bookingGrowth >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' }}">
+                    <i class="fas fa-arrow-{{ $bookingGrowth >= 0 ? 'up' : 'down' }} text-xs mr-1"></i>{{ abs($bookingGrowth) }}%
                 </span>
+                @else
+                <span class="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-700">
+                    -
+                </span>
+                @endif
             </div>
         </div>
 
@@ -230,23 +238,23 @@
                                     {{ $booking->booking_code ?? 'BK-'.rand(1000,9999) }}
                                 </td>
                                 <td class="py-3 px-4 text-sm text-gray-700">
-                                    {{ $booking->user->name ?? 'John Doe' }}
+                                    {{ $booking->user->name ?? 'Pengguna' }}
                                 </td>
                                 <td class="py-3 px-4 text-sm text-gray-500">
                                     {{ isset($booking->booking_date) ? \Carbon\Carbon::parse($booking->booking_date)->format('d M Y') : now()->format('d M Y') }}
                                 </td>
                                 <td class="py-3 px-4 text-sm font-medium text-gray-700">
-                                    Rp {{ number_format($booking->total_amount ?? rand(100000, 500000), 0, ',', '.') }}
+                                    Rp {{ number_format($booking->total_amount ?? 0, 0, ',', '.') }}
                                 </td>
                                 <td class="py-3 px-4">
                                     @php
-                                        $status = $booking->status ?? ['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED'][rand(0, 3)];
+                                        $status = $booking->status ?? 'PENDING';
                                         $statusClass = [
                                             'PENDING' => 'bg-blue-100 text-blue-800',
                                             'CONFIRMED' => 'bg-green-100 text-green-800',
                                             'CANCELLED' => 'bg-red-100 text-red-800',
                                             'COMPLETED' => 'bg-gray-100 text-gray-800',
-                                        ][$status];
+                                        ][$status] ?? 'bg-gray-100 text-gray-800';
                                     @endphp
                                     <span class="px-2 py-1 text-xs font-medium rounded-full {{ $statusClass }}">
                                         {{ $status }}
@@ -275,29 +283,20 @@
 @section('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    // Weekly booking data
-    const weeklyData = [
-        @foreach($weekly_booking_data ?? [] as $day => $count)
-            {{ $count }},
-        @endforeach
-    ];
-
-    const labels = [
-        @foreach($weekly_booking_labels ?? [] as $label)
-            '{{ $label }}',
-        @endforeach
-    ];
-
     document.addEventListener('DOMContentLoaded', function() {
         const ctx = document.getElementById('weeklyBookingChart').getContext('2d');
+
+        // Pastikan data tersedia dengan default fallback
+        const chartLabels = {!! json_encode($weekly_booking_labels ?? ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']) !!};
+        const chartData = {!! json_encode($weekly_booking_data ?? [0, 0, 0, 0, 0, 0, 0]) !!};
 
         new Chart(ctx, {
             type: 'line',
             data: {
-                labels: labels.length > 0 ? labels : ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'],
+                labels: chartLabels,
                 datasets: [{
                     label: 'Jumlah Booking',
-                    data: weeklyData.length > 0 ? weeklyData : [5, 12, 8, 16, 10, 14, 18],
+                    data: chartData,
                     borderColor: 'rgb(79, 70, 229)',
                     backgroundColor: 'rgba(79, 70, 229, 0.1)',
                     tension: 0.3,
@@ -338,7 +337,7 @@
                             }
                         },
                         grid: {
-                            color: 'rgba(243, 244, 246, 1)', // Light gray grid lines
+                            color: 'rgba(243, 244, 246, 1)',
                             borderDash: [5, 5]
                         }
                     },

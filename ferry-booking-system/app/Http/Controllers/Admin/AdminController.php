@@ -3,100 +3,109 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Admin;
+use App\Models\User;
+use App\Models\Ferry;
+use App\Models\Route;
+use App\Models\Schedule;
+use App\Models\Booking;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
+use Carbon\Carbon;
 
 class AdminController extends Controller
 {
-    public function index()
+    public function dashboard()
     {
-        $admins = Admin::paginate(10);
-        return view('admin.admins.index', compact('admins'));
-    }
+        // Statistik dasar
+        $users_count = User::count();
+        $ferries_count = Ferry::count();
+        $routes_count = Route::count();
+        $active_schedules = Schedule::where('status', 'ACTIVE')->count();
 
-    public function create()
-    {
-        return view('admin.admins.create');
-    }
+        // Booking bulan ini dan pendapatan
+        $startOfMonth = Carbon::now()->startOfMonth();
+        $endOfMonth = Carbon::now()->endOfMonth();
 
-    public function store(Request $request)
-    {
-        $request->validate([
-            'name' => 'required|string|max:191',
-            'email' => 'required|string|email|max:191|unique:admins',
-            'password' => 'required|string|min:8|confirmed',
-            'role' => 'required|in:SUPER_ADMIN,ADMIN',
-            'permissions' => 'nullable|array',
-        ]);
+        $monthly_bookings = Booking::whereBetween('created_at', [$startOfMonth, $endOfMonth])->count();
+        $monthly_income = Booking::whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->whereIn('status', ['CONFIRMED', 'COMPLETED'])
+            ->sum('total_amount');
 
-        $admin = new Admin([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role' => $request->role,
-            'permissions' => $request->permissions ?? null,
-        ]);
+        // Perbandingan dengan bulan lalu
+        $lastMonthStart = Carbon::now()->subMonth()->startOfMonth();
+        $lastMonthEnd = Carbon::now()->subMonth()->endOfMonth();
 
-        $admin->save();
+        $lastMonthBookings = Booking::whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])->count();
+        $lastMonthIncome = Booking::whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])
+            ->whereIn('status', ['CONFIRMED', 'COMPLETED'])
+            ->sum('total_amount');
 
-        return redirect()->route('admin.admins.index')
-            ->with('success', 'Admin berhasil ditambahkan');
-    }
+        $bookingGrowth = $lastMonthBookings > 0
+            ? round((($monthly_bookings - $lastMonthBookings) / $lastMonthBookings) * 100, 1)
+            : 0;
+        $incomeGrowth = $lastMonthIncome > 0
+            ? round((($monthly_income - $lastMonthIncome) / $lastMonthIncome) * 100, 1)
+            : 0;
 
-    public function edit($id)
-    {
-        $admin = Admin::findOrFail($id);
-        return view('admin.admins.edit', compact('admin'));
-    }
+        // Data booking 7 hari terakhir untuk grafik
+        $startDate = Carbon::now()->subDays(6);
+        $weekly_booking_data = [];
+        $weekly_booking_labels = [];
 
-    public function update(Request $request, $id)
-    {
-        $admin = Admin::findOrFail($id);
+        for ($i = 0; $i <= 6; $i++) {
+            $date = $startDate->copy()->addDays($i);
+            $count = Booking::whereDate('created_at', $date)->count();
 
-        $request->validate([
-            'name' => 'required|string|max:191',
-            'email' => [
-                'required',
-                'string',
-                'email',
-                'max:191',
-                Rule::unique('admins')->ignore($admin->id),
-            ],
-            'password' => 'nullable|string|min:8|confirmed',
-            'role' => 'required|in:SUPER_ADMIN,ADMIN',
-            'permissions' => 'nullable|array',
-        ]);
-
-        $admin->name = $request->name;
-        $admin->email = $request->email;
-        $admin->role = $request->role;
-        $admin->permissions = $request->permissions ?? null;
-
-        if ($request->filled('password')) {
-            $admin->password = Hash::make($request->password);
+            $weekly_booking_data[] = $count;
+            // Translasi ke bahasa Indonesia
+            $dayNames = [
+                'Mon' => 'Sen',
+                'Tue' => 'Sel',
+                'Wed' => 'Rab',
+                'Thu' => 'Kam',
+                'Fri' => 'Jum',
+                'Sat' => 'Sab',
+                'Sun' => 'Min'
+            ];
+            $weekly_booking_labels[] = $dayNames[$date->format('D')];
         }
 
-        $admin->save();
+        // Status booking
+        $pending_payment_count = Booking::where('status', 'PENDING')->count();
+        $not_checked_in_count = Booking::where('status', 'CONFIRMED')
+            ->whereDate('booking_date', '>=', Carbon::today())
+            ->count();
+        $checked_in_count = Booking::where('status', 'COMPLETED')->count();
+        $cancelled_count = Booking::where('status', 'CANCELLED')->count();
 
-        return redirect()->route('admin.admins.index')
-            ->with('success', 'Admin berhasil diperbarui');
-    }
+        // Booking terbaru
+        $latest_bookings = Booking::with('user', 'schedule.route')
+            ->orderBy('created_at', 'desc')
+            ->take(5)
+            ->get();
 
-    public function destroy($id)
-    {
-        $admin = Admin::findOrFail($id);
+        // Pertumbuhan jumlah user
+        $lastMonthUsers = User::whereDate('created_at', '<', $startOfMonth)->count();
+        $userGrowth = $lastMonthUsers > 0
+            ? round((($users_count - $lastMonthUsers) / $lastMonthUsers) * 100, 1)
+            : 0;
 
-        // Jangan izinkan admin menghapus dirinya sendiri
-        if ($admin->id === auth('admin')->user()->id) {
-            return redirect()->route('admin.admins.index')
-                ->with('error', 'Anda tidak dapat menghapus akun Anda sendiri');
-        }
-
-        $admin->delete();
-
-        return redirect()->route('admin.admins.index')
-            ->with('success', 'Admin berhasil dihapus');
+        return view('admin.dashboard', compact(
+            'users_count',
+            'ferries_count',
+            'routes_count',
+            'active_schedules',
+            'monthly_bookings',
+            'monthly_income',
+            'bookingGrowth',
+            'incomeGrowth',
+            'userGrowth',
+            'weekly_booking_data',
+            'weekly_booking_labels',
+            'pending_payment_count',
+            'not_checked_in_count',
+            'checked_in_count',
+            'cancelled_count',
+            'latest_bookings'
+        ));
     }
 }

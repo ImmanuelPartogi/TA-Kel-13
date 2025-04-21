@@ -51,6 +51,27 @@ class Booking {
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
+    // Parse payments dengan validasi
+    List<Payment>? parsePayments() {
+      if (json['payments'] == null) return null;
+      
+      try {
+        final paymentsList = json['payments'] as List;
+        return paymentsList.map((payment) => Payment.fromJson(payment)).toList();
+      } catch (e) {
+        print('Error parsing payments: $e');
+        return null;
+      }
+    }
+    
+    // Mendapatkan payments
+    final List<Payment>? parsedPayments = parsePayments();
+    
+    // Mendapatkan payment terakhir untuk inisialisasi properti transient
+    final Payment? latestPayment = parsedPayments != null && parsedPayments.isNotEmpty
+        ? parsedPayments.first
+        : null;
+    
     return Booking(
       id: json['id'],
       bookingCode: json['booking_code'],
@@ -62,20 +83,21 @@ class Booking {
       totalAmount: double.parse(json['total_amount'].toString()),
       status: json['status'],
       cancellationReason: json['cancellation_reason'],
-      bookedBy: json['booked_by'],
+      bookedBy: json['booked_by'] ?? 'MOBILE_APP',
       bookingChannel: json['booking_channel'],
       notes: json['notes'],
       createdAt: json['created_at'],
       schedule: json['schedule'] != null ? Schedule.fromJson(json['schedule']) : null,
-      payments: json['payments'] != null
-          ? List<Payment>.from(json['payments'].map((x) => Payment.fromJson(x)))
-          : null,
+      payments: parsedPayments,
       tickets: json['tickets'] != null
           ? List<Ticket>.from(json['tickets'].map((x) => Ticket.fromJson(x)))
           : null,
       vehicles: json['vehicles'] != null
           ? List<Vehicle>.from(json['vehicles'].map((x) => Vehicle.fromJson(x)))
           : null,
+      // Inisialisasi properti transient dari payment terakhir
+      paymentMethod: latestPayment?.paymentMethod,
+      paymentType: latestPayment?.paymentType,
     );
   }
   
@@ -93,10 +115,69 @@ class Booking {
   // Mendapatkan waktu kedaluwarsa dari payment terakhir
   DateTime? get expiryTime {
     final payment = latestPayment;
-    if (payment == null) {
-      return null;
+    return payment?.expiryTime;
+  }
+  
+  // Mendapatkan status pembayaran yang user-friendly
+  String get statusDisplay {
+    switch (status) {
+      case 'PENDING':
+        return 'Menunggu Pembayaran';
+      case 'CONFIRMED':
+        return 'Terkonfirmasi';
+      case 'CANCELLED':
+        return 'Dibatalkan';
+      case 'COMPLETED':
+        return 'Selesai';
+      case 'REFUNDED':
+        return 'Dana Dikembalikan';
+      case 'RESCHEDULED':
+        return 'Dijadwalkan Ulang';
+      default:
+        return status;
     }
-    
-    return payment.expiryTime;
+  }
+  
+  // Mendapatkan warna untuk status
+  // Catatan: Gunakan Colors dari package:flutter/material.dart
+  // di file yang menggunakan metode ini
+  getStatusColor() {
+    switch (status) {
+      case 'PENDING':
+        return 0xFFFFA726; // Colors.orange[400]
+      case 'CONFIRMED':
+        return 0xFF66BB6A; // Colors.green[400]
+      case 'CANCELLED':
+        return 0xFFEF5350; // Colors.red[400]
+      case 'COMPLETED':
+        return 0xFF42A5F5; // Colors.blue[400]
+      case 'REFUNDED':
+        return 0xFF9575CD; // Colors.deepPurple[300]
+      case 'RESCHEDULED':
+        return 0xFF26A69A; // Colors.teal[400]
+      default:
+        return 0xFF9E9E9E; // Colors.grey[500]
+    }
+  }
+  
+  // Cek apakah booking sudah dibayar
+  bool get isPaid {
+    return status == 'CONFIRMED' || status == 'COMPLETED';
+  }
+  
+  // Cek apakah booking masih menunggu pembayaran
+  bool get isPending {
+    return status == 'PENDING';
+  }
+  
+  // Cek apakah booking sudah dibatalkan
+  bool get isCancelled {
+    return status == 'CANCELLED';
+  }
+  
+  // Update properti payment method dan payment type
+  void updatePaymentInfo(String method, String type) {
+    paymentMethod = method;
+    paymentType = type;
   }
 }

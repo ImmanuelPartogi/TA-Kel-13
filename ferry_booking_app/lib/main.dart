@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:ferry_booking_app/models/route.dart';
 import 'package:ferry_booking_app/screens/booking/payment_method_screen.dart';
 import 'package:ferry_booking_app/screens/booking/schedule_selection_screen.dart';
@@ -27,12 +29,34 @@ import 'package:ferry_booking_app/screens/tickets/ticket_detail_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_web/webview_flutter_web.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Handler untuk error yang tidak tertangani
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    print('Flutter Error: ${details.exception}');
+    print('Stack trace: ${details.stack}');
+    // Tambahkan logging/analytics disini jika perlu
+  };
+
+  // Handler untuk error asynchronous
+  PlatformDispatcher.instance.onError = (error, stack) {
+    print('Uncaught async error: $error');
+    print('Stack trace: $stack');
+    return true; // Return true untuk mencegah propagasi error
+  };
+
   // Inisialisasi locale data untuk format tanggal
   await initializeDateFormatting('id_ID', null);
+
+  if (kIsWeb) {
+    WebViewPlatform.instance = WebWebViewPlatform();
+  }
 
   // Initialize device ID if it doesn't exist
   final prefs = await SharedPreferences.getInstance();

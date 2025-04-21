@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../../providers/booking_provider.dart';
 import '../../widgets/custom_appbar.dart';
-import 'package:intl/intl.dart';
+import 'dart:developer' as developer;
 
+/// Screen untuk memilih metode pembayaran yang sudah diperbaiki
 class PaymentMethodScreen extends StatefulWidget {
   const PaymentMethodScreen({Key? key}) : super(key: key);
 
@@ -16,6 +18,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
   String? _selectedPaymentType;
   bool _isLoading = false;
   bool _isCreatingBooking = false;
+  bool _hasFetchedBooking = false;
 
   // Data metode pembayaran dengan path yang sesuai dengan struktur asset
   final Map<String, List<Map<String, dynamic>>> _paymentMethods = {
@@ -91,47 +94,140 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
     });
   }
 
-  // Cek dan persiapkan data booking
+  // Cek dan persiapkan data booking dengan penanganan error yang lebih baik
   void _checkBookingData() {
+    if (_hasFetchedBooking) return; // Hindari multiple fetch
+
     final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
     
-    // Cek jika sudah ada metode pembayaran yang tersimpan
-    if (bookingProvider.currentBooking?.paymentMethod != null) {
-      setState(() {
-        _selectedPaymentMethod = bookingProvider.currentBooking?.paymentMethod;
-        _selectedPaymentType = bookingProvider.currentBooking?.paymentType;
-      });
+    setState(() {
+      _isCreatingBooking = true;
+      _hasFetchedBooking = true;
+    });
+
+    // Log untuk debugging
+    developer.log('Checking booking data...');
+    developer.log('Has active booking: ${bookingProvider.hasActiveBooking}');
+    if (bookingProvider.currentBooking != null) {
+      developer.log('Current booking code: ${bookingProvider.currentBooking?.bookingCode}');
+      
+      // Debug payment data
+      if (bookingProvider.currentBooking?.payments != null) {
+        final payments = bookingProvider.currentBooking?.payments;
+        developer.log('Payments count: ${payments?.length}');
+        if (payments != null && payments.isNotEmpty) {
+          final latestPayment = payments.first;
+          developer.log('Latest payment data: paymentMethod=${latestPayment.paymentMethod}, paymentType=${latestPayment.paymentType}');
+        }
+      }
     }
     
-    // Jika booking belum ada, coba buat booking sementara
-    if (!bookingProvider.hasActiveBooking) {
-      setState(() {
-        _isCreatingBooking = true;
-      });
+    try {
+      // Cek jika sudah ada metode pembayaran yang tersimpan
+      if (bookingProvider.currentBooking?.paymentMethod != null) {
+        setState(() {
+          _selectedPaymentMethod = bookingProvider.currentBooking?.paymentMethod;
+          // Gunakan payment_channel sebagai paymentType
+          _selectedPaymentType = bookingProvider.currentBooking?.paymentType;
+        });
+        developer.log('Payment method loaded: $_selectedPaymentMethod, $_selectedPaymentType');
+      } else if (bookingProvider.currentBooking?.latestPayment != null) {
+        // Jika tidak ada payment method di booking, coba ambil dari latestPayment
+        final latestPayment = bookingProvider.currentBooking?.latestPayment;
+        setState(() {
+          _selectedPaymentMethod = latestPayment?.paymentMethod;
+          _selectedPaymentType = latestPayment?.paymentType;
+        });
+        developer.log('Payment method loaded from latest payment: $_selectedPaymentMethod, $_selectedPaymentType');
+      }
       
-      // Coba buat booking sementara jika ada data rute dan jadwal
-      bookingProvider.createTemporaryBooking();
-      
-      setState(() {
-        _isCreatingBooking = false;
-      });
-      
-      // Jika masih tidak ada booking, tampilkan pesan error
+      // Jika booking belum ada, coba buat booking sementara
       if (!bookingProvider.hasActiveBooking) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Data pemesanan tidak lengkap. Silahkan lengkapi pemesanan terlebih dahulu.'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
+        developer.log('No active booking, creating temporary booking...');
         
-        // Kembali ke halaman sebelumnya
-        Future.delayed(const Duration(seconds: 1), () {
-          Navigator.of(context).pop();
+        // Coba buat booking sementara jika ada data rute dan jadwal
+        bookingProvider.createTemporaryBooking();
+        
+        developer.log('After createTemporaryBooking: ${bookingProvider.hasActiveBooking}');
+        
+        // Jika masih tidak ada booking, cek booking terbaru dari history
+        if (!bookingProvider.hasActiveBooking) {
+          _checkRecentBooking(bookingProvider);
+        }
+      }
+    } catch (e) {
+      developer.log('Error in _checkBookingData: $e');
+      _showErrorMessage('Terjadi kesalahan saat mempersiapkan data pembayaran: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCreatingBooking = false;
         });
       }
     }
+  }
+
+  // Metode untuk cek booking terbaru sebagai fallback
+  Future<void> _checkRecentBooking(BookingProvider bookingProvider) async {
+    try {
+      developer.log('Checking recent bookings...');
+      await bookingProvider.getBookings();
+      
+      if (bookingProvider.bookings != null && bookingProvider.bookings!.isNotEmpty) {
+        developer.log('Found ${bookingProvider.bookings!.length} bookings in history');
+        
+        // Filter booking dengan status PENDING
+        final pendingBookings = bookingProvider.bookings!
+            .where((booking) => booking.status == 'PENDING')
+            .toList();
+        
+        if (pendingBookings.isNotEmpty) {
+          developer.log('Found pending booking with code: ${pendingBookings.first.bookingCode}');
+          await bookingProvider.getBookingDetails(pendingBookings.first.id);
+          
+          // Update UI jika berhasil mendapatkan booking
+          if (bookingProvider.hasActiveBooking) {
+            setState(() {}); // Refresh UI
+            return;
+          }
+        }
+      }
+      
+      // Jika tidak ditemukan booking yang sesuai
+      developer.log('No suitable booking found in history');
+      if (mounted) {
+        _showNoBookingMessage();
+      }
+    } catch (e) {
+      developer.log('Error checking recent booking: $e');
+    }
+  }
+  
+  void _showNoBookingMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Data pemesanan tidak ditemukan. Silakan buat pemesanan baru.'),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 3),
+      ),
+    );
+    
+    // Kembali ke halaman sebelumnya setelah delay
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) Navigator.of(context).pop();
+    });
+  }
+
+  void _showErrorMessage(String message) {
+    if (!mounted) return;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   @override
@@ -256,10 +352,14 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
             // Opsional: Simpan ke provider untuk digunakan nanti
             final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
             if (bookingProvider.currentBooking != null) {
-              bookingProvider.updatePaymentMethod(
-                _selectedPaymentMethod!,
-                _selectedPaymentType!,
-              );
+              try {
+                bookingProvider.updatePaymentMethod(
+                  _selectedPaymentMethod!,
+                  _selectedPaymentType!,
+                );
+              } catch (e) {
+                developer.log('Error updating payment method: $e');
+              }
             }
           },
           borderRadius: BorderRadius.circular(8),
@@ -467,26 +567,53 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
-    
-    // Simpan pilihan metode pembayaran
-    bookingProvider.updatePaymentMethod(_selectedPaymentMethod!, _selectedPaymentType!);
-    
-    // Navigasi ke halaman pembayaran dengan metode yang dipilih
-    setState(() {
-      _isLoading = false;
-    });
-    
-    // Navigasi ke halaman pembayaran
-    Navigator.pushNamed(
-      context,
-      '/booking/payment',
-      arguments: {
-        'paymentMethod': _selectedPaymentMethod,
-        'paymentType': _selectedPaymentType,
-      },
-    );
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+      
+      developer.log('Processing payment with method: $_selectedPaymentMethod, type: $_selectedPaymentType');
+      developer.log('Current booking before update: ${bookingProvider.currentBooking?.bookingCode}');
+      
+      // Simpan pilihan metode pembayaran
+      bookingProvider.updatePaymentMethod(
+        _selectedPaymentMethod ?? 'virtual_account', 
+        _selectedPaymentType ?? 'virtual_account'
+      );
+      
+      setState(() {
+        _isLoading = false;
+      });
+      
+      // Log untuk debugging
+      developer.log('Navigating to payment screen with parameters:');
+      developer.log('- paymentMethod: $_selectedPaymentMethod');
+      developer.log('- paymentType: $_selectedPaymentType');
+      
+      // Pastikan tidak ada null saat navigasi
+      final args = {
+        'paymentMethod': _selectedPaymentMethod ?? 'bca',
+        'paymentType': _selectedPaymentType ?? 'virtual_account',
+      };
+      
+      // Navigasi ke halaman pembayaran
+      Navigator.pushNamed(
+        context,
+        '/booking/payment',
+        arguments: args,
+      );
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      
+      developer.log('Error in _processPayment: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Terjadi kesalahan: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

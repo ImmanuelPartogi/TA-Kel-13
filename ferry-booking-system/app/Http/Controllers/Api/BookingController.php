@@ -390,8 +390,10 @@ class BookingController extends Controller
             $payment->save();
 
             // Buat Snap Token Midtrans
+            // Buat Snap Token Midtrans
             $snapToken = $this->midtransService->createTransaction($booking);
-            $payment->transaction_id = $snapToken;
+            $payment->snap_token = $snapToken;  // Simpan sebagai snap_token
+            // transaction_id akan diupdate setelah mendapat notifikasi dari Midtrans
             $payment->save();
 
             Log::info('Payment created', [

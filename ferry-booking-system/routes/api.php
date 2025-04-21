@@ -16,8 +16,10 @@ use App\Http\Controllers\Api\ChatbotController;
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
 
-// Midtrans callback
-Route::post('/payments/notification', [PaymentController::class, 'notification']);
+// Midtrans callback - PERBAIKAN: ubah path ke /api/payments/notification
+Route::post('/payments/notification', [PaymentController::class, 'notification'])
+    ->withoutMiddleware(['auth:sanctum', 'throttle:api'])
+    ->name('payment.notification');
 
 // Chatbot routes yang dapat diakses publik
 Route::prefix('chatbot')->group(function () {
@@ -48,7 +50,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/bookings/{id}/cancel', [BookingController::class, 'cancel']);
 
     // Payments
+    Route::post('/payments/{bookingCode}/create', [PaymentController::class, 'create']);
     Route::get('/payments/{bookingCode}/status', [PaymentController::class, 'status']);
+    Route::post('/payments/{bookingCode}/cancel', [PaymentController::class, 'cancel']);
+
+    // TAMBAHAN: Endpoint untuk debugging
+    Route::get('/payments/debug/{bookingCode}', [PaymentController::class, 'debug']);
 
     // Tickets
     Route::get('/tickets', [TicketController::class, 'index']);
@@ -78,3 +85,6 @@ Route::post('/test', function (Request $request) {
         'data_dikirim' => $request->all(),
     ]);
 });
+
+// HAPUS: Duplikasi route ini
+// Route::post('/payments/notification', [PaymentController::class, 'notification']);

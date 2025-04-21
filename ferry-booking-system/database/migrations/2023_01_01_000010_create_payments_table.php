@@ -15,6 +15,7 @@ return new class extends Migration
             $table->enum('payment_method', ['BANK_TRANSFER', 'VIRTUAL_ACCOUNT', 'E_WALLET', 'CREDIT_CARD', 'CASH']);
             $table->string('payment_channel', 50)->comment('BCA, MANDIRI, BNI, OVO, DANA, dll');
             $table->string('transaction_id', 100)->nullable()->comment('ID Transaksi dari Payment Gateway');
+            $table->string('snap_token', 100)->nullable()->comment('Snap Token dari Midtrans untuk frontend');
             $table->string('external_reference', 100)->nullable()->comment('Referensi eksternal dari payment gateway');
             $table->enum('status', ['PENDING', 'SUCCESS', 'FAILED', 'EXPIRED', 'REFUNDED', 'PARTIAL_REFUND'])->default('PENDING');
             $table->timestamp('payment_date')->nullable();

@@ -599,29 +599,81 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
       _isLoading = true;
     });
 
-    // Create booking di API
-    final success = await bookingProvider.createBooking();
+    try {
+      // Create booking di API
+      final success = await bookingProvider.createBooking();
 
-    setState(() {
-      _isLoading = false;
-      _isSuccessful = success;
-    });
+      setState(() {
+        _isLoading = false;
+        _isSuccessful = success;
+      });
 
-    if (success) {
-      // PERBAIKAN: Cek apakah booking berhasil, maka lanjut ke halaman metode pembayaran
-      Navigator.pushNamed(context, '/booking/payment-method');
-    } else {
-      // Tampilkan error
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              bookingProvider.errorMessage ?? 'Gagal membuat pemesanan',
-            ),
-            backgroundColor: Colors.red,
-          ),
-        );
+      if (success && mounted) {
+        try {
+          // Tambahkan delay kecil untuk memastikan data booking sudah terupdate
+          await Future.delayed(const Duration(milliseconds: 500));
+
+          // Pastikan currentBooking tidak null dan dapat diakses dengan aman
+          if (bookingProvider.currentBooking != null) {
+            Navigator.pushNamed(context, '/booking/payment-method');
+          } else {
+            // Jika tidak ada booking, tampilkan pesan alternatif
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Pemesanan berhasil! Silakan cek di riwayat pemesanan Anda.',
+                ),
+                backgroundColor: Colors.green,
+              ),
+            );
+
+            // Navigasi ke halaman booking history
+            Future.delayed(const Duration(seconds: 2), () {
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                '/bookings',
+                (route) => route.settings.name == '/home',
+              );
+            });
+          }
+        } catch (e) {
+          _handleNavigationError(context, e.toString());
+        }
+      } else if (mounted) {
+        _showErrorMessage(context, bookingProvider.errorMessage);
       }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      _handleNavigationError(context, e.toString());
     }
+  }
+
+  // Metode bantuan untuk menangani error navigasi
+  void _handleNavigationError(BuildContext context, String error) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Terjadi kesalahan: $error'),
+        backgroundColor: Colors.red,
+        action: SnackBarAction(
+          label: 'Lihat Bookings',
+          onPressed: () {
+            Navigator.pushNamed(context, '/bookings');
+          },
+          textColor: Colors.white,
+        ),
+      ),
+    );
+  }
+
+  // Metode bantuan untuk menampilkan pesan error
+  void _showErrorMessage(BuildContext context, String? message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message ?? 'Gagal membuat pemesanan'),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 }

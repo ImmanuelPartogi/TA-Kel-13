@@ -70,7 +70,7 @@ class BookingController extends Controller
             'booking_date' => $request->booking_date,
         ]);
 
-        // FIX: Perbaikan aturan validasi untuk field vehicles
+        // FIX: Perbaikan aturan validasi untuk field vehicles dan passengers
         $validator = Validator::make($request->all(), [
             'schedule_id' => 'required|exists:schedules,id',
             'booking_date' => 'required|date|after_or_equal:today',
@@ -82,8 +82,12 @@ class BookingController extends Controller
             'vehicles.*.license_plate' => 'required_with:vehicles|string|max:20',
             'passengers' => 'required|array|min:1',
             'passengers.*.name' => 'required|string|max:191',
-            'passengers.*.id_number' => 'required|string|max:30',
+            'passengers.*.id_number' => 'nullable|string|max:30', // PERUBAHAN: required -> nullable
             'passengers.*.id_type' => 'required|in:KTP,SIM,PASPOR',
+            'passenger_categories' => 'nullable|array', // TAMBAHAN: validasi untuk passenger_categories
+            'passenger_categories.adult' => 'nullable|integer|min:0',
+            'passenger_categories.child' => 'nullable|integer|min:0',
+            'passenger_categories.infant' => 'nullable|integer|min:0',
         ]);
 
         if ($validator->fails()) {

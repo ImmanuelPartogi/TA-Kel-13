@@ -50,8 +50,15 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
     );
 
     // Hitung info dari jadwal
-    final departureTime = DateTime.parse(selectedSchedule.departureTime);
-    final arrivalTime = DateTime.parse(selectedSchedule.arrivalTime);
+    // PERBAIKAN: Tambahkan pengecekan null pada departureTime dan arrivalTime
+    final departureTime =
+        selectedSchedule.departureTime != null
+            ? DateTime.parse(selectedSchedule.departureTime!)
+            : DateTime.now();
+    final arrivalTime =
+        selectedSchedule.arrivalTime != null
+            ? DateTime.parse(selectedSchedule.arrivalTime!)
+            : departureTime.add(Duration(minutes: selectedRoute.duration));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -143,7 +150,8 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                   children: [
                     const Text('Kode Rute'),
                     Text(
-                      selectedRoute.routeCode,
+                      selectedRoute.routeCode ??
+                          'N/A', // PERBAIKAN: tambahkan null check
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ],
@@ -220,7 +228,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                   selectedRoute.basePrice,
                   currencyFormat,
                 ),
-                
+
                 if ((bookingProvider.passengerCounts['child'] ?? 0) > 0)
                   _buildPassengerCategory(
                     context,
@@ -230,7 +238,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                     selectedRoute.basePrice * 0.75, // 75% dari harga dewasa
                     currencyFormat,
                   ),
-                
+
                 if ((bookingProvider.passengerCounts['infant'] ?? 0) > 0)
                   _buildPassengerCategory(
                     context,
@@ -244,7 +252,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                 const SizedBox(height: 12),
                 const Divider(),
                 const SizedBox(height: 4),
-                
+
                 // Total Penumpang
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -311,10 +319,12 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                     itemCount: bookingProvider.vehicles.length,
                     separatorBuilder: (context, index) => const Divider(),
                     itemBuilder: (context, index) {
+                      // PERUBAHAN: Akses langsung objek Vehicle
                       final vehicle = bookingProvider.vehicles[index];
                       double price;
 
-                      switch (vehicle['type']) {
+                      // PERUBAHAN: Akses properti objek, bukan key Map
+                      switch (vehicle.type) {
                         case 'MOTORCYCLE':
                           price = selectedRoute.motorcyclePrice;
                           break;
@@ -331,6 +341,11 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                           price = 0;
                       }
 
+                      // PERUBAHAN: Akses properti objek dengan null safety
+                      final brand = vehicle.brand ?? '';
+                      final model = vehicle.model ?? '';
+                      final licensePlate = vehicle.licensePlate;
+
                       return Row(
                         children: [
                           Expanded(
@@ -339,13 +354,13 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  '${vehicle['brand']} ${vehicle['model']}',
+                                  '$brand $model',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                                 Text(
-                                  _getVehicleTypeName(vehicle['type']),
+                                  _getVehicleTypeName(vehicle.type),
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: Colors.grey[600],
@@ -357,7 +372,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                           Expanded(
                             flex: 3,
                             child: Text(
-                              vehicle['license_plate'],
+                              licensePlate,
                               style: const TextStyle(fontSize: 12),
                             ),
                           ),
@@ -456,16 +471,11 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 Text(
                   subtitle,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
               ],
             ),
@@ -474,9 +484,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
             flex: 3,
             child: Text(
               count.toString(),
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
           ),

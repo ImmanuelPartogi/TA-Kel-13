@@ -5,6 +5,7 @@ import '../models/booking.dart';
 import '../models/ferry.dart';
 import '../models/route.dart';
 import '../models/schedule.dart';
+import '../models/vehicle.dart'; // Import model Vehicle
 
 class BookingProvider extends ChangeNotifier {
   final BookingApi _bookingApi = BookingApi();
@@ -18,7 +19,9 @@ class BookingProvider extends ChangeNotifier {
   Schedule? _selectedSchedule;
   DateTime? _selectedDate;
   List<Map<String, dynamic>> _passengers = [];
-  List<Map<String, dynamic>> _vehicles = [];
+  
+  // PERUBAHAN: Ubah tipe data dari Map ke model Vehicle
+  List<Vehicle> _vehicles = [];
   
   // Map untuk menyimpan jumlah penumpang per kategori
   Map<String, int> _passengerCounts = {
@@ -39,7 +42,9 @@ class BookingProvider extends ChangeNotifier {
   Schedule? get selectedSchedule => _selectedSchedule;
   DateTime? get selectedDate => _selectedDate;
   List<Map<String, dynamic>> get passengers => _passengers;
-  List<Map<String, dynamic>> get vehicles => _vehicles;
+  
+  // PERUBAHAN: Getter untuk vehicles
+  List<Vehicle> get vehicles => _vehicles;
   
   // Getter untuk passengerCounts
   Map<String, int> get passengerCounts => _passengerCounts;
@@ -59,12 +64,6 @@ class BookingProvider extends ChangeNotifier {
   double get passengerCost {
     if (_selectedRoute == null) return 0.0;
     
-    // Versi asli (bisa digunakan jika tidak ingin diferensiasi harga)
-    // if (_passengers.isNotEmpty) {
-    //   return _selectedRoute!.basePrice * _passengers.length;
-    // }
-    // return 0.0;
-    
     // Versi baru dengan diferensiasi harga per kategori
     double total = 0.0;
     // Biaya untuk dewasa (harga penuh)
@@ -77,12 +76,13 @@ class BookingProvider extends ChangeNotifier {
     return total;
   }
 
+  // PERUBAHAN: Ubah perhitungan biaya kendaraan untuk model Vehicle
   double get vehicleCost {
     if (_selectedRoute == null || _vehicles.isEmpty) return 0.0;
 
     double total = 0.0;
     for (var vehicle in _vehicles) {
-      switch (vehicle['type']) {
+      switch (vehicle.type) {
         case 'MOTORCYCLE':
           total += _selectedRoute!.motorcyclePrice;
           break;
@@ -102,10 +102,8 @@ class BookingProvider extends ChangeNotifier {
 
   double get totalCost => passengerCost + vehicleCost;
 
-  // PERBAIKAN: Cek apakah booking sedang aktif
   bool get hasActiveBooking => _currentBooking != null;
 
-  // PERBAIKAN: Membuat booking sementara jika belum ada
   void createTemporaryBooking() {
     if (_currentBooking == null &&
         _selectedRoute != null &&
@@ -215,16 +213,61 @@ class BookingProvider extends ChangeNotifier {
     }
   }
 
-  // Add vehicle
-  void addVehicle(Map<String, dynamic> vehicle) {
+  // PERUBAHAN: Ubah metode addVehicle untuk menerima objek Vehicle
+  void addVehicle(Vehicle vehicle) {
     _vehicles.add(vehicle);
     notifyListeners();
   }
 
-  // Update vehicle
-  void updateVehicle(int index, Map<String, dynamic> vehicle) {
+  // PERUBAHAN: Buat metode compatibility untuk menerima Map
+  void addVehicleFromMap(Map<String, dynamic> vehicleData) {
+    // Buat objek Vehicle dari Map
+    final vehicle = Vehicle(
+      id: -1, // ID sementara
+      bookingId: -1, // ID sementara
+      userId: -1, // ID sementara
+      type: vehicleData['type'] ?? 'MOTORCYCLE',
+      licensePlate: vehicleData['license_plate'] ?? '',
+      brand: vehicleData['brand'],
+      model: vehicleData['model'],
+      weight: vehicleData['weight'] != null ? 
+          double.tryParse(vehicleData['weight'].toString()) : null,
+      createdAt: DateTime.now().toIso8601String(),
+      updatedAt: DateTime.now().toIso8601String(),
+    );
+    
+    _vehicles.add(vehicle);
+    notifyListeners();
+  }
+
+  // PERUBAHAN: Ubah metode updateVehicle untuk menerima objek Vehicle
+  void updateVehicle(int index, Vehicle vehicle) {
     if (index >= 0 && index < _vehicles.length) {
       _vehicles[index] = vehicle;
+      notifyListeners();
+    }
+  }
+
+  // PERUBAHAN: Buat metode compatibility untuk update dari Map
+  void updateVehicleFromMap(int index, Map<String, dynamic> vehicleData) {
+    if (index >= 0 && index < _vehicles.length) {
+      // Buat vehicle baru dengan data yang sudah diupdate
+      final currentVehicle = _vehicles[index];
+      final updatedVehicle = Vehicle(
+        id: currentVehicle.id,
+        bookingId: currentVehicle.bookingId,
+        userId: currentVehicle.userId,
+        type: vehicleData['type'] ?? currentVehicle.type,
+        licensePlate: vehicleData['license_plate'] ?? currentVehicle.licensePlate,
+        brand: vehicleData['brand'],
+        model: vehicleData['model'],
+        weight: vehicleData['weight'] != null ? 
+            double.tryParse(vehicleData['weight'].toString()) : currentVehicle.weight,
+        createdAt: currentVehicle.createdAt,
+        updatedAt: DateTime.now().toIso8601String(),
+      );
+      
+      _vehicles[index] = updatedVehicle;
       notifyListeners();
     }
   }
@@ -284,11 +327,11 @@ class BookingProvider extends ChangeNotifier {
     }
   }
 
-  // Create booking
+  // PERUBAHAN: Ubah createBooking untuk mendukung model Vehicle
   Future<bool> createBooking() async {
     if (_selectedSchedule == null ||
         _selectedDate == null ||
-        totalPassengers == 0) { // Gunakan totalPassengers
+        totalPassengers == 0) {
       _errorMessage = 'Silakan lengkapi data pemesanan';
       notifyListeners();
       return false;
@@ -299,21 +342,25 @@ class BookingProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Buat data booking dengan kendaraan kosong jika tidak ada
+      // Konversi vehicles dari model class ke Map sesuai format API
+      final List<Map<String, dynamic>> vehiclesMap = _vehicles.map((vehicle) => {
+        'type': vehicle.type,
+        'license_plate': vehicle.licensePlate,
+        'brand': vehicle.brand,
+        'model': vehicle.model,
+        'weight': vehicle.weight,
+      }).toList();
+
+      // Buat data booking
       final Map<String, dynamic> bookingData = {
         'schedule_id': _selectedSchedule!.id,
         'booking_date': _selectedDate!.toIso8601String().split('T')[0],
-        'passenger_count': totalPassengers, // Gunakan total dari semua kategori
+        'passenger_count': totalPassengers,
         'vehicle_count': _vehicles.length,
         'passengers': _passengers,
-        'passenger_categories': _passengerCounts, // Tambahkan info kategori
-        'vehicles': _vehicles, // Selalu sertakan, meskipun kosong
+        'passenger_categories': _passengerCounts,
+        'vehicles': vehiclesMap,
       };
-
-      // Hanya tambahkan vehicles jika ada kendaraan
-      if (_vehicles.isNotEmpty) {
-        bookingData['vehicles'] = _vehicles;
-      }
 
       final result = await _bookingApi.createBooking(bookingData);
       _currentBooking = result['booking'];

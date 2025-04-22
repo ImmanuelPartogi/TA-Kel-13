@@ -462,33 +462,78 @@ class BookingProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      print('Memproses pembayaran untuk booking: $bookingCode');
+      print('Metode pembayaran: $paymentMethod, Tipe: $paymentType');
+
       // Simpan metode pembayaran yang dipilih
       updatePaymentMethod(paymentMethod, paymentType);
 
-      // PERBAIKAN: Jika booking sementara, langsung return true
-      if (_currentBooking!.id < 0) {
+      // PERBAIKAN: Periksa apakah payment sudah ada dengan snap token
+      if (_snapToken != null) {
+        print('Snap token sudah ada: $_snapToken');
+
+        try {
+          // Cukup update metode pembayaran jika snap token sudah ada
+          await _paymentApi.updatePaymentMethod(
+            bookingCode,
+            paymentMethod,
+            paymentType,
+          );
+          print('Metode pembayaran berhasil diperbarui');
+        } catch (e) {
+          print('Gagal memperbarui metode pembayaran: $e');
+          // Lanjutkan meskipun gagal update
+        }
+
         _isLoading = false;
         notifyListeners();
         return true;
       }
 
-      // Panggil API untuk memproses pembayaran
+      // Jika belum ada snap token, coba dapatkan status dulu
+      try {
+        final statusResult = await _paymentApi.getPaymentStatus(bookingCode);
+        if (statusResult != null && statusResult['snap_token'] != null) {
+          _snapToken = statusResult['snap_token'];
+          print('Snap token didapatkan dari status: $_snapToken');
+
+          // Update metode pembayaran
+          await _paymentApi.updatePaymentMethod(
+            bookingCode,
+            paymentMethod,
+            paymentType,
+          );
+
+          _isLoading = false;
+          notifyListeners();
+          return true;
+        }
+      } catch (e) {
+        print('Gagal mendapatkan status: $e');
+        // Lanjutkan ke pembuatan payment baru
+      }
+
+      // Jika masih tidak ada snap token, buat payment baru
       final result = await _paymentApi.processPayment(
         bookingCode,
         paymentMethod,
         paymentType,
       );
 
-      // Update booking setelah pembayaran diproses
-      if (result.containsKey('booking_id') &&
-          result['booking_id'] == _currentBooking!.id) {
-        await getBookingDetails(_currentBooking!.id);
+      // Update snap token jika tersedia
+      if (result != null && result.containsKey('snap_token')) {
+        _snapToken = result['snap_token'];
+        print('Snap token baru: $_snapToken');
       }
+
+      // Refresh booking data
+      await getBookingDetails(_currentBooking!.id);
 
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
+      print('Error dalam processPayment: $e');
       _isLoading = false;
       _errorMessage = e.toString();
       notifyListeners();

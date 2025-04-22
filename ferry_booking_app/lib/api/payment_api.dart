@@ -12,7 +12,7 @@ class PaymentApi {
   Future<Map<String, dynamic>> getPaymentStatus(String bookingCode) async {
     try {
       final token = await _secureStorage.getToken();
-      
+
       final response = await http.get(
         Uri.parse('$baseUrl/api/payments/status/$bookingCode'),
         headers: {
@@ -21,59 +21,116 @@ class PaymentApi {
         },
       );
 
+      print('Status response: ${response.statusCode}');
+      print('Status body: ${response.body}');
+
       if (response.statusCode == 200) {
         return json.decode(response.body)['data'];
       } else {
         throw ApiException(
           code: response.statusCode,
-          message: json.decode(response.body)['message'] ?? 'Gagal mendapatkan status pembayaran',
+          message:
+              json.decode(response.body)['message'] ??
+              'Gagal mendapatkan status pembayaran',
         );
       }
     } catch (e) {
-      if (e is ApiException) {
-        rethrow;
-      }
+      print('Error in getPaymentStatus: $e');
       throw ApiException(
         code: 500,
-        message: 'Terjadi kesalahan saat memeriksa status pembayaran: ${e.toString()}',
+        message:
+            'Terjadi kesalahan saat memeriksa status pembayaran: ${e.toString()}',
       );
     }
   }
 
-  // Memproses pembayaran dengan metode yang dipilih
-  Future<Map<String, dynamic>> processPayment(
-    String bookingCode, 
-    String paymentMethod, 
-    String paymentType
+  // BARU: Memperbarui metode pembayaran
+  Future<Map<String, dynamic>> updatePaymentMethod(
+    String bookingCode,
+    String paymentMethod,
+    String paymentType,
   ) async {
     try {
       final token = await _secureStorage.getToken();
-      
+
+      print('Memperbarui metode pembayaran untuk: $bookingCode');
+      print('Method: $paymentMethod, Type: $paymentType');
+
       final response = await http.post(
-        Uri.parse('$baseUrl/api/payments/process'),
+        Uri.parse('$baseUrl/api/payments/$bookingCode/update-method'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
         body: json.encode({
-          'booking_code': bookingCode,
           'payment_method': paymentMethod,
           'payment_type': paymentType,
         }),
       );
+
+      print('Update method response: ${response.statusCode}');
+      print('Update method body: ${response.body}');
 
       if (response.statusCode == 200) {
         return json.decode(response.body)['data'];
       } else {
         throw ApiException(
           code: response.statusCode,
-          message: json.decode(response.body)['message'] ?? 'Gagal memproses pembayaran',
+          message:
+              json.decode(response.body)['message'] ??
+              'Gagal memperbarui metode pembayaran',
         );
       }
     } catch (e) {
-      if (e is ApiException) {
-        rethrow;
+      print('Error in updatePaymentMethod: $e');
+      throw ApiException(
+        code: 500,
+        message:
+            'Terjadi kesalahan saat memperbarui metode pembayaran: ${e.toString()}',
+      );
+    }
+  }
+
+  // PERBAIKAN: Gunakan endpoint yang benar untuk processPayment
+  Future<Map<String, dynamic>> processPayment(
+    String bookingCode,
+    String paymentMethod,
+    String paymentType,
+  ) async {
+    try {
+      final token = await _secureStorage.getToken();
+
+      print('Memproses pembayaran untuk booking: $bookingCode');
+      print('Method: $paymentMethod, Type: $paymentType');
+
+      // PERBAIKAN: Gunakan endpoint yang benar
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/payments/$bookingCode/create'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({
+          'payment_method': paymentMethod,
+          'payment_type': paymentType,
+        }),
+      );
+
+      print('Process payment response: ${response.statusCode}');
+      print('Process payment body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return json.decode(response.body)['data'];
+      } else {
+        throw ApiException(
+          code: response.statusCode,
+          message:
+              json.decode(response.body)['message'] ??
+              'Gagal memproses pembayaran',
+        );
       }
+    } catch (e) {
+      print('Error in processPayment: $e');
       throw ApiException(
         code: 500,
         message: 'Terjadi kesalahan saat memproses pembayaran: ${e.toString()}',
@@ -83,14 +140,16 @@ class PaymentApi {
 
   // Mendapatkan instruksi pembayaran berdasarkan metode
   Future<Map<String, dynamic>> getPaymentInstructions(
-    String paymentMethod, 
-    String paymentType
+    String paymentMethod,
+    String paymentType,
   ) async {
     try {
       final token = await _secureStorage.getToken();
 
       final response = await http.get(
-        Uri.parse('$baseUrl/api/payments/instructions/$paymentType/$paymentMethod'),
+        Uri.parse(
+          '$baseUrl/api/payments/instructions/$paymentType/$paymentMethod',
+        ),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -108,7 +167,7 @@ class PaymentApi {
       return _getStaticInstructions(paymentMethod, paymentType);
     }
   }
-  
+
   // Instruksi pembayaran statis sebagai fallback
   Map<String, dynamic> _getStaticInstructions(String method, String type) {
     if (type == 'virtual_account') {
@@ -123,8 +182,8 @@ class PaymentApi {
               'Masukkan nomor Virtual Account',
               'Pastikan nama dan jumlah pembayaran sudah sesuai',
               'Masukkan PIN m-BCA atau password',
-              'Transaksi selesai'
-            ]
+              'Transaksi selesai',
+            ],
           };
         case 'bni':
           return {
@@ -136,8 +195,8 @@ class PaymentApi {
               'Masukkan nomor Virtual Account',
               'Pastikan nama dan jumlah pembayaran sudah sesuai',
               'Masukkan password transaksi',
-              'Transaksi selesai'
-            ]
+              'Transaksi selesai',
+            ],
           };
         case 'bri':
           return {
@@ -149,8 +208,8 @@ class PaymentApi {
               'Masukkan nomor Virtual Account',
               'Pastikan nama dan jumlah pembayaran sudah sesuai',
               'Masukkan PIN BRImo',
-              'Transaksi selesai'
-            ]
+              'Transaksi selesai',
+            ],
           };
         case 'mandiri':
           return {
@@ -163,8 +222,8 @@ class PaymentApi {
               'Masukkan nomor pembayaran',
               'Pastikan nama dan jumlah pembayaran sudah sesuai',
               'Masukkan PIN Livin',
-              'Transaksi selesai'
-            ]
+              'Transaksi selesai',
+            ],
           };
         default:
           return {
@@ -176,8 +235,8 @@ class PaymentApi {
               'Masukkan nomor Virtual Account',
               'Konfirmasi detail pembayaran',
               'Masukkan PIN',
-              'Transaksi selesai'
-            ]
+              'Transaksi selesai',
+            ],
           };
       }
     } else if (type == 'e_wallet') {
@@ -192,8 +251,8 @@ class PaymentApi {
               'Pastikan nominal pembayaran sudah sesuai',
               'Tap tombol "Bayar"',
               'Masukkan PIN GoPay',
-              'Transaksi selesai'
-            ]
+              'Transaksi selesai',
+            ],
           };
         case 'shopeepay':
           return {
@@ -205,8 +264,8 @@ class PaymentApi {
               'Pastikan nominal pembayaran sudah sesuai',
               'Tap tombol "Bayar"',
               'Masukkan PIN ShopeePay',
-              'Transaksi selesai'
-            ]
+              'Transaksi selesai',
+            ],
           };
         case 'dana':
           return {
@@ -218,8 +277,8 @@ class PaymentApi {
               'Pastikan nominal pembayaran sudah sesuai',
               'Tap tombol "Bayar"',
               'Masukkan PIN DANA',
-              'Transaksi selesai'
-            ]
+              'Transaksi selesai',
+            ],
           };
         case 'ovo':
           return {
@@ -231,8 +290,8 @@ class PaymentApi {
               'Pastikan nominal pembayaran sudah sesuai',
               'Tap tombol "Bayar"',
               'Masukkan PIN OVO',
-              'Transaksi selesai'
-            ]
+              'Transaksi selesai',
+            ],
           };
         default:
           return {
@@ -243,15 +302,15 @@ class PaymentApi {
               'Scan QR code yang ditampilkan',
               'Konfirmasi detail pembayaran',
               'Masukkan PIN',
-              'Transaksi selesai'
-            ]
+              'Transaksi selesai',
+            ],
           };
       }
     }
-    
+
     return {
       'title': 'Instruksi Pembayaran',
-      'steps': ['Mohon maaf, instruksi pembayaran tidak tersedia']
+      'steps': ['Mohon maaf, instruksi pembayaran tidak tersedia'],
     };
   }
 }

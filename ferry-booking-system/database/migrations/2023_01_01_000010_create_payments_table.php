@@ -17,6 +17,11 @@ return new class extends Migration
             $table->string('transaction_id', 100)->nullable()->comment('ID Transaksi dari Payment Gateway');
             $table->string('snap_token', 100)->nullable()->comment('Snap Token dari Midtrans untuk frontend');
             $table->string('external_reference', 100)->nullable()->comment('Referensi eksternal dari payment gateway');
+            // Tambahan kolom baru mulai dari sini
+            $table->string('virtual_account_number', 100)->nullable()->comment('Nomor Virtual Account');
+            $table->text('qr_code_url')->nullable()->comment('URL QR Code untuk e-wallet');
+            $table->text('deep_link_url')->nullable()->comment('URL Deep Link untuk e-wallet');
+            // Tambahan kolom baru selesai
             $table->enum('status', ['PENDING', 'SUCCESS', 'FAILED', 'EXPIRED', 'REFUNDED', 'PARTIAL_REFUND'])->default('PENDING');
             $table->timestamp('payment_date')->nullable();
             $table->timestamp('expiry_date')->nullable();

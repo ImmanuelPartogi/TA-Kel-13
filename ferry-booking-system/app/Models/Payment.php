@@ -16,6 +16,9 @@ class Payment extends Model
         'payment_channel',
         'transaction_id',
         'external_reference',
+        'virtual_account_number', // Kolom baru
+        'qr_code_url',           // Kolom baru
+        'deep_link_url',         // Kolom baru
         'status',
         'payment_date',
         'expiry_date',
@@ -46,6 +49,27 @@ class Payment extends Model
     const METHOD_CASH = 'CASH';
     const METHOD_DIRECT_DEBIT = 'DIRECT_DEBIT';
     const METHOD_CREDIT = 'CREDIT';
+
+    /**
+     * Getter untuk virtual account number yang memadukan kolom dan external_reference
+     */
+    public function getVirtualAccountNumberAttribute($value)
+    {
+        // Jika nilai langsung ada, gunakan nilai tersebut
+        if (!empty($value)) {
+            return $value;
+        }
+
+        // Jika tidak ada, coba ekstrak dari external_reference
+        if ($this->external_reference) {
+            $parts = explode(' ', $this->external_reference);
+            if (count($parts) > 1) {
+                return $parts[1]; // Ambil bagian kedua (nomor)
+            }
+        }
+
+        return null;
+    }
 
     /**
      * Relasi ke model Booking

@@ -1,13 +1,20 @@
 // lib/config/app_config.dart
 class AppConfig {
   // API Configuration
-  static const String apiBaseUrl = 'http://127.0.0.1:8000/api'; // Replace with your API URL
+  static const String apiBaseUrl = 'http://127.0.0.1:8000/api'; // Local development
+  
+  // Untuk akses dari perangkat lain atau Midtrans callback
+  static const String publicBaseUrl = 'https://337e-114-5-144-83.ngrok-free.app/api';
   
   // Midtrans Configuration
-  static const String midtransClientKey = 'SB-Mid-client-8csuXJ7DmFhqmkMX'; // Replace with your Midtrans client key
-  static const bool midtransProduction = false; // Set to true for production
+  static const String midtransClientKey = 'SB-Mid-client-8csuXJ7DmFhqmkMX';
+  static const bool midtransProduction = false;
+  static const String midtransSnapUrl = 'https://app.sandbox.midtrans.com/snap/snap.js';
   
-  // App Configuration
+  // Callback URLs (harus URL publik yang bisa diakses Midtrans)
+  static const String midtransCallbackUrl = 'https://337e-114-5-144-83.ngrok-free.app';
+  
+  // Lainnya
   static const String appName = 'Ferry Booking';
   static const String appVersion = '1.0.0';
   

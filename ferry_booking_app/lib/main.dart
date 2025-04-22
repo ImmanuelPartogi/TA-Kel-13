@@ -1,7 +1,7 @@
 import 'dart:ui';
 
 import 'package:ferry_booking_app/models/route.dart';
-import 'package:ferry_booking_app/screens/booking/payment_method_screen.dart';
+import 'package:ferry_booking_app/screens/payment/payment_method_screen.dart';
 import 'package:ferry_booking_app/screens/booking/schedule_selection_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -23,7 +23,7 @@ import 'package:ferry_booking_app/screens/chatbot/chatbot_screen.dart';
 import 'package:ferry_booking_app/screens/booking/passenger_details_screen.dart';
 import 'package:ferry_booking_app/screens/booking/vehicle_details_screen.dart';
 import 'package:ferry_booking_app/screens/booking/booking_summary_screen.dart';
-import 'package:ferry_booking_app/screens/booking/payment_screen.dart';
+import 'package:ferry_booking_app/screens/payment/payment_screen.dart';
 import 'package:ferry_booking_app/screens/booking/booking_success_screen.dart';
 import 'package:ferry_booking_app/screens/tickets/ticket_detail_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';

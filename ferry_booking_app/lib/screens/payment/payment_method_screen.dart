@@ -87,7 +87,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
   @override
   void initState() {
     super.initState();
-    
+
     // Jalankan pengecekan booking setelah build pertama
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkBookingData();
@@ -98,8 +98,11 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
   void _checkBookingData() {
     if (_hasFetchedBooking) return; // Hindari multiple fetch
 
-    final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
-    
+    final bookingProvider = Provider.of<BookingProvider>(
+      context,
+      listen: false,
+    );
+
     setState(() {
       _isCreatingBooking = true;
       _hasFetchedBooking = true;
@@ -109,28 +112,35 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
     developer.log('Checking booking data...');
     developer.log('Has active booking: ${bookingProvider.hasActiveBooking}');
     if (bookingProvider.currentBooking != null) {
-      developer.log('Current booking code: ${bookingProvider.currentBooking?.bookingCode}');
-      
+      developer.log(
+        'Current booking code: ${bookingProvider.currentBooking?.bookingCode}',
+      );
+
       // Debug payment data
       if (bookingProvider.currentBooking?.payments != null) {
         final payments = bookingProvider.currentBooking?.payments;
         developer.log('Payments count: ${payments?.length}');
         if (payments != null && payments.isNotEmpty) {
           final latestPayment = payments.first;
-          developer.log('Latest payment data: paymentMethod=${latestPayment.paymentMethod}, paymentType=${latestPayment.paymentType}');
+          developer.log(
+            'Latest payment data: paymentMethod=${latestPayment.paymentMethod}, paymentType=${latestPayment.paymentType}',
+          );
         }
       }
     }
-    
+
     try {
       // Cek jika sudah ada metode pembayaran yang tersimpan
       if (bookingProvider.currentBooking?.paymentMethod != null) {
         setState(() {
-          _selectedPaymentMethod = bookingProvider.currentBooking?.paymentMethod;
+          _selectedPaymentMethod =
+              bookingProvider.currentBooking?.paymentMethod;
           // Gunakan payment_channel sebagai paymentType
           _selectedPaymentType = bookingProvider.currentBooking?.paymentType;
         });
-        developer.log('Payment method loaded: $_selectedPaymentMethod, $_selectedPaymentType');
+        developer.log(
+          'Payment method loaded: $_selectedPaymentMethod, $_selectedPaymentType',
+        );
       } else if (bookingProvider.currentBooking?.latestPayment != null) {
         // Jika tidak ada payment method di booking, coba ambil dari latestPayment
         final latestPayment = bookingProvider.currentBooking?.latestPayment;
@@ -138,18 +148,22 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
           _selectedPaymentMethod = latestPayment?.paymentMethod;
           _selectedPaymentType = latestPayment?.paymentType;
         });
-        developer.log('Payment method loaded from latest payment: $_selectedPaymentMethod, $_selectedPaymentType');
+        developer.log(
+          'Payment method loaded from latest payment: $_selectedPaymentMethod, $_selectedPaymentType',
+        );
       }
-      
+
       // Jika booking belum ada, coba buat booking sementara
       if (!bookingProvider.hasActiveBooking) {
         developer.log('No active booking, creating temporary booking...');
-        
+
         // Coba buat booking sementara jika ada data rute dan jadwal
         bookingProvider.createTemporaryBooking();
-        
-        developer.log('After createTemporaryBooking: ${bookingProvider.hasActiveBooking}');
-        
+
+        developer.log(
+          'After createTemporaryBooking: ${bookingProvider.hasActiveBooking}',
+        );
+
         // Jika masih tidak ada booking, cek booking terbaru dari history
         if (!bookingProvider.hasActiveBooking) {
           _checkRecentBooking(bookingProvider);
@@ -157,7 +171,9 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
       }
     } catch (e) {
       developer.log('Error in _checkBookingData: $e');
-      _showErrorMessage('Terjadi kesalahan saat mempersiapkan data pembayaran: $e');
+      _showErrorMessage(
+        'Terjadi kesalahan saat mempersiapkan data pembayaran: $e',
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -172,19 +188,25 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
     try {
       developer.log('Checking recent bookings...');
       await bookingProvider.getBookings();
-      
-      if (bookingProvider.bookings != null && bookingProvider.bookings!.isNotEmpty) {
-        developer.log('Found ${bookingProvider.bookings!.length} bookings in history');
-        
+
+      if (bookingProvider.bookings != null &&
+          bookingProvider.bookings!.isNotEmpty) {
+        developer.log(
+          'Found ${bookingProvider.bookings!.length} bookings in history',
+        );
+
         // Filter booking dengan status PENDING
-        final pendingBookings = bookingProvider.bookings!
-            .where((booking) => booking.status == 'PENDING')
-            .toList();
-        
+        final pendingBookings =
+            bookingProvider.bookings!
+                .where((booking) => booking.status == 'PENDING')
+                .toList();
+
         if (pendingBookings.isNotEmpty) {
-          developer.log('Found pending booking with code: ${pendingBookings.first.bookingCode}');
+          developer.log(
+            'Found pending booking with code: ${pendingBookings.first.bookingCode}',
+          );
           await bookingProvider.getBookingDetails(pendingBookings.first.id);
-          
+
           // Update UI jika berhasil mendapatkan booking
           if (bookingProvider.hasActiveBooking) {
             setState(() {}); // Refresh UI
@@ -192,7 +214,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
           }
         }
       }
-      
+
       // Jika tidak ditemukan booking yang sesuai
       developer.log('No suitable booking found in history');
       if (mounted) {
@@ -202,16 +224,18 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
       developer.log('Error checking recent booking: $e');
     }
   }
-  
+
   void _showNoBookingMessage() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Data pemesanan tidak ditemukan. Silakan buat pemesanan baru.'),
+        content: Text(
+          'Data pemesanan tidak ditemukan. Silakan buat pemesanan baru.',
+        ),
         backgroundColor: Colors.red,
         duration: Duration(seconds: 3),
       ),
     );
-    
+
     // Kembali ke halaman sebelumnya setelah delay
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) Navigator.of(context).pop();
@@ -220,7 +244,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
 
   void _showErrorMessage(String message) {
     if (!mounted) return;
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -236,9 +260,10 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
 
     return Scaffold(
       appBar: const CustomAppBar(title: 'Pilih Metode Pembayaran'),
-      body: _isLoading || _isCreatingBooking
-          ? const Center(child: CircularProgressIndicator())
-          : _buildContent(bookingProvider),
+      body:
+          _isLoading || _isCreatingBooking
+              ? const Center(child: CircularProgressIndicator())
+              : _buildContent(bookingProvider),
       bottomNavigationBar: _buildBottomBar(bookingProvider),
     );
   }
@@ -281,20 +306,23 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: _paymentMethods.entries.map((entry) {
-          final sectionTitle = entry.key;
-          final methods = entry.value;
-          
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildSectionHeader(sectionTitle),
-              const SizedBox(height: 8),
-              ...methods.map((method) => _buildPaymentMethodCard(method)).toList(),
-              const SizedBox(height: 24),
-            ],
-          );
-        }).toList(),
+        children:
+            _paymentMethods.entries.map((entry) {
+              final sectionTitle = entry.key;
+              final methods = entry.value;
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSectionHeader(sectionTitle),
+                  const SizedBox(height: 8),
+                  ...methods
+                      .map((method) => _buildPaymentMethodCard(method))
+                      .toList(),
+                  const SizedBox(height: 24),
+                ],
+              );
+            }).toList(),
       ),
     );
   }
@@ -305,7 +333,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
       child: Text(
         title,
         style: const TextStyle(
-          fontSize: 18, 
+          fontSize: 18,
           fontWeight: FontWeight.bold,
           color: Color(0xFF333333),
         ),
@@ -326,17 +354,19 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: isSelected 
-                ? Theme.of(context).primaryColor.withOpacity(0.3)
-                : Colors.black.withOpacity(0.05),
+            color:
+                isSelected
+                    ? Theme.of(context).primaryColor.withOpacity(0.3)
+                    : Colors.black.withOpacity(0.05),
             blurRadius: isSelected ? 8 : 2,
             offset: const Offset(0, 2),
           ),
         ],
         border: Border.all(
-          color: isSelected 
-              ? Theme.of(context).primaryColor 
-              : Colors.grey.withOpacity(0.2),
+          color:
+              isSelected
+                  ? Theme.of(context).primaryColor
+                  : Colors.grey.withOpacity(0.2),
           width: isSelected ? 2 : 1,
         ),
       ),
@@ -348,9 +378,12 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
               _selectedPaymentMethod = method['id'];
               _selectedPaymentType = method['type'];
             });
-            
+
             // Opsional: Simpan ke provider untuk digunakan nanti
-            final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
+            final bookingProvider = Provider.of<BookingProvider>(
+              context,
+              listen: false,
+            );
             if (bookingProvider.currentBooking != null) {
               try {
                 bookingProvider.updatePaymentMethod(
@@ -375,39 +408,46 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
                     color: Colors.grey[100],
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: method.containsKey('iconAsset')
-                      // Gunakan gambar jika tersedia
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: Image.asset(
-                            method['iconAsset'],
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) {
-                              // Fallback jika gambar tidak ditemukan
-                              return Center(
-                                child: Text(
-                                  method['id'].toString().substring(0, 1).toUpperCase(),
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.grey[800],
-                                    fontSize: 18,
+                  child:
+                      method.containsKey('iconAsset')
+                          // Gunakan gambar jika tersedia
+                          ? ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: Image.asset(
+                              method['iconAsset'],
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) {
+                                // Fallback jika gambar tidak ditemukan
+                                return Center(
+                                  child: Text(
+                                    method['id']
+                                        .toString()
+                                        .substring(0, 1)
+                                        .toUpperCase(),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey[800],
+                                      fontSize: 18,
+                                    ),
                                   ),
-                                ),
-                              );
-                            },
-                          ),
-                        )
-                      // Fallback ke huruf kapital pertama
-                      : Center(
-                          child: Text(
-                            method['id'].toString().substring(0, 1).toUpperCase(),
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey[800],
-                              fontSize: 18,
+                                );
+                              },
+                            ),
+                          )
+                          // Fallback ke huruf kapital pertama
+                          : Center(
+                            child: Text(
+                              method['id']
+                                  .toString()
+                                  .substring(0, 1)
+                                  .toUpperCase(),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey[800],
+                                fontSize: 18,
+                              ),
                             ),
                           ),
-                        ),
                 ),
                 const SizedBox(width: 16),
                 // Informasi metode pembayaran
@@ -425,10 +465,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
                       const SizedBox(height: 4),
                       Text(
                         method['description'] ?? '',
-                        style: TextStyle(
-                          color: Colors.grey[600], 
-                          fontSize: 13,
-                        ),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 13),
                       ),
                     ],
                   ),
@@ -438,7 +475,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
                   opacity: isSelected ? 1.0 : 0.0,
                   duration: const Duration(milliseconds: 300),
                   child: Icon(
-                    Icons.check_circle, 
+                    Icons.check_circle,
                     color: Theme.of(context).primaryColor,
                     size: 24,
                   ),
@@ -504,12 +541,11 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Total Pembayaran', 
-                  style: TextStyle(fontSize: 16)
-                ),
+                const Text('Total Pembayaran', style: TextStyle(fontSize: 16)),
                 Text(
-                  currencyFormat.format(bookingProvider.currentBooking?.totalAmount ?? 0),
+                  currencyFormat.format(
+                    bookingProvider.currentBooking?.totalAmount ?? 0,
+                  ),
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -521,9 +557,10 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
             const SizedBox(height: 16),
             // Tombol lanjutkan
             ElevatedButton(
-              onPressed: _selectedPaymentMethod != null
-                  ? () => _processPayment(context, bookingProvider)
-                  : null,
+              onPressed:
+                  _selectedPaymentMethod != null
+                      ? () => _processPayment(context, bookingProvider)
+                      : null,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 backgroundColor: Theme.of(context).primaryColor,
@@ -548,69 +585,93 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
   void _processPayment(BuildContext context, BookingProvider bookingProvider) {
     if (_selectedPaymentMethod == null || _selectedPaymentType == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Silakan pilih metode pembayaran'),
-          backgroundColor: Colors.red,
-        ),
+        const SnackBar(content: Text('Silakan pilih metode pembayaran')),
       );
       return;
     }
 
-    // Cek booking tersedia
+    // Validasi booking
     if (!bookingProvider.hasActiveBooking) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Data pemesanan tidak ditemukan'),
-          backgroundColor: Colors.red,
-        ),
+        const SnackBar(content: Text('Data pemesanan tidak ditemukan')),
       );
       return;
     }
 
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
-      setState(() {
-        _isLoading = true;
-      });
-      
-      developer.log('Processing payment with method: $_selectedPaymentMethod, type: $_selectedPaymentType');
-      developer.log('Current booking before update: ${bookingProvider.currentBooking?.bookingCode}');
-      
-      // Simpan pilihan metode pembayaran
+      final bookingCode = bookingProvider.currentBooking!.bookingCode;
+      print('Memulai proses pembayaran untuk booking: $bookingCode');
+
+      // Simpan metode pembayaran
       bookingProvider.updatePaymentMethod(
-        _selectedPaymentMethod ?? 'virtual_account', 
-        _selectedPaymentType ?? 'virtual_account'
+        _selectedPaymentMethod!,
+        _selectedPaymentType!,
       );
-      
-      setState(() {
-        _isLoading = false;
-      });
-      
-      // Log untuk debugging
-      developer.log('Navigating to payment screen with parameters:');
-      developer.log('- paymentMethod: $_selectedPaymentMethod');
-      developer.log('- paymentType: $_selectedPaymentType');
-      
-      // Pastikan tidak ada null saat navigasi
-      final args = {
-        'paymentMethod': _selectedPaymentMethod ?? 'bca',
-        'paymentType': _selectedPaymentType ?? 'virtual_account',
-      };
-      
-      // Navigasi ke halaman pembayaran
-      Navigator.pushNamed(
-        context,
-        '/booking/payment',
-        arguments: args,
-      );
+
+      // PERBAIKAN: Langsung navigasi ke halaman payment jika snap token sudah ada
+      if (bookingProvider.snapToken != null) {
+        setState(() {
+          _isLoading = false;
+        });
+
+        Navigator.pushNamed(
+          context,
+          '/booking/payment',
+          arguments: {
+            'bookingCode': bookingCode,
+            'paymentMethod': _selectedPaymentMethod,
+            'paymentType': _selectedPaymentType,
+          },
+        );
+        return;
+      }
+
+      // Jika tidak ada snap token, proses pembayaran
+      bookingProvider
+          .processPayment(
+            bookingCode,
+            _selectedPaymentMethod!,
+            _selectedPaymentType!,
+          )
+          .then((success) {
+            setState(() {
+              _isLoading = false;
+            });
+
+            if (success) {
+              Navigator.pushNamed(
+                context,
+                '/booking/payment',
+                arguments: {
+                  'bookingCode': bookingCode,
+                  'paymentMethod': _selectedPaymentMethod,
+                  'paymentType': _selectedPaymentType,
+                },
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    bookingProvider.errorMessage ??
+                        'Gagal memproses pembayaran',
+                  ),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          });
     } catch (e) {
       setState(() {
         _isLoading = false;
       });
-      
-      developer.log('Error in _processPayment: $e');
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Terjadi kesalahan: ${e.toString()}'),
+          content: Text('Terjadi kesalahan: $e'),
           backgroundColor: Colors.red,
         ),
       );

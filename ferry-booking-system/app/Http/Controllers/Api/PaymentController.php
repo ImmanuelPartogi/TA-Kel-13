@@ -29,6 +29,8 @@ class PaymentController extends Controller
     {
         Log::info('Payment create request received', [
             'booking_code' => $bookingCode,
+            'payment_method' => $request->input('payment_method'),
+            'payment_type' => $request->input('payment_type'),
             'user_id' => $request->user()->id
         ]);
 
@@ -63,10 +65,20 @@ class PaymentController extends Controller
         // Buat transaksi baru
         Log::info('Creating new Midtrans transaction', [
             'booking_code' => $bookingCode,
-            'amount' => $booking->total_amount
+            'amount' => $booking->total_amount,
+            'payment_method' => $request->input('payment_method', 'VIRTUAL_ACCOUNT'),
+            'payment_type' => $request->input('payment_type', 'virtual_account')
         ]);
 
-        $snapToken = $this->midtransService->createTransaction($booking);
+        // PERBAIKAN: Set payment method dan type dari input request
+        $paymentMethod = $request->input('payment_method', 'VIRTUAL_ACCOUNT');
+        $paymentType = $request->input('payment_type', 'virtual_account');
+
+        // Buat Snap Token
+        $snapToken = $this->midtransService->createTransaction($booking, [
+            'payment_method' => $paymentMethod,
+            'payment_type' => $paymentType
+        ]);
 
         if (!$snapToken) {
             Log::error('Failed to create Midtrans transaction', [
@@ -84,14 +96,10 @@ class PaymentController extends Controller
         $payment->booking_id = $booking->id;
         $payment->amount = $booking->total_amount;
         $payment->status = 'PENDING';
-        $payment->payment_method = 'VIRTUAL_ACCOUNT'; // Default payment method
-        $payment->payment_channel = 'MIDTRANS';
+        $payment->payment_method = $paymentMethod;
+        $payment->payment_channel = $paymentType;
         $payment->expiry_date = now()->addHours(config('midtrans.expiry_duration', 24));
-
-        // PERBAIKAN: Simpan Snap Token terpisah dari transaction_id
         $payment->snap_token = $snapToken;
-        // transaction_id akan diupdate setelah mendapat callback dari Midtrans
-
         $payment->save();
 
         Log::info('Payment created successfully', [
@@ -389,5 +397,73 @@ class PaymentController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
         }
+    }
+
+    /**
+     * Update metode pembayaran
+     *
+     * @param Request $request
+     * @param string $bookingCode
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updatePaymentMethod(Request $request, $bookingCode)
+    {
+        $validator = Validator::make($request->all(), [
+            'payment_method' => 'required|string',
+            'payment_type' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        Log::info('Memperbarui metode pembayaran', [
+            'booking_code' => $bookingCode,
+            'payment_method' => $request->payment_method,
+            'payment_type' => $request->payment_type,
+            'user_id' => $request->user()->id
+        ]);
+
+        $user = $request->user();
+        $booking = Booking::where('booking_code', $bookingCode)
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+
+        $payment = Payment::where('booking_id', $booking->id)
+            ->where('status', 'PENDING')
+            ->latest()
+            ->first();
+
+        if (!$payment) {
+            Log::warning('Payment tidak ditemukan saat update metode pembayaran', [
+                'booking_code' => $bookingCode
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Pembayaran tidak ditemukan'
+            ], 404);
+        }
+
+        // Update payment method dan simpan
+        $payment->payment_method = $request->payment_method;
+        $payment->payment_channel = $request->payment_type;
+        $payment->save();
+
+        Log::info('Metode pembayaran berhasil diperbarui', [
+            'payment_id' => $payment->id,
+            'payment_method' => $payment->payment_method,
+            'payment_channel' => $payment->payment_channel
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Metode pembayaran berhasil diperbarui',
+            'data' => $payment
+        ]);
     }
 }

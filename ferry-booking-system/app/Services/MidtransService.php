@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Booking;
 use App\Models\Payment;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Midtrans\Config;
 use Midtrans\Snap;
 use Midtrans\Transaction;
@@ -33,9 +34,10 @@ class MidtransService
      * Membuat transaksi baru di Midtrans
      *
      * @param Booking $booking
+     * @param array $options
      * @return string|null Snap token
      */
-    public function createTransaction(Booking $booking)
+    public function createTransaction(Booking $booking, array $options = [])
     {
         // PENTING: Menggunakan order_id yang unik (booking_code) untuk identifikasi transaksi
         $orderId = $booking->booking_code;
@@ -45,6 +47,7 @@ class MidtransService
             'order_id' => $orderId,
             'gross_amount' => $booking->total_amount,
             'customer_name' => $booking->user->name,
+            'payment_options' => $options
         ]);
 
         $params = [
@@ -71,6 +74,41 @@ class MidtransService
             ],
         ];
 
+        // PERBAIKAN: Filter enabled_payments berdasarkan payment_type yang dipilih
+        if (isset($options['payment_type'])) {
+            $enabledPayments = [];
+
+            switch ($options['payment_type']) {
+                case 'virtual_account':
+                    $enabledPayments = ["bca_va", "bni_va", "bri_va", "permata_va"];
+                    break;
+                case 'e_wallet':
+                    $enabledPayments = ["gopay", "shopeepay"];
+                    break;
+                default:
+                    $enabledPayments = ["bca_va", "bni_va", "bri_va", "gopay", "shopeepay"];
+                    break;
+            }
+
+            // Jika ada payment_method spesifik, filter lagi
+            if (isset($options['payment_method'])) {
+                $method = strtolower($options['payment_method']);
+                if ($options['payment_type'] == 'virtual_account') {
+                    // Filter hanya metode yang dipilih
+                    $enabledPayments = array_filter($enabledPayments, function ($value) use ($method) {
+                        return strpos($value, $method) !== false;
+                    });
+                }
+            }
+
+            if (!empty($enabledPayments)) {
+                $params['enabled_payments'] = $enabledPayments;
+            }
+        } else {
+            // Default enabled_payments
+            $params['enabled_payments'] = ["bca_va", "bni_va", "bri_va", "gopay", "shopeepay"];
+        }
+
         if (!app()->environment('local') || !empty(config('midtrans.notification_url'))) {
             $params['callbacks'] = [
                 'finish' => url(config('midtrans.finish_url')),
@@ -82,16 +120,14 @@ class MidtransService
         // Log parameter transaksi untuk debugging
         Log::debug('Midtrans transaction parameters', [
             'params' => $params,
-            'notification_url' => Config::$isProduction ?
-                config('midtrans.notification_url') :
-                str_replace('localhost', 'your-public-domain.com', config('midtrans.notification_url'))
+            'notification_url' => config('midtrans.notification_url')
         ]);
 
         try {
             // Membuat Snap Token
             $snapToken = Snap::getSnapToken($params);
 
-            // PERBAIKAN: Log response lengkap untuk debugging
+            // Log success
             Log::info('Midtrans transaction created successfully', [
                 'order_id' => $orderId,
                 'snap_token' => $snapToken,
@@ -148,83 +184,6 @@ class MidtransService
     }
 
     /**
-     * Memverifikasi notifikasi dari Midtrans menggunakan pendekatan yang lebih aman
-     *
-     * @param array $notification Data notifikasi dari Midtrans
-     * @return bool
-     */
-    public function verifyNotification($notification)
-    {
-        try {
-            Log::info('Verifying Midtrans notification', [
-                'order_id' => $notification['order_id'] ?? 'unknown',
-                'transaction_status' => $notification['transaction_status'] ?? 'unknown'
-            ]);
-
-            // PERBAIKAN: Simpan JSON notifikasi mentah untuk debugging
-            Log::debug('Raw notification data', [
-                'notification' => $notification
-            ]);
-
-            // Metode 1: Verifikasi menggunakan kelas Notification
-            if (isset($notification['order_id']) && isset($notification['status_code']) && isset($notification['gross_amount'])) {
-                try {
-                    // Simulasi objek notifikasi dengan mengatur properti yang diperlukan
-                    $_SERVER['HTTP_X_SIGNATURE_KEY'] = $notification['signature_key'] ?? '';
-
-                    // Coba buat instance Notification (akan throw exception jika tidak valid)
-                    $notificationObj = new Notification();
-                    Log::info('Notification verified using Notification class');
-                    return true;
-                } catch (\Exception $e) {
-                    Log::warning('Failed to verify using Notification class, falling back to manual verification', [
-                        'error' => $e->getMessage()
-                    ]);
-                    // Lanjut ke metode verifikasi manual jika gagal
-                }
-            }
-
-            // Metode 2: Verifikasi manual signature
-            if (isset($notification['order_id']) && isset($notification['status_code']) && isset($notification['gross_amount']) && isset($notification['signature_key'])) {
-                $orderId = $notification['order_id'];
-                $statusCode = $notification['status_code'];
-                $grossAmount = $notification['gross_amount'];
-                $serverKey = config('midtrans.server_key');
-                $signature = $notification['signature_key'];
-
-                // Buat signature yang diharapkan
-                $input = $orderId . $statusCode . $grossAmount . $serverKey;
-                $expectedSignature = hash('sha512', $input);
-
-                $isValid = ($signature === $expectedSignature);
-
-                Log::info('Manual signature verification result', [
-                    'is_valid' => $isValid,
-                    'order_id' => $orderId
-                ]);
-
-                return $isValid;
-            }
-
-            Log::warning('Cannot verify notification - missing required fields', [
-                'has_order_id' => isset($notification['order_id']),
-                'has_status_code' => isset($notification['status_code']),
-                'has_gross_amount' => isset($notification['gross_amount']),
-                'has_signature' => isset($notification['signature_key'])
-            ]);
-
-            return false;
-        } catch (\Exception $e) {
-            Log::error('Error verifying Midtrans notification', [
-                'order_id' => $notification['order_id'] ?? 'unknown',
-                'error' => $e->getMessage()
-            ]);
-
-            return false;
-        }
-    }
-
-    /**
      * Memperbarui status pembayaran berdasarkan notifikasi dari Midtrans
      *
      * @param Payment $payment
@@ -242,21 +201,15 @@ class MidtransService
             'booking_code' => $booking->booking_code,
             'payment_id' => $payment->id,
             'transaction_status' => $transactionStatus,
-            'fraud_status' => $fraudStatus,
-            'current_payment_status' => $payment->status,
-            'current_booking_status' => $booking->status
+            'fraud_status' => $fraudStatus
         ]);
 
         // Simpan data notifikasi lengkap
         $payment->payload = json_encode($notification);
 
-        // PERBAIKAN: Update transaction_id dengan transaction_id dari Midtrans (bukan snap token)
+        // Update transaction_id dengan transaction_id dari Midtrans
         if (!$payment->transaction_id && isset($notification['transaction_id'])) {
             $payment->transaction_id = $notification['transaction_id'];
-            Log::info('Updated transaction ID', [
-                'payment_id' => $payment->id,
-                'transaction_id' => $notification['transaction_id']
-            ]);
         }
 
         // Update metode pembayaran berdasarkan notifikasi
@@ -266,12 +219,6 @@ class MidtransService
 
             // Simpan informasi referensi eksternal
             $this->setExternalReference($payment, $notification);
-
-            Log::info('Updated payment method', [
-                'payment_id' => $payment->id,
-                'payment_method' => $payment->payment_method,
-                'payment_channel' => $payment->payment_channel
-            ]);
         }
 
         // Update status pembayaran berdasarkan status Midtrans
@@ -279,15 +226,6 @@ class MidtransService
 
         switch ($transactionStatus) {
             case 'capture':
-                // Capture hanya untuk kartu kredit - periksa fraud status
-                if ($fraudStatus == 'challenge') {
-                    $payment->status = 'CHALLENGE';
-                } else if ($fraudStatus == 'accept') {
-                    $payment->status = 'SUCCESS';
-                    $payment->payment_date = now();
-                    $booking->status = 'CONFIRMED';
-                }
-                break;
             case 'settlement':
                 $payment->status = 'SUCCESS';
                 $payment->payment_date = isset($notification['settlement_time'])
@@ -296,29 +234,16 @@ class MidtransService
                 $booking->status = 'CONFIRMED';
                 break;
             case 'deny':
-                $payment->status = 'FAILED';
-                if ($booking->status == 'PENDING') {
-                    $booking->status = 'CANCELLED';
-                    $booking->cancellation_reason = 'Pembayaran ditolak';
-                }
-                break;
             case 'cancel':
-                $payment->status = 'FAILED';
-                if ($booking->status == 'PENDING') {
-                    $booking->status = 'CANCELLED';
-                    $booking->cancellation_reason = 'Pembayaran dibatalkan';
-                }
-                break;
             case 'expire':
                 $payment->status = 'FAILED';
                 if ($booking->status == 'PENDING') {
                     $booking->status = 'CANCELLED';
-                    $booking->cancellation_reason = 'Pembayaran kedaluwarsa';
+                    $booking->cancellation_reason = 'Pembayaran ' . ($transactionStatus == 'expire' ? 'kedaluwarsa' : 'dibatalkan');
                 }
                 break;
             case 'pending':
                 $payment->status = 'PENDING';
-
                 // Set expire date if available
                 if (isset($notification['expiry_time'])) {
                     $payment->expiry_date = date('Y-m-d H:i:s', strtotime($notification['expiry_time']));
@@ -362,19 +287,11 @@ class MidtransService
                 if (isset($notification['va_numbers']) && !empty($notification['va_numbers'])) {
                     $vaInfo = $notification['va_numbers'][0];
                     $payment->external_reference = $vaInfo['bank'] . ' ' . $vaInfo['va_number'];
-
-                    // PERBAIKAN: Simpan nomor VA sebagai virtual_account_number jika kolom tersedia
-                    if (isset($payment->virtual_account_number)) {
-                        $payment->virtual_account_number = $vaInfo['va_number'];
-                    }
+                    $payment->virtual_account_number = $vaInfo['va_number'];
                 } elseif (isset($notification['permata_va_number'])) {
                     // Khusus untuk Permata Bank
                     $payment->external_reference = 'permata ' . $notification['permata_va_number'];
-
-                    // PERBAIKAN: Simpan nomor VA sebagai virtual_account_number
-                    if (isset($payment->virtual_account_number)) {
-                        $payment->virtual_account_number = $notification['permata_va_number'];
-                    }
+                    $payment->virtual_account_number = $notification['permata_va_number'];
                 }
                 break;
 
@@ -392,13 +309,15 @@ class MidtransService
                     $payment->external_reference = $paymentType . ' ' . $notification['transaction_id'];
                 }
 
-                // PERBAIKAN: Simpan QR Code dan deep link URL jika tersedia
-                if (isset($notification['qr_code_url']) && isset($payment->qr_code_url)) {
-                    $payment->qr_code_url = $notification['qr_code_url'];
-                }
-
-                if (isset($notification['deep_link_url']) && isset($payment->deep_link_url)) {
-                    $payment->deep_link_url = $notification['deep_link_url'];
+                // Simpan QR Code dan deep link URL jika tersedia
+                if (isset($notification['actions'])) {
+                    foreach ($notification['actions'] as $action) {
+                        if ($action['name'] == 'generate-qr-code') {
+                            $payment->qr_code_url = $action['url'];
+                        } else if ($action['name'] == 'deeplink-redirect') {
+                            $payment->deep_link_url = $action['url'];
+                        }
+                    }
                 }
                 break;
 

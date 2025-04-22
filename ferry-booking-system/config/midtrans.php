@@ -30,10 +30,15 @@ return [
         : env('MIDTRANS_SANDBOX_URL', 'https://api.sandbox.midtrans.com'),
 
     // URL callback yang digunakan oleh Midtrans - PERBAIKAN: pastikan ini URL lengkap yang bisa diakses publik
-    'notification_url' => rtrim(env('APP_MIDTRANS_CALLBACK_URL', env('APP_URL')), '/') . env('MIDTRANS_NOTIFICATION_URL', '/api/payments/notification'),
-    'finish_url' => rtrim(env('APP_MIDTRANS_CALLBACK_URL', env('APP_URL')), '/') . env('MIDTRANS_FINISH_URL', '/payment/finish'),
-    'unfinish_url' => rtrim(env('APP_MIDTRANS_CALLBACK_URL', env('APP_URL')), '/') . env('MIDTRANS_UNFINISH_URL', '/payment/unfinish'),
-    'error_url' => rtrim(env('APP_MIDTRANS_CALLBACK_URL', env('APP_URL')), '/') . env('MIDTRANS_ERROR_URL', '/payment/error'),
+    'notification_url' => env('APP_MIDTRANS_CALLBACK_URL', env('APP_URL')) . '/api/payments/notification',
+    'finish_url' => env('APP_MIDTRANS_CALLBACK_URL', env('APP_URL')) . '/payment/finish',
+    'unfinish_url' => env('APP_MIDTRANS_CALLBACK_URL', env('APP_URL')) . '/payment/unfinish',
+    'error_url' => env('APP_MIDTRANS_CALLBACK_URL', env('APP_URL')) . '/payment/error',
+    
+    // 'notification_url' => rtrim(env('APP_URL'), '/') . env('MIDTRANS_NOTIFICATION_URL', '/api/payments/notification'),
+    // 'finish_url' => rtrim(env('APP_URL'), '/') . env('MIDTRANS_FINISH_URL', '/payment/finish'),
+    // 'unfinish_url' => rtrim(env('APP_URL'), '/') . env('MIDTRANS_UNFINISH_URL', '/payment/unfinish'),
+    // 'error_url' => rtrim(env('APP_URL'), '/') . env('MIDTRANS_ERROR_URL', '/payment/error'),
 
     // Pengaturan kedaluwarsa pembayaran (dalam jam)
     'expiry_duration' => env('MIDTRANS_EXPIRY_DURATION', 24),

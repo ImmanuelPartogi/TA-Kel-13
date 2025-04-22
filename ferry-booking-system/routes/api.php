@@ -16,11 +16,6 @@ use App\Http\Controllers\Api\ChatbotController;
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
 
-// Midtrans callback - PERBAIKAN: ubah path ke /api/payments/notification
-Route::post('/payments/notification', [PaymentController::class, 'notification'])
-    ->withoutMiddleware(['auth:sanctum', 'throttle:api'])
-    ->name('payment.notification');
-
 // Chatbot routes yang dapat diakses publik
 Route::prefix('chatbot')->group(function () {
     Route::post('/conversation', [ChatbotController::class, 'getConversation']);
@@ -50,9 +45,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/bookings/{id}/cancel', [BookingController::class, 'cancel']);
 
     // Payments
+    // PERBAIKAN: Ganti endpoint yang hilang
+    Route::get('/payments/status/{bookingCode}', [PaymentController::class, 'status']);
     Route::post('/payments/{bookingCode}/create', [PaymentController::class, 'create']);
-    Route::get('/payments/{bookingCode}/status', [PaymentController::class, 'status']);
     Route::post('/payments/{bookingCode}/cancel', [PaymentController::class, 'cancel']);
+
+    // TAMBAHAN: Endpoint untuk memperbarui metode pembayaran
+    Route::post('/payments/{bookingCode}/update-method', [PaymentController::class, 'updatePaymentMethod']);
+
+    // Instruksi pembayaran
+    Route::get('/payments/instructions/{paymentType}/{paymentMethod}', [PaymentController::class, 'getInstructions']);
 
     // TAMBAHAN: Endpoint untuk debugging
     Route::get('/payments/debug/{bookingCode}', [PaymentController::class, 'debug']);
@@ -86,5 +88,5 @@ Route::post('/test', function (Request $request) {
     ]);
 });
 
-// HAPUS: Duplikasi route ini
-// Route::post('/payments/notification', [PaymentController::class, 'notification']);
+// Route untuk callback Midtrans - Harus dapat diakses tanpa autentikasi
+Route::post('/payments/notification', [PaymentController::class, 'notification']);

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:intl/intl.dart';
 
 class Payment {
@@ -177,6 +179,88 @@ class Payment {
 
     // Fallback generic icon
     return 'assets/images/payment_methods/payment.png';
+  }
+
+  // Ekstrak VA number dari payload Midtrans
+  String? get extractedVirtualAccountNumber {
+    // Gunakan VA yang sudah ada jika tersedia
+    if (virtualAccountNumber != null && virtualAccountNumber!.isNotEmpty) {
+      return virtualAccountNumber;
+    }
+
+    // Coba ekstrak dari rawData
+    try {
+      if (rawData != null) {
+        // Cek di transaction_details
+        if (rawData!['transaction_details'] != null &&
+            rawData!['transaction_details']['va_numbers'] != null) {
+          return rawData!['transaction_details']['va_numbers'][0]['va_number'];
+        }
+
+        // Cek di payload
+        if (rawData!['payload'] != null) {
+          var payload = rawData!['payload'];
+          if (payload is String) {
+            payload = jsonDecode(payload);
+          }
+
+          if (payload['va_numbers'] != null) {
+            return payload['va_numbers'][0]['va_number'];
+          }
+
+          if (payload['permata_va_number'] != null) {
+            return payload['permata_va_number'];
+          }
+        }
+      }
+    } catch (e) {
+      print('Error extracting VA number: $e');
+    }
+
+    return null;
+  }
+
+  // Ekstrak QR Code URL untuk e-wallet
+  String? get extractedQrCodeUrl {
+    // Gunakan QR URL yang sudah ada jika tersedia
+    if (qrCodeUrl != null && qrCodeUrl!.isNotEmpty) {
+      return qrCodeUrl;
+    }
+
+    // Coba ekstrak dari rawData
+    try {
+      if (rawData != null) {
+        if (rawData!['actions'] != null) {
+          var actions = rawData!['actions'] as List;
+          for (var action in actions) {
+            if (action['name'] == 'generate-qr-code') {
+              return action['url'];
+            }
+          }
+        }
+
+        // Cek di payload
+        if (rawData!['payload'] != null) {
+          var payload = rawData!['payload'];
+          if (payload is String) {
+            payload = jsonDecode(payload);
+          }
+
+          if (payload['actions'] != null) {
+            var actions = payload['actions'] as List;
+            for (var action in actions) {
+              if (action['name'] == 'generate-qr-code') {
+                return action['url'];
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Error extracting QR code URL: $e');
+    }
+
+    return null;
   }
 
   // Cek apakah pembayaran sudah kedaluwarsa

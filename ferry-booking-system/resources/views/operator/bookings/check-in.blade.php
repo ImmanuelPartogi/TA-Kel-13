@@ -25,30 +25,28 @@
                 </div>
             @endif
 
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">Check-in Penumpang</h3>
-                </div>
-                <div class="card-body">
-                    <div class="row justify-content-center">
-                        <div class="col-md-6">
-                            <form action="{{ route('operator.bookings.process-check-in') }}" method="POST">
-                                @csrf
-                                <div class="form-group">
-                                    <label for="ticket_code">Kode Tiket</label>
-                                    <div class="input-group">
-                                        <input type="text" name="ticket_code" id="ticket_code" class="form-control" placeholder="Masukkan kode tiket" value="{{ old('ticket_code', request('ticket_code')) }}" required autofocus>
-                                        <div class="input-group-append">
-                                            <button type="submit" class="btn btn-primary">
-                                                <i class="fas fa-search"></i> Cari
-                                            </button>
-                                        </div>
+            <div class="container mx-auto px-4 py-6">
+                <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div class="p-6">
+                        <h3 class="text-2xl font-semibold text-gray-800 mb-4">Check-in Penumpang</h3>
+                        <form action="{{ route('operator.bookings.process-check-in') }}" method="POST" class="space-y-6">
+                            @csrf
+                            <div class="flex flex-col md:flex-row justify-center items-center space-x-0 md:space-x-4">
+                                <div class="w-full md:w-1/2">
+                                    <label for="ticket_code" class="block text-sm font-medium text-gray-700 mb-2">Kode Tiket</label>
+                                    <div class="flex">
+                                        <input type="text" name="ticket_code" id="ticket_code" class="form-control w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Masukkan kode tiket" value="{{ old('ticket_code', request('ticket_code')) }}" required autofocus>
+                                        <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                            <i class="fas fa-search mr-2"></i> Cari
+                                        </button>
                                     </div>
-                                    <small class="form-text text-muted">Masukkan kode tiket untuk melakukan check-in penumpang</small>
+                                    <small class="text-sm text-gray-500 mt-2">Masukkan kode tiket untuk melakukan check-in penumpang</small>
                                 </div>
-                            </form>
-                        </div>
+                            </div>
+                        </form>
                     </div>
+                </div>
+            </div>
 
                     @if($ticket)
                     <div class="row mt-4">

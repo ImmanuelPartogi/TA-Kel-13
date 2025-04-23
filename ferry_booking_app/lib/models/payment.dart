@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:intl/intl.dart';
 
 class Payment {
@@ -10,10 +9,9 @@ class Payment {
   final String status;
   final String paymentMethod;
   final String paymentType;
-  final String? virtualAccountNumber;
-  final String? deepLinkUrl;
-  final String? qrCodeUrl;
-  final String? snapToken; // Tambahkan properti ini
+  String? virtualAccountNumber;
+  String? deepLinkUrl;
+  String? qrCodeUrl;
   final DateTime? expiryTime;
   final DateTime? paymentTime;
   final String createdAt;
@@ -31,7 +29,6 @@ class Payment {
     this.virtualAccountNumber,
     this.deepLinkUrl,
     this.qrCodeUrl,
-    this.snapToken, // Tambahkan parameter ini
     this.expiryTime,
     this.paymentTime,
     required this.createdAt,
@@ -86,13 +83,10 @@ class Payment {
       amount: double.parse(json['amount'].toString()),
       status: json['status'],
       paymentMethod: json['payment_method'] ?? 'VIRTUAL_ACCOUNT',
-      paymentType:
-          json['payment_type'] ?? json['payment_channel'] ?? 'virtual_account',
-      virtualAccountNumber:
-          json['virtual_account_number'] ?? json['external_reference'],
+      paymentType: json['payment_type'] ?? json['payment_channel'] ?? 'virtual_account',
+      virtualAccountNumber: json['virtual_account_number'] ?? json['external_reference'],
       deepLinkUrl: json['deep_link_url'],
       qrCodeUrl: json['qr_code_url'],
-      snapToken: json['snap_token'], // Ambil nilai snap_token dari JSON
       expiryTime: parseExpiryDate(),
       paymentTime: parsePaymentDate(),
       createdAt: json['created_at'],
@@ -274,5 +268,21 @@ class Payment {
     if (expiryTime == null) return false;
     final difference = expiryTime!.difference(DateTime.now());
     return difference.inHours < 1 && difference.inSeconds > 0;
+  }
+
+  void updatePaymentDetails({
+    String? virtualAccountNumber,
+    String? deepLinkUrl,
+    String? qrCodeUrl,
+  }) {
+    if (virtualAccountNumber != null) {
+      this.virtualAccountNumber = virtualAccountNumber;
+    }
+    if (deepLinkUrl != null) {
+      this.deepLinkUrl = deepLinkUrl;
+    }
+    if (qrCodeUrl != null) {
+      this.qrCodeUrl = qrCodeUrl;
+    }
   }
 }

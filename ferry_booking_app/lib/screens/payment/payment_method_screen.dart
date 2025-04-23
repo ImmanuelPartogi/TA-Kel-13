@@ -612,25 +612,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
         _selectedPaymentType!,
       );
 
-      // PERBAIKAN: Langsung navigasi ke halaman payment jika snap token sudah ada
-      if (bookingProvider.snapToken != null) {
-        setState(() {
-          _isLoading = false;
-        });
-
-        Navigator.pushNamed(
-          context,
-          '/booking/payment',
-          arguments: {
-            'bookingCode': bookingCode,
-            'paymentMethod': _selectedPaymentMethod,
-            'paymentType': _selectedPaymentType,
-          },
-        );
-        return;
-      }
-
-      // Jika tidak ada snap token, proses pembayaran
+      // Proses pembayaran
       bookingProvider
           .processPayment(
             bookingCode,
@@ -643,6 +625,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
             });
 
             if (success) {
+              // PERBAIKAN: Navigasi ke halaman instruksi pembayaran
               Navigator.pushNamed(
                 context,
                 '/booking/payment',

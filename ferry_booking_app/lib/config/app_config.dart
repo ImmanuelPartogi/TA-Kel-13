@@ -9,7 +9,6 @@ class AppConfig {
   // Midtrans Configuration
   static const String midtransClientKey = 'SB-Mid-client-8csuXJ7DmFhqmkMX';
   static const bool midtransProduction = false;
-  static const String midtransSnapUrl = 'https://app.sandbox.midtrans.com/snap/snap.js';
   
   // Callback URLs (harus URL publik yang bisa diakses Midtrans)
   static const String midtransCallbackUrl = 'https://337e-114-5-144-83.ngrok-free.app';

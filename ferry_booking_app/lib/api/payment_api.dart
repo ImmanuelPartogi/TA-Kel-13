@@ -11,12 +11,13 @@ class PaymentApi {
   // Mendapatkan status pembayaran
   Future<Map<String, dynamic>> getPaymentStatus(String bookingCode) async {
     try {
-      final token = await _secureStorage.getToken();
+      final token = await _getTokenWithFallback();
 
       final response = await http.get(
-        Uri.parse('$baseUrl/api/payments/status/$bookingCode'),
+        Uri.parse('$baseUrl/payments/status/$bookingCode'),
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'Authorization': 'Bearer $token',
         },
       );
@@ -29,85 +30,35 @@ class PaymentApi {
       } else {
         throw ApiException(
           code: response.statusCode,
-          message:
-              json.decode(response.body)['message'] ??
-              'Gagal mendapatkan status pembayaran',
+          message: _getErrorMessage(response) ?? 'Gagal mendapatkan status pembayaran',
         );
       }
     } catch (e) {
       print('Error in getPaymentStatus: $e');
       throw ApiException(
-        code: 500,
-        message:
-            'Terjadi kesalahan saat memeriksa status pembayaran: ${e.toString()}',
+        code: e is ApiException ? e.code : 500,
+        message: 'Terjadi kesalahan saat memeriksa status pembayaran: ${e.toString()}',
       );
     }
   }
 
-  // BARU: Memperbarui metode pembayaran
-  Future<Map<String, dynamic>> updatePaymentMethod(
-    String bookingCode,
-    String paymentMethod,
-    String paymentType,
-  ) async {
-    try {
-      final token = await _secureStorage.getToken();
-
-      print('Memperbarui metode pembayaran untuk: $bookingCode');
-      print('Method: $paymentMethod, Type: $paymentType');
-
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/payments/$bookingCode/update-method'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: json.encode({
-          'payment_method': paymentMethod,
-          'payment_type': paymentType,
-        }),
-      );
-
-      print('Update method response: ${response.statusCode}');
-      print('Update method body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        return json.decode(response.body)['data'];
-      } else {
-        throw ApiException(
-          code: response.statusCode,
-          message:
-              json.decode(response.body)['message'] ??
-              'Gagal memperbarui metode pembayaran',
-        );
-      }
-    } catch (e) {
-      print('Error in updatePaymentMethod: $e');
-      throw ApiException(
-        code: 500,
-        message:
-            'Terjadi kesalahan saat memperbarui metode pembayaran: ${e.toString()}',
-      );
-    }
-  }
-
-  // PERBAIKAN: Gunakan endpoint yang benar untuk processPayment
+  // Memproses pembayaran langsung
   Future<Map<String, dynamic>> processPayment(
     String bookingCode,
     String paymentMethod,
     String paymentType,
   ) async {
     try {
-      final token = await _secureStorage.getToken();
+      final token = await _getTokenWithFallback();
 
       print('Memproses pembayaran untuk booking: $bookingCode');
       print('Method: $paymentMethod, Type: $paymentType');
 
-      // PERBAIKAN: Gunakan endpoint yang benar
       final response = await http.post(
-        Uri.parse('$baseUrl/api/payments/$bookingCode/create'),
+        Uri.parse('$baseUrl/payments/$bookingCode/create'),
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'Authorization': 'Bearer $token',
         },
         body: json.encode({
@@ -116,42 +67,52 @@ class PaymentApi {
         }),
       );
 
-      print('Process payment response: ${response.statusCode}');
-      print('Process payment body: ${response.body}');
+      print('Process payment response status: ${response.statusCode}');
+      print('Process payment response body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return json.decode(response.body)['data'];
       } else {
         throw ApiException(
           code: response.statusCode,
-          message:
-              json.decode(response.body)['message'] ??
-              'Gagal memproses pembayaran',
+          message: _getErrorMessage(response) ?? 'Gagal memproses pembayaran',
         );
       }
     } catch (e) {
-      print('Error in processPayment: $e');
+      print('Error dalam processPayment: $e');
       throw ApiException(
-        code: 500,
+        code: e is ApiException ? e.code : 500,
         message: 'Terjadi kesalahan saat memproses pembayaran: ${e.toString()}',
       );
     }
   }
 
-  // Mendapatkan instruksi pembayaran berdasarkan metode
+  // Get token dengan multiple fallback
+  Future<String> _getTokenWithFallback() async {
+    final tokenFromStorage = await _secureStorage.getToken();
+    if (tokenFromStorage != null && tokenFromStorage.isNotEmpty) {
+      return tokenFromStorage;
+    }
+
+    throw ApiException(
+      code: 401,
+      message: 'Token autentikasi tidak tersedia. Silakan login kembali.',
+    );
+  }
+
+  // Mendapatkan instruksi pembayaran
   Future<Map<String, dynamic>> getPaymentInstructions(
     String paymentMethod,
     String paymentType,
   ) async {
     try {
-      final token = await _secureStorage.getToken();
+      final token = await _getTokenWithFallback();
 
       final response = await http.get(
-        Uri.parse(
-          '$baseUrl/api/payments/instructions/$paymentType/$paymentMethod',
-        ),
+        Uri.parse('$baseUrl/payments/instructions/$paymentType/$paymentMethod'),
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'Authorization': 'Bearer $token',
         },
       );
@@ -165,6 +126,16 @@ class PaymentApi {
     } catch (e) {
       // Fallback ke instruksi statis jika terjadi error
       return _getStaticInstructions(paymentMethod, paymentType);
+    }
+  }
+
+  // Helper untuk error message
+  String? _getErrorMessage(http.Response response) {
+    try {
+      final data = json.decode(response.body);
+      return data['message'];
+    } catch (e) {
+      return null;
     }
   }
 

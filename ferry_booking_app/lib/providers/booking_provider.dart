@@ -5,7 +5,7 @@ import '../models/booking.dart';
 import '../models/ferry.dart';
 import '../models/route.dart';
 import '../models/schedule.dart';
-import '../models/vehicle.dart'; // Import model Vehicle
+import '../models/vehicle.dart';
 
 class BookingProvider extends ChangeNotifier {
   final BookingApi _bookingApi = BookingApi();
@@ -19,17 +19,12 @@ class BookingProvider extends ChangeNotifier {
   Schedule? _selectedSchedule;
   DateTime? _selectedDate;
   List<Map<String, dynamic>> _passengers = [];
-
-  // PERUBAHAN: Ubah tipe data dari Map ke model Vehicle
   List<Vehicle> _vehicles = [];
-
-  // Map untuk menyimpan jumlah penumpang per kategori
   Map<String, int> _passengerCounts = {'adult': 1, 'child': 0, 'infant': 0};
 
   // Booking results
   List<Booking>? _bookings;
   Booking? _currentBooking;
-  String? _snapToken;
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -38,16 +33,11 @@ class BookingProvider extends ChangeNotifier {
   Schedule? get selectedSchedule => _selectedSchedule;
   DateTime? get selectedDate => _selectedDate;
   List<Map<String, dynamic>> get passengers => _passengers;
-
-  // PERUBAHAN: Getter untuk vehicles
   List<Vehicle> get vehicles => _vehicles;
-
-  // Getter untuk passengerCounts
   Map<String, int> get passengerCounts => _passengerCounts;
 
   List<Booking>? get bookings => _bookings;
   Booking? get currentBooking => _currentBooking;
-  String? get snapToken => _snapToken;
 
   // Menghitung total penumpang dari semua kategori
   int get totalPassengers {
@@ -74,7 +64,6 @@ class BookingProvider extends ChangeNotifier {
     return total;
   }
 
-  // PERUBAHAN: Ubah perhitungan biaya kendaraan untuk model Vehicle
   double get vehicleCost {
     if (_selectedRoute == null || _vehicles.isEmpty) return 0.0;
 
@@ -172,10 +161,7 @@ class BookingProvider extends ChangeNotifier {
   // Metode untuk memperbarui jumlah penumpang per kategori
   void updatePassengerCounts(Map<String, int> counts) {
     _passengerCounts = counts;
-
-    // Konversi jumlah penumpang kategori ke format yang kompatibel dengan sistem lama
     _convertPassengerCountsToPassengers();
-
     notifyListeners();
   }
 
@@ -211,27 +197,25 @@ class BookingProvider extends ChangeNotifier {
     }
   }
 
-  // PERUBAHAN: Ubah metode addVehicle untuk menerima objek Vehicle
+  // Add vehicle
   void addVehicle(Vehicle vehicle) {
     _vehicles.add(vehicle);
     notifyListeners();
   }
 
-  // PERUBAHAN: Buat metode compatibility untuk menerima Map
+  // Backward compatibility
   void addVehicleFromMap(Map<String, dynamic> vehicleData) {
-    // Buat objek Vehicle dari Map
     final vehicle = Vehicle(
-      id: -1, // ID sementara
-      bookingId: -1, // ID sementara
-      userId: -1, // ID sementara
+      id: -1,
+      bookingId: -1,
+      userId: -1,
       type: vehicleData['type'] ?? 'MOTORCYCLE',
       licensePlate: vehicleData['license_plate'] ?? '',
       brand: vehicleData['brand'],
       model: vehicleData['model'],
-      weight:
-          vehicleData['weight'] != null
-              ? double.tryParse(vehicleData['weight'].toString())
-              : null,
+      weight: vehicleData['weight'] != null
+          ? double.tryParse(vehicleData['weight'].toString())
+          : null,
       createdAt: DateTime.now().toIso8601String(),
       updatedAt: DateTime.now().toIso8601String(),
     );
@@ -240,7 +224,7 @@ class BookingProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // PERUBAHAN: Ubah metode updateVehicle untuk menerima objek Vehicle
+  // Update vehicle
   void updateVehicle(int index, Vehicle vehicle) {
     if (index >= 0 && index < _vehicles.length) {
       _vehicles[index] = vehicle;
@@ -248,24 +232,21 @@ class BookingProvider extends ChangeNotifier {
     }
   }
 
-  // PERUBAHAN: Buat metode compatibility untuk update dari Map
+  // Backward compatibility
   void updateVehicleFromMap(int index, Map<String, dynamic> vehicleData) {
     if (index >= 0 && index < _vehicles.length) {
-      // Buat vehicle baru dengan data yang sudah diupdate
       final currentVehicle = _vehicles[index];
       final updatedVehicle = Vehicle(
         id: currentVehicle.id,
         bookingId: currentVehicle.bookingId,
         userId: currentVehicle.userId,
         type: vehicleData['type'] ?? currentVehicle.type,
-        licensePlate:
-            vehicleData['license_plate'] ?? currentVehicle.licensePlate,
+        licensePlate: vehicleData['license_plate'] ?? currentVehicle.licensePlate,
         brand: vehicleData['brand'],
         model: vehicleData['model'],
-        weight:
-            vehicleData['weight'] != null
-                ? double.tryParse(vehicleData['weight'].toString())
-                : currentVehicle.weight,
+        weight: vehicleData['weight'] != null
+            ? double.tryParse(vehicleData['weight'].toString())
+            : currentVehicle.weight,
         createdAt: currentVehicle.createdAt,
         updatedAt: DateTime.now().toIso8601String(),
       );
@@ -294,9 +275,8 @@ class BookingProvider extends ChangeNotifier {
       'adult': 1,
       'child': 0,
       'infant': 0,
-    }; // Reset passenger counts
+    };
     _currentBooking = null;
-    _snapToken = null;
     notifyListeners();
   }
 
@@ -334,7 +314,7 @@ class BookingProvider extends ChangeNotifier {
     }
   }
 
-  // PERUBAHAN: Ubah createBooking untuk mendukung model Vehicle
+  // Create booking
   Future<bool> createBooking() async {
     if (_selectedSchedule == null ||
         _selectedDate == null ||
@@ -349,7 +329,7 @@ class BookingProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Konversi vehicles dari model class ke Map sesuai format API
+      // Konversi vehicles ke Map
       final List<Map<String, dynamic>> vehiclesMap =
           _vehicles
               .map(
@@ -376,15 +356,10 @@ class BookingProvider extends ChangeNotifier {
 
       final result = await _bookingApi.createBooking(bookingData);
 
-      // Pastikan hasil booking tidak null sebelum menyimpannya
+      // Set current booking
       if (result != null && result['booking'] != null) {
         _currentBooking = result['booking'];
-        _snapToken = result['payment']?['snap_token'];
-
-        // Log untuk debugging
-        print('Current booking set: ${_currentBooking?.bookingCode}');
-        print('Snap token set: $_snapToken');
-
+        
         _isLoading = false;
         notifyListeners();
         return true;
@@ -405,7 +380,6 @@ class BookingProvider extends ChangeNotifier {
   // Simpan metode pembayaran yang dipilih ke dalam objek booking
   void updatePaymentMethod(String paymentMethod, String paymentType) {
     try {
-      // Logging untuk debugging
       print('Updating payment method to: $paymentMethod, $paymentType');
 
       if (_currentBooking != null) {
@@ -418,9 +392,7 @@ class BookingProvider extends ChangeNotifier {
         print('Payment method updated successfully');
         notifyListeners();
       } else {
-        print(
-          'Warning: currentBooking is null when trying to update payment method',
-        );
+        print('Warning: currentBooking is null when trying to update payment method');
 
         // Coba buat booking sementara sebagai fallback
         createTemporaryBooking();
@@ -432,11 +404,8 @@ class BookingProvider extends ChangeNotifier {
           print('Payment method updated after creating temporary booking');
           notifyListeners();
         } else {
-          print(
-            'Failed to create temporary booking, cannot update payment method',
-          );
-          _errorMessage =
-              'Tidak dapat mengupdate metode pembayaran: Booking tidak ditemukan';
+          print('Failed to create temporary booking, cannot update payment method');
+          _errorMessage = 'Tidak dapat mengupdate metode pembayaran: Booking tidak ditemukan';
         }
       }
     } catch (e) {
@@ -468,62 +437,28 @@ class BookingProvider extends ChangeNotifier {
       // Simpan metode pembayaran yang dipilih
       updatePaymentMethod(paymentMethod, paymentType);
 
-      // PERBAIKAN: Periksa apakah payment sudah ada dengan snap token
-      if (_snapToken != null) {
-        print('Snap token sudah ada: $_snapToken');
-
-        try {
-          // Cukup update metode pembayaran jika snap token sudah ada
-          await _paymentApi.updatePaymentMethod(
-            bookingCode,
-            paymentMethod,
-            paymentType,
-          );
-          print('Metode pembayaran berhasil diperbarui');
-        } catch (e) {
-          print('Gagal memperbarui metode pembayaran: $e');
-          // Lanjutkan meskipun gagal update
-        }
-
-        _isLoading = false;
-        notifyListeners();
-        return true;
-      }
-
-      // Jika belum ada snap token, coba dapatkan status dulu
-      try {
-        final statusResult = await _paymentApi.getPaymentStatus(bookingCode);
-        if (statusResult != null && statusResult['snap_token'] != null) {
-          _snapToken = statusResult['snap_token'];
-          print('Snap token didapatkan dari status: $_snapToken');
-
-          // Update metode pembayaran
-          await _paymentApi.updatePaymentMethod(
-            bookingCode,
-            paymentMethod,
-            paymentType,
-          );
-
-          _isLoading = false;
-          notifyListeners();
-          return true;
-        }
-      } catch (e) {
-        print('Gagal mendapatkan status: $e');
-        // Lanjutkan ke pembuatan payment baru
-      }
-
-      // Jika masih tidak ada snap token, buat payment baru
+      // Panggil API untuk memproses pembayaran langsung
       final result = await _paymentApi.processPayment(
         bookingCode,
         paymentMethod,
         paymentType,
       );
 
-      // Update snap token jika tersedia
-      if (result != null && result.containsKey('snap_token')) {
-        _snapToken = result['snap_token'];
-        print('Snap token baru: $_snapToken');
+      // Simpan referensi pembayaran dari hasil API
+      if (result.containsKey('virtual_account_number')) {
+        _currentBooking!.latestPayment?.virtualAccountNumber =
+            result['virtual_account_number'];
+        print('VA number: ${result['virtual_account_number']}');
+      }
+
+      if (result.containsKey('qr_code_url')) {
+        _currentBooking!.latestPayment?.qrCodeUrl = result['qr_code_url'];
+        print('QR Code URL: ${result['qr_code_url']}');
+      }
+
+      if (result.containsKey('deep_link_url')) {
+        _currentBooking!.latestPayment?.deepLinkUrl = result['deep_link_url'];
+        print('Deep Link URL: ${result['deep_link_url']}');
       }
 
       // Refresh booking data
@@ -563,7 +498,7 @@ class BookingProvider extends ChangeNotifier {
       _errorMessage = e.toString();
       notifyListeners();
 
-      // PERBAIKAN: Return fallback instructions jika gagal get dari API
+      // Fallback instructions jika gagal get dari API
       return _getStaticInstructions(paymentMethod, paymentType);
     }
   }

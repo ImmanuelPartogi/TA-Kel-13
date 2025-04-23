@@ -11,7 +11,7 @@ class PaymentScreen extends StatefulWidget {
   final String? paymentType;
 
   const PaymentScreen({
-    Key? key, 
+    Key? key,
     this.bookingCode,
     this.paymentMethod,
     this.paymentType,
@@ -42,8 +42,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   void _initPaymentData() async {
     // Jika tidak ada dari constructor, coba ambil dari route arguments
-    if (_paymentMethod == null || _paymentType == null || _bookingCode == null) {
-      final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+    if (_paymentMethod == null ||
+        _paymentType == null ||
+        _bookingCode == null) {
+      final args =
+          ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
 
       if (args != null) {
         setState(() {
@@ -59,7 +62,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
     if (_paymentType == null) _paymentType = 'virtual_account';
     if (_bookingCode == null) {
       // Jika masih null, coba ambil dari currentBooking
-      final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
+      final bookingProvider = Provider.of<BookingProvider>(
+        context,
+        listen: false,
+      );
       _bookingCode = bookingProvider.currentBooking?.bookingCode;
     }
 
@@ -67,7 +73,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Future<void> _loadPaymentInstructions() async {
-    final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
+    final bookingProvider = Provider.of<BookingProvider>(
+      context,
+      listen: false,
+    );
 
     setState(() {
       _isLoading = true;
@@ -109,51 +118,249 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final bookingProvider = Provider.of<BookingProvider>(context);
     final booking = bookingProvider.currentBooking;
 
+    if (booking == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Pembayaran')),
+        body: const Center(child: Text('Data pemesanan tidak ditemukan')),
+      );
+    }
+
+    final payment = booking.latestPayment;
+    final currencyFormat = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    );
+
     return Scaffold(
-      appBar: const CustomAppBar(title: 'Instruksi Pembayaran'),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Informasi Pembayaran
-                  _buildPaymentInfoCard(context, booking),
-                  const SizedBox(height: 16),
-                  
-                  // Detail Virtual Account
-                  if (booking?.latestPayment?.virtualAccountNumber != null)
-                    _buildVirtualAccountCard(context, booking),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Instruksi Pembayaran
-                  if (_paymentInstructions != null)
-                    _buildInstructionsCard(context),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Tombol Kembali
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pushNamedAndRemoveUntil(
-                          context, 
-                          '/home', 
-                          (route) => false
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      child: const Text('Kembali ke Beranda'),
+      appBar: AppBar(title: const Text('Instruksi Pembayaran')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Ringkasan Pembayaran
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Total Pembayaran',
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                    Text(
+                      currencyFormat.format(booking.totalAmount),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.headlineMedium?.copyWith(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text('Kode Booking: ${booking.bookingCode}'),
+                    Text('Status: ${booking.statusDisplay}'),
+                    Text(
+                      'Batas Waktu: ${DateFormat('dd MMM yyyy, HH:mm').format(payment?.expiryTime ?? DateTime.now().add(const Duration(hours: 24)))}',
+                    ),
+                  ],
+                ),
               ),
             ),
+
+            const SizedBox(height: 16),
+
+            // Informasi Pembayaran
+            if (payment != null) ...[
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Informasi Pembayaran',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // VA Number
+                      if (payment.virtualAccountNumber != null) ...[
+                        const Text('Nomor Virtual Account:'),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  payment.virtualAccountNumber!,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.copy),
+                                onPressed: () {
+                                  Clipboard.setData(
+                                    ClipboardData(
+                                      text: payment.virtualAccountNumber!,
+                                    ),
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Nomor VA disalin'),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+
+                      // QR Code
+                      if (payment.qrCodeUrl != null) ...[
+                        const SizedBox(height: 16),
+                        const Text('QR Code Pembayaran:'),
+                        const SizedBox(height: 8),
+                        Center(
+                          child: Image.network(
+                            payment.qrCodeUrl!,
+                            width: 200,
+                            height: 200,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Text('QR Code tidak tersedia');
+                            },
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 16),
+
+            // Instruksi Pembayaran
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Cara Pembayaran',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 16),
+                    // Tambahkan instruksi pembayaran sesuai metode yang dipilih
+                    // Ini bisa diambil dari database atau hardcoded
+                    _buildPaymentInstructions(),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Tombol Bantuan
+            ElevatedButton.icon(
+              onPressed: () {
+                // Tampilkan dialog bantuan atau navigasi ke halaman bantuan
+              },
+              icon: const Icon(Icons.help_outline),
+              label: const Text('Bantuan Pembayaran'),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 48),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Tombol Kembali
+            OutlinedButton(
+              onPressed: () {
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  '/home',
+                  (route) => false,
+                );
+              },
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 48),
+              ),
+              child: const Text('Kembali ke Beranda'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentInstructions() {
+    final List<Map<String, String>> steps = [
+      {'step': '1', 'text': 'Buka aplikasi mobile banking Anda'},
+      {'step': '2', 'text': 'Pilih menu Transfer atau Pembayaran'},
+      {'step': '3', 'text': 'Pilih Virtual Account atau Pembayaran Tagihan'},
+      {
+        'step': '4',
+        'text': 'Masukkan nomor Virtual Account yang tertera di atas',
+      },
+      {'step': '5', 'text': 'Pastikan detail pembayaran sudah benar'},
+      {'step': '6', 'text': 'Masukkan PIN atau password Anda'},
+      {'step': '7', 'text': 'Pembayaran Anda akan diproses secara otomatis'},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children:
+          steps.map((step) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        step['step']!,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(step['text']!)),
+                ],
+              ),
+            );
+          }).toList(),
     );
   }
 
@@ -168,9 +375,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
 
     final currencyFormat = NumberFormat.currency(
-      locale: 'id_ID', 
-      symbol: 'Rp ', 
-      decimalDigits: 0
+      locale: 'id_ID',
+      symbol: 'Rp ',
+      decimalDigits: 0,
     );
 
     return Card(
@@ -224,9 +431,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
               Text(
                 'Bayar sebelum: ${DateFormat('dd MMM yyyy, HH:mm', 'id_ID').format(booking.latestPayment!.expiryTime!)}',
                 style: TextStyle(
-                  color: _isNearExpiry(booking.latestPayment!.expiryTime!)
-                      ? Colors.red
-                      : Colors.black,
+                  color:
+                      _isNearExpiry(booking.latestPayment!.expiryTime!)
+                          ? Colors.red
+                          : Colors.black,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -240,9 +448,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Widget _buildVirtualAccountCard(BuildContext context, dynamic booking) {
     final payment = booking.latestPayment;
     final vaNumber = payment?.virtualAccountNumber;
-    
+
     if (vaNumber == null) return const SizedBox.shrink();
-    
+
     return Card(
       elevation: 2,
       child: Padding(
@@ -278,8 +486,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   IconButton(
                     icon: const Icon(Icons.copy),
                     onPressed: () {
-                      Clipboard.setData(ClipboardData(text: vaNumber))
-                          .then((_) {
+                      Clipboard.setData(ClipboardData(text: vaNumber)).then((
+                        _,
+                      ) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Nomor VA disalin ke clipboard'),
@@ -299,7 +508,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   Widget _buildInstructionsCard(BuildContext context) {
     final steps = _paymentInstructions!['steps'] as List;
-    
+
     return Card(
       elevation: 2,
       child: Padding(
@@ -315,7 +524,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ...steps.asMap().entries.map((entry) {
               int idx = entry.key;
               String step = entry.value;
-              
+
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Row(
@@ -339,9 +548,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(step),
-                    ),
+                    Expanded(child: Text(step)),
                   ],
                 ),
               );
@@ -355,7 +562,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Widget _buildStatusChip(String status) {
     Color color;
     String label;
-    
+
     switch (status) {
       case 'PENDING':
         color = Colors.orange;
@@ -373,7 +580,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         color = Colors.grey;
         label = status;
     }
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
@@ -383,10 +590,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       ),
       child: Text(
         label,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.bold,
-        ),
+        style: TextStyle(color: color, fontWeight: FontWeight.bold),
       ),
     );
   }

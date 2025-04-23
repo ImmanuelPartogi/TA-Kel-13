@@ -11,16 +11,31 @@ use App\Http\Controllers\Api\TicketController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\VehicleController;
 use App\Http\Controllers\Api\ChatbotController;
+use App\Http\Controllers\Api\PollingController;
 
 // Public routes
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
+
+// Route untuk callback Midtrans - Harus dapat diakses tanpa autentikasi
+// PENTING: Pastikan route ini berada DI LUAR middleware auth:sanctum
+Route::post('/payments/notification', [PaymentController::class, 'notification']);
+Route::post('/polling/payments', [PollingController::class, 'triggerPaymentPolling']);
+Route::get('/payments/{bookingCode}/refresh-status', [PaymentController::class, 'refreshStatus']);
 
 // Chatbot routes yang dapat diakses publik
 Route::prefix('chatbot')->group(function () {
     Route::post('/conversation', [ChatbotController::class, 'getConversation']);
     Route::post('/send', [ChatbotController::class, 'sendMessage']);
     Route::post('/feedback', [ChatbotController::class, 'sendFeedback']);
+});
+
+// Test route
+Route::post('/test', function (Request $request) {
+    return response()->json([
+        'message' => 'Berhasil akses route /test',
+        'data_dikirim' => $request->all(),
+    ]);
 });
 
 // Protected routes
@@ -45,19 +60,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/bookings/{id}/cancel', [BookingController::class, 'cancel']);
 
     // Payments
-    // PERBAIKAN: Ganti endpoint yang hilang
     Route::get('/payments/status/{bookingCode}', [PaymentController::class, 'status']);
     Route::post('/payments/{bookingCode}/create', [PaymentController::class, 'create']);
     Route::post('/payments/{bookingCode}/cancel', [PaymentController::class, 'cancel']);
-
-    // TAMBAHAN: Endpoint untuk memperbarui metode pembayaran
     Route::post('/payments/{bookingCode}/update-method', [PaymentController::class, 'updatePaymentMethod']);
-
-    // Instruksi pembayaran
     Route::get('/payments/instructions/{paymentType}/{paymentMethod}', [PaymentController::class, 'getInstructions']);
-
-    // TAMBAHAN: Endpoint untuk debugging
+    Route::get('/payments/{bookingCode}/manual-check', [PaymentController::class, 'manualCheck']);
     Route::get('/payments/debug/{bookingCode}', [PaymentController::class, 'debug']);
+    Route::get('/payments/{bookingCode}/check-status', [PaymentController::class, 'manualCheckStatus']);
 
     // Tickets
     Route::get('/tickets', [TicketController::class, 'index']);
@@ -80,13 +90,3 @@ Route::middleware('auth:sanctum')->group(function () {
     // Chatbot routes yang memerlukan autentikasi
     Route::get('/chatbot/conversations', [ChatbotController::class, 'getUserConversations']);
 });
-
-Route::post('/test', function (Request $request) {
-    return response()->json([
-        'message' => 'Berhasil akses route /test',
-        'data_dikirim' => $request->all(),
-    ]);
-});
-
-// Route untuk callback Midtrans - Harus dapat diakses tanpa autentikasi
-Route::post('/payments/notification', [PaymentController::class, 'notification']);

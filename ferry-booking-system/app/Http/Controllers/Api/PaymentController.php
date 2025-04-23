@@ -7,7 +7,9 @@ use App\Models\Booking;
 use App\Models\Payment;
 use App\Services\MidtransService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 
 class PaymentController extends Controller
 {
@@ -19,394 +21,9 @@ class PaymentController extends Controller
     }
 
     /**
-     * Membuat transaksi pembayaran baru
-     *
-     * @param Request $request
-     * @param string $bookingCode
-     * @return \Illuminate\Http\JsonResponse
+     * Membuat pembayaran baru
      */
     public function create(Request $request, $bookingCode)
-    {
-        Log::info('Payment create request received', [
-            'booking_code' => $bookingCode,
-            'payment_method' => $request->input('payment_method'),
-            'payment_type' => $request->input('payment_type'),
-            'user_id' => $request->user()->id
-        ]);
-
-        $user = $request->user();
-        $booking = Booking::where('booking_code', $bookingCode)
-            ->where('user_id', $user->id)
-            ->where('status', 'PENDING')
-            ->firstOrFail();
-
-        // Cek apakah sudah ada payment yang aktif
-        $activePayment = Payment::where('booking_id', $booking->id)
-            ->whereIn('status', ['PENDING'])
-            ->first();
-
-        if ($activePayment) {
-            Log::info('Active payment already exists', [
-                'booking_code' => $bookingCode,
-                'payment_id' => $activePayment->id,
-                'snap_token' => $activePayment->snap_token
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Pembayaran sudah dibuat',
-                'data' => [
-                    'payment' => $activePayment,
-                    'snap_token' => $activePayment->snap_token
-                ]
-            ], 200);
-        }
-
-        // Buat transaksi baru
-        Log::info('Creating new Midtrans transaction', [
-            'booking_code' => $bookingCode,
-            'amount' => $booking->total_amount,
-            'payment_method' => $request->input('payment_method', 'VIRTUAL_ACCOUNT'),
-            'payment_type' => $request->input('payment_type', 'virtual_account')
-        ]);
-
-        // PERBAIKAN: Set payment method dan type dari input request
-        $paymentMethod = $request->input('payment_method', 'VIRTUAL_ACCOUNT');
-        $paymentType = $request->input('payment_type', 'virtual_account');
-
-        // Buat Snap Token
-        $snapToken = $this->midtransService->createTransaction($booking, [
-            'payment_method' => $paymentMethod,
-            'payment_type' => $paymentType
-        ]);
-
-        if (!$snapToken) {
-            Log::error('Failed to create Midtrans transaction', [
-                'booking_code' => $bookingCode
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal membuat pembayaran'
-            ], 500);
-        }
-
-        // Simpan data pembayaran
-        $payment = new Payment();
-        $payment->booking_id = $booking->id;
-        $payment->amount = $booking->total_amount;
-        $payment->status = 'PENDING';
-        $payment->payment_method = $paymentMethod;
-        $payment->payment_channel = $paymentType;
-        $payment->expiry_date = now()->addHours(config('midtrans.expiry_duration', 24));
-        $payment->snap_token = $snapToken;
-        $payment->save();
-
-        Log::info('Payment created successfully', [
-            'booking_code' => $bookingCode,
-            'payment_id' => $payment->id,
-            'snap_token' => $snapToken
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Pembayaran berhasil dibuat',
-            'data' => [
-                'payment' => $payment,
-                'snap_token' => $snapToken
-            ]
-        ], 201);
-    }
-
-    /**
-     * Mengambil status pembayaran
-     *
-     * @param Request $request
-     * @param string $bookingCode
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function status(Request $request, $bookingCode)
-    {
-        Log::info('Payment status check requested', [
-            'booking_code' => $bookingCode,
-            'user_id' => $request->user()->id
-        ]);
-
-        $user = $request->user();
-        $booking = Booking::where('booking_code', $bookingCode)
-            ->where('user_id', $user->id)
-            ->firstOrFail();
-
-        $payment = Payment::where('booking_id', $booking->id)
-            ->latest()
-            ->first();
-
-        if (!$payment) {
-            Log::warning('Payment not found', [
-                'booking_code' => $bookingCode
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Pembayaran tidak ditemukan'
-            ], 404);
-        }
-
-        // PERBAIKAN: Periksa status menggunakan order_id (booking_code), bukan transaction_id
-        if ($payment->status === 'PENDING') {
-            Log::info('Checking Midtrans for payment status', [
-                'booking_code' => $bookingCode,
-                'payment_id' => $payment->id,
-                'transaction_id' => $payment->transaction_id,
-                'current_status' => $payment->status
-            ]);
-
-            // Gunakan order_id (booking_code) untuk cek status
-            $midtransStatus = $this->midtransService->getTransactionStatus($bookingCode);
-
-            // Update status pembayaran berdasarkan respon Midtrans
-            if ($midtransStatus) {
-                Log::info('Midtrans status received', [
-                    'booking_code' => $bookingCode,
-                    'transaction_status' => $midtransStatus->transaction_status ?? 'unknown'
-                ]);
-
-                $this->midtransService->updatePaymentStatus($payment, (array) $midtransStatus);
-            } else {
-                Log::warning('No status from Midtrans', [
-                    'booking_code' => $bookingCode
-                ]);
-            }
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Status pembayaran berhasil diambil',
-            'data' => $payment->fresh()
-        ], 200);
-    }
-
-    /**
-     * Callback untuk notifikasi dari Midtrans
-     *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function notification(Request $request)
-    {
-        $notification = $request->all();
-
-        Log::info('Midtrans notification received', [
-            'order_id' => $notification['order_id'] ?? 'unknown',
-            'transaction_status' => $notification['transaction_status'] ?? 'unknown'
-        ]);
-
-        // PERBAIKAN: Log raw data untuk debugging
-        Log::debug('Raw notification payload', [
-            'headers' => $request->headers->all(),
-            'body' => $notification
-        ]);
-
-        // Verifikasi notifikasi dari Midtrans
-        $isVerified = $this->midtransService->verifyNotification($notification);
-
-        if (!$isVerified) {
-            Log::warning('Invalid Midtrans notification signature', [
-                'order_id' => $notification['order_id'] ?? 'unknown'
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Signature key tidak valid'
-            ], 403);
-        }
-
-        // Proses notifikasi - Gunakan order_id yang merupakan booking_code
-        $orderId = $notification['order_id']; // Ini adalah booking_code
-
-        Log::info('Processing verified notification', [
-            'order_id' => $orderId
-        ]);
-
-        $booking = Booking::where('booking_code', $orderId)->first();
-
-        if (!$booking) {
-            Log::warning('Booking not found for Midtrans notification', [
-                'order_id' => $orderId
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Booking tidak ditemukan'
-            ], 404);
-        }
-
-        $payment = Payment::where('booking_id', $booking->id)
-            ->latest()
-            ->first();
-
-        if (!$payment) {
-            Log::warning('Payment not found for Midtrans notification', [
-                'order_id' => $orderId,
-                'booking_id' => $booking->id
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Pembayaran tidak ditemukan'
-            ], 404);
-        }
-
-        // Update status pembayaran
-        $this->midtransService->updatePaymentStatus($payment, $notification);
-
-        Log::info('Payment status updated from notification', [
-            'order_id' => $orderId,
-            'new_status' => $payment->fresh()->status
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Notifikasi berhasil diproses'
-        ], 200);
-    }
-
-    /**
-     * Membatalkan pembayaran
-     *
-     * @param Request $request
-     * @param string $bookingCode
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function cancel(Request $request, $bookingCode)
-    {
-        Log::info('Payment cancellation requested', [
-            'booking_code' => $bookingCode,
-            'user_id' => $request->user()->id
-        ]);
-
-        $user = $request->user();
-        $booking = Booking::where('booking_code', $bookingCode)
-            ->where('user_id', $user->id)
-            ->where('status', 'PENDING')
-            ->firstOrFail();
-
-        $payment = Payment::where('booking_id', $booking->id)
-            ->where('status', 'PENDING')
-            ->latest()
-            ->first();
-
-        if (!$payment) {
-            Log::warning('No active payment to cancel', [
-                'booking_code' => $bookingCode
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Tidak ada pembayaran aktif untuk dibatalkan'
-            ], 404);
-        }
-
-        // Update status payment dan booking
-        $payment->status = 'FAILED';
-        $payment->save();
-
-        $booking->status = 'CANCELLED';
-        $booking->cancellation_reason = 'Dibatalkan oleh pengguna';
-        $booking->save();
-
-        Log::info('Payment cancelled successfully', [
-            'booking_code' => $bookingCode,
-            'payment_id' => $payment->id
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Pembayaran berhasil dibatalkan',
-            'data' => $payment->fresh()
-        ], 200);
-    }
-
-    /**
-     * Mengambil instruksi pembayaran
-     *
-     * @param Request $request
-     * @param string $paymentMethod
-     * @param string $paymentType
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function getInstructions(Request $request, $paymentMethod, $paymentType)
-    {
-        Log::info('Payment instructions requested', [
-            'payment_method' => $paymentMethod,
-            'payment_type' => $paymentType
-        ]);
-
-        $instructions = $this->midtransService->getPaymentInstructions($paymentMethod, $paymentType);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Instruksi pembayaran berhasil diambil',
-            'data' => $instructions
-        ], 200);
-    }
-
-    /**
-     * Debug untuk membantu troubleshooting transaksi
-     *
-     * @param string $bookingCode
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function debug($bookingCode)
-    {
-        try {
-            $booking = Booking::where('booking_code', $bookingCode)->firstOrFail();
-            $payment = Payment::where('booking_id', $booking->id)->latest()->first();
-
-            // Get status from Midtrans
-            $midtransStatus = $this->midtransService->getTransactionStatus($bookingCode);
-
-            // Get base64 authorization for testing
-            $serverKey = config('midtrans.server_key');
-            $authString = base64_encode($serverKey . ':');
-
-            // Check curl endpoint
-            $checkCommand = "curl -X GET " .
-                "https://api.sandbox.midtrans.com/v2/{$bookingCode}/status " .
-                "-H 'Accept: application/json' " .
-                "-H 'Authorization: Basic {$authString}' " .
-                "-H 'Content-Type: application/json'";
-
-            return response()->json([
-                'success' => true,
-                'booking' => $booking,
-                'payment' => $payment,
-                'midtrans_status' => $midtransStatus,
-                'config' => [
-                    'notification_url' => config('midtrans.notification_url'),
-                    'server_key_exists' => !empty(config('midtrans.server_key')),
-                    'server_key_prefix' => substr(config('midtrans.server_key'), 0, 10) . '...',
-                    'is_production' => config('midtrans.is_production'),
-                ],
-                'test_curl' => $checkCommand
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-        }
-    }
-
-    /**
-     * Update metode pembayaran
-     *
-     * @param Request $request
-     * @param string $bookingCode
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function updatePaymentMethod(Request $request, $bookingCode)
     {
         $validator = Validator::make($request->all(), [
             'payment_method' => 'required|string',
@@ -421,49 +38,400 @@ class PaymentController extends Controller
             ], 422);
         }
 
-        Log::info('Memperbarui metode pembayaran', [
-            'booking_code' => $bookingCode,
-            'payment_method' => $request->payment_method,
-            'payment_type' => $request->payment_type,
-            'user_id' => $request->user()->id
+        // Cari booking berdasarkan booking code
+        $user = $request->user();
+        $booking = Booking::where('booking_code', $bookingCode)
+            ->where('user_id', $user->id)
+            ->where('status', 'PENDING')
+            ->firstOrFail();
+
+        // Cek apakah sudah ada pembayaran pending
+        $pendingPayment = Payment::where('booking_id', $booking->id)
+            ->where('status', 'PENDING')
+            ->latest()
+            ->first();
+
+        try {
+            DB::beginTransaction();
+
+            // Gunakan pembayaran yang sudah ada atau buat baru
+            if ($pendingPayment) {
+                $payment = $pendingPayment;
+                $payment->payment_method = $this->mapPaymentMethod($request->payment_method);
+                $payment->payment_channel = $request->payment_method;
+                $payment->save();
+            } else {
+                // Buat payment record baru
+                $payment = new Payment();
+                $payment->booking_id = $booking->id;
+                $payment->amount = $booking->total_amount;
+                $payment->status = 'PENDING';
+                $payment->payment_method = $this->mapPaymentMethod($request->payment_method);
+                $payment->payment_channel = $request->payment_method;
+                $payment->expiry_date = now()->addHours(config('midtrans.expiry_duration', 24));
+                $payment->save();
+            }
+
+            // Buat transaksi di Midtrans
+            $response = $this->midtransService->createTransaction($booking, [
+                'payment_method' => $request->payment_method,
+                'payment_type' => $request->payment_type
+            ]);
+
+            if (!$response) {
+                throw new \Exception('Gagal membuat transaksi Midtrans');
+            }
+
+            // Update payment dengan info dari Midtrans
+            $payment->transaction_id = $response['transaction_id'] ?? null;
+
+            // Ekstrak detail pembayaran dari respons Midtrans
+            $this->midtransService->setPaymentDetails($payment, $response);
+
+            $payment->payload = json_encode($response);
+            $payment->save();
+
+            DB::commit();
+
+            // Buat respons
+            $responseData = [
+                'payment_id' => $payment->id,
+                'status' => $payment->status,
+                'payment_method' => $payment->payment_method,
+                'payment_channel' => $payment->payment_channel,
+                'virtual_account_number' => $payment->virtual_account_number,
+                'qr_code_url' => $payment->qr_code_url,
+                'deep_link_url' => $payment->deep_link_url,
+            ];
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pembayaran berhasil dibuat',
+                'data' => $responseData
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membuat pembayaran: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Perbaikan handler untuk notifikasi callback dari Midtrans
+     */
+    public function notification(Request $request)
+    {
+        $notification = $request->all();
+
+        Log::info('Midtrans notification received', [
+            'order_id' => $notification['order_id'] ?? 'unknown',
+            'transaction_status' => $notification['transaction_status'] ?? 'unknown'
         ]);
 
+        // Log data lengkap untuk debugging (sesuaikan untuk production)
+        Log::debug('Complete notification payload', $notification);
+
+        // PERBAIKAN: Dalam sandbox mode, kita bisa skip verifikasi untuk debugging
+        $isVerified = true;
+        if (config('midtrans.is_production')) {
+            $isVerified = $this->midtransService->verifyNotification($notification);
+        }
+
+        if (!$isVerified) {
+            Log::warning('Invalid notification signature', [
+                'order_id' => $notification['order_id'] ?? 'unknown'
+            ]);
+
+            // Dalam development/testing, bisa diteruskan
+            if (!config('midtrans.is_production')) {
+                Log::info('Proceeding with unverified notification in development mode');
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Signature key tidak valid'
+                ], 403);
+            }
+        }
+
+        // Proses notifikasi
+        $orderId = $notification['order_id']; // Ini adalah booking_code
+
+        try {
+            // Cari booking dan payment
+            $booking = Booking::where('booking_code', $orderId)->first();
+
+            if (!$booking) {
+                Log::warning('Booking not found for notification', [
+                    'order_id' => $orderId
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Booking tidak ditemukan'
+                ], 404);
+            }
+
+            $payment = Payment::where('booking_id', $booking->id)
+                ->latest()
+                ->first();
+
+            if (!$payment) {
+                Log::warning('Payment not found for notification', [
+                    'order_id' => $orderId,
+                    'booking_id' => $booking->id
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pembayaran tidak ditemukan'
+                ], 404);
+            }
+
+            // PENTING: Update status pembayaran dan booking
+            $this->midtransService->updatePaymentStatus($payment, $notification);
+
+            Log::info('Notification processed successfully', [
+                'order_id' => $orderId,
+                'payment_status' => $payment->fresh()->status,
+                'booking_status' => $booking->fresh()->status
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Notifikasi berhasil diproses'
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Error processing notification', [
+                'order_id' => $orderId,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error memproses notifikasi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Memeriksa status pembayaran
+     */
+    public function status(Request $request, $bookingCode)
+    {
+        // Cari booking dan payment
         $user = $request->user();
         $booking = Booking::where('booking_code', $bookingCode)
             ->where('user_id', $user->id)
             ->firstOrFail();
 
         $payment = Payment::where('booking_id', $booking->id)
-            ->where('status', 'PENDING')
             ->latest()
             ->first();
 
         if (!$payment) {
-            Log::warning('Payment tidak ditemukan saat update metode pembayaran', [
-                'booking_code' => $bookingCode
-            ]);
-
             return response()->json([
                 'success' => false,
                 'message' => 'Pembayaran tidak ditemukan'
             ], 404);
         }
 
-        // Update payment method dan simpan
-        $payment->payment_method = $request->payment_method;
-        $payment->payment_channel = $request->payment_type;
-        $payment->save();
+        // Cek status di Midtrans untuk pembayaran PENDING
+        if ($payment->status === 'PENDING') {
+            $midtransStatus = $this->midtransService->getStatus($payment->transaction_id ?? $booking->booking_code);
 
-        Log::info('Metode pembayaran berhasil diperbarui', [
-            'payment_id' => $payment->id,
-            'payment_method' => $payment->payment_method,
-            'payment_channel' => $payment->payment_channel
-        ]);
+            if ($midtransStatus) {
+                // Update status pembayaran
+                $this->midtransService->updatePaymentStatus($payment, (array) $midtransStatus);
+            }
+        }
+
+        // Refresh payment dari database
+        $payment = $payment->fresh();
 
         return response()->json([
             'success' => true,
-            'message' => 'Metode pembayaran berhasil diperbarui',
-            'data' => $payment
+            'message' => 'Status pembayaran berhasil diambil',
+            'data' => [
+                'payment_id' => $payment->id,
+                'booking_id' => $booking->id,
+                'status' => $payment->status,
+                'payment_method' => $payment->payment_method,
+                'payment_channel' => $payment->payment_channel,
+                'virtual_account_number' => $payment->virtual_account_number,
+                'qr_code_url' => $payment->qr_code_url,
+                'deep_link_url' => $payment->deep_link_url,
+                'payment_date' => $payment->payment_date,
+                'expiry_date' => $payment->expiry_date,
+                'booking_status' => $booking->status
+            ]
+        ], 200);
+    }
+
+    /**
+     * Map nilai payment_method ke nilai enum yang valid
+     */
+    protected function mapPaymentMethod($method)
+    {
+        $methodMap = [
+            'bca' => 'VIRTUAL_ACCOUNT',
+            'bni' => 'VIRTUAL_ACCOUNT',
+            'bri' => 'VIRTUAL_ACCOUNT',
+            'mandiri' => 'VIRTUAL_ACCOUNT',
+            'gopay' => 'E_WALLET',
+            'shopeepay' => 'E_WALLET',
+        ];
+
+        return $methodMap[strtolower($method)] ?? 'VIRTUAL_ACCOUNT';
+    }
+
+    /**
+     * Endpoint manual untuk memperbarui status pembayaran
+     */
+    public function manualCheck(Request $request, $bookingCode)
+    {
+        Log::info('Manual check payment status requested', [
+            'booking_code' => $bookingCode,
+            'user_id' => $request->user()->id
+        ]);
+
+        $result = $this->midtransService->checkAndUpdateTransaction($bookingCode);
+
+        if (!$result) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memeriksa status pembayaran'
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status pembayaran berhasil diperbarui',
+            'data' => $result
+        ], 200);
+    }
+
+    /**
+     * Endpoint untuk mengecek dan memperbarui status pembayaran secara manual
+     */
+    public function manualCheckStatus(Request $request, $bookingCode)
+    {
+        try {
+            Log::info('Manual payment status check requested', [
+                'booking_code' => $bookingCode,
+                'user_id' => $request->user()->id
+            ]);
+
+            $booking = Booking::where('booking_code', $bookingCode)
+                ->where('user_id', $request->user()->id)
+                ->firstOrFail();
+
+            $payment = Payment::where('booking_id', $booking->id)
+                ->latest()
+                ->first();
+
+            if (!$payment) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pembayaran tidak ditemukan'
+                ], 404);
+            }
+
+            // Cek status langsung ke Midtrans
+            $statusResponse = $this->midtransService->getStatus($payment->transaction_id ?? $booking->booking_code);
+
+            if (!$statusResponse) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal memeriksa status di Midtrans'
+                ], 500);
+            }
+
+            Log::info('Retrieved status from Midtrans', [
+                'booking_code' => $bookingCode,
+                'transaction_status' => $statusResponse['transaction_status'] ?? 'unknown'
+            ]);
+
+            // PENTING: Update status berdasarkan respons dari Midtrans
+            // Jika Settlement -> harus update booking juga menjadi CONFIRMED
+            if (
+                isset($statusResponse['transaction_status']) &&
+                ($statusResponse['transaction_status'] == 'settlement' ||
+                    $statusResponse['transaction_status'] == 'capture')
+            ) {
+
+                $payment->status = 'SUCCESS';
+                $payment->payment_date = isset($statusResponse['settlement_time'])
+                    ? date('Y-m-d H:i:s', strtotime($statusResponse['settlement_time']))
+                    : now();
+                $payment->save();
+
+                // Update booking status
+                if ($booking->status == 'PENDING') {
+                    $booking->status = 'CONFIRMED';
+                    $booking->save();
+
+                    Log::info('Booking status updated through manual check', [
+                        'booking_id' => $booking->id,
+                        'new_status' => 'CONFIRMED'
+                    ]);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Status pembayaran berhasil diperiksa',
+                'data' => [
+                    'payment_status' => $payment->fresh()->status,
+                    'booking_status' => $booking->fresh()->status,
+                    'transaction_status' => $statusResponse['transaction_status'] ?? null
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error checking payment status manually', [
+                'booking_code' => $bookingCode,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Mendapatkan instruksi pembayaran
+     */
+    public function getInstructions(Request $request, $paymentType, $paymentMethod)
+    {
+        Log::info('Payment instructions requested', [
+            'payment_type' => $paymentType,
+            'payment_method' => $paymentMethod,
+            'user_id' => $request->user()->id
+        ]);
+
+        // Dapatkan instruksi dari MidtransService
+        $instructions = $this->midtransService->getPaymentInstructions($paymentMethod, $paymentType);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Instruksi pembayaran berhasil diambil',
+            'data' => $instructions
+        ], 200);
+    }
+
+    public function refreshStatus($bookingCode)
+    {
+        $midtransService = app(MidtransService::class);
+        $result = $midtransService->checkAndUpdateTransaction($bookingCode);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status pembayaran diperbarui',
+            'data' => $result
         ]);
     }
 }

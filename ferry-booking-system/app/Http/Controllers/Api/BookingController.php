@@ -389,18 +389,10 @@ class BookingController extends Controller
 
             $payment->save();
 
-            // Buat Snap Token Midtrans
-            // Buat Snap Token Midtrans
-            $snapToken = $this->midtransService->createTransaction($booking);
-            $payment->snap_token = $snapToken;  // Simpan sebagai snap_token
-            // transaction_id akan diupdate setelah mendapat notifikasi dari Midtrans
-            $payment->save();
-
             Log::info('Payment created', [
                 'booking_id' => $booking->id,
                 'payment_id' => $payment->id,
-                'amount' => $totalAmount,
-                'snap_token' => $snapToken
+                'amount' => $totalAmount
             ]);
 
             DB::commit();
@@ -420,9 +412,6 @@ class BookingController extends Controller
                 'message' => 'Booking berhasil dibuat',
                 'data' => [
                     'booking' => $booking->fresh(['tickets', 'vehicles', 'payments']),
-                    'payment' => [
-                        'snap_token' => $snapToken
-                    ]
                 ]
             ], 201);
         } catch (\Exception $e) {

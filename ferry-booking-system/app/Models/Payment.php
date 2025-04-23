@@ -16,23 +16,22 @@ class Payment extends Model
         'payment_channel',
         'transaction_id',
         'external_reference',
-        'virtual_account_number', // Kolom baru
-        'qr_code_url',           // Kolom baru
-        'deep_link_url',         // Kolom baru
+        'virtual_account_number',
+        'qr_code_url',
+        'deep_link_url',
         'status',
         'payment_date',
         'expiry_date',
         'refund_amount',
         'refund_date',
         'payload',
-        'snap_token', // Ditambahkan untuk menyimpan snap token
     ];
 
     protected $casts = [
         'payment_date' => 'datetime',
         'expiry_date' => 'datetime',
         'refund_date' => 'datetime',
-        'payload' => 'array', // Cast payload ke array
+        'payload' => 'array',
     ];
 
     // Status pembayaran yang tersedia
@@ -73,8 +72,6 @@ class Payment extends Model
 
     /**
      * Relasi ke model Booking
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function booking()
     {
@@ -83,8 +80,6 @@ class Payment extends Model
 
     /**
      * Relasi ke model Refund
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasOne
      */
     public function refund()
     {
@@ -93,8 +88,6 @@ class Payment extends Model
 
     /**
      * Cek apakah pembayaran masih dalam status pending
-     *
-     * @return bool
      */
     public function isPending()
     {
@@ -103,8 +96,6 @@ class Payment extends Model
 
     /**
      * Cek apakah pembayaran berhasil
-     *
-     * @return bool
      */
     public function isSuccess()
     {
@@ -113,8 +104,6 @@ class Payment extends Model
 
     /**
      * Cek apakah pembayaran gagal
-     *
-     * @return bool
      */
     public function isFailed()
     {
@@ -123,8 +112,6 @@ class Payment extends Model
 
     /**
      * Cek apakah pembayaran sudah direfund
-     *
-     * @return bool
      */
     public function isRefunded()
     {
@@ -133,8 +120,6 @@ class Payment extends Model
 
     /**
      * Cek apakah pembayaran dalam status challenge (fraud)
-     *
-     * @return bool
      */
     public function isChallenge()
     {
@@ -143,8 +128,6 @@ class Payment extends Model
 
     /**
      * Cek apakah pembayaran sudah kedaluwarsa
-     *
-     * @return bool
      */
     public function isExpired()
     {

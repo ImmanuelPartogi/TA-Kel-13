@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
@@ -27,6 +29,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   String? _paymentMethod;
   String? _paymentType;
   String? _bookingCode;
+  Timer? _statusTimer;
 
   @override
   void initState() {
@@ -37,6 +40,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initPaymentData();
+      _startPolling(); // Mulai polling saat halaman dibuka
     });
   }
 
@@ -70,6 +74,36 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
 
     await _loadPaymentInstructions();
+  }
+
+  void _startPolling() {
+    final bookingProvider = Provider.of<BookingProvider>(
+      context,
+      listen: false,
+    );
+    final bookingCode =
+        _bookingCode ?? bookingProvider.currentBooking?.bookingCode;
+
+    if (bookingCode != null) {
+      bookingProvider.startPaymentPolling(bookingCode);
+    }
+  }
+
+  @override
+  void dispose() {
+    // Hentikan polling saat screen di-dispose
+    final bookingProvider = Provider.of<BookingProvider>(
+      context,
+      listen: false,
+    );
+    final bookingCode =
+        _bookingCode ?? bookingProvider.currentBooking?.bookingCode;
+
+    if (bookingCode != null) {
+      bookingProvider.stopPaymentPolling(bookingCode);
+    }
+
+    super.dispose();
   }
 
   Future<void> _loadPaymentInstructions() async {
@@ -111,6 +145,55 @@ class _PaymentScreenState extends State<PaymentScreen> {
         );
       }
     }
+  }
+
+  Widget _buildStatusCheckButton() {
+    return ElevatedButton(
+      onPressed: () async {
+        setState(() {
+          _isLoading = true;
+        });
+
+        final bookingProvider = Provider.of<BookingProvider>(
+          context,
+          listen: false,
+        );
+        final bookingCode =
+            _bookingCode ?? bookingProvider.currentBooking?.bookingCode;
+
+        if (bookingCode != null) {
+          final success = await bookingProvider.refreshPaymentStatus(
+            bookingCode,
+          );
+
+          setState(() {
+            _isLoading = false;
+          });
+
+          // Tampilkan snackbar hasil
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  success
+                      ? 'Status pembayaran berhasil diperbarui'
+                      : 'Gagal memperbarui status pembayaran',
+                ),
+                backgroundColor: success ? Colors.green : Colors.red,
+              ),
+            );
+          }
+        } else {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      },
+      style: ElevatedButton.styleFrom(
+        minimumSize: const Size(double.infinity, 48),
+      ),
+      child: const Text('Periksa Status Pembayaran'),
+    );
   }
 
   @override

@@ -1,3 +1,4 @@
+import 'package:ferry_booking_app/services/payment_polling_service.dart';
 import 'package:flutter/material.dart';
 import '../api/booking_api.dart';
 import '../api/payment_api.dart';
@@ -6,10 +7,12 @@ import '../models/ferry.dart';
 import '../models/route.dart';
 import '../models/schedule.dart';
 import '../models/vehicle.dart';
+import '../models/payment.dart';
 
 class BookingProvider extends ChangeNotifier {
   final BookingApi _bookingApi = BookingApi();
   final PaymentApi _paymentApi = PaymentApi();
+  final PaymentPollingService _paymentPollingService = PaymentPollingService();
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -213,9 +216,10 @@ class BookingProvider extends ChangeNotifier {
       licensePlate: vehicleData['license_plate'] ?? '',
       brand: vehicleData['brand'],
       model: vehicleData['model'],
-      weight: vehicleData['weight'] != null
-          ? double.tryParse(vehicleData['weight'].toString())
-          : null,
+      weight:
+          vehicleData['weight'] != null
+              ? double.tryParse(vehicleData['weight'].toString())
+              : null,
       createdAt: DateTime.now().toIso8601String(),
       updatedAt: DateTime.now().toIso8601String(),
     );
@@ -241,12 +245,14 @@ class BookingProvider extends ChangeNotifier {
         bookingId: currentVehicle.bookingId,
         userId: currentVehicle.userId,
         type: vehicleData['type'] ?? currentVehicle.type,
-        licensePlate: vehicleData['license_plate'] ?? currentVehicle.licensePlate,
+        licensePlate:
+            vehicleData['license_plate'] ?? currentVehicle.licensePlate,
         brand: vehicleData['brand'],
         model: vehicleData['model'],
-        weight: vehicleData['weight'] != null
-            ? double.tryParse(vehicleData['weight'].toString())
-            : currentVehicle.weight,
+        weight:
+            vehicleData['weight'] != null
+                ? double.tryParse(vehicleData['weight'].toString())
+                : currentVehicle.weight,
         createdAt: currentVehicle.createdAt,
         updatedAt: DateTime.now().toIso8601String(),
       );
@@ -271,13 +277,31 @@ class BookingProvider extends ChangeNotifier {
     _selectedDate = null;
     _passengers = [];
     _vehicles = [];
-    _passengerCounts = {
-      'adult': 1,
-      'child': 0,
-      'infant': 0,
-    };
+    _passengerCounts = {'adult': 1, 'child': 0, 'infant': 0};
     _currentBooking = null;
     notifyListeners();
+  }
+
+  // Metode untuk memulai polling otomatis
+  void startPaymentPolling(String bookingCode) {
+    _paymentPollingService.startPolling(bookingCode);
+
+    _paymentPollingService.getStatusStream(bookingCode).listen((update) {
+      // Update status booking jika ada perubahan
+      if (!update.isError &&
+          _currentBooking != null &&
+          _currentBooking!.bookingCode == bookingCode) {
+        // Update status di memory
+        _currentBooking!.status = update.bookingStatus;
+
+        // Update payment status jika ada
+        if (_currentBooking!.latestPayment != null) {
+          _currentBooking!.latestPayment!.status = update.paymentStatus;
+        }
+
+        notifyListeners();
+      }
+    });
   }
 
   // Get all bookings
@@ -359,7 +383,7 @@ class BookingProvider extends ChangeNotifier {
       // Set current booking
       if (result != null && result['booking'] != null) {
         _currentBooking = result['booking'];
-        
+
         _isLoading = false;
         notifyListeners();
         return true;
@@ -392,7 +416,9 @@ class BookingProvider extends ChangeNotifier {
         print('Payment method updated successfully');
         notifyListeners();
       } else {
-        print('Warning: currentBooking is null when trying to update payment method');
+        print(
+          'Warning: currentBooking is null when trying to update payment method',
+        );
 
         // Coba buat booking sementara sebagai fallback
         createTemporaryBooking();
@@ -404,8 +430,11 @@ class BookingProvider extends ChangeNotifier {
           print('Payment method updated after creating temporary booking');
           notifyListeners();
         } else {
-          print('Failed to create temporary booking, cannot update payment method');
-          _errorMessage = 'Tidak dapat mengupdate metode pembayaran: Booking tidak ditemukan';
+          print(
+            'Failed to create temporary booking, cannot update payment method',
+          );
+          _errorMessage =
+              'Tidak dapat mengupdate metode pembayaran: Booking tidak ditemukan';
         }
       }
     } catch (e) {
@@ -555,6 +584,40 @@ class BookingProvider extends ChangeNotifier {
       _errorMessage = e.toString();
       notifyListeners();
     }
+  }
+
+  // Metode untuk memeriksa status satu kali
+  Future<bool> refreshPaymentStatus(String bookingCode) async {
+    try {
+      final update = await _paymentPollingService.checkPaymentOnce(bookingCode);
+
+      if (!update.isError &&
+          _currentBooking != null &&
+          _currentBooking!.bookingCode == bookingCode) {
+        // Update status di memory
+        _currentBooking!.status = update.bookingStatus;
+        if (_currentBooking!.latestPayment != null) {
+          _currentBooking!.latestPayment!.status = update.paymentStatus;
+        }
+        notifyListeners();
+      }
+
+      return !update.isError;
+    } catch (e) {
+      print('Error refreshing payment status: $e');
+      return false;
+    }
+  }
+
+  void stopPaymentPolling(String bookingCode) {
+    _paymentPollingService.stopPolling(bookingCode);
+  }
+
+  // Pastikan untuk memanggil dispose saat provider dibersihkan
+  @override
+  void dispose() {
+    _paymentPollingService.dispose();
+    super.dispose();
   }
 
   // Instruksi pembayaran statis sebagai fallback

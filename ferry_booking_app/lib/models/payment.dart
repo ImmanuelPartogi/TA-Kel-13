@@ -6,9 +6,9 @@ class Payment {
   final int bookingId;
   final String? paymentCode;
   final double amount;
-  final String status;
-  final String paymentMethod;
-  final String paymentType;
+  String status; // Hapus keyword 'final' di sini
+  String paymentMethod;
+  String paymentType;
   String? virtualAccountNumber;
   String? deepLinkUrl;
   String? qrCodeUrl;
@@ -83,8 +83,10 @@ class Payment {
       amount: double.parse(json['amount'].toString()),
       status: json['status'],
       paymentMethod: json['payment_method'] ?? 'VIRTUAL_ACCOUNT',
-      paymentType: json['payment_type'] ?? json['payment_channel'] ?? 'virtual_account',
-      virtualAccountNumber: json['virtual_account_number'] ?? json['external_reference'],
+      paymentType:
+          json['payment_type'] ?? json['payment_channel'] ?? 'virtual_account',
+      virtualAccountNumber:
+          json['virtual_account_number'] ?? json['external_reference'],
       deepLinkUrl: json['deep_link_url'],
       qrCodeUrl: json['qr_code_url'],
       expiryTime: parseExpiryDate(),

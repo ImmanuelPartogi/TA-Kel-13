@@ -359,10 +359,12 @@ class MidtransService
      */
     public function checkAndUpdateTransaction($bookingCode)
     {
+        Log::channel('payment')->info('Checking transaction status', ['booking_code' => $bookingCode]);
+
         $booking = \App\Models\Booking::where('booking_code', $bookingCode)->first();
 
         if (!$booking) {
-            Log::error('Booking not found for manual check', [
+            Log::channel('payment')->error('Booking not found for manual check', [
                 'booking_code' => $bookingCode
             ]);
             return false;
@@ -373,26 +375,71 @@ class MidtransService
             ->first();
 
         if (!$payment) {
-            Log::error('Payment not found for booking', [
+            Log::channel('payment')->error('Payment not found for booking', [
                 'booking_id' => $booking->id,
                 'booking_code' => $bookingCode
             ]);
             return false;
         }
 
-        // Cek status di Midtrans
-        $statusResponse = $this->getStatus($payment->transaction_id ?? $booking->booking_code);
+        // Jangan periksa pembayaran yang statusnya sudah tidak PENDING
+        if ($payment->status != 'PENDING') {
+            Log::channel('payment')->info('Skipping non-pending payment', [
+                'payment_id' => $payment->id,
+                'status' => $payment->status
+            ]);
+            return false;
+        }
+
+        // Tambahkan retry logic
+        $maxRetries = 3;
+        $statusResponse = null;
+
+        for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+            try {
+                // Cek status di Midtrans
+                $statusResponse = $this->getStatus($payment->transaction_id ?? $booking->booking_code);
+
+                if ($statusResponse) {
+                    break;  // Berhasil mendapatkan response
+                }
+
+                Log::channel('payment')->warning("Midtrans status check attempt {$attempt} failed", [
+                    'booking_code' => $bookingCode
+                ]);
+
+                if ($attempt < $maxRetries) {
+                    sleep(2); // Tunggu sebelum mencoba lagi
+                }
+            } catch (\Exception $e) {
+                Log::channel('payment')->error("Error on attempt {$attempt}", [
+                    'booking_code' => $bookingCode,
+                    'error' => $e->getMessage()
+                ]);
+
+                if ($attempt < $maxRetries) {
+                    sleep(2);
+                }
+            }
+        }
 
         if (!$statusResponse) {
-            Log::error('Failed to get status from Midtrans', [
-                'booking_code' => $bookingCode,
-                'transaction_id' => $payment->transaction_id ?? 'not available'
+            Log::channel('payment')->error('Failed to get status from Midtrans after retries', [
+                'booking_code' => $bookingCode
             ]);
             return false;
         }
 
         // Update status berdasarkan respons
         $this->updatePaymentStatus($payment, (array) $statusResponse);
+
+        // Log hasil update
+        Log::channel('payment')->info('Transaction status updated', [
+            'payment_id' => $payment->id,
+            'booking_code' => $bookingCode,
+            'payment_status' => $payment->fresh()->status,
+            'booking_status' => $booking->fresh()->status
+        ]);
 
         return [
             'payment_status' => $payment->fresh()->status,

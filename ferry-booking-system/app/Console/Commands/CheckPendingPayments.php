@@ -6,9 +6,8 @@ use App\Models\Payment;
 use App\Services\MidtransService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Contracts\Queue\ShouldQueue;
 
-class CheckPendingPayments extends Command implements ShouldQueue
+class CheckPendingPayments extends Command
 {
     protected $signature = 'payments:check-pending';
     protected $description = 'Check status of pending payments from Midtrans';
@@ -24,57 +23,86 @@ class CheckPendingPayments extends Command implements ShouldQueue
     public function handle()
     {
         $this->info('Starting to check pending payments...');
+        Log::channel('payment')->info('Starting payment polling job');
 
-        // Ambil pembayaran dengan status PENDING yang belum kedaluwarsa
-        $pendingPayments = Payment::where('status', Payment::STATUS_PENDING)
-            ->where('expiry_date', '>', now())
-            ->with('booking')
-            ->get();
+        try {
+            // Perbaikan: Gunakan string 'PENDING' untuk konsistensi dengan PaymentController
+            $pendingPayments = Payment::where('status', 'PENDING')
+                ->where('expiry_date', '>', now())
+                ->with('booking')
+                ->get();
 
-        $this->info("Found {$pendingPayments->count()} pending payments to check");
+            $count = $pendingPayments->count();
+            $this->info("Found {$count} pending payments to check");
+            Log::channel('payment')->info("Found {$count} pending payments to check");
 
-        foreach ($pendingPayments as $payment) {
-            $booking = $payment->booking;
-
-            if (!$booking) {
-                $this->warn("Payment #{$payment->id} has no associated booking, skipping");
-                continue;
+            if ($count === 0) {
+                return 0;
             }
 
-            $this->info("Checking payment for booking code: {$booking->booking_code}");
+            foreach ($pendingPayments as $payment) {
+                $this->processPayment($payment);
 
-            try {
-                // Gunakan fungsi checkAndUpdateTransaction yang sudah ada
-                $result = $this->midtransService->checkAndUpdateTransaction($booking->booking_code);
-
-                if ($result) {
-                    $this->info("Updated payment #{$payment->id} status to: {$result['payment_status']}");
-                    $this->info("Updated booking #{$booking->id} status to: {$result['booking_status']}");
-
-                    // Log informasi polling untuk monitoring
-                    Log::channel('daily')->info('Payment status updated via polling', [
-                        'payment_id' => $payment->id,
-                        'booking_code' => $booking->booking_code,
-                        'new_status' => $result['payment_status'],
-                        'transaction_status' => $result['transaction_status']
-                    ]);
-                } else {
-                    $this->error("Failed to check/update payment for booking code: {$booking->booking_code}");
-                }
-            } catch (\Exception $e) {
-                $this->error("Error processing payment #{$payment->id}: {$e->getMessage()}");
-                Log::error("Error in CheckPendingPayments command", [
-                    'payment_id' => $payment->id,
-                    'booking_code' => $booking->booking_code,
-                    'error' => $e->getMessage()
-                ]);
+                // Berikan jeda untuk menghindari rate limiting
+                sleep(1);
             }
 
-            // Berikan jeda singkat untuk menghindari rate limiting dari Midtrans
-            sleep(1);
+            $this->info('Finished checking pending payments');
+            Log::channel('payment')->info('Finished payment polling job');
+
+            return 0;
+        } catch (\Exception $e) {
+            $this->error("Critical error in payment polling: {$e->getMessage()}");
+            Log::channel('payment')->error("Critical error in payment polling", [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return 1;
+        }
+    }
+
+    protected function processPayment($payment)
+    {
+        $booking = $payment->booking;
+
+        if (!$booking) {
+            $this->warn("Payment #{$payment->id} has no associated booking, skipping");
+            Log::channel('payment')->warning("Payment has no booking", ['payment_id' => $payment->id]);
+            return;
         }
 
-        $this->info('Finished checking pending payments');
-        return 0;
+        $this->info("Checking payment for booking code: {$booking->booking_code}");
+
+        try {
+            // Gunakan fungsi checkAndUpdateTransaction
+            $result = $this->midtransService->checkAndUpdateTransaction($booking->booking_code);
+
+            if ($result) {
+                $this->info("Updated payment #{$payment->id} status to: {$result['payment_status']}");
+
+                Log::channel('payment')->info('Payment status updated via polling', [
+                    'payment_id' => $payment->id,
+                    'booking_code' => $booking->booking_code,
+                    'new_status' => $result['payment_status'],
+                    'transaction_status' => $result['transaction_status']
+                ]);
+            } else {
+                $this->error("Failed to check payment for booking code: {$booking->booking_code}");
+
+                Log::channel('payment')->error("Failed to check payment", [
+                    'payment_id' => $payment->id,
+                    'booking_code' => $booking->booking_code
+                ]);
+            }
+        } catch (\Exception $e) {
+            $this->error("Error processing payment #{$payment->id}: {$e->getMessage()}");
+
+            Log::channel('payment')->error("Error in payment check", [
+                'payment_id' => $payment->id,
+                'booking_code' => $booking->booking_code,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 }

@@ -2,25 +2,28 @@
 class AppConfig {
   // API Configuration
   static const String apiBaseUrl = 'http://127.0.0.1:8000/api'; // Local development
-  
+  // static const String apiBaseUrl = 'http://192.168.141.145:8000/api';
+
   // Untuk akses dari perangkat lain atau Midtrans callback
-  static const String publicBaseUrl = 'https://337e-114-5-144-83.ngrok-free.app/api';
-  
+  static const String publicBaseUrl =
+      'https://cebd-114-5-144-192.ngrok-free.app';
+
   // Midtrans Configuration
   static const String midtransClientKey = 'SB-Mid-client-8csuXJ7DmFhqmkMX';
   static const bool midtransProduction = false;
-  
+
   // Callback URLs (harus URL publik yang bisa diakses Midtrans)
-  static const String midtransCallbackUrl = 'https://337e-114-5-144-83.ngrok-free.app';
-  
+  static const String midtransCallbackUrl =
+      'https://cebd-114-5-144-192.ngrok-free.app';
+
   // Lainnya
   static const String appName = 'Ferry Booking';
   static const String appVersion = '1.0.0';
-  
+
   // Booking Configuration
   static const int maxPassengersPerBooking = 10;
   static const int maxVehiclesPerBooking = 5;
-  
+
   // User Session Configuration
   static const int sessionTimeout = 30; // in days
 }

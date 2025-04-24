@@ -435,53 +435,53 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
     }
   }
 
-  void _showShareOptions() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 20.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Bagikan Tiket',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildShareOption(Icons.email, 'Email', Colors.red),
-                _buildShareOption(Icons.print, 'Cetak', Colors.blue),
-                if (!kIsWeb) _buildShareOption(Icons.share, 'Bagikan', Colors.green),
-              ],
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
-  }
+  // void _showShareOptions() {
+  //   showModalBottomSheet(
+  //     context: context,
+  //     builder: (context) => Padding(
+  //       padding: const EdgeInsets.symmetric(vertical: 20.0),
+  //       child: Column(
+  //         mainAxisSize: MainAxisSize.min,
+  //         children: [
+  //           const Text(
+  //             'Bagikan Tiket',
+  //             style: TextStyle(
+  //               fontWeight: FontWeight.bold,
+  //               fontSize: 18,
+  //             ),
+  //           ),
+  //           const SizedBox(height: 20),
+  //           Row(
+  //             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+  //             children: [
+  //               _buildShareOption(Icons.email, 'Email', Colors.red),
+  //               _buildShareOption(Icons.print, 'Cetak', Colors.blue),
+  //               if (!kIsWeb) _buildShareOption(Icons.share, 'Bagikan', Colors.green),
+  //             ],
+  //           ),
+  //           const SizedBox(height: 20),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Widget _buildShareOption(IconData icon, String label, Color color) {
     return InkWell(
-      onTap: () {
-        Navigator.pop(context);
-        final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
-        final booking = bookingProvider.currentBooking;
+      // onTap: () {
+      //   Navigator.pop(context);
+      //   final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
+      //   final booking = bookingProvider.currentBooking;
         
-        if (booking != null) {
-          if (label == 'Cetak') {
-            // For print option, we'll download and open in a new tab for printing
-            _downloadTicket(context, booking);
-          } else {
-            _showSnackBar('Fitur berbagi melalui $label akan segera tersedia');
-          }
-        }
-      },
+      //   if (booking != null) {
+      //     if (label == 'Cetak') {
+      //       // For print option, we'll download and open in a new tab for printing
+      //       _downloadTicket(context, booking);
+      //     } else {
+      //       _showSnackBar('Fitur berbagi melalui $label akan segera tersedia');
+      //     }
+      //   }
+      // },
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -574,13 +574,13 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
         ),
         actions: [
           // Print Button instead of Share for Web
-          IconButton(
-            icon: Icon(kIsWeb ? Icons.print : Icons.share),
-            tooltip: kIsWeb ? 'Cetak Tiket' : 'Bagikan Tiket',
-            onPressed: kIsWeb 
-                ? () => _downloadTicket(context, booking)
-                : _showShareOptions,
-          ),
+          // IconButton(
+          //   icon: Icon(kIsWeb ? Icons.print : Icons.share),
+          //   tooltip: kIsWeb ? 'Cetak Tiket' : 'Bagikan Tiket',
+          //   onPressed: kIsWeb 
+          //       ? () => _downloadTicket(context, booking)
+          //       : _showShareOptions,
+          // ),
           // Download Button
           _isDownloading
               ? const Padding(
@@ -958,15 +958,15 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                               ),
                             ),
                             // Download all tickets button for small screens
-                            ElevatedButton.icon(
-                              icon: const Icon(Icons.download, size: 16),
-                              label: const Text('Unduh Semua'),
-                              onPressed: () => _downloadTicket(context, booking),
-                              style: ElevatedButton.styleFrom(
-                                visualDensity: VisualDensity.compact,
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              ),
-                            ),
+                            // ElevatedButton.icon(
+                            //   icon: const Icon(Icons.download, size: 16),
+                            //   label: const Text('Unduh Semua'),
+                            //   onPressed: () => _downloadTicket(context, booking),
+                            //   style: ElevatedButton.styleFrom(
+                            //     visualDensity: VisualDensity.compact,
+                            //     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            //   ),
+                            // ),
                           ],
                         ),
                         const SizedBox(height: 12),
@@ -1223,29 +1223,29 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                                 const SizedBox(height: 16),
                                 Row(
                                   children: [
-                                    Expanded(
-                                      child: OutlinedButton.icon(
-                                        icon: const Icon(Icons.download),
-                                        label: const Text('Unduh'),
-                                        onPressed: () => _downloadTicket(context, booking),
-                                        style: OutlinedButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(vertical: 12),
-                                        ),
-                                      ),
-                                    ),
+                                    // Expanded(
+                                    //   child: OutlinedButton.icon(
+                                    //     icon: const Icon(Icons.download),
+                                    //     label: const Text('Unduh'),
+                                    //     onPressed: () => _downloadTicket(context, booking),
+                                    //     style: OutlinedButton.styleFrom(
+                                    //       padding: const EdgeInsets.symmetric(vertical: 12),
+                                    //     ),
+                                    //   ),
+                                    // ),
                                     const SizedBox(width: 8),
-                                    Expanded(
-                                      child: ElevatedButton.icon(
-                                        icon: Icon(kIsWeb ? Icons.print : Icons.share),
-                                        label: Text(kIsWeb ? 'Cetak' : 'Bagikan'),
-                                        onPressed: kIsWeb
-                                            ? () => _downloadTicket(context, booking)
-                                            : _showShareOptions,
-                                        style: ElevatedButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(vertical: 12),
-                                        ),
-                                      ),
-                                    ),
+                                    // Expanded(
+                                    //   child: ElevatedButton.icon(
+                                    //     icon: Icon(kIsWeb ? Icons.print : Icons.share),
+                                    //     label: Text(kIsWeb ? 'Cetak' : 'Bagikan'),
+                                    //     onPressed: kIsWeb
+                                    //         ? () => _downloadTicket(context, booking)
+                                    //         : _showShareOptions,
+                                    //     style: ElevatedButton.styleFrom(
+                                    //       padding: const EdgeInsets.symmetric(vertical: 12),
+                                    //     ),
+                                    //   ),
+                                    // ),
                                   ],
                                 ),
                               ],

@@ -18,6 +18,7 @@ class AppServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 \App\Console\Commands\CheckPendingPayments::class,
+                \App\Console\Commands\UpdateExpiredTickets::class,
             ]);
         }
     }

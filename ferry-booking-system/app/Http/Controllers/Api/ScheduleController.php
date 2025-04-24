@@ -17,11 +17,13 @@ class ScheduleController extends Controller
             $routeId = $request->route_id;
             $date = $request->date ? Carbon::parse($request->date) : Carbon::today();
             $dayOfWeek = $date->dayOfWeek + 1; // Konversi ke format 1-7 (Senin-Minggu)
+            $currentTime = Carbon::now(); // Ambil waktu sekarang
 
             Log::info('Mencari jadwal', [
                 'route_id' => $routeId,
                 'date' => $date->format('Y-m-d'),
-                'day_of_week' => $dayOfWeek
+                'day_of_week' => $dayOfWeek,
+                'current_time' => $currentTime->format('H:i:s')
             ]);
 
             $schedules = Schedule::where('route_id', $routeId)
@@ -71,9 +73,33 @@ class ScheduleController extends Controller
                 return $schedule;
             });
 
-            // PERUBAHAN PENTING: Filter hanya jadwal yang tersedia
-            $availableSchedules = $result->filter(function ($schedule) {
-                return $schedule->schedule_date_status === 'AVAILABLE';
+            // PERUBAHAN PENTING: Filter jadwal yang tersedia DAN waktu keberangkatan belum lewat
+            $currentTime = Carbon::now();
+            $availableSchedules = $result->filter(function ($schedule) use ($currentTime, $date) {
+                // Pastikan jadwal tersedia
+                if ($schedule->schedule_date_status !== 'AVAILABLE') {
+                    return false;
+                }
+
+                // Cek waktu keberangkatan untuk hari ini
+                if ($date->isToday()) {
+                    $departureDateTime = Carbon::parse($date->format('Y-m-d') . ' ' . $schedule->departure_time);
+
+                    // Log untuk debugging
+                    Log::info('Cek waktu keberangkatan', [
+                        'schedule_id' => $schedule->id,
+                        'departure_time' => $schedule->departure_time,
+                        'departure_datetime' => $departureDateTime->format('Y-m-d H:i:s'),
+                        'current_time' => $currentTime->format('Y-m-d H:i:s'),
+                        'is_after' => $departureDateTime->isAfter($currentTime)
+                    ]);
+
+                    // Jadwal hanya ditampilkan jika waktu keberangkatan belum lewat
+                    return $departureDateTime->isAfter($currentTime);
+                }
+
+                // Untuk tanggal di masa depan, tampilkan semua jadwal yang tersedia
+                return true;
             })->values();
 
             return response()->json([

@@ -16,12 +16,12 @@ class AuthApi {
         'email': email,
         'password': password,
       };
-      
+
       // Add device_id if provided
       if (deviceId != null && deviceId.isNotEmpty) {
         loginData['device_id'] = deviceId;
       }
-      
+
       final response = await _apiService.post('auth/login', loginData);
 
       if (response['success']) {
@@ -95,7 +95,7 @@ class AuthApi {
       // Still clear storage even if API call fails
       await _tokenStorage.clearToken();
       await _storage.delete(key: 'user');
-      
+
       print('Error in AuthApi.logout but token cleared: $e');
       return false;
     }
@@ -142,7 +142,7 @@ class AuthApi {
     try {
       final token = await _tokenStorage.getToken();
       print('Token in AuthApi.isLoggedIn: $token');
-      
+
       if (token != null && token.isNotEmpty) {
         // Verify token validity by making a test request
         try {
@@ -189,6 +189,77 @@ class AuthApi {
       return response['success'] == true;
     } catch (e) {
       print('Error updating password: $e');
+      rethrow;
+    }
+  }
+
+  // Forgot password
+  Future<bool> forgotPassword(String email) async {
+    try {
+      final response = await _apiService.post('auth/forgot-password', {
+        'email': email,
+      });
+
+      return response['success'] == true;
+    } catch (e) {
+      print('Error in AuthApi.forgotPassword: $e');
+      rethrow;
+    }
+  }
+
+  // Reset password
+  Future<bool> resetPassword(
+    String email,
+    String token,
+    String password,
+  ) async {
+    try {
+      final response = await _apiService.post('auth/reset-password', {
+        'email': email,
+        'token': token,
+        'password': password,
+        'password_confirmation': password,
+      });
+
+      return response['success'] == true;
+    } catch (e) {
+      print('Error in AuthApi.resetPassword: $e');
+      rethrow;
+    }
+  }
+
+  // Verifikasi password
+  Future<bool> verifyPassword(String password) async {
+    try {
+      final response = await _apiService.post('auth/verify-password', {
+        'password': password,
+      });
+
+      return response['success'] == true;
+    } catch (e) {
+      print('Error in AuthApi.verifyPassword: $e');
+      rethrow;
+    }
+  }
+
+  // Update email
+  Future<User> updateEmail(String email, String password) async {
+    try {
+      final response = await _apiService.post('auth/update-email', {
+        'email': email,
+        'password': password,
+      });
+
+      if (response['success']) {
+        // Update user info
+        final user = User.fromJson(response['data']);
+        await _storage.write(key: 'user', value: jsonEncode(user.toJson()));
+        return user;
+      } else {
+        throw Exception(response['message'] ?? 'Gagal memperbarui email');
+      }
+    } catch (e) {
+      print('Error in AuthApi.updateEmail: $e');
       rethrow;
     }
   }

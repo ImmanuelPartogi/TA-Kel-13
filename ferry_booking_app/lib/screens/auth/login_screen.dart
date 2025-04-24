@@ -37,7 +37,9 @@ class _LoginScreenState extends State<LoginScreen> {
         // Ensure device ID is a valid string before passing it
         final String safeDeviceId = deviceId.isNotEmpty ? deviceId : '';
 
-        print('Attempting login with email: $email and deviceId: $safeDeviceId');
+        print(
+          'Attempting login with email: $email and deviceId: $safeDeviceId',
+        );
 
         // Login with device ID
         final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -147,7 +149,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () {
-                    // Handle forgot password
+                    Navigator.pushNamed(context, '/forgot-password');
                   },
                   child: const Text('Lupa Password?'),
                 ),
@@ -157,16 +159,17 @@ class _LoginScreenState extends State<LoginScreen> {
               // Login Button
               ElevatedButton(
                 onPressed: authProvider.isLoading ? null : _login,
-                child: authProvider.isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.0,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text('MASUK'),
+                child:
+                    authProvider.isLoading
+                        ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.0,
+                            color: Colors.white,
+                          ),
+                        )
+                        : const Text('MASUK'),
               ),
               const SizedBox(height: 16),
 

@@ -21,8 +21,14 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // Konfigurasi scheduler
+// routes/console.php
+Schedule::command('tickets:update-expired')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/ticket-updates.log'));
+
 Schedule::command('payments:check-pending')
-    ->everyMinute() // Setiap menit untuk memastikan cepat terdeteksi
+    ->everyMinute()
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/payment-polling.log'));
 

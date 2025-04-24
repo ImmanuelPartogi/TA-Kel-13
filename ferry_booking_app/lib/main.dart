@@ -5,7 +5,6 @@ import 'package:ferry_booking_app/screens/payment/payment_method_screen.dart';
 import 'package:ferry_booking_app/screens/booking/schedule_selection_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:ferry_booking_app/config/app_config.dart';
 import 'package:ferry_booking_app/config/theme.dart';
 import 'package:ferry_booking_app/providers/auth_provider.dart';
 import 'package:ferry_booking_app/providers/booking_provider.dart';
@@ -29,9 +28,8 @@ import 'package:ferry_booking_app/screens/tickets/ticket_detail_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:webview_flutter/webview_flutter.dart';
-import 'package:webview_flutter_web/webview_flutter_web.dart';
+import 'package:ferry_booking_app/screens/auth/forgot_password_screen.dart';
+import 'package:ferry_booking_app/screens/auth/reset_password_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,10 +51,6 @@ Future<void> main() async {
 
   // Inisialisasi locale data untuk format tanggal
   await initializeDateFormatting('id_ID', null);
-
-  if (kIsWeb) {
-    WebViewPlatform.instance = WebWebViewPlatform();
-  }
 
   // Initialize device ID if it doesn't exist
   final prefs = await SharedPreferences.getInstance();
@@ -112,6 +106,7 @@ class MyApp extends StatelessWidget {
           '/chatbot': (context) => const ChatbotScreen(),
 
           '/booking/payment-method': (context) => const PaymentMethodScreen(),
+          '/forgot-password': (context) => const ForgotPasswordScreen(),
         },
 
         // Di bagian onGenerateRoute (rute dengan parameter wajib)
@@ -142,6 +137,15 @@ class MyApp extends StatelessWidget {
                   (context) => PaymentScreen(
                     paymentMethod: args?['paymentMethod'],
                     paymentType: args?['paymentType'],
+                  ),
+            );
+          } else if (settings.name == '/reset-password') {
+            final args = settings.arguments as Map<String, String>;
+            return MaterialPageRoute(
+              builder:
+                  (context) => ResetPasswordScreen(
+                    email: args['email']!,
+                    token: args['token']!,
                   ),
             );
           }

@@ -17,6 +17,10 @@ use App\Http\Controllers\Api\PollingController;
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
 
+// Rute untuk reset password
+Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
+
 // Route untuk callback Midtrans - Harus dapat diakses tanpa autentikasi
 // PENTING: Pastikan route ini berada DI LUAR middleware auth:sanctum
 Route::post('/payments/notification', [PaymentController::class, 'notification']);

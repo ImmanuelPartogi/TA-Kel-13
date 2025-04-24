@@ -30,7 +30,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       // Get token from storage
       final storedToken = await _tokenStorage.getToken();
-      
+
       // If token exists, validate it by getting user profile
       if (storedToken != null && storedToken.isNotEmpty) {
         _token = storedToken; // Set token in memory
@@ -97,13 +97,13 @@ class AuthProvider extends ChangeNotifier {
       if (response.statusCode == 200 && data['success']) {
         // Get token from response
         _token = data['data']['token'];
-        
+
         // Save token using TokenStorageService
         await _tokenStorage.saveToken(_token!);
-        
+
         // Print token after saving for debugging
         print('Token saved successfully: $_token');
-        
+
         // Set user data and login state
         _user = User.fromJson(data['data']['user']);
         _isLoggedIn = true;
@@ -138,18 +138,53 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _user = await _authApi.register(name, email, phone, password);
-      
-      // Get token after registration
-      _token = await _tokenStorage.getToken();
-      _isLoggedIn = true;
-      _isLoading = false;
-      notifyListeners();
-      return true;
+      final response = await http.post(
+        Uri.parse('${AppConfig.apiBaseUrl}/auth/register'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'name': name,
+          'email': email,
+          'phone': phone,
+          'password': password,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+
+      // Penanganan error yang lebih baik
+      if (response.statusCode == 422 && data['errors'] != null) {
+        // Error validasi
+        final errors = data['errors'];
+        String errorMsg = '';
+        errors.forEach((key, value) {
+          errorMsg += '${value.join(', ')}\n';
+        });
+        _isLoading = false;
+        _errorMessage = errorMsg.trim();
+        notifyListeners();
+        return false;
+      } else if (response.statusCode == 201 && data['success']) {
+        // Registrasi berhasil
+        _token = data['token'];
+        await _tokenStorage.saveToken(_token!);
+        _user = User.fromJson(data['data']);
+        _isLoggedIn = true;
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      } else {
+        // Error lainnya
+        _isLoading = false;
+        _errorMessage = data['message'] ?? 'Registrasi gagal';
+        notifyListeners();
+        return false;
+      }
     } catch (e) {
       _isLoading = false;
-      _isLoggedIn = false;
-      _errorMessage = e.toString();
+      _errorMessage = 'Terjadi kesalahan: ${e.toString()}';
       notifyListeners();
       return false;
     }
@@ -172,12 +207,12 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       _isLoading = false;
       _errorMessage = e.toString();
-      
+
       // Still clear token and user data on error
       _isLoggedIn = false;
       _user = null;
       _token = null;
-      
+
       notifyListeners();
       return false;
     }
@@ -219,6 +254,95 @@ class AuthProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return success;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Forgot password
+  Future<bool> forgotPassword(String email) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final success = await _authApi.forgotPassword(email);
+      _isLoading = false;
+      if (!success) {
+        _errorMessage = 'Gagal mengirim email reset password';
+      }
+      notifyListeners();
+      return success;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Reset password
+  Future<bool> resetPassword(
+    String email,
+    String token,
+    String password,
+  ) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final success = await _authApi.resetPassword(email, token, password);
+      _isLoading = false;
+      if (!success) {
+        _errorMessage = 'Gagal reset password';
+      }
+      notifyListeners();
+      return success;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Verifikasi password
+  Future<bool> verifyPassword(String password) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final success = await _authApi.verifyPassword(password);
+      _isLoading = false;
+      if (!success) {
+        _errorMessage = 'Password yang Anda masukkan salah';
+      }
+      notifyListeners();
+      return success;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Update email
+  Future<bool> updateEmail(String email, String password) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _user = await _authApi.updateEmail(email, password);
+      _isLoading = false;
+      notifyListeners();
+      return true;
     } catch (e) {
       _isLoading = false;
       _errorMessage = e.toString();

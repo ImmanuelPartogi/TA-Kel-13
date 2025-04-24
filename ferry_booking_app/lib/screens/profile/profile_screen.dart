@@ -1,6 +1,6 @@
 import 'package:ferry_booking_app/screens/help/help_screen.dart';
 import 'package:ferry_booking_app/screens/profile/about_app_screen.dart';
-import 'package:ferry_booking_app/screens/profile/notification_settings_screen.dart';
+import 'package:ferry_booking_app/screens/notification/notification_settings_screen.dart';
 import 'package:ferry_booking_app/screens/profile/change_password_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';

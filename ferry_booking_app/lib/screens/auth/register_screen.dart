@@ -36,10 +36,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final email = _emailController.text.trim();
       final phone = _phoneController.text.trim();
       final password = _passwordController.text.trim();
-      
+
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final success = await authProvider.register(name, email, phone, password);
-      
+
       if (success && mounted) {
         Navigator.pushReplacementNamed(context, '/home');
       }
@@ -49,12 +49,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
-    
+
     return Scaffold(
-      appBar: const CustomAppBar(
-        title: 'Registrasi',
-        showBackButton: false,
-      ),
+      appBar: const CustomAppBar(title: 'Registrasi', showBackButton: false),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Form(
@@ -77,7 +74,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              
+
               // Email Field
               TextFormField(
                 controller: _emailController,
@@ -90,14 +87,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   if (value == null || value.isEmpty) {
                     return 'Silakan masukkan email';
                   }
-                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                  if (!RegExp(
+                    r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                  ).hasMatch(value)) {
                     return 'Silakan masukkan email yang valid';
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 16),
-              
+
               // Phone Field
               TextFormField(
                 controller: _phoneController,
@@ -110,14 +109,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   if (value == null || value.isEmpty) {
                     return 'Silakan masukkan nomor telepon';
                   }
-                  if (!RegExp(r'^[0-9]{10,13}$').hasMatch(value)) {
+                  // Validasi lebih fleksibel untuk nomor Indonesia
+                  if (!RegExp(r'^(0|\+62)[0-9]{8,13}$').hasMatch(value)) {
                     return 'Nomor telepon tidak valid';
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 16),
-              
+
               // Password Field
               TextFormField(
                 controller: _passwordController,
@@ -127,7 +127,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   prefixIcon: const Icon(Icons.lock),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                      _obscurePassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
                     ),
                     onPressed: () {
                       setState(() {
@@ -147,7 +149,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              
+
               // Confirm Password Field
               TextFormField(
                 controller: _confirmPasswordController,
@@ -157,7 +159,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   prefixIcon: const Icon(Icons.lock),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
+                      _obscureConfirmPassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
                     ),
                     onPressed: () {
                       setState(() {
@@ -177,23 +181,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 },
               ),
               const SizedBox(height: 24),
-              
+
               // Register Button
               ElevatedButton(
                 onPressed: authProvider.isLoading ? null : _register,
-                child: authProvider.isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.0,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text('DAFTAR'),
+                child:
+                    authProvider.isLoading
+                        ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.0,
+                            color: Colors.white,
+                          ),
+                        )
+                        : const Text('DAFTAR'),
               ),
               const SizedBox(height: 16),
-              
+
               // Login Link
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -207,7 +212,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ],
               ),
-              
+
               // Error Message
               if (authProvider.errorMessage != null)
                 Container(

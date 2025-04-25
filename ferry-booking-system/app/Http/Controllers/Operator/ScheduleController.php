@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Schedule;
 use App\Models\ScheduleDate;
 use App\Models\Booking;
+use App\Models\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
@@ -14,17 +15,38 @@ use Carbon\Carbon;
 class ScheduleController extends Controller
 {
     /**
+     * Cek apakah operator memiliki akses ke rute.
+     */
+    private function checkRouteAccess($routeId)
+    {
+        $operator = Auth::guard('operator')->user();
+        $assignedRoutes = $operator->assigned_routes ?? [];
+
+        return in_array($routeId, $assignedRoutes);
+    }
+
+    /**
      * Display a listing of the schedules.
      *
      * @return \Illuminate\Http\Response
      */
     public function index(Request $request)
     {
+        $operator = Auth::guard('operator')->user();
+        $assignedRoutes = $operator->assigned_routes ?? [];
+
         $query = Schedule::with(['route', 'ferry'])
-            ->where('status', 'active');
+            ->where('status', 'active')
+            ->whereIn('route_id', $assignedRoutes); // Filter hanya rute yang ditetapkan
 
         // Filter by route if provided
         if ($request->has('route_id') && $request->route_id) {
+            // Periksa apakah operator memiliki akses ke rute yang diminta
+            if (!$this->checkRouteAccess($request->route_id)) {
+                return redirect()->route('operator.schedules.index')
+                    ->with('error', 'Anda tidak memiliki akses ke rute ini.');
+            }
+
             $query->where('route_id', $request->route_id);
         }
 
@@ -36,15 +58,18 @@ class ScheduleController extends Controller
             $query->whereRaw("FIND_IN_SET(?, days)", [$dayOfWeek]);
 
             // Also check if there's a schedule date for this specific date
-            $query->whereHas('scheduleDates', function($q) use ($date) {
+            $query->whereHas('scheduleDates', function ($q) use ($date) {
                 $q->where('date', $date->format('Y-m-d'))
-                  ->where('status', 'active');
+                    ->where('status', 'AVAILABLE');
             });
         }
 
         $schedules = $query->orderBy('departure_time')->get();
 
-        return view('operator.schedules.index', compact('schedules'));
+        // Ambil rute yang ditetapkan untuk dropdown filter
+        $routes = Route::whereIn('id', $assignedRoutes)->get();
+
+        return view('operator.schedules.index', compact('schedules', 'routes'));
     }
 
     /**
@@ -58,17 +83,23 @@ class ScheduleController extends Controller
         $schedule = Schedule::with(['route', 'ferry'])
             ->findOrFail($id);
 
+        // Periksa apakah operator memiliki akses ke rute ini
+        if (!$this->checkRouteAccess($schedule->route_id)) {
+            return redirect()->route('operator.schedules.index')
+                ->with('error', 'Anda tidak memiliki akses ke jadwal ini.');
+        }
+
         // Get upcoming dates with booking counts
         $upcomingDates = $schedule->scheduleDates()
             ->where('date', '>=', Carbon::today())
-            ->where('status', 'active')
+            ->where('status', 'AVAILABLE')
             ->orderBy('date')
             ->take(14)
             ->get();
 
         foreach ($upcomingDates as $date) {
             $date->booking_count = Booking::where('schedule_id', $schedule->id)
-                ->where('date', $date->date)
+                ->where('booking_date', $date->date)
                 ->count();
         }
 
@@ -86,32 +117,22 @@ class ScheduleController extends Controller
         $schedule = Schedule::with(['route', 'ferry'])
             ->findOrFail($id);
 
+        // Periksa apakah operator memiliki akses ke rute ini
+        if (!$this->checkRouteAccess($schedule->route_id)) {
+            return redirect()->route('operator.schedules.index')
+                ->with('error', 'Anda tidak memiliki akses ke jadwal ini.');
+        }
+
         $dates = $schedule->scheduleDates()
             ->orderBy('date')
             ->paginate(30);
 
         // Get booking counts for each date
         foreach ($dates as $date) {
+            // Tetap hitung jumlah booking untuk informasi
             $date->booking_count = Booking::where('schedule_id', $schedule->id)
-                ->where('date', $date->date)
+                ->where('booking_date', $date->date)
                 ->count();
-
-            // Get passenger and vehicle counts from bookings
-            $bookingCounts = Booking::where('schedule_id', $schedule->id)
-                ->where('date', $date->date)
-                ->where('status', 'confirmed')
-                ->selectRaw('SUM(passenger_count) as total_passengers,
-                             SUM(motorcycle_count) as total_motorcycles,
-                             SUM(car_count) as total_cars,
-                             SUM(bus_count) as total_buses,
-                             SUM(truck_count) as total_trucks')
-                ->first();
-
-            $date->booked_passengers = $bookingCounts->total_passengers ?? 0;
-            $date->booked_motorcycles = $bookingCounts->total_motorcycles ?? 0;
-            $date->booked_cars = $bookingCounts->total_cars ?? 0;
-            $date->booked_buses = $bookingCounts->total_buses ?? 0;
-            $date->booked_trucks = $bookingCounts->total_trucks ?? 0;
         }
 
         return view('operator.schedules.dates', compact('schedule', 'dates'));
@@ -128,6 +149,13 @@ class ScheduleController extends Controller
     public function updateDateStatus(Request $request, $id, $dateId)
     {
         $schedule = Schedule::findOrFail($id);
+
+        // Periksa apakah operator memiliki akses ke rute ini
+        if (!$this->checkRouteAccess($schedule->route_id)) {
+            return redirect()->route('operator.schedules.index')
+                ->with('error', 'Anda tidak memiliki akses ke jadwal ini.');
+        }
+
         $scheduleDate = ScheduleDate::findOrFail($dateId);
 
         // Ensure the schedule date belongs to the schedule
@@ -137,7 +165,7 @@ class ScheduleController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'status' => 'required|in:active,inactive,suspended,full',
+            'status' => 'required|in:active,inactive,suspended,full,weather_issue',
             'status_reason' => 'nullable|string|max:255',
             'status_expiry_date' => 'nullable|date',
         ]);
@@ -148,8 +176,18 @@ class ScheduleController extends Controller
                 ->withInput();
         }
 
-        $scheduleDate->status = $request->status;
+        // Konversi status ke format yang digunakan di view
+        $statusMap = [
+            'active' => 'AVAILABLE',
+            'inactive' => 'UNAVAILABLE',
+            'suspended' => 'CANCELLED',
+            'full' => 'FULL',
+            'weather_issue' => 'WEATHER_ISSUE'
+        ];
+
+        $scheduleDate->status = $statusMap[$request->status];
         $scheduleDate->status_reason = $request->status_reason;
+        $scheduleDate->operator_id = Auth::guard('operator')->id(); // Simpan operator_id
 
         if ($request->status_expiry_date) {
             $scheduleDate->status_expiry_date = Carbon::parse($request->status_expiry_date);
@@ -218,7 +256,7 @@ class ScheduleController extends Controller
 
         // Get current booking counts
         $bookingCounts = Booking::where('schedule_id', $schedule->id)
-            ->where('date', $date)
+            ->where('booking_date', $date)  // Ubah 'date' menjadi 'booking_date'
             ->where('status', 'confirmed')
             ->selectRaw('SUM(passenger_count) as total_passengers,
                          SUM(motorcycle_count) as total_motorcycles,

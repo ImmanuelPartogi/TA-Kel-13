@@ -20,6 +20,7 @@ class Schedule extends Model
         'status_updated_at',
         'status_expiry_date',
         'created_by',
+        'operator_id', // Tambahkan operator_id
         'last_adjustment_id',
     ];
 

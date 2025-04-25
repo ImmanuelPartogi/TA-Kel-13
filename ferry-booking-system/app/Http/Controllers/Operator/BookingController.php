@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Models\ActivityLog;
+use Illuminate\Support\Facades\Log;
 
 class BookingController extends Controller
 {
@@ -21,10 +22,17 @@ class BookingController extends Controller
         $operator = Auth::guard('operator')->user();
         $assignedRouteIds = $operator->assigned_routes ?? [];
 
-        $query = Booking::whereHas('schedule', function ($q) use ($assignedRouteIds) {
-            $q->whereIn('route_id', $assignedRouteIds);
-        })
-            ->with(['user', 'schedule.route', 'schedule.ferry']);
+        $query = Booking::query();
+
+        // Filter berdasarkan assigned routes
+        if (!empty($assignedRouteIds)) {
+            $query->whereHas('schedule', function ($q) use ($assignedRouteIds) {
+                $q->whereIn('route_id', $assignedRouteIds);
+            });
+        }
+
+        // Load relasi yang dibutuhkan
+        $query->with(['user', 'schedule.route', 'schedule.ferry']);
 
         // Filter berdasarkan kode booking
         if ($request->has('booking_code') && $request->booking_code) {
@@ -46,7 +54,7 @@ class BookingController extends Controller
         }
 
         // Filter berdasarkan status booking
-        if ($request->has('status')) {
+        if ($request->has('status') && $request->status) {
             $query->where('status', $request->status);
         }
 
@@ -59,6 +67,7 @@ class BookingController extends Controller
             $query->where('booking_date', '<=', $request->booking_date_to);
         }
 
+        // Urutkan dan paginate hasil
         $bookings = $query->orderBy('created_at', 'desc')->paginate(10);
 
         return view('operator.bookings.index', compact('bookings'));
@@ -69,22 +78,39 @@ class BookingController extends Controller
         $operator = Auth::guard('operator')->user();
         $assignedRouteIds = $operator->assigned_routes ?? [];
 
-        $booking = Booking::whereHas('schedule', function ($q) use ($assignedRouteIds) {
-            $q->whereIn('route_id', $assignedRouteIds);
-        })
-            ->where('id', $id)
-            ->with([
-                'user',
-                'schedule.route',
-                'schedule.ferry',
-                'payments',
-                'tickets',
-                'vehicles',
-                'bookingLogs',
-            ])
-            ->firstOrFail();
+        try {
+            // Coba dulu tanpa filter rute untuk debugging
+            $booking = Booking::where('id', $id)
+                ->with([
+                    'user',
+                    'schedule.route',
+                    'schedule.ferry',
+                    'payments',
+                    'tickets',
+                    'vehicles',
+                    'bookingLogs',
+                ])
+                ->firstOrFail();
 
-        return view('operator.bookings.show', compact('booking'));
+            // Verifikasi apakah booking ini seharusnya bisa diakses oleh operator ini
+            if (
+                !empty($assignedRouteIds) && $booking->schedule &&
+                !in_array($booking->schedule->route_id, $assignedRouteIds)
+            ) {
+                // Logging untuk debugging
+                Log::warning("Operator ID: " . $operator->id . " mencoba mengakses booking ID: " . $id .
+                    " yang bukan di rute mereka. Route ID: " . $booking->schedule->route_id);
+
+                // Opsional: kembalikan ke halaman sebelumnya dengan pesan error
+                // return redirect()->back()->with('error', 'Anda tidak memiliki akses ke booking ini');
+            }
+
+            return view('operator.bookings.show', compact('booking'));
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::error("Booking tidak ditemukan: " . $id);
+            return redirect()->route('operator.bookings.index')
+                ->with('error', 'Booking tidak ditemukan');
+        }
     }
 
     public function updateStatus(Request $request, $id)

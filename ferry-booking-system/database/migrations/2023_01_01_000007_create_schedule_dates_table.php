@@ -21,6 +21,7 @@ return new class extends Migration
             $table->string('status_reason', 191)->nullable()->comment('Alasan perubahan status');
             $table->timestamp('status_expiry_date')->nullable()->comment('Tanggal saat status cuaca akan otomatis berubah');
             $table->foreignId('created_by')->nullable()->constrained('admins')->onDelete('set null')->comment('Admin atau Operator yang membuat jadwal');
+            $table->foreignId('operator_id')->nullable()->constrained('operators')->onDelete('set null')->comment('Operator yang mengelola jadwal ini');
             $table->boolean('modified_by_schedule')->default(0)->comment('Diubah oleh perubahan status jadwal');
             $table->unsignedBigInteger('adjustment_id')->nullable();
             $table->timestamps();

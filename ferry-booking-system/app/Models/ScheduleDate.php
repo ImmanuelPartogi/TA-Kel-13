@@ -21,6 +21,7 @@ class ScheduleDate extends Model
         'status_reason',
         'status_expiry_date',
         'created_by',
+        'operator_id', // Tambahkan operator_id
         'modified_by_schedule',
         'adjustment_id',
     ];
@@ -39,6 +40,11 @@ class ScheduleDate extends Model
     public function createdBy()
     {
         return $this->belongsTo(Admin::class, 'created_by');
+    }
+
+    public function operator()
+    {
+        return $this->belongsTo(Operator::class, 'operator_id');
     }
 
     public function getDepartureDateAttribute()

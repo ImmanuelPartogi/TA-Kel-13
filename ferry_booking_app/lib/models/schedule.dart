@@ -39,23 +39,44 @@ class Schedule {
   });
 
   factory Schedule.fromJson(Map<String, dynamic> json) {
-    return Schedule(
-      id: json['id'],
-      routeId: json['route_id'],
-      ferryId: json['ferry_id'],
-      departureTime: json['departure_time'],
-      arrivalTime: json['arrival_time'],
-      days: json['days'],
-      status: json['status'],
-      statusReason: json['status_reason'],
-      ferry: json['ferry'] != null ? Ferry.fromJson(json['ferry']) : null,
-      route: json['route'] != null ? FerryRoute.fromJson(json['route']) : null,
-      availablePassenger: json['available_passenger'],
-      availableMotorcycle: json['available_motorcycle'],
-      availableCar: json['available_car'],
-      availableBus: json['available_bus'],
-      availableTruck: json['available_truck'],
-      scheduleDateStatus: json['schedule_date_status'],
-    );
+    try {
+      return Schedule(
+        id: json['id'] ?? 0,
+        routeId: json['route_id'] ?? 0,
+        ferryId: json['ferry_id'] ?? 0,
+        departureTime: json['departure_time'] ?? "00:00:00",
+        arrivalTime: json['arrival_time'] ?? "00:00:00",
+        days: json['days'] ?? "",
+        status: json['status'] ?? "UNKNOWN",
+        statusReason: json['status_reason'],
+        ferry: json['ferry'] != null ? Ferry.fromJson(json['ferry']) : null,
+        route:
+            json['route'] != null ? FerryRoute.fromJson(json['route']) : null,
+        // Pastikan nilai numerik tidak null
+        availablePassenger: json['available_passenger'] ?? 0,
+        availableMotorcycle: json['available_motorcycle'] ?? 0,
+        availableCar: json['available_car'] ?? 0,
+        availableBus: json['available_bus'] ?? 0,
+        availableTruck: json['available_truck'] ?? 0,
+        scheduleDateStatus: json['schedule_date_status'],
+      );
+    } catch (e) {
+      print('ERROR: Gagal parsing Schedule dari JSON: $e');
+      // Fallback dengan nilai default jika parsing gagal
+      return Schedule(
+        id: 0,
+        routeId: 0,
+        ferryId: 0,
+        departureTime: "00:00:00",
+        arrivalTime: "00:00:00",
+        days: "",
+        status: "ERROR",
+        availablePassenger: 0,
+        availableMotorcycle: 0,
+        availableCar: 0,
+        availableBus: 0,
+        availableTruck: 0,
+      );
+    }
   }
 }

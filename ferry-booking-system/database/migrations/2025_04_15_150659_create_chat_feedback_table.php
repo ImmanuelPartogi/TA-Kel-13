@@ -13,7 +13,10 @@ return new class extends Migration
     {
         Schema::create('chat_feedback', function (Blueprint $table) {
             $table->id();
-            $table->timestamps();
+            $table->foreignId('message_id')->constrained('chat_messages');
+            $table->boolean('is_helpful');
+            $table->text('feedback_text')->nullable();
+            $table->timestamp('created_at')->useCurrent();
         });
     }
 

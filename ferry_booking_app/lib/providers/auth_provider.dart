@@ -310,6 +310,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+
   // Verifikasi password
   Future<bool> verifyPassword(String password) async {
     _isLoading = true;

@@ -22,7 +22,7 @@ class Booking {
   List<Payment>? payments;
   final List<Ticket>? tickets;
   final List<Vehicle>? vehicles;
-  
+
   // Properti transient untuk metode pembayaran yang dipilih
   String? paymentMethod;
   String? paymentType;
@@ -54,24 +54,27 @@ class Booking {
     // Parse payments dengan validasi
     List<Payment>? parsePayments() {
       if (json['payments'] == null) return null;
-      
+
       try {
         final paymentsList = json['payments'] as List;
-        return paymentsList.map((payment) => Payment.fromJson(payment)).toList();
+        return paymentsList
+            .map((payment) => Payment.fromJson(payment))
+            .toList();
       } catch (e) {
         print('Error parsing payments: $e');
         return null;
       }
     }
-    
+
     // Mendapatkan payments
     final List<Payment>? parsedPayments = parsePayments();
-    
+
     // Mendapatkan payment terakhir untuk inisialisasi properti transient
-    final Payment? latestPayment = parsedPayments != null && parsedPayments.isNotEmpty
-        ? parsedPayments.first
-        : null;
-    
+    final Payment? latestPayment =
+        parsedPayments != null && parsedPayments.isNotEmpty
+            ? parsedPayments.first
+            : null;
+
     return Booking(
       id: json['id'],
       bookingCode: json['booking_code'],
@@ -87,37 +90,44 @@ class Booking {
       bookingChannel: json['booking_channel'],
       notes: json['notes'],
       createdAt: json['created_at'],
-      schedule: json['schedule'] != null ? Schedule.fromJson(json['schedule']) : null,
+      schedule:
+          json['schedule'] != null ? Schedule.fromJson(json['schedule']) : null,
       payments: parsedPayments,
-      tickets: json['tickets'] != null
-          ? List<Ticket>.from(json['tickets'].map((x) => Ticket.fromJson(x)))
-          : null,
-      vehicles: json['vehicles'] != null
-          ? List<Vehicle>.from(json['vehicles'].map((x) => Vehicle.fromJson(x)))
-          : null,
+      tickets:
+          json['tickets'] != null
+              ? List<Ticket>.from(
+                json['tickets'].map((x) => Ticket.fromJson(x)),
+              )
+              : null,
+      vehicles:
+          json['vehicles'] != null
+              ? List<Vehicle>.from(
+                json['vehicles'].map((x) => Vehicle.fromJson(x)),
+              )
+              : null,
       // Inisialisasi properti transient dari payment terakhir
       paymentMethod: latestPayment?.paymentMethod,
       paymentType: latestPayment?.paymentType,
     );
   }
-  
+
   // Mendapatkan payment terakhir
   Payment? get latestPayment {
     if (payments == null || payments!.isEmpty) {
       return null;
     }
-    
+
     // Urutkan payments berdasarkan created_at terbaru
     payments!.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return payments!.first;
   }
-  
+
   // Mendapatkan waktu kedaluwarsa dari payment terakhir
   DateTime? get expiryTime {
     final payment = latestPayment;
     return payment?.expiryTime;
   }
-  
+
   // Mendapatkan status pembayaran yang user-friendly
   String get statusDisplay {
     switch (status) {
@@ -137,7 +147,7 @@ class Booking {
         return status;
     }
   }
-  
+
   // Mendapatkan warna untuk status
   // Catatan: Gunakan Colors dari package:flutter/material.dart
   // di file yang menggunakan metode ini
@@ -159,22 +169,31 @@ class Booking {
         return 0xFF9E9E9E; // Colors.grey[500]
     }
   }
-  
+
   // Cek apakah booking sudah dibayar
   bool get isPaid {
     return status == 'CONFIRMED' || status == 'COMPLETED';
   }
-  
+
   // Cek apakah booking masih menunggu pembayaran
   bool get isPending {
     return status == 'PENDING';
   }
-  
+
   // Cek apakah booking sudah dibatalkan
   bool get isCancelled {
     return status == 'CANCELLED';
   }
-  
+
+  bool get isExpired {
+    try {
+      final bookingDateObj = DateTime.parse(bookingDate);
+      return DateTime.now().isAfter(bookingDateObj);
+    } catch (e) {
+      return false;
+    }
+  }
+
   // Update properti payment method dan payment type
   void updatePaymentInfo(String method, String type) {
     paymentMethod = method;

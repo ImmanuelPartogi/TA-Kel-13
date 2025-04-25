@@ -13,6 +13,11 @@ return new class extends Migration
     {
         Schema::create('chat_templates', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('category_id')->constrained('chat_categories');
+            $table->text('question_pattern');
+            $table->text('answer');
+            $table->text('keywords');
+            $table->integer('priority')->default(0);
             $table->timestamps();
         });
     }

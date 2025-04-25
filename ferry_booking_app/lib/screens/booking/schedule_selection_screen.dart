@@ -1,3 +1,4 @@
+import 'package:ferry_booking_app/models/schedule.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -7,6 +8,7 @@ import 'package:ferry_booking_app/providers/schedule_provider.dart';
 import 'package:ferry_booking_app/widgets/custom_appbar.dart';
 import 'package:ferry_booking_app/widgets/schedule_card.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ScheduleSelectionScreen extends StatefulWidget {
   final FerryRoute route;
@@ -28,6 +30,9 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
 
     // Inisialisasi format tanggal Indonesia
     initializeDateFormatting('id_ID', null);
+
+    // Pastikan tanggal menggunakan timezone yang tepat
+    _selectedDate = DateTime.now().toLocal();
 
     // Set route di booking provider dengan aman
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -56,6 +61,43 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
     }
   }
 
+  // Tambahkan fungsi untuk menyimpan tanggal secara persisten
+  void _selectSchedule(Schedule schedule) {
+    final bookingProvider = Provider.of<BookingProvider>(
+      context,
+      listen: false,
+    );
+
+    // Log untuk debugging
+    print(
+      'DEBUG: Selecting schedule with ID ${schedule.id} for date ${DateFormat('yyyy-MM-dd').format(_selectedDate)}',
+    );
+
+    try {
+      // Pastikan tanggal dan jadwal disimpan dengan benar
+      bookingProvider.setSelectedSchedule(schedule);
+      bookingProvider.setSelectedDate(_selectedDate);
+
+      // Simpan ke SharedPreferences dengan format konsisten
+      final formattedDate = DateFormat('yyyy-MM-dd').format(_selectedDate);
+      SharedPreferences.getInstance().then((prefs) {
+        prefs.setString('selected_date', formattedDate);
+        prefs.setInt('selected_schedule_id', schedule.id);
+        print(
+          'DEBUG: Saved to SharedPreferences: date=$formattedDate, scheduleId=${schedule.id}',
+        );
+      });
+
+      // Navigasi ke halaman berikutnya
+      Navigator.pushNamed(context, '/booking/passengers');
+    } catch (e) {
+      print('ERROR: Failed to select schedule: $e');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal memilih jadwal: $e')));
+    }
+  }
+
   // Modifikasi method _loadSchedules()
   Future<void> _loadSchedules() async {
     final scheduleProvider = Provider.of<ScheduleProvider>(
@@ -63,19 +105,24 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
       listen: false,
     );
     try {
+      // Log lebih detail untuk debugging
+      print('DEBUG: Loading schedules for route ${widget.route.id}');
+      print('DEBUG: Selected date (original): $_selectedDate');
       print(
-        'DEBUG: Loading schedules for route ${widget.route.id} on date $_selectedDate',
+        'DEBUG: Selected date (formatted): ${DateFormat('yyyy-MM-dd').format(_selectedDate)}',
       );
-      await scheduleProvider.getSchedules(widget.route.id, _selectedDate);
+      print('DEBUG: Local timezone offset: ${DateTime.now().timeZoneOffset}');
 
-      // Jika tidak ada jadwal, tampilkan pesan
+      // Kirim tanggal yang konsisten ke backend
+      final formattedDate = DateFormat('yyyy-MM-dd').format(_selectedDate);
+      await scheduleProvider.getSchedulesByFormattedDate(
+        widget.route.id,
+        formattedDate,
+      );
+
+      // Periksa apakah jadwal tersedia
       if (scheduleProvider.schedules?.isEmpty ?? true) {
-        print('DEBUG: No schedules available for this date');
         _showNoSchedulesMessage();
-      } else {
-        print(
-          'DEBUG: Successfully loaded ${scheduleProvider.schedules!.length} schedules',
-        );
       }
     } catch (e) {
       print('ERROR: Failed to load schedules: $e');
@@ -106,6 +153,36 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
       );
       await scheduleProvider.getSchedules(widget.route.id, _selectedDate);
     }
+  }
+
+  // Di ScheduleSelectionScreen, tambahkan fungsi untuk mencari jadwal hari berikutnya
+  Future<void> _findNextAvailableDate() async {
+    final scheduleProvider = Provider.of<ScheduleProvider>(
+      context,
+      listen: false,
+    );
+    DateTime nextDate = _selectedDate.add(const Duration(days: 1));
+
+    // Coba cari jadwal untuk 7 hari ke depan
+    for (int i = 0; i < 7; i++) {
+      await scheduleProvider.getSchedules(widget.route.id, nextDate);
+
+      if (scheduleProvider.schedules?.isNotEmpty ?? false) {
+        setState(() {
+          _selectedDate = nextDate;
+        });
+        return;
+      }
+
+      nextDate = nextDate.add(const Duration(days: 1));
+    }
+
+    // Jika tidak ditemukan jadwal dalam 7 hari
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Tidak ditemukan jadwal dalam 7 hari ke depan'),
+      ),
+    );
   }
 
   @override
@@ -202,9 +279,22 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          ElevatedButton(
-                            onPressed: () => _selectDate(context),
-                            child: const Text('Pilih Tanggal Lain'),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              ElevatedButton(
+                                onPressed: () => _selectDate(context),
+                                child: const Text('Pilih Tanggal Lain'),
+                              ),
+                              const SizedBox(width: 8),
+                              ElevatedButton(
+                                onPressed: () => _findNextAvailableDate(),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                ),
+                                child: const Text('Cari Jadwal Terdekat'),
+                              ),
+                            ],
                           ),
                         ],
                       ),

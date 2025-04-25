@@ -6,7 +6,7 @@ class ScheduleCard extends StatelessWidget {
   final Schedule schedule;
   final DateTime date;
   final VoidCallback onTap;
-  
+
   const ScheduleCard({
     Key? key,
     required this.schedule,
@@ -21,15 +21,13 @@ class ScheduleCard extends StatelessWidget {
       symbol: 'Rp ',
       decimalDigits: 0,
     );
-    
+
     // Check availability
     final isPassengerAvailable = (schedule.availablePassenger ?? 0) > 0;
-    
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
@@ -50,7 +48,9 @@ class ScheduleCard extends StatelessWidget {
                     child: Column(
                       children: [
                         Text(
-                          schedule.departureTime.substring(0, 5),
+                          _formatTimeOnly(
+                            schedule.departureTime,
+                          ), // Gunakan method pembantu
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
@@ -98,7 +98,10 @@ class ScheduleCard extends StatelessWidget {
                             Text(
                               'Tersedia: ${schedule.availablePassenger ?? 0} kursi',
                               style: TextStyle(
-                                color: isPassengerAvailable ? Colors.grey[600] : Colors.red,
+                                color:
+                                    isPassengerAvailable
+                                        ? Colors.grey[600]
+                                        : Colors.red,
                                 fontSize: 14,
                               ),
                             ),
@@ -121,10 +124,7 @@ class ScheduleCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         'per penumpang',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 12,
-                        ),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
                       ),
                     ],
                   ),
@@ -133,7 +133,7 @@ class ScheduleCard extends StatelessWidget {
               const SizedBox(height: 12),
               const Divider(),
               const SizedBox(height: 12),
-              
+
               // Vehicle Availability
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -166,15 +166,11 @@ class ScheduleCard extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildVehicleItem(String label, int count, IconData icon) {
     return Column(
       children: [
-        Icon(
-          icon,
-          size: 20,
-          color: count > 0 ? Colors.grey[600] : Colors.red,
-        ),
+        Icon(icon, size: 20, color: count > 0 ? Colors.grey[600] : Colors.red),
         const SizedBox(height: 4),
         Text(
           count.toString(),
@@ -184,14 +180,38 @@ class ScheduleCard extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 12,
-          ),
-        ),
+        Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
       ],
     );
+  }
+
+  String _formatTimeOnly(String timeString) {
+    try {
+      // Jika format ISO (dengan T dan Z)
+      if (timeString.contains('T')) {
+        final dateTime = DateTime.parse(timeString);
+        final localTime = dateTime.toLocal();
+        return DateFormat('HH:mm').format(localTime);
+      }
+
+      // Jika format "YYYY-MM-DD HH:MM:SS"
+      if (timeString.contains(' ')) {
+        final parts = timeString.split(' ');
+        if (parts.length > 1 && parts[1].length >= 5) {
+          return parts[1].substring(0, 5);
+        }
+      }
+
+      // Jika format "HH:MM:SS"
+      if (timeString.contains(':') && timeString.length >= 5) {
+        return timeString.substring(0, 5);
+      }
+
+      // Fallback jika format tidak dikenali
+      return timeString;
+    } catch (e) {
+      print('ERROR: Gagal memformat string waktu: $e');
+      return timeString; // Kembalikan nilai asli jika gagal
+    }
   }
 }

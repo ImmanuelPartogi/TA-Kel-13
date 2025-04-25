@@ -7,6 +7,7 @@ use App\Models\Schedule;
 use App\Models\ScheduleDate;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ScheduleService
 {
@@ -155,6 +156,12 @@ class ScheduleService
         $days = explode(',', $schedule->days);
 
         if (!in_array($dayOfWeek, $days)) {
+            Log::info('Schedule not available for day of week', [
+                'schedule_id' => $schedule->id,
+                'day_requested' => $dayOfWeek,
+                'available_days' => $schedule->days
+            ]);
+
             return [
                 'available' => false,
                 'reason' => 'Jadwal tidak tersedia untuk hari ini',
@@ -162,20 +169,31 @@ class ScheduleService
             ];
         }
 
-        // PERUBAHAN PENTING: Cek apakah schedule date sudah ada, JANGAN buat baru
+        // Cek apakah schedule date sudah ada
         $scheduleDate = ScheduleDate::where('schedule_id', $schedule->id)
             ->where('date', $date->format('Y-m-d'))
             ->first();
 
-        // Jika schedule date tidak ada, kembalikan not available
+        // PERBAIKAN: Buat ScheduleDate jika belum ada untuk konsistensi dengan ScheduleController
         if (!$scheduleDate) {
-            return [
-                'available' => false,
-                'reason' => 'Jadwal tidak tersedia untuk tanggal yang dipilih',
-                'scheduleDate' => null,
-            ];
+            Log::info('Creating new ScheduleDate for consistency', [
+                'schedule_id' => $schedule->id,
+                'date' => $date->format('Y-m-d')
+            ]);
+
+            $scheduleDate = ScheduleDate::create([
+                'schedule_id' => $schedule->id,
+                'date' => $date->format('Y-m-d'),
+                'passenger_count' => 0,
+                'motorcycle_count' => 0,
+                'car_count' => 0,
+                'bus_count' => 0,
+                'truck_count' => 0,
+                'status' => 'AVAILABLE',
+            ]);
         }
 
+        // Periksa status jadwal
         if ($scheduleDate->status !== 'AVAILABLE') {
             return [
                 'available' => false,

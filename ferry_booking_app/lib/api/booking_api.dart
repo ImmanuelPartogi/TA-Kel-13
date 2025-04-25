@@ -29,16 +29,27 @@ class BookingApi {
   }
 
   // Create booking
-  Future<Map<String, dynamic>> createBooking(Map<String, dynamic> bookingData) async {
-    final response = await _apiService.post('bookings', bookingData);
+  Future<Map<String, dynamic>> createBooking(
+    Map<String, dynamic> bookingData,
+  ) async {
+    try {
+      final response = await _apiService.post('bookings', bookingData);
 
-    if (response['success']) {
-      return {
-        'booking': Booking.fromJson(response['data']['booking']),
-        'payment': response['data']['payment'],
-      };
-    } else {
-      throw Exception(response['message']);
+      if (response != null && response['success'] == true) {
+        return response['data'];
+      } else {
+        throw Exception(response?['message'] ?? 'Gagal membuat booking');
+      }
+    } catch (e) {
+      // Log detail error untuk debugging
+      print('ERROR: Gagal membuat booking di API: $e');
+      if (e.toString().contains('RangeError')) {
+        // Berikan pesan error yang lebih deskriptif untuk RangeError
+        throw Exception(
+          'Terjadi masalah dengan data booking. Pastikan semua data valid.',
+        );
+      }
+      throw Exception('Gagal membuat booking: $e');
     }
   }
 

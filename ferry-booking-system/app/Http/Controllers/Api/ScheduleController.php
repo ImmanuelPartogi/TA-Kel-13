@@ -15,43 +15,112 @@ class ScheduleController extends Controller
     {
         try {
             $routeId = $request->route_id;
-            $date = $request->date ? Carbon::parse($request->date) : Carbon::today();
-            $dayOfWeek = $date->dayOfWeek + 1; // Konversi ke format 1-7 (Senin-Minggu)
-            $currentTime = Carbon::now(); // Ambil waktu sekarang
+            $requestDate = $request->date;
+            $currentTime = Carbon::now('Asia/Jakarta');
 
+            // PERBAIKAN: Parsing tanggal dengan lebih jelas
+            if ($requestDate) {
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $requestDate)) {
+                    $date = Carbon::createFromFormat('Y-m-d', $requestDate, 'Asia/Jakarta');
+                } else {
+                    // Jika format bukan Y-m-d, coba parse dengan lebih fleksibel
+                    $date = Carbon::parse($requestDate)->setTimezone('Asia/Jakarta');
+                }
+            } else {
+                $date = Carbon::today('Asia/Jakarta');
+            }
+
+            // Hitung hari dalam minggu
+            $dayOfWeek = $date->dayOfWeek + 1; // Konversi ke format 1-7 (Senin-Minggu)
+
+            // Logging untuk debugging
             Log::info('Mencari jadwal', [
-                'route_id' => $routeId,
-                'date' => $date->format('Y-m-d'),
+                'request_date_raw' => $requestDate,
+                'parsed_date' => $date->format('Y-m-d'),
                 'day_of_week' => $dayOfWeek,
-                'current_time' => $currentTime->format('H:i:s')
+                'route_id' => $routeId,
+                'timezone' => config('app.timezone'),
+                'server_time' => Carbon::now()->format('Y-m-d H:i:s')
             ]);
 
+            // PERBAIKAN: Cek jadwal berdasarkan hari dalam minggu terlebih dahulu
             $schedules = Schedule::where('route_id', $routeId)
                 ->where('status', 'ACTIVE')
-                ->whereRaw("FIND_IN_SET('$dayOfWeek', days)")
+                ->whereRaw("FIND_IN_SET(?, days)", [$dayOfWeek])
                 ->with(['ferry', 'route'])
                 ->get();
 
+            Log::info('Jadwal setelah filter hari', [
+                'count' => $schedules->count(),
+                'hari' => $dayOfWeek,
+                'schedule_ids' => $schedules->pluck('id')->toArray()
+            ]);
+
+            // Jika tidak ada jadwal pada hari tersebut, return array kosong
+            if ($schedules->isEmpty()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Tidak ada jadwal tersedia untuk hari ini',
+                    'data' => []
+                ], 200);
+            }
+
             $scheduleIds = $schedules->pluck('id');
 
-            // PERUBAHAN PENTING: Hanya ambil yang sudah ada, JANGAN membuat baru
+            // PERBAIKAN: Cek terlebih dahulu apakah ada ScheduleDate untuk tanggal tersebut
+            $scheduleDatesCount = ScheduleDate::whereIn('schedule_id', $scheduleIds)
+                ->where('date', $date->format('Y-m-d'))
+                ->count();
+
+            Log::info('Schedule dates count before processing', [
+                'date' => $date->format('Y-m-d'),
+                'count' => $scheduleDatesCount
+            ]);
+
+            // PERBAIKAN: Auto-create ScheduleDate jika belum ada
+            if ($scheduleDatesCount === 0) {
+                Log::info('Tidak ada ScheduleDate, mencoba membuat otomatis', [
+                    'schedule_ids' => $scheduleIds->toArray(),
+                    'date' => $date->format('Y-m-d')
+                ]);
+
+                // Buat ScheduleDate untuk semua jadwal pada tanggal ini
+                foreach ($schedules as $schedule) {
+                    ScheduleDate::create([
+                        'schedule_id' => $schedule->id,
+                        'date' => $date->format('Y-m-d'),
+                        'passenger_count' => 0,
+                        'motorcycle_count' => 0,
+                        'car_count' => 0,
+                        'bus_count' => 0,
+                        'truck_count' => 0,
+                        'status' => 'AVAILABLE', // Default ke AVAILABLE
+                    ]);
+                }
+            }
+
+            // Ambil ScheduleDate setelah mungkin dibuat
             $scheduleDates = ScheduleDate::whereIn('schedule_id', $scheduleIds)
                 ->where('date', $date->format('Y-m-d'))
                 ->get()
                 ->keyBy('schedule_id');
 
-            Log::info('Schedule dates ditemukan', ['count' => $scheduleDates->count()]);
+            Log::info('Schedule dates berhasil diambil', [
+                'count' => $scheduleDates->count(),
+                'schedule_date_ids' => $scheduleDates->pluck('id')->toArray(),
+                'date' => $date->format('Y-m-d')
+            ]);
 
             $result = $schedules->map(function ($schedule) use ($scheduleDates, $date) {
                 $scheduleDate = $scheduleDates->get($schedule->id);
 
-                // PERUBAHAN PENTING: Jika tidak ada schedule_date, tandai sebagai NOT_AVAILABLE
                 if (!$scheduleDate) {
                     Log::info('Schedule date tidak ditemukan untuk jadwal', [
-                        'schedule_id' => $schedule->id
+                        'schedule_id' => $schedule->id,
+                        'date' => $date->format('Y-m-d')
                     ]);
 
-                    // Isi dengan data dummy tapi tidak simpan ke database
+                    // Isi dengan data dummy
                     $schedule->available_passenger = 0;
                     $schedule->available_motorcycle = 0;
                     $schedule->available_car = 0;
@@ -62,7 +131,7 @@ class ScheduleController extends Controller
                     return $schedule;
                 }
 
-                // Jika ada, proses seperti biasa
+                // Process with real schedule date
                 $schedule->available_passenger = $schedule->ferry->capacity_passenger - $scheduleDate->passenger_count;
                 $schedule->available_motorcycle = $schedule->ferry->capacity_vehicle_motorcycle - $scheduleDate->motorcycle_count;
                 $schedule->available_car = $schedule->ferry->capacity_vehicle_car - $scheduleDate->car_count;
@@ -70,37 +139,49 @@ class ScheduleController extends Controller
                 $schedule->available_truck = $schedule->ferry->capacity_vehicle_truck - $scheduleDate->truck_count;
                 $schedule->schedule_date_status = $scheduleDate->status;
 
+                Log::info('Schedule processed with data', [
+                    'schedule_id' => $schedule->id,
+                    'status' => $scheduleDate->status,
+                    'available_passenger' => $schedule->available_passenger
+                ]);
+
                 return $schedule;
             });
 
-            // PERUBAHAN PENTING: Filter jadwal yang tersedia DAN waktu keberangkatan belum lewat
-            $currentTime = Carbon::now();
+            // Filter jadwal yang tersedia
             $availableSchedules = $result->filter(function ($schedule) use ($currentTime, $date) {
-                // Pastikan jadwal tersedia
-                if ($schedule->schedule_date_status !== 'AVAILABLE') {
+                // Periksa status jadwal
+                $status = $schedule->schedule_date_status;
+                $isAvailable = $status === 'AVAILABLE';
+
+                if (!$isAvailable) {
                     return false;
                 }
 
-                // Cek waktu keberangkatan untuk hari ini
-                if ($date->isToday()) {
-                    $departureDateTime = Carbon::parse($date->format('Y-m-d') . ' ' . $schedule->departure_time);
-
-                    // Log untuk debugging
-                    Log::info('Cek waktu keberangkatan', [
-                        'schedule_id' => $schedule->id,
-                        'departure_time' => $schedule->departure_time,
-                        'departure_datetime' => $departureDateTime->format('Y-m-d H:i:s'),
-                        'current_time' => $currentTime->format('Y-m-d H:i:s'),
-                        'is_after' => $departureDateTime->isAfter($currentTime)
-                    ]);
-
-                    // Jadwal hanya ditampilkan jika waktu keberangkatan belum lewat
-                    return $departureDateTime->isAfter($currentTime);
+                // PERBAIKAN: Ekstrasi waktu dari departure_time jika sudah berisi tanggal
+                $departureTime = $schedule->departure_time;
+                if (strpos($departureTime, ' ') !== false) {
+                    // Ambil bagian waktu saja jika formatnya "YYYY-MM-DD HH:MM:SS"
+                    $parts = explode(' ', $departureTime);
+                    $departureTime = end($parts);
                 }
 
-                // Untuk tanggal di masa depan, tampilkan semua jadwal yang tersedia
+                // Gabungkan tanggal yang dipilih dengan waktu keberangkatan
+                $departureDateTime = Carbon::parse($date->format('Y-m-d') . ' ' . $departureTime, 'Asia/Jakarta');
+
+                // Untuk hari ini, filter berdasarkan waktu saat ini
+                if ($date->isToday()) {
+                    $isAfterCurrentTime = $departureDateTime->isAfter($currentTime);
+                    return $isAfterCurrentTime;
+                }
+
+                // Untuk tanggal lain, jadwal tersedia
                 return true;
             })->values();
+
+            Log::info('Final available schedules', [
+                'count' => $availableSchedules->count()
+            ]);
 
             return response()->json([
                 'success' => true,

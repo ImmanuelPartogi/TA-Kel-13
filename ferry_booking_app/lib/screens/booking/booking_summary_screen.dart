@@ -135,12 +135,11 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Tanggal Keberangkatan'),
                     Text(
-                      dateFormat.format(selectedDate),
+                      'Tanggal Keberangkatan: ${DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(bookingProvider.selectedDate!)}',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                  ],
+                  ],  
                 ),
                 const SizedBox(height: 8),
 

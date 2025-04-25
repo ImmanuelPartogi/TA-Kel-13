@@ -3,6 +3,7 @@ import 'package:ferry_booking_app/api/route_api.dart';
 import 'package:ferry_booking_app/api/schedule_api.dart';
 import 'package:ferry_booking_app/models/route.dart';
 import 'package:ferry_booking_app/models/schedule.dart';
+import 'package:intl/intl.dart';
 
 class ScheduleProvider extends ChangeNotifier {
   final RouteApi _routeApi = RouteApi();
@@ -51,8 +52,13 @@ class ScheduleProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final dateString = date.toIso8601String().split('T')[0];
-      print('DEBUG: Fetching schedules for route: $routeId, date: $dateString');
+      // Standardize date format - IMPORTANT FIX
+      final dateString = DateFormat('yyyy-MM-dd').format(date);
+      print(
+        'DEBUG: Fetching schedules for route: $routeId, standardized date: $dateString',
+      );
+      print('DEBUG: Device timezone offset: ${DateTime.now().timeZoneOffset}');
+      print('DEBUG: Original date object: ${date.toString()}');
 
       final schedules = await _scheduleApi.getSchedules(routeId, dateString);
       print('DEBUG: Received ${schedules.length} schedules');
@@ -133,6 +139,42 @@ class ScheduleProvider extends ChangeNotifier {
     } catch (e) {
       print('Connection check failed: $e');
       return false;
+    }
+  }
+
+  // Tambahkan method baru di ScheduleProvider
+  Future<void> getSchedulesByFormattedDate(
+    int routeId,
+    String formattedDate,
+  ) async {
+    if (_isLoading) return;
+
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      print('DEBUG: Fetching schedules with formatted date: $formattedDate');
+
+      final schedules = await _scheduleApi.getSchedulesByFormattedDate(
+        routeId,
+        formattedDate,
+      );
+
+      // Validasi tambahan untuk memastikan jadwal sesuai dengan tanggal
+      _schedules =
+          schedules.where((schedule) {
+            return schedule.scheduleDateStatus == 'AVAILABLE';
+          }).toList();
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      print('ERROR: Fetching schedules failed: $e');
+      _isLoading = false;
+      _errorMessage = 'Gagal memuat jadwal: ${e.toString()}';
+      _schedules = []; // Set ke array kosong, bukan null
+      notifyListeners();
     }
   }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Payment;
 use App\Models\Schedule;
+use Carbon\Carbon;
 use App\Models\ScheduleDate;
 use App\Models\Ticket;
 use App\Models\Vehicle;
@@ -64,10 +65,9 @@ class BookingController extends Controller
     public function store(Request $request)
     {
         // Logging informasi awal
-        Log::info('Booking store request received', [
-            'user_id' => $request->user()->id,
-            'schedule_id' => $request->schedule_id,
+        Log::info('Booking date received', [
             'booking_date' => $request->booking_date,
+            'current_date' => now()->toDateString()
         ]);
 
         // FIX: Perbaikan aturan validasi untuk field vehicles dan passengers
@@ -104,7 +104,7 @@ class BookingController extends Controller
 
         // Cek ketersediaan jadwal
         $schedule = Schedule::findOrFail($request->schedule_id);
-        $bookingDate = $request->booking_date;
+        $bookingDate = Carbon::parse($request->booking_date);
 
         Log::info('Checking schedule availability', [
             'schedule_id' => $schedule->id,
@@ -129,17 +129,16 @@ class BookingController extends Controller
         }
 
         // Cek ketersediaan kursi
-        $scheduleDate = ScheduleDate::firstOrCreate(
-            ['schedule_id' => $schedule->id, 'date' => $bookingDate],
-            [
-                'passenger_count' => 0,
-                'motorcycle_count' => 0,
-                'car_count' => 0,
-                'bus_count' => 0,
-                'truck_count' => 0,
-                'status' => 'AVAILABLE'
-            ]
-        );
+        $scheduleDate = ScheduleDate::where('schedule_id', $schedule->id)
+            ->where('date', $bookingDate->format('Y-m-d'))
+            ->first();
+
+        if (!$scheduleDate || $scheduleDate->status !== 'AVAILABLE') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Jadwal tidak tersedia untuk tanggal yang dipilih'
+            ], 400);
+        }
 
         Log::info('ScheduleDate record', [
             'id' => $scheduleDate->id,

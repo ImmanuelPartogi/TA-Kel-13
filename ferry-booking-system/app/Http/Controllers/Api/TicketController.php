@@ -15,7 +15,7 @@ class TicketController extends Controller
     private function checkAndUpdateTicketStatus($ticket)
     {
         // Jika tiket masih aktif dan belum di-check in
-        if ($ticket->status === 'ACTIVE' && !$ticket->checked_in) {
+        if ($ticket->status === 'ACTIVE') {
             // Pastikan booking dan schedule sudah di-load
             if (!$ticket->relationLoaded('booking') || !$ticket->booking->relationLoaded('schedule')) {
                 $ticket->load(['booking.schedule']);
@@ -36,15 +36,19 @@ class TicketController extends Controller
             $departureDateTime = Carbon::parse($bookingDate->format('Y-m-d') . ' ' . $departureTimeString);
             $currentTime = Carbon::now();
 
-            // Jika hari ini dan waktu keberangkatan sudah lewat
-            if ($bookingDate->isSameDay(Carbon::today()) && $departureDateTime->isPast()) {
+            // PERUBAHAN: Periksa jika tanggal keberangkatan sudah lewat
+            // atau jika hari ini dan waktu keberangkatan sudah lewat
+            if ($bookingDate->isPast() ||
+                ($bookingDate->isSameDay(Carbon::today()) && $departureDateTime->isPast())) {
                 // Update status menjadi EXPIRED
                 $ticket->status = 'EXPIRED';
+                $ticket->boarding_status = 'MISSED';
                 $ticket->save();
 
                 Log::info('Tiket status diubah menjadi EXPIRED (dari controller)', [
                     'ticket_id' => $ticket->id,
                     'ticket_code' => $ticket->ticket_code,
+                    'booking_date' => $bookingDate->format('Y-m-d'),
                     'departure_datetime' => $departureDateTime->format('Y-m-d H:i:s'),
                     'current_time' => $currentTime->format('Y-m-d H:i:s')
                 ]);

@@ -198,7 +198,6 @@ class BookingService
             DB::commit();
 
             return $booking->fresh(['tickets', 'vehicles']);
-
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;
@@ -288,7 +287,6 @@ class BookingService
             DB::commit();
 
             return $booking->fresh();
-
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;
@@ -391,10 +389,31 @@ class BookingService
             DB::commit();
 
             return $booking->fresh();
-
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;
         }
+    }
+
+    private function validateDepartureDate($scheduleId, $bookingDate)
+    {
+        $schedule = Schedule::findOrFail($scheduleId);
+        $today = Carbon::today();
+        $dateToCheck = Carbon::parse($bookingDate);
+
+        // Jika tanggal di masa lalu, tolak
+        if ($dateToCheck->isBefore($today)) {
+            throw new \Exception('Tanggal keberangkatan tidak boleh di masa lalu');
+        }
+
+        // Jika hari ini, pastikan jam keberangkatan belum lewat
+        if ($dateToCheck->isSameDay($today)) {
+            $departureTime = Carbon::parse($bookingDate . ' ' . $schedule->departure_time);
+            if ($departureTime->isPast()) {
+                throw new \Exception('Waktu keberangkatan sudah lewat');
+            }
+        }
+
+        return true;
     }
 }

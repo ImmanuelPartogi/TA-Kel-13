@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
 
@@ -212,27 +213,43 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $user = User::where('email', $request->email)->first();
+        // Generate token secara manual
+        $token = Str::random(6); // Token pendek 6 karakter untuk mudah diingat
 
-        // Generate reset token
-        $token = Str::random(60);
+        // Hapus token lama jika ada
+        DB::table('password_reset_tokens')->where('email', $request->email)->delete();
 
-        // Save token to password_reset_tokens table
-        DB::table('password_reset_tokens')->updateOrInsert(
-            ['email' => $request->email],
-            [
+        // Simpan token baru
+        DB::table('password_reset_tokens')->insert([
+            'email' => $request->email,
+            'token' => $token,
+            'created_at' => Carbon::now()
+        ]);
+
+        // Kirim email dengan token
+        try {
+            Mail::send('emails.reset-password', [
                 'token' => $token,
-                'created_at' => now()
-            ]
-        );
+                'email' => $request->email
+            ], function ($message) use ($request) {
+                $message->to($request->email);
+                $message->subject('Reset Password');
+            });
 
-        // Send email with reset link
-        // Untuk implementasi sederhana, kita hanya return token
-        return response()->json([
-            'success' => true,
-            'message' => 'Link reset password telah dikirim ke email Anda',
-            'token' => $token // Pada implementasi sebenarnya, jangan tampilkan token
-        ], 200);
+            Log::info('Reset password email sent to: ' . $request->email);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Kode reset password telah dikirim ke email Anda'
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Gagal mengirim email reset password: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengirim email reset password'
+            ], 500);
+        }
     }
 
     public function resetPassword(Request $request)
@@ -251,25 +268,27 @@ class AuthController extends Controller
             ], 422);
         }
 
-        // Verify token
-        $resetRecord = DB::table('password_reset_tokens')
+        // Verifikasi token
+        $tokenData = DB::table('password_reset_tokens')
             ->where('email', $request->email)
             ->where('token', $request->token)
             ->first();
 
-        if (!$resetRecord) {
+        if (!$tokenData) {
             return response()->json([
                 'success' => false,
-                'message' => 'Token reset password tidak valid'
+                'message' => 'Kode reset password tidak valid'
             ], 422);
         }
 
-        // Check if token is expired (60 menit)
-        $tokenCreatedAt = Carbon::parse($resetRecord->created_at);
-        if (now()->diffInMinutes($tokenCreatedAt) > 60) {
+        // Cek apakah token sudah kadaluarsa (60 menit)
+        $createdAt = Carbon::parse($tokenData->created_at);
+        if (Carbon::now()->diffInMinutes($createdAt) > 60) {
+            DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+
             return response()->json([
                 'success' => false,
-                'message' => 'Token reset password sudah kedaluwarsa'
+                'message' => 'Kode reset password sudah kadaluarsa'
             ], 422);
         }
 
@@ -278,10 +297,8 @@ class AuthController extends Controller
         $user->password = Hash::make($request->password);
         $user->save();
 
-        // Delete token
-        DB::table('password_reset_tokens')
-            ->where('email', $request->email)
-            ->delete();
+        // Hapus token
+        DB::table('password_reset_tokens')->where('email', $request->email)->delete();
 
         return response()->json([
             'success' => true,

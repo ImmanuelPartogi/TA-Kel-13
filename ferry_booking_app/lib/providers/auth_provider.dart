@@ -22,6 +22,18 @@ class AuthProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   String? get token => _token;
 
+  // Helper untuk mengatur status loading
+  void setLoading(bool value) {
+    _isLoading = value;
+    notifyListeners();
+  }
+
+  // Helper untuk mengatur pesan error
+  void setError(String? message) {
+    _errorMessage = message;
+    notifyListeners();
+  }
+
   // Check if user is already logged in
   Future<void> checkLoginStatus() async {
     _isLoading = true;
@@ -264,22 +276,17 @@ class AuthProvider extends ChangeNotifier {
 
   // Forgot password
   Future<bool> forgotPassword(String email) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
+    setLoading(true);
+    setError(null);
 
     try {
-      final success = await _authApi.forgotPassword(email);
-      _isLoading = false;
-      if (!success) {
-        _errorMessage = 'Gagal mengirim email reset password';
-      }
-      notifyListeners();
-      return success;
+      final result = await _authApi.forgotPassword(email);
+      setLoading(false);
+      return result;
     } catch (e) {
-      _isLoading = false;
-      _errorMessage = e.toString();
-      notifyListeners();
+      setLoading(false);
+      // Gunakan pesan error yang sudah ditingkatkan dari AuthApi
+      setError(e.toString());
       return false;
     }
   }
@@ -309,7 +316,6 @@ class AuthProvider extends ChangeNotifier {
       return false;
     }
   }
-
 
   // Verifikasi password
   Future<bool> verifyPassword(String password) async {

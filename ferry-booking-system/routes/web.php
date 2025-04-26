@@ -1,21 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\WelcomeController;
-use App\Http\Controllers\Auth\BackendLoginController;
-use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
-use App\Http\Controllers\Admin\AdminController;
-use App\Http\Controllers\Admin\OperatorController;
-use App\Http\Controllers\Admin\RouteController as AdminRouteController;
-use App\Http\Controllers\Admin\FerryController;
-use App\Http\Controllers\Admin\ScheduleController as AdminScheduleController;
-use App\Http\Controllers\Admin\BookingController as AdminBookingController;
-use App\Http\Controllers\Admin\ReportController as AdminReportController;
-use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Operator\DashboardController as OperatorDashboardController;
-use App\Http\Controllers\Operator\ScheduleController as OperatorScheduleController;
-use App\Http\Controllers\Operator\BookingController as OperatorBookingController;
-use App\Http\Controllers\Operator\ReportController as OperatorReportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -25,6 +10,10 @@ use App\Http\Controllers\Operator\ReportController as OperatorReportController;
 | These routes are accessible to all users without authentication
 |
 */
+
+// Import public controllers
+use App\Http\Controllers\WelcomeController;
+use App\Http\Controllers\Auth\BackendLoginController;
 
 // Landing page routes
 Route::get('/', [WelcomeController::class, 'index'])->name('home');
@@ -63,10 +52,20 @@ Route::post('/operator/logout', [BackendLoginController::class, 'operatorLogout'
 | Admin Routes
 |--------------------------------------------------------------------------
 |
-| These routes are accessible only to authenticated admins
+| Import admin controllers
 |
 */
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\OperatorController;
+use App\Http\Controllers\Admin\RouteController as AdminRouteController;
+use App\Http\Controllers\Admin\FerryController;
+use App\Http\Controllers\Admin\ScheduleController as AdminScheduleController;
+use App\Http\Controllers\Admin\BookingController as AdminBookingController;
+use App\Http\Controllers\Admin\ReportController as AdminReportController;
+use App\Http\Controllers\Admin\UserController;
 
+// Admin routes with authentication
 Route::prefix('admin')->middleware(['auth:admin'])->name('admin.')->group(function () {
     // Dashboard
     Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
@@ -76,9 +75,7 @@ Route::prefix('admin')->middleware(['auth:admin'])->name('admin.')->group(functi
     Route::resource('admins', AdminController::class);
 
     // Operators Management
-    Route::resource('operators', OperatorController::class)->except(['create', 'store']);
-    Route::get('operators/create', [OperatorController::class, 'create'])->name('operators.create');
-    Route::post('operators', [OperatorController::class, 'store'])->name('operators.store');
+    Route::resource('operators', OperatorController::class);
 
     // Routes Management
     Route::resource('routes', AdminRouteController::class);
@@ -110,6 +107,10 @@ Route::prefix('admin')->middleware(['auth:admin'])->name('admin.')->group(functi
         Route::get('/booking', [AdminReportController::class, 'bookingReport'])->name('booking');
         Route::get('/revenue', [AdminReportController::class, 'revenueReport'])->name('revenue');
         Route::get('/schedule', [AdminReportController::class, 'scheduleReport'])->name('schedule');
+
+        // Exported reports
+        Route::get('/booking/export', [AdminReportController::class, 'exportBookingReport'])->name('booking.export');
+        Route::get('/revenue/export', [AdminReportController::class, 'exportRevenueReport'])->name('revenue.export');
     });
 });
 
@@ -118,10 +119,15 @@ Route::prefix('admin')->middleware(['auth:admin'])->name('admin.')->group(functi
 | Operator Routes
 |--------------------------------------------------------------------------
 |
-| These routes are accessible only to authenticated operators
+| Import operator controllers
 |
 */
+use App\Http\Controllers\Operator\DashboardController as OperatorDashboardController;
+use App\Http\Controllers\Operator\ScheduleController as OperatorScheduleController;
+use App\Http\Controllers\Operator\BookingController as OperatorBookingController;
+use App\Http\Controllers\Operator\ReportController as OperatorReportController;
 
+// Operator routes with authentication
 Route::prefix('operator')->middleware(['auth:operator'])->name('operator.')->group(function () {
     // Dashboard
     Route::get('/', [OperatorDashboardController::class, 'index'])->name('dashboard');
@@ -133,7 +139,13 @@ Route::prefix('operator')->middleware(['auth:operator'])->name('operator.')->gro
         Route::get('/{id}', [OperatorScheduleController::class, 'show'])->name('show');
         Route::get('/{id}/dates', [OperatorScheduleController::class, 'dates'])->name('dates');
         Route::put('/{id}/dates/{dateId}/status', [OperatorScheduleController::class, 'updateDateStatus'])->name('update-date-status');
-        Route::post('/check-availability', [OperatorScheduleController::class, 'checkAvailability'])->name('check-availability');
+
+        // Schedule dates
+        Route::get('/{id}/dates/create', [OperatorScheduleController::class, 'createDate'])->name('create-date');
+        Route::post('/{id}/dates', [OperatorScheduleController::class, 'storeDate'])->name('store-date');
+        Route::get('/{id}/dates/{dateId}/edit', [OperatorScheduleController::class, 'editDate'])->name('edit-date');
+        Route::put('/{id}/dates/{dateId}', [OperatorScheduleController::class, 'updateDate'])->name('update-date');
+        Route::delete('/{id}/dates/{dateId}', [OperatorScheduleController::class, 'destroyDate'])->name('destroy-date');
     });
 
     // Bookings
@@ -153,5 +165,45 @@ Route::prefix('operator')->middleware(['auth:operator'])->name('operator.')->gro
         Route::get('/', [OperatorReportController::class, 'index'])->name('index');
         Route::get('/daily', [OperatorReportController::class, 'dailyReport'])->name('daily');
         Route::get('/monthly', [OperatorReportController::class, 'monthlyReport'])->name('monthly');
+
+        // Exported reports
+        Route::get('/daily/export', [OperatorReportController::class, 'exportDailyReport'])->name('daily.export');
+        Route::get('/monthly/export', [OperatorReportController::class, 'exportMonthlyReport'])->name('monthly.export');
     });
+});
+
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+|
+| Routes for AJAX and API functions - with rate limiting
+|
+*/
+
+// API untuk operator
+Route::prefix('api/operator')->middleware(['auth:operator', 'throttle:60,1'])->name('api.operator.')->group(function() {
+    // Check kapasitas dan ketersediaan jadwal
+    Route::post('/schedules/check-availability', [OperatorScheduleController::class, 'checkAvailability'])
+        ->name('schedules.check-availability');
+
+    // Validasi booking sebelum check-in
+    Route::post('/bookings/validate', [OperatorBookingController::class, 'validateBooking'])
+        ->name('bookings.validate');
+});
+
+// API untuk admin
+Route::prefix('api/admin')->middleware(['auth:admin', 'throttle:60,1'])->name('api.admin.')->group(function() {
+    // Dashboard stats
+    Route::get('/dashboard/stats', [AdminDashboardController::class, 'getStats'])
+        ->name('dashboard.stats');
+
+    // Check email operator tersedia
+    Route::post('/operators/check-email', [OperatorController::class, 'checkEmailAvailability'])
+        ->name('operators.check-email');
+});
+
+// Error dan Fallback routes
+Route::fallback(function() {
+    return response()->view('errors.404', [], 404);
 });

@@ -40,15 +40,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     final authProvider = Provider.of<AuthProvider>(context);
 
     return Scaffold(
-      appBar: const CustomAppBar(
-        title: 'Lupa Password',
-        showBackButton: true,
-      ),
+      appBar: const CustomAppBar(title: 'Lupa Password', showBackButton: true),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
-        child: _emailSent
-            ? _buildSuccessView()
-            : _buildRequestForm(authProvider),
+        child:
+            _emailSent ? _buildSuccessView() : _buildRequestForm(authProvider),
       ),
     );
   }
@@ -60,7 +56,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
-            'Masukkan email Anda untuk menerima link reset password',
+            'Masukkan email Anda untuk menerima kode reset password',
             style: TextStyle(fontSize: 16),
           ),
           const SizedBox(height: 24),
@@ -75,7 +71,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               if (value == null || value.isEmpty) {
                 return 'Silakan masukkan email';
               }
-              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+              if (!RegExp(
+                r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+              ).hasMatch(value)) {
                 return 'Silakan masukkan email yang valid';
               }
               return null;
@@ -84,16 +82,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: authProvider.isLoading ? null : _forgotPassword,
-            child: authProvider.isLoading
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.0,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Text('KIRIM LINK RESET'),
+            child:
+                authProvider.isLoading
+                    ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.0,
+                        color: Colors.white,
+                      ),
+                    )
+                    : const Text('KIRIM KODE RESET'),
           ),
           if (authProvider.errorMessage != null)
             Container(
@@ -103,12 +102,24 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 color: Theme.of(context).colorScheme.error.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(
-                authProvider.errorMessage!,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.error,
-                  fontSize: 14,
-                ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    color: Theme.of(context).colorScheme.error,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      authProvider.errorMessage!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
         ],
@@ -120,11 +131,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const Icon(
-          Icons.check_circle_outline,
-          size: 80,
-          color: Colors.green,
-        ),
+        const Icon(Icons.check_circle_outline, size: 80, color: Colors.green),
         const SizedBox(height: 16),
         const Text(
           'Email Terkirim!',
@@ -132,12 +139,23 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         const SizedBox(height: 16),
         const Text(
-          'Instruksi reset password telah dikirim ke email Anda. Silakan cek inbox atau folder spam Anda.',
+          'Kode reset password telah dikirim ke email Anda. Silakan cek inbox atau folder spam Anda.',
           style: TextStyle(fontSize: 16),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 24),
         ElevatedButton(
+          onPressed: () {
+            Navigator.pushNamed(
+              context,
+              '/reset-password',
+              arguments: {'email': _emailController.text.trim(), 'token': ''},
+            );
+          },
+          child: const Text('LANJUT KE RESET PASSWORD'),
+        ),
+        const SizedBox(height: 16),
+        TextButton(
           onPressed: () {
             Navigator.pushReplacementNamed(context, '/login');
           },

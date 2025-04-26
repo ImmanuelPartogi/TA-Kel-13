@@ -26,7 +26,7 @@ class OperatorController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'company_name' => 'required|string|max:191',
             'email' => 'required|string|email|max:191|unique:operators',
             'phone_number' => 'required|string|max:20',
@@ -38,14 +38,14 @@ class OperatorController extends Controller
         ]);
 
         $operator = new Operator([
-            'company_name' => $request->company_name,
-            'email' => $request->email,
-            'phone_number' => $request->phone_number,
-            'license_number' => $request->license_number,
-            'fleet_size' => $request->fleet_size ?? 0,
-            'company_address' => $request->company_address,
-            'password' => Hash::make($request->password),
-            'assigned_routes' => $request->assigned_routes ?? null,
+            'company_name' => $validated['company_name'],
+            'email' => $validated['email'],
+            'phone_number' => $validated['phone_number'],
+            'license_number' => $validated['license_number'],
+            'fleet_size' => $validated['fleet_size'] ?? 0,
+            'company_address' => $validated['company_address'],
+            'password' => Hash::make($validated['password']),
+            'assigned_routes' => $validated['assigned_routes'] ?? null,
         ]);
 
         $operator->save();
@@ -54,7 +54,6 @@ class OperatorController extends Controller
             ->with('success', 'Operator berhasil ditambahkan');
     }
 
-    // Tambahkan method show
     public function show($id)
     {
         $operator = Operator::findOrFail($id);
@@ -73,7 +72,7 @@ class OperatorController extends Controller
     {
         $operator = Operator::findOrFail($id);
 
-        $request->validate([
+        $validated = $request->validate([
             'company_name' => 'required|string|max:191',
             'email' => [
                 'required',
@@ -90,16 +89,16 @@ class OperatorController extends Controller
             'assigned_routes' => 'nullable|array',
         ]);
 
-        $operator->company_name = $request->company_name;
-        $operator->email = $request->email;
-        $operator->phone_number = $request->phone_number;
-        $operator->license_number = $request->license_number;
-        $operator->fleet_size = $request->fleet_size ?? 0;
-        $operator->company_address = $request->company_address;
-        $operator->assigned_routes = $request->assigned_routes ?? null;
+        $operator->company_name = $validated['company_name'];
+        $operator->email = $validated['email'];
+        $operator->phone_number = $validated['phone_number'];
+        $operator->license_number = $validated['license_number'];
+        $operator->fleet_size = $validated['fleet_size'] ?? 0;
+        $operator->company_address = $validated['company_address'];
+        $operator->assigned_routes = $validated['assigned_routes'] ?? null;
 
         if ($request->filled('password')) {
-            $operator->password = Hash::make($request->password);
+            $operator->password = Hash::make($validated['password']);
         }
 
         $operator->save();
@@ -110,10 +109,14 @@ class OperatorController extends Controller
 
     public function destroy($id)
     {
-        $operator = Operator::findOrFail($id);
-        $operator->delete();
-
-        return redirect()->route('admin.operators.index')
-            ->with('success', 'Operator berhasil dihapus');
+        try {
+            $operator = Operator::findOrFail($id);
+            $operator->delete();
+            return redirect()->route('admin.operators.index')
+                ->with('success', 'Operator berhasil dihapus');
+        } catch (\Exception $e) {
+            return redirect()->route('admin.operators.index')
+                ->with('error', 'Gagal menghapus operator. Pastikan tidak ada data terkait operator ini.');
+        }
     }
 }

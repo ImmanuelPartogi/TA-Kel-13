@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Operator extends Authenticatable
 {
@@ -34,4 +35,20 @@ class Operator extends Authenticatable
         'last_login' => 'datetime',
         'password' => 'hashed',
     ];
+
+    /**
+     * Get the routes managed by this operator.
+     */
+    public function routes()
+    {
+        return Route::whereIn('id', is_array($this->assigned_routes) ? $this->assigned_routes : [])->get();
+    }
+
+    /**
+     * Check if operator manages a specific route.
+     */
+    public function managesRoute($routeId)
+    {
+        return is_array($this->assigned_routes) && in_array($routeId, $this->assigned_routes);
+    }
 }

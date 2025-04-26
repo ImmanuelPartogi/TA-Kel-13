@@ -10,6 +10,7 @@ use App\Models\ChatMessage;
 use App\Models\ChatFeedback;
 use App\Models\ChatConversation;
 use Illuminate\Support\Facades\Validator;
+
 class ChatbotController extends BaseController
 {
     protected $chatbotService;
@@ -64,7 +65,7 @@ class ChatbotController extends BaseController
                     'user_id' => $conversation->user_id,
                     'session_id' => $conversation->session_id,
                 ],
-                'messages' => $messages->map(function($message) {
+                'messages' => $messages->map(function ($message) {
                     return [
                         'id' => $message->id,
                         'is_from_user' => (bool) $message->is_from_user,
@@ -90,7 +91,7 @@ class ChatbotController extends BaseController
         return response()->json([
             'success' => true,
             'message' => 'Daftar percakapan berhasil dimuat',
-            'data' => $conversations->map(function($conversation) {
+            'data' => $conversations->map(function ($conversation) {
                 $lastMessage = $conversation->messages()->latest()->first();
                 return [
                     'id' => $conversation->id,
@@ -158,7 +159,7 @@ class ChatbotController extends BaseController
             $request->conversation_id,
             $response['answer'],
             false,
-            $response['template_id'],
+            $response['template_id'] ?: null, // Pastikan nilai 0 bisa dikonversi ke null jika diperlukan
             $response['confidence_score']
         );
 

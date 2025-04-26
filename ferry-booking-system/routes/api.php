@@ -16,6 +16,8 @@ use App\Http\Controllers\Api\PollingController;
 // Public routes
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
+Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
 
 // Rute untuk reset password
 Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);

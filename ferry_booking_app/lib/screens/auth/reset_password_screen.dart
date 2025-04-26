@@ -19,6 +19,7 @@ class ResetPasswordScreen extends StatefulWidget {
 
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _tokenController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
@@ -26,7 +27,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   bool _resetSuccess = false;
 
   @override
+  void initState() {
+    super.initState();
+    _tokenController.text = widget.token;
+  }
+
+  @override
   void dispose() {
+    _tokenController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -34,11 +42,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
   Future<void> _resetPassword() async {
     if (_formKey.currentState!.validate()) {
+      final token = _tokenController.text.trim();
       final password = _passwordController.text.trim();
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final success = await authProvider.resetPassword(
         widget.email,
-        widget.token,
+        token,
         password,
       );
 
@@ -74,11 +83,31 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Buat password baru untuk akun Anda',
-            style: TextStyle(fontSize: 16),
+          Text(
+            'Reset password untuk: ${widget.email}',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 24),
+          
+          // Token Field (jika token belum ada)
+          if (widget.token.isEmpty)
+            TextFormField(
+              controller: _tokenController,
+              decoration: const InputDecoration(
+                labelText: 'Kode Reset',
+                hintText: 'Masukkan kode 6 digit dari email',
+                prefixIcon: Icon(Icons.key),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Silakan masukkan kode reset';
+                }
+                return null;
+              },
+            ),
+            
+          if (widget.token.isEmpty)
+            const SizedBox(height: 16),
           
           // Password Field
           TextFormField(

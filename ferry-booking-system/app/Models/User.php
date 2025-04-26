@@ -12,7 +12,6 @@ use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 class User extends Authenticatable implements CanResetPasswordContract
 {
     use HasApiTokens, HasFactory, Notifiable, CanResetPassword;
-
     protected $fillable = [
         'name',
         'email',
@@ -75,5 +74,10 @@ class User extends Authenticatable implements CanResetPasswordContract
         }
 
         return null;
+    }
+
+    public function sendPasswordResetNotification($token)
+    {
+        $this->notify(new \App\Notifications\CustomResetPasswordNotification($token));
     }
 }

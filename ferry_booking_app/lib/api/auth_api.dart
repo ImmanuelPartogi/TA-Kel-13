@@ -202,8 +202,22 @@ class AuthApi {
 
       return response['success'] == true;
     } catch (e) {
+      // Ekstrak pesan error yang lebih spesifik
+      if (e is Exception) {
+        String errorMessage = e.toString();
+
+        // Jika error berisi informasi JSON, coba ekstrak pesan yang lebih baik
+        if (errorMessage.contains('422')) {
+          // Ini kemungkinan error validasi, beri pesan yang lebih jelas
+          return Future.error('Email tidak terdaftar dalam sistem kami.');
+        } else if (errorMessage.contains('500')) {
+          return Future.error(
+            'Terjadi kesalahan saat mengirim email. Silakan coba lagi nanti.',
+          );
+        }
+      }
       print('Error in AuthApi.forgotPassword: $e');
-      rethrow;
+      return Future.error('Gagal mengirim kode reset password: $e');
     }
   }
 

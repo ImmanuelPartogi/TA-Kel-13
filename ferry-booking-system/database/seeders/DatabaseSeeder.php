@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             FerrySeeder::class,
             ScheduleSeeder::class,
             UserSeeder::class,
+            ChatbotSeeder::class
         ]);
     }
 }

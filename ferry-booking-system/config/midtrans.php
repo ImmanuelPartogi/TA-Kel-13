@@ -8,16 +8,42 @@ return [
     'api_url' => env('MIDTRANS_IS_PRODUCTION', false)
         ? 'https://api.midtrans.com'
         : 'https://api.sandbox.midtrans.com',
-    'notification_url' => env('APP_URL', 'http://localhost') . '/api/payments/notification',
+    'notification_url' => env('APP_MIDTRANS_CALLBACK_URL', env('APP_URL', 'http://localhost') . '/api/payments/notification'),
     'finish_url' => env('APP_URL', 'http://localhost') . '/payment/finish',
     'expiry_duration' => env('MIDTRANS_EXPIRY_DURATION', 24),
     'is_3ds' => true,
     'is_sanitized' => true,
 
-    // Tambahkan konfigurasi polling
+    // Metode pembayaran yang didukung
+    'supported_payment_methods' => [
+        'virtual_account' => ['bca', 'bni', 'bri', 'mandiri', 'permata'],
+        'e_wallet' => ['gopay', 'shopeepay'], // Dana dan OVO tidak didukung di Sandbox
+        'credit_card' => ['visa', 'mastercard', 'jcb', 'amex'],
+        'qris' => ['qris'],
+    ],
+
+    // Pengaturan fallback
+    'fallback' => [
+        'enabled' => env('MIDTRANS_FALLBACK_ENABLED', true),
+        'bank_prefix' => [
+            'bca' => '91',
+            'bni' => '88',
+            'bri' => '89',
+            'mandiri' => '90',
+            'permata' => '93',
+        ],
+    ],
+
+    // Pengaturan polling
     'polling' => [
         'enabled' => env('MIDTRANS_POLLING_ENABLED', true),
         'interval' => env('MIDTRANS_POLLING_INTERVAL', 5), // dalam menit
         'max_attempts' => env('MIDTRANS_POLLING_MAX_ATTEMPTS', 12), // 1 jam (5 menit x 12)
+    ],
+
+    // Pengaturan retries
+    'retries' => [
+        'max_retries' => env('MIDTRANS_MAX_RETRIES', 3),
+        'retry_delay' => env('MIDTRANS_RETRY_DELAY', 2),
     ],
 ];

@@ -10,31 +10,35 @@ class TicketListScreen extends StatefulWidget {
   _TicketListScreenState createState() => _TicketListScreenState();
 }
 
-class _TicketListScreenState extends State<TicketListScreen> with SingleTickerProviderStateMixin {
+class _TicketListScreenState extends State<TicketListScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-    
+    _tabController = TabController(length: 2, vsync: this);
+
     // Use post-frame callback to avoid setState during build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadBookings();
     });
   }
-  
+
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
   }
-  
+
   Future<void> _loadBookings() async {
-    final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
+    final bookingProvider = Provider.of<BookingProvider>(
+      context,
+      listen: false,
+    );
     await bookingProvider.getBookings();
   }
-  
+
   Future<void> _refreshBookings() async {
     await _loadBookings();
   }
@@ -43,30 +47,25 @@ class _TicketListScreenState extends State<TicketListScreen> with SingleTickerPr
   Widget build(BuildContext context) {
     final bookingProvider = Provider.of<BookingProvider>(context);
     final bookings = bookingProvider.bookings;
-    
+
     // Filter bookings by status
-    final upcomingBookings = bookings?.where(
-      (booking) => booking.status == 'CONFIRMED'
-    ).toList() ?? [];
-    
-    final completedBookings = bookings?.where(
-      (booking) => booking.status == 'COMPLETED'
-    ).toList() ?? [];
-    
-    final cancelledBookings = bookings?.where(
-      (booking) => booking.status == 'CANCELLED' || booking.status == 'REFUNDED'
-    ).toList() ?? [];
+    final upcomingBookings =
+        bookings
+            ?.where(
+              (booking) =>
+                  booking.status == 'CONFIRMED' || booking.status == 'PENDING',
+            )
+            .toList() ??
+        [];
+
+    final historyBookings = bookings ?? [];
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tiket Saya'),
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
-            Tab(text: 'Akan Datang'),
-            Tab(text: 'Selesai'),
-            Tab(text: 'Dibatalkan'),
-          ],
+          tabs: const [Tab(text: 'Akan Datang'), Tab(text: 'Riwayat')],
         ),
       ),
       body: TabBarView(
@@ -75,76 +74,55 @@ class _TicketListScreenState extends State<TicketListScreen> with SingleTickerPr
           // Upcoming tickets
           RefreshIndicator(
             onRefresh: _refreshBookings,
-            child: bookingProvider.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : upcomingBookings.isEmpty
-                    ? _buildEmptyTickets('Tidak ada tiket untuk perjalanan yang akan datang')
+            child:
+                bookingProvider.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : upcomingBookings.isEmpty
+                    ? _buildEmptyTickets(
+                      'Tidak ada tiket untuk perjalanan yang akan datang',
+                    )
                     : ListView.builder(
-                        padding: const EdgeInsets.all(16.0),
-                        itemCount: upcomingBookings.length,
-                        itemBuilder: (context, index) {
-                          return TicketCard(
-                            booking: upcomingBookings[index],
-                            onTap: () {
-                              Navigator.pushNamed(
-                                context, 
-                                '/tickets/detail',
-                                arguments: upcomingBookings[index].id,
-                              );
-                            },
-                          );
-                        },
-                      ),
+                      padding: const EdgeInsets.all(16.0),
+                      itemCount: upcomingBookings.length,
+                      itemBuilder: (context, index) {
+                        return TicketCard(
+                          booking: upcomingBookings[index],
+                          onTap: () {
+                            Navigator.pushNamed(
+                              context,
+                              '/tickets/detail',
+                              arguments: upcomingBookings[index].id,
+                            );
+                          },
+                        );
+                      },
+                    ),
           ),
-          
-          // Completed tickets
+
+          // History tickets - all statuses
           RefreshIndicator(
             onRefresh: _refreshBookings,
-            child: bookingProvider.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : completedBookings.isEmpty
-                    ? _buildEmptyTickets('Tidak ada tiket untuk perjalanan yang telah selesai')
+            child:
+                bookingProvider.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : historyBookings.isEmpty
+                    ? _buildEmptyTickets('Tidak ada riwayat perjalanan')
                     : ListView.builder(
-                        padding: const EdgeInsets.all(16.0),
-                        itemCount: completedBookings.length,
-                        itemBuilder: (context, index) {
-                          return TicketCard(
-                            booking: completedBookings[index],
-                            onTap: () {
-                              Navigator.pushNamed(
-                                context, 
-                                '/tickets/detail',
-                                arguments: completedBookings[index].id,
-                              );
-                            },
-                          );
-                        },
-                      ),
-          ),
-          
-          // Cancelled tickets
-          RefreshIndicator(
-            onRefresh: _refreshBookings,
-            child: bookingProvider.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : cancelledBookings.isEmpty
-                    ? _buildEmptyTickets('Tidak ada tiket yang dibatalkan')
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16.0),
-                        itemCount: cancelledBookings.length,
-                        itemBuilder: (context, index) {
-                          return TicketCard(
-                            booking: cancelledBookings[index],
-                            onTap: () {
-                              Navigator.pushNamed(
-                                context, 
-                                '/tickets/detail',
-                                arguments: cancelledBookings[index].id,
-                              );
-                            },
-                          );
-                        },
-                      ),
+                      padding: const EdgeInsets.all(16.0),
+                      itemCount: historyBookings.length,
+                      itemBuilder: (context, index) {
+                        return TicketCard(
+                          booking: historyBookings[index],
+                          onTap: () {
+                            Navigator.pushNamed(
+                              context,
+                              '/tickets/detail',
+                              arguments: historyBookings[index].id,
+                            );
+                          },
+                        );
+                      },
+                    ),
           ),
         ],
       ),
@@ -157,7 +135,7 @@ class _TicketListScreenState extends State<TicketListScreen> with SingleTickerPr
       ),
     );
   }
-  
+
   Widget _buildEmptyTickets(String message) {
     return Center(
       child: SingleChildScrollView(
@@ -173,10 +151,7 @@ class _TicketListScreenState extends State<TicketListScreen> with SingleTickerPr
             const SizedBox(height: 16),
             Text(
               message,
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.grey[600], fontSize: 16),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),

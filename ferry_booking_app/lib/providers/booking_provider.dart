@@ -1,6 +1,5 @@
 import 'package:ferry_booking_app/services/payment_polling_service.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Tambahkan import yang diperlukan
 import '../api/booking_api.dart';
 import '../api/payment_api.dart';
 import '../models/booking.dart';
@@ -98,20 +97,16 @@ class BookingProvider extends ChangeNotifier {
   void createTemporaryBooking() {
     if (_currentBooking == null &&
         _selectedRoute != null &&
-        _selectedSchedule != null &&
-        _selectedDate != null) {
-      // Format tanggal dengan benar menggunakan format standar
-      final String formattedDate = DateFormat(
-        'yyyy-MM-dd',
-      ).format(_selectedDate!);
-
+        _selectedSchedule != null) {
       // Buat objek Booking sementara dengan data yang sudah dipilih
       final tempBooking = Booking(
         id: -1, // ID sementara
         bookingCode: 'TEMP-${DateTime.now().millisecondsSinceEpoch}',
         userId: -1,
         scheduleId: _selectedSchedule!.id,
-        bookingDate: formattedDate,
+        bookingDate:
+            _selectedDate?.toIso8601String().split('T')[0] ??
+            DateTime.now().toIso8601String().split('T')[0],
         passengerCount: totalPassengers, // Gunakan total dari semua kategori
         vehicleCount: _vehicles.length,
         totalAmount: totalCost,
@@ -123,8 +118,6 @@ class BookingProvider extends ChangeNotifier {
 
       _currentBooking = tempBooking;
       notifyListeners();
-
-      print('DEBUG: Temporary booking created with date: $formattedDate');
     }
   }
 
@@ -143,11 +136,6 @@ class BookingProvider extends ChangeNotifier {
   // Set selected date
   void setSelectedDate(DateTime date) {
     _selectedDate = date;
-    // Log tanggal yang dipilih
-    print(
-      'DEBUG: Tanggal keberangkatan diatur ke: ${DateFormat('yyyy-MM-dd').format(date)}',
-    );
-    print('DEBUG: Timezone offset perangkat: ${DateTime.now().timeZoneOffset}');
     notifyListeners();
   }
 
@@ -350,72 +338,52 @@ class BookingProvider extends ChangeNotifier {
     }
   }
 
-  // Create booking - PERBAIKAN UTAMA
+  // Create booking
   Future<bool> createBooking() async {
-    try {
-      if (_selectedSchedule == null || _selectedDate == null) {
-        _errorMessage = 'Data jadwal tidak lengkap';
-        notifyListeners();
-        return false;
-      }
-
-      _isLoading = true;
-      _errorMessage = null;
+    if (_selectedSchedule == null ||
+        _selectedDate == null ||
+        totalPassengers == 0) {
+      _errorMessage = 'Silakan lengkapi data pemesanan';
       notifyListeners();
+      return false;
+    }
 
-      // Format tanggal dengan konsisten
-      final String formattedDate = DateFormat(
-        'yyyy-MM-dd',
-      ).format(_selectedDate!);
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
 
-      print('DEBUG: Tanggal keberangkatan untuk booking: $formattedDate');
-      print('DEBUG: Timezone perangkat: ${DateTime.now().timeZoneOffset}');
-      print('DEBUG: Waktu UTC: ${DateTime.now().toUtc()}');
-      print('DEBUG: Waktu lokal: ${DateTime.now()}');
+    try {
+      // Konversi vehicles ke Map
+      final List<Map<String, dynamic>> vehiclesMap =
+          _vehicles
+              .map(
+                (vehicle) => {
+                  'type': vehicle.type,
+                  'license_plate': vehicle.licensePlate,
+                  'brand': vehicle.brand,
+                  'model': vehicle.model,
+                  'weight': vehicle.weight,
+                },
+              )
+              .toList();
 
-      // TAMBAHKAN VALIDASI INI
-      // Validasi jumlah penumpang tidak melebihi available seat
-      final availablePassenger = _selectedSchedule?.availablePassenger ?? 0;
-      if (totalPassengers > availablePassenger) {
-        _isLoading = false;
-        _errorMessage =
-            'Jumlah penumpang ($totalPassengers) melebihi kapasitas tersedia ($availablePassenger)';
-        notifyListeners();
-        return false;
-      }
-
-      // Buat data booking dengan pengolahan yang lebih aman
+      // Buat data booking
       final Map<String, dynamic> bookingData = {
         'schedule_id': _selectedSchedule!.id,
-        'booking_date': formattedDate,
+        'booking_date': _selectedDate!.toIso8601String().split('T')[0],
         'passenger_count': totalPassengers,
         'vehicle_count': _vehicles.length,
-        // Pastikan struktur data sesuai dengan ekspektasi backend
-        'passengers':
-            _passengers.take(totalPassengers).toList(), // Batasi jumlah
+        'passengers': _passengers,
         'passenger_categories': _passengerCounts,
-        'vehicles':
-            _vehicles
-                .map(
-                  (v) => {
-                    'type': v.type,
-                    'license_plate': v.licensePlate,
-                    'brand': v.brand ?? '',
-                    'model': v.model ?? '',
-                    'weight': v.weight ?? 0.0,
-                  },
-                )
-                .toList(),
+        'vehicles': vehiclesMap,
       };
-
-      print('DEBUG: Booking data yang akan dikirim: $bookingData');
 
       final result = await _bookingApi.createBooking(bookingData);
 
       // Set current booking
       if (result != null && result['booking'] != null) {
-        // Konversi Map<String, dynamic> menjadi objek Booking
-        _currentBooking = Booking.fromJson(result['booking']);
+        _currentBooking = result['booking'];
+
         _isLoading = false;
         notifyListeners();
         return true;
@@ -426,9 +394,8 @@ class BookingProvider extends ChangeNotifier {
         return false;
       }
     } catch (e) {
-      print('ERROR: Gagal membuat booking: $e');
       _isLoading = false;
-      _errorMessage = 'Gagal membuat booking: $e';
+      _errorMessage = e.toString();
       notifyListeners();
       return false;
     }

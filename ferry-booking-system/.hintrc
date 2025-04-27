@@ -8,9 +8,11 @@
       {
         "ignore": [
           "-webkit-text-size-adjust",
-          "text-align: -webkit-match-parent"
+          "text-align: -webkit-match-parent",
+          "-webkit-mask-image"
         ]
       }
-    ]
+    ],
+    "create-element-svg": "off"
   }
 }

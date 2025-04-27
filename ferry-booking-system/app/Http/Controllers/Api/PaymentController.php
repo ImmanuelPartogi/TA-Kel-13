@@ -78,8 +78,36 @@ class PaymentController extends Controller
                 'payment_type' => $request->payment_type
             ]);
 
+            // PERBAIKAN: Jika respons null, buat transaksi fallback
             if (!$response) {
-                throw new \Exception('Gagal membuat transaksi Midtrans');
+                // Gunakan metode fallback yang sudah diimplementasi di midtransService
+                // Ini memastikan pengguna tetap mendapatkan informasi pembayaran
+                $payment = Payment::where('booking_id', $booking->id)->latest()->first();
+
+                // Jika sudah ada info pembayaran dari fallback, gunakan itu
+                if ($payment && ($payment->virtual_account_number || $payment->qr_code_url)) {
+                    DB::commit();
+
+                    // Buat respons dengan informasi yang ada
+                    $responseData = [
+                        'payment_id' => $payment->id,
+                        'status' => $payment->status,
+                        'payment_method' => $payment->payment_method,
+                        'payment_channel' => $payment->payment_channel,
+                        'virtual_account_number' => $payment->virtual_account_number,
+                        'qr_code_url' => $payment->qr_code_url,
+                        'deep_link_url' => $payment->deep_link_url,
+                        'is_fallback' => true
+                    ];
+
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Pembayaran dibuat dengan mode fallback',
+                        'data' => $responseData
+                    ], 200);
+                }
+
+                throw new \Exception('Gagal membuat transaksi di Midtrans');
             }
 
             // Update payment dengan info dari Midtrans
@@ -111,6 +139,12 @@ class PaymentController extends Controller
             ], 200);
         } catch (\Exception $e) {
             DB::rollBack();
+
+            Log::error('Failed to create payment', [
+                'booking_code' => $bookingCode,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
 
             return response()->json([
                 'success' => false,

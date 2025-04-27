@@ -1070,13 +1070,7 @@ Jika Anda mengalami kesulitan, silakan hubungi layanan pelanggan kami di 0800-12
         ChatTemplate::create([
             'category_id' => $policies->id,
             'question_pattern' => 'kebijakan batas usia penumpang',
-            'answer' => 'Kebijakan batas usia penumpang kami:
-
-1) Tidak ada batas usia maksimum selama penumpang mampu bepergian secara mandiri atau dengan pendamping,
-2) Bayi baru lahir diperbolehkan bepergian setelah berusia minimal 14 hari dengan surat dokter,
-3) Anak di bawah usia 15 tahun wajib didampingi orang dewasa,
-4) Remaja usia 15-17 tahun dapat bepergian tanpa pendamping dengan membawa surat persetujuan orang tua/wali yang telah dilegalisir, identitas pribadi, dan surat keterangan dari sekolah/institusi jika untuk keperluan pendidikan. Surat izin tersebut harus ditunjukkan saat check-in.',
-
+            'answer' => 'Kebijakan batas usia penumpang kami: 1) Tidak ada batas usia maksimum selama penumpang mampu bepergian secara mandiri atau dengan pendamping, 2) Bayi baru lahir diperbolehkan bepergian setelah berusia minimal 14 hari dengan surat dokter, 3) Anak di bawah usia 15 tahun wajib didampingi orang dewasa, 4) Remaja usia 15-17 tahun dapat bepergian tanpa pendamping dengan membawa surat persetujuan orang tua/wali yang telah dilegalisir, identitas pribadi, dan surat keterangan dari sekolah/institusi jika untuk keperluan pendidikan. Surat izin tersebut harus ditunjukkan saat check-in.',
             'keywords' => 'usia,umur,batas,age,minimum,maksimum,limit,batasan,restriction',
             'priority' => 6
         ]);
@@ -1084,10 +1078,7 @@ Jika Anda mengalami kesulitan, silakan hubungi layanan pelanggan kami di 0800-12
         ChatTemplate::create([
             'category_id' => $policies->id,
             'question_pattern' => 'kebijakan untuk ibu hamil',
-            'answer' => 'Kebijakan untuk penumpang hamil:
-
-1) Kehamilan normal hingga 36 minggu diperbolehkan bepergian tanpa surat dokter,
-2) Kehamilan 36-38 minggu memerlukan surat keterangan medis yang diterbitkan maksimal 7 hari sebelum keberangkatan, 3) Kehamilan di atas 38 minggu atau kehamilan dengan komplikasi tidak disarankan untuk bepergian, 4) Surat keterangan medis harus menyatakan perkiraan usia kehamilan, konfirmasi kehamilan tunggal/ganda, dan pernyataan bahwa ibu hamil aman untuk bepergian dengan feri, 5) Kami menyediakan kursi prioritas dan bantuan boarding untuk ibu hamil. Silakan informasikan kondisi kehamilan saat pemesanan untuk mendapatkan bantuan optimal.',
+            'answer' => 'Kebijakan untuk penumpang hamil: 1) Kehamilan normal hingga 36 minggu diperbolehkan bepergian tanpa surat dokter, 2) Kehamilan 36-38 minggu memerlukan surat keterangan medis yang diterbitkan maksimal 7 hari sebelum keberangkatan, 3) Kehamilan di atas 38 minggu atau kehamilan dengan komplikasi tidak disarankan untuk bepergian, 4) Surat keterangan medis harus menyatakan perkiraan usia kehamilan, konfirmasi kehamilan tunggal/ganda, dan pernyataan bahwa ibu hamil aman untuk bepergian dengan feri, 5) Kami menyediakan kursi prioritas dan bantuan boarding untuk ibu hamil. Silakan informasikan kondisi kehamilan saat pemesanan untuk mendapatkan bantuan optimal.',
             'keywords' => 'hamil,kehamilan,pregnant,pregnancy,bumil,ibu hamil,maternity',
             'priority' => 6
         ]);
@@ -1556,11 +1547,7 @@ Jika Anda mengalami kesulitan, silakan hubungi layanan pelanggan kami di 0800-12
         ChatTemplate::create([
             'category_id' => $promos->id,
             'question_pattern' => 'promo saat ini',
-            'answer' => 'Promo yang sedang berlangsung:
-            1) "Weekday Wonder" - diskon 25% untuk perjalanan Senin-Kamis,
-            2) "Booking Awal" - diskon 15% untuk pemesanan minimal 14 hari sebelum keberangkatan,
-            3) "Ferry Pass" - beli 5 perjalanan bayar 4 untuk rute yang sering dilalui,
-            4) "Family Pack" - diskon 10% untuk pemesanan 4+ orang dalam satu transaksi. Lihat semua promo terbaru di menu "Promo" pada aplikasi atau website kami. Promo memiliki syarat dan ketentuan, serta tidak dapat digabungkan dengan promo lain.',
+            'answer' => 'Promo yang sedang berlangsung: 1) "Weekday Wonder" - diskon 25% untuk perjalanan Senin-Kamis, 2) "Booking Awal" - diskon 15% untuk pemesanan minimal 14 hari sebelum keberangkatan, 3) "Ferry Pass" - beli 5 perjalanan bayar 4 untuk rute yang sering dilalui, 4) "Family Pack" - diskon 10% untuk pemesanan 4+ orang dalam satu transaksi. Lihat semua promo terbaru di menu "Promo" pada aplikasi atau website kami. Promo memiliki syarat dan ketentuan, serta tidak dapat digabungkan dengan promo lain.',
             'keywords' => 'promo,diskon,discount,potongan,deal,offer,terbaru,saat ini',
             'priority' => 7
         ]);

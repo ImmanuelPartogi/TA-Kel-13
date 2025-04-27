@@ -1,0 +1,981 @@
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use App\Models\ChatCategory;
+use App\Models\ChatTemplate;
+
+class ChatbotSeeder extends Seeder
+{
+    /**
+     * Run the database seeds.
+     */
+    public function run(): void
+    {
+        // Buat kategori
+        $generalInfo = ChatCategory::create([
+            'name' => 'Informasi Umum',
+            'description' => 'Informasi umum tentang layanan feri'
+        ]);
+
+        $scheduleInfo = ChatCategory::create([
+            'name' => 'Jadwal & Rute',
+            'description' => 'Pertanyaan terkait jadwal dan rute feri'
+        ]);
+
+        $bookingInfo = ChatCategory::create([
+            'name' => 'Pemesanan',
+            'description' => 'Pertanyaan terkait pemesanan tiket'
+        ]);
+
+        $paymentInfo = ChatCategory::create([
+            'name' => 'Pembayaran',
+            'description' => 'Pertanyaan terkait metode pembayaran'
+        ]);
+
+        $greetings = ChatCategory::create([
+            'name' => 'Salam & Percakapan Umum',
+            'description' => 'Salam dan percakapan umum'
+        ]);
+
+        $facilities = ChatCategory::create([
+            'name' => 'Fasilitas',
+            'description' => 'Informasi tentang fasilitas di terminal dan kapal feri'
+        ]);
+
+        $vehicles = ChatCategory::create([
+            'name' => 'Kendaraan & Bagasi',
+            'description' => 'Informasi tentang kendaraan dan bagasi'
+        ]);
+
+        $customerService = ChatCategory::create([
+            'name' => 'Layanan Pelanggan',
+            'description' => 'Bantuan dan layanan pelanggan'
+        ]);
+
+        $policies = ChatCategory::create([
+            'name' => 'Kebijakan & Peraturan',
+            'description' => 'Kebijakan dan peraturan perusahaan'
+        ]);
+
+        $faq = ChatCategory::create([
+            'name' => 'FAQ',
+            'description' => 'Pertanyaan yang sering diajukan'
+        ]);
+
+        $accountInfo = ChatCategory::create([
+            'name' => 'Akun Pengguna',
+            'description' => 'Pertanyaan terkait akun dan registrasi pengguna'
+        ]);
+
+        $refundReschedule = ChatCategory::create([
+            'name' => 'Refund & Reschedule',
+            'description' => 'Informasi tentang refund dan perubahan jadwal'
+        ]);
+
+        $additionalServices = ChatCategory::create([
+            'name' => 'Layanan Tambahan',
+            'description' => 'Informasi tentang layanan tambahan seperti bagasi, makanan, dan prioritas'
+        ]);
+
+        $checkin = ChatCategory::create([
+            'name' => 'Check-in',
+            'description' => 'Informasi tentang proses check-in di pelabuhan'
+        ]);
+
+        $security = ChatCategory::create([
+            'name' => 'Keamanan & Data',
+            'description' => 'Informasi tentang keamanan dan perlindungan data'
+        ]);
+
+        // Template untuk salam dan percakapan umum
+        ChatTemplate::create([
+            'category_id' => $greetings->id,
+            'question_pattern' => 'halo',
+            'answer' => 'Halo! Selamat datang di layanan chatbot Ferry Booking. Ada yang bisa saya bantu terkait layanan feri kami?',
+            'keywords' => 'halo,hai,helo,hi,selamat',
+            'priority' => 10
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $greetings->id,
+            'question_pattern' => 'terimakasih',
+            'answer' => 'Sama-sama! Senang bisa membantu Anda. Jika ada pertanyaan lain, jangan ragu untuk bertanya kembali.',
+            'keywords' => 'terimakasih,makasih,terima kasih,thank,thanks',
+            'priority' => 10
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $greetings->id,
+            'question_pattern' => 'selamat pagi',
+            'answer' => 'Selamat pagi! Ada yang bisa saya bantu terkait perjalanan feri Anda hari ini?',
+            'keywords' => 'pagi,morning,selamat pagi',
+            'priority' => 10
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $greetings->id,
+            'question_pattern' => 'selamat siang',
+            'answer' => 'Selamat siang! Bagaimana saya bisa membantu Anda dengan layanan feri kami?',
+            'keywords' => 'siang,afternoon,selamat siang',
+            'priority' => 10
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $greetings->id,
+            'question_pattern' => 'selamat malam',
+            'answer' => 'Selamat malam! Apa yang bisa saya bantu terkait perjalanan feri Anda?',
+            'keywords' => 'malam,sore,evening,night,selamat malam,selamat sore',
+            'priority' => 10
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $greetings->id,
+            'question_pattern' => 'siapa kamu',
+            'answer' => 'Saya adalah asisten virtual Ferry Booking, siap membantu Anda dengan informasi, pemesanan, dan pertanyaan tentang layanan feri kami. Bagaimana saya bisa membantu Anda hari ini?',
+            'keywords' => 'siapa,kamu,anda,chatbot,bot,asisten,namamu',
+            'priority' => 9
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $greetings->id,
+            'question_pattern' => 'sampai jumpa',
+            'answer' => 'Sampai jumpa! Terima kasih telah menghubungi layanan chatbot Ferry Booking. Semoga perjalanan Anda menyenangkan!',
+            'keywords' => 'bye,sampai jumpa,selamat tinggal,dadah,goodbye,dah',
+            'priority' => 9
+        ]);
+
+        // Template untuk informasi umum
+        ChatTemplate::create([
+            'category_id' => $generalInfo->id,
+            'question_pattern' => 'apa itu ferry booking app',
+            'answer' => 'Ferry Booking App adalah aplikasi untuk memesan tiket feri secara online. Anda dapat melihat jadwal, memilih rute, dan melakukan pembayaran langsung melalui aplikasi ini.',
+            'keywords' => 'app,aplikasi,ferry booking,tentang,apa',
+            'priority' => 8
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $generalInfo->id,
+            'question_pattern' => 'keuntungan menggunakan aplikasi',
+            'answer' => 'Keuntungan menggunakan Ferry Booking App: 1) Pemesanan tiket lebih cepat dan mudah, 2) Tidak perlu antre di loket, 3) Pemberitahuan perubahan jadwal secara langsung, 4) Program loyalitas dan promo khusus pengguna aplikasi, 5) Riwayat perjalanan tersimpan, dan 6) Akses ke layanan pelanggan 24/7.',
+            'keywords' => 'keuntungan,benefit,manfaat,mengapa,kenapa,kelebihan',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $generalInfo->id,
+            'question_pattern' => 'jam operasional',
+            'answer' => 'Aplikasi Ferry Booking dapat diakses 24 jam sehari, 7 hari seminggu. Untuk jam operasional terminal feri bervariasi tergantung lokasi. Sebagian besar terminal beroperasi dari pukul 05.00 hingga 22.00 setiap hari. Silakan cek detail operasional terminal spesifik melalui menu "Informasi Terminal" di aplikasi.',
+            'keywords' => 'jam,operasional,buka,tutup,waktu,operational hours',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $generalInfo->id,
+            'question_pattern' => 'tentang perusahaan',
+            'answer' => 'Ferry Booking adalah perusahaan penyedia layanan transportasi feri yang telah beroperasi sejak 2010. Kami melayani berbagai rute domestik dengan armada modern dan terjamin keamanannya. Visi kami adalah menghubungkan pulau-pulau Indonesia dengan layanan transportasi laut yang nyaman, aman, dan terjangkau.',
+            'keywords' => 'perusahaan,company,tentang,about,profil,sejarah,history',
+            'priority' => 6
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $generalInfo->id,
+            'question_pattern' => 'lokasi terminal',
+            'answer' => 'Informasi lokasi terminal feri dapat dilihat di menu "Terminal & Pelabuhan" pada aplikasi. Anda bisa melihat alamat lengkap, petunjuk arah, fasilitas yang tersedia, dan transportasi umum yang tersedia di sekitar terminal.',
+            'keywords' => 'lokasi,terminal,pelabuhan,alamat,dimana,location,port',
+            'priority' => 7
+        ]);
+
+        // Template tambahan untuk informasi umum
+        ChatTemplate::create([
+            'category_id' => $generalInfo->id,
+            'question_pattern' => 'berapa lama perusahaan beroperasi',
+            'answer' => 'Ferry Booking telah beroperasi sejak tahun 2010, yang berarti kami memiliki pengalaman lebih dari 10 tahun dalam menyediakan layanan transportasi feri yang aman dan nyaman di berbagai rute domestik di Indonesia.',
+            'keywords' => 'lama,beroperasi,sejak,berdiri,mulai,pengalaman,history',
+            'priority' => 6
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $generalInfo->id,
+            'question_pattern' => 'jenis armada',
+            'answer' => 'Ferry Booking mengoperasikan berbagai jenis kapal feri, mulai dari speedboat kapasitas kecil untuk rute pendek, ferry roll-on/roll-off (Ro-Ro) untuk penumpang dan kendaraan, hingga kapal ferry besar dengan fasilitas lengkap untuk rute jarak jauh. Semua armada kami memenuhi standar keselamatan dan memiliki sertifikasi dari otoritas terkait.',
+            'keywords' => 'armada,jenis,kapal,speedboat,ro-ro,ferry,feri,ships,boats',
+            'priority' => 7
+        ]);
+
+        // Template untuk jadwal dan rute
+        ChatTemplate::create([
+            'category_id' => $scheduleInfo->id,
+            'question_pattern' => 'jadwal feri',
+            'answer' => 'Anda dapat melihat jadwal feri terbaru di aplikasi pada menu "Jadwal & Rute". Anda juga bisa mencari jadwal berdasarkan rute yang diinginkan.',
+            'keywords' => 'jadwal,schedule,kapan,jam,waktu',
+            'priority' => 8
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $scheduleInfo->id,
+            'question_pattern' => 'rute feri',
+            'answer' => 'Aplikasi kami melayani berbagai rute feri. Anda dapat melihat rute yang tersedia di menu "Jadwal & Rute" dan memilih rute yang sesuai dengan tujuan Anda.',
+            'keywords' => 'rute,route,jalur,tujuan,dari,ke',
+            'priority' => 8
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $scheduleInfo->id,
+            'question_pattern' => 'rute populer',
+            'answer' => 'Rute feri paling populer kami meliputi: 1) Merak-Bakauheni, 2) Ketapang-Gilimanuk, 3) Padangbai-Lembar, 4) Batam-Singapura, 5) Benoa-Nusa Penida, dan 6) Sorong-Raja Ampat. Semua rute ini memiliki jadwal keberangkatan rutin setiap hari dengan berbagai pilihan waktu.',
+            'keywords' => 'populer,favorit,terbaik,popular,banyak,top,sering',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $scheduleInfo->id,
+            'question_pattern' => 'berapa lama perjalanan',
+            'answer' => 'Durasi perjalanan bervariasi tergantung rute yang Anda pilih. Misalnya, Merak-Bakauheni sekitar 2 jam, Ketapang-Gilimanuk sekitar 45 menit, dan Padangbai-Lembar sekitar 4-5 jam. Anda dapat melihat estimasi waktu perjalanan untuk setiap rute di halaman detail rute pada aplikasi.',
+            'keywords' => 'lama,durasi,waktu,jam,berapa lama,duration,travel time',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $scheduleInfo->id,
+            'question_pattern' => 'perubahan jadwal',
+            'answer' => 'Perubahan jadwal dapat terjadi karena kondisi cuaca, perawatan kapal, atau faktor lain. Kami akan memberitahu Anda melalui notifikasi aplikasi, SMS, dan email jika ada perubahan jadwal yang mempengaruhi pemesanan Anda. Anda juga bisa memeriksa status keberangkatan terkini di menu "Status Keberangkatan".',
+            'keywords' => 'ubah,perubahan,reschedule,change,tunda,delay,cancel,batal',
+            'priority' => 8
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $scheduleInfo->id,
+            'question_pattern' => 'jadwal musim liburan',
+            'answer' => 'Selama musim liburan (seperti Lebaran, Natal, Tahun Baru), kami menambah frekuensi keberangkatan untuk rute-rute populer. Kami sangat menyarankan untuk memesan tiket jauh-jauh hari karena permintaan sangat tinggi. Informasi jadwal khusus liburan akan dipublikasikan di aplikasi 1-2 bulan sebelum periode liburan.',
+            'keywords' => 'liburan,holiday,lebaran,natal,tahun baru,peak season,musim ramai',
+            'priority' => 7
+        ]);
+
+        // Template tambahan untuk jadwal dan rute
+        ChatTemplate::create([
+            'category_id' => $scheduleInfo->id,
+            'question_pattern' => 'rute terbaru',
+            'answer' => 'Kami secara berkala menambahkan rute-rute baru sesuai dengan kebutuhan penumpang. Untuk mengetahui rute terbaru, silakan kunjungi menu "Jadwal & Rute" di aplikasi dan cek tab "Rute Baru". Anda juga bisa mengaktifkan notifikasi untuk mendapatkan pemberitahuan saat kami menambahkan rute baru.',
+            'keywords' => 'baru,terbaru,new,tambah,update,rute baru,destinasi baru',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $scheduleInfo->id,
+            'question_pattern' => 'cek jadwal keberangkatan',
+            'answer' => 'Untuk mengecek jadwal keberangkatan, buka aplikasi dan masuk ke menu "Jadwal & Rute". Pilih lokasi keberangkatan, tujuan, dan tanggal perjalanan Anda. Sistem akan menampilkan semua jadwal yang tersedia. Untuk pencarian lebih spesifik, Anda bisa menggunakan filter waktu, jenis kapal, atau fasilitas.',
+            'keywords' => 'cek,check,lihat,jadwal,keberangkatan,departure,schedule',
+            'priority' => 8
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $scheduleInfo->id,
+            'question_pattern' => 'rute terpendek',
+            'answer' => 'Rute terpendek dalam jaringan layanan kami adalah Ketapang-Gilimanuk (Jawa-Bali) dengan durasi perjalanan sekitar 45 menit, serta Batam Center-Harbor Bay dengan durasi sekitar 20 menit. Untuk informasi rute terpendek lainnya, silakan lihat detail di aplikasi pada menu "Jadwal & Rute" dan urutkan berdasarkan durasi perjalanan.',
+            'keywords' => 'pendek,terpendek,cepat,tercepat,singkat,shortest,fastest',
+            'priority' => 6
+        ]);
+
+        // Template untuk pemesanan
+        ChatTemplate::create([
+            'category_id' => $bookingInfo->id,
+            'question_pattern' => 'cara pesan tiket',
+            'answer' => 'Untuk memesan tiket: 1) Pilih rute dan jadwal yang diinginkan, 2) Isi detail penumpang dan kendaraan (jika ada), 3) Pilih metode pembayaran, 4) Selesaikan pembayaran, 5) Tiket akan dikirim ke email dan terlihat di aplikasi.',
+            'keywords' => 'pesan,booking,tiket,ticket,order,cara,bagaimana',
+            'priority' => 9
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $bookingInfo->id,
+            'question_pattern' => 'batal pesan',
+            'answer' => 'Untuk membatalkan pemesanan, silakan buka menu "Tiket Saya", pilih tiket yang ingin dibatalkan, dan klik tombol "Batalkan". Perhatikan bahwa kebijakan pengembalian dana tergantung pada waktu pembatalan.',
+            'keywords' => 'batal,cancel,refund,pembatalan,hapus,uang kembali',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $bookingInfo->id,
+            'question_pattern' => 'bagaimana cara melakukan pemesanan tiket',
+            'answer' => 'Untuk memesan tiket feri, Anda dapat mengikuti langkah-langkah berikut:
+
+1. Buka aplikasi Ferry Booking
+2. Pilih rute keberangkatan dan tujuan Anda
+3. Pilih tanggal dan jam keberangkatan
+4. Isi data penumpang dan kendaraan (jika membawa kendaraan)
+5. Pilih metode pembayaran
+6. Selesaikan pembayaran
+
+Jika Anda mengalami kesulitan, silakan hubungi layanan pelanggan kami di 0800-123-4567.',
+            'keywords' => 'pesan,pemesanan,booking,tiket,cara,bagaimana,beli,membeli,order',
+            'priority' => 8
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $bookingInfo->id,
+            'question_pattern' => 'ubah jadwal tiket',
+            'answer' => 'Untuk mengubah jadwal tiket yang sudah dipesan: 1) Buka menu "Tiket Saya", 2) Pilih tiket yang ingin diubah, 3) Klik tombol "Ubah Jadwal", 4) Pilih jadwal baru yang tersedia, 5) Bayar selisih harga jika ada. Perubahan jadwal hanya dapat dilakukan paling lambat 24 jam sebelum keberangkatan asli.',
+            'keywords' => 'ubah,ganti,jadwal,reschedule,change,pindah',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $bookingInfo->id,
+            'question_pattern' => 'pesan untuk orang lain',
+            'answer' => 'Ya, Anda dapat memesan tiket untuk orang lain. Saat mengisi detail penumpang, cukup masukkan data diri orang yang akan melakukan perjalanan. Pastikan data yang dimasukkan sesuai dengan KTP/Paspor penumpang karena akan diperiksa saat check-in.',
+            'keywords' => 'orang lain,teman,keluarga,atas nama,book for others',
+            'priority' => 6
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $bookingInfo->id,
+            'question_pattern' => 'tiket grup besar',
+            'answer' => 'Untuk pemesanan grup besar (lebih dari 10 orang), kami menyarankan untuk menghubungi layanan pelanggan kami di 0800-123-4567 atau email ke grupbooking@ferryapp.id. Kami dapat menawarkan harga khusus dan layanan asisten pemesanan untuk grup besar.',
+            'keywords' => 'grup,group,rombongan,banyak orang,keluarga besar,corporate',
+            'priority' => 6
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $bookingInfo->id,
+            'question_pattern' => 'batas waktu pemesanan',
+            'answer' => 'Anda dapat memesan tiket feri hingga 3 bulan di muka untuk rute reguler. Pemesanan dapat dilakukan hingga 2 jam sebelum waktu keberangkatan, tergantung ketersediaan. Untuk musim liburan, kami sarankan memesan minimal 2 minggu sebelumnya untuk memastikan ketersediaan.',
+            'keywords' => 'batas,waktu,deadline,kapan,terakhir,last minute,jauh hari',
+            'priority' => 6
+        ]);
+
+        // Template tambahan untuk pemesanan
+        ChatTemplate::create([
+            'category_id' => $bookingInfo->id,
+            'question_pattern' => 'pemesanan tiket pulang pergi',
+            'answer' => 'Anda dapat memesan tiket pulang-pergi dalam satu transaksi untuk menghemat waktu. Caranya: 1) Pilih menu "Jadwal & Rute", 2) Aktifkan opsi "Pulang-Pergi", 3) Masukkan lokasi keberangkatan, tujuan, tanggal pergi dan tanggal pulang, 4) Pilih jadwal untuk perjalanan pergi dan pulang, 5) Lanjutkan dengan pengisian data penumpang dan pembayaran seperti biasa. Anda bisa mendapatkan diskon khusus untuk pemesanan pulang-pergi pada rute tertentu.',
+            'keywords' => 'pulang,pergi,pulang-pergi,round-trip,return,pp,dua arah',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $bookingInfo->id,
+            'question_pattern' => 'cek status pemesanan',
+            'answer' => 'Untuk memeriksa status pemesanan tiket Anda: 1) Buka aplikasi Ferry Booking, 2) Masuk ke menu "Tiket Saya", 3) Anda akan melihat daftar semua pemesanan aktif dengan status masing-masing (seperti "Menunggu Pembayaran", "Terkonfirmasi", "Check-in", atau "Selesai"). Anda juga dapat melihat detail tiket dengan mengklik pada pemesanan yang ingin diperiksa.',
+            'keywords' => 'status,cek,periksa,pemesanan,booking,tiket,lihat',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $bookingInfo->id,
+            'question_pattern' => 'jumlah maksimum penumpang',
+            'answer' => 'Dalam satu kali transaksi pemesanan, Anda dapat memesan tiket untuk maksimal 10 penumpang. Jika Anda perlu memesan untuk lebih dari 10 orang, kami sarankan untuk: 1) Membuat beberapa transaksi terpisah, atau 2) Menghubungi layanan grup kami di 0800-123-4567 untuk mendapatkan layanan pemesanan grup dengan harga khusus dan proses yang lebih mudah.',
+            'keywords' => 'maksimum,max,maksimal,banyak,jumlah,penumpang,orang,limit',
+            'priority' => 6
+        ]);
+
+        // Template untuk pembayaran
+        ChatTemplate::create([
+            'category_id' => $paymentInfo->id,
+            'question_pattern' => 'metode pembayaran',
+            'answer' => 'Kami menerima berbagai metode pembayaran: transfer bank, e-wallet (OVO, GoPay, Dana, LinkAja), kartu kredit/debit, dan virtual account. Anda dapat memilih metode yang paling nyaman saat checkout.',
+            'keywords' => 'bayar,payment,metode,cara bayar,pembayaran',
+            'priority' => 8
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $paymentInfo->id,
+            'question_pattern' => 'status pembayaran',
+            'answer' => 'Untuk memeriksa status pembayaran, silakan buka menu "Tiket Saya" dan pilih pemesanan yang ingin Anda cek. Status pembayaran akan ditampilkan di halaman detail pemesanan.',
+            'keywords' => 'status,bayar,payment,sudah,berhasil,gagal',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $paymentInfo->id,
+            'question_pattern' => 'pembayaran gagal',
+            'answer' => 'Jika pembayaran Anda gagal, silakan coba metode pembayaran lain atau pastikan saldo/limit kartu Anda mencukupi. Pemesanan yang belum dibayar akan otomatis dibatalkan setelah 1 jam. Jika dana terpotong tapi status pembayaran gagal, silakan hubungi layanan pelanggan kami dengan menyertakan bukti pembayaran.',
+            'keywords' => 'gagal,failed,error,tidak berhasil,masalah,problem,issue',
+            'priority' => 8
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $paymentInfo->id,
+            'question_pattern' => 'bukti pembayaran',
+            'answer' => 'Bukti pembayaran akan dikirimkan ke email Anda setelah transaksi berhasil. Anda juga dapat melihat dan mengunduh bukti pembayaran di menu "Tiket Saya" > pilih tiket > tab "Pembayaran" > "Unduh Bukti Pembayaran".',
+            'keywords' => 'bukti,receipt,invoice,struk,kuitansi,proof',
+            'priority' => 6
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $paymentInfo->id,
+            'question_pattern' => 'batas waktu pembayaran',
+            'answer' => 'Setelah memesan tiket, Anda memiliki waktu 1 jam untuk menyelesaikan pembayaran. Jika tidak, pemesanan akan otomatis dibatalkan dan Anda perlu melakukan pemesanan ulang. Untuk metode pembayaran seperti virtual account dan transfer bank, harap perhatikan batas waktu yang ditampilkan pada halaman pembayaran.',
+            'keywords' => 'batas,waktu,deadline,berapa lama,time limit,expired',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $paymentInfo->id,
+            'question_pattern' => 'kebijakan refund',
+            'answer' => 'Kebijakan refund kami: 1) Pembatalan 7+ hari sebelum keberangkatan: refund 90%, 2) 3-6 hari sebelum keberangkatan: refund 75%, 3) 1-2 hari sebelum keberangkatan: refund 50%, 4) Hari H: tidak ada refund. Biaya administrasi sebesar Rp25.000 akan dikenakan untuk setiap refund. Proses refund membutuhkan waktu 7-14 hari kerja.',
+            'keywords' => 'refund,uang kembali,batal,cancel,kebijakan,policy',
+            'priority' => 7
+        ]);
+
+        // Template tambahan untuk pembayaran
+        ChatTemplate::create([
+            'category_id' => $paymentInfo->id,
+            'question_pattern' => 'pembayaran dengan e-wallet',
+            'answer' => 'Untuk pembayaran menggunakan e-wallet: 1) Pada halaman pembayaran, pilih metode e-wallet yang ingin digunakan (GoPay, OVO, DANA, atau LinkAja), 2) Klik "Bayar Sekarang", 3) Anda akan diarahkan ke aplikasi e-wallet terkait atau muncul QR code untuk dipindai, 4) Selesaikan pembayaran di aplikasi e-wallet, 5) Setelah berhasil, Anda akan diarahkan kembali ke aplikasi Ferry Booking. Pastikan saldo e-wallet Anda mencukupi sebelum melakukan transaksi.',
+            'keywords' => 'e-wallet,ewallet,gopay,ovo,dana,linkaja,digital,elektronik',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $paymentInfo->id,
+            'question_pattern' => 'pembayaran dengan virtual account',
+            'answer' => 'Untuk pembayaran melalui Virtual Account: 1) Pilih bank yang diinginkan (BCA, Mandiri, BNI, BRI, dll), 2) Sistem akan membuat nomor Virtual Account unik, 3) Catat atau salin nomor tersebut, 4) Lakukan pembayaran melalui ATM, Mobile Banking, atau Internet Banking ke nomor Virtual Account tersebut, 5) Pembayaran akan diverifikasi otomatis oleh sistem. Nomor Virtual Account akan aktif hingga batas waktu pembayaran (umumnya 1 jam setelah pemesanan).',
+            'keywords' => 'virtual,account,va,bank,transfer,atm,mobile banking',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $paymentInfo->id,
+            'question_pattern' => 'biaya tambahan pembayaran',
+            'answer' => 'Untuk sebagian besar metode pembayaran, kami tidak mengenakan biaya tambahan. Namun, beberapa metode mungkin dikenakan biaya admin sebagai berikut: 1) Kartu kredit/debit: 2% dari total pembayaran, 2) Beberapa e-wallet: Rp1.500 - Rp2.500 per transaksi. Biaya admin ini akan ditampilkan secara transparan pada halaman ringkasan pembayaran sebelum Anda menyelesaikan transaksi.',
+            'keywords' => 'biaya,admin,tambahan,charge,fee,extra,additional',
+            'priority' => 6
+        ]);
+
+        // Template untuk fasilitas
+        ChatTemplate::create([
+            'category_id' => $facilities->id,
+            'question_pattern' => 'fasilitas di kapal',
+            'answer' => 'Fasilitas di kapal feri kami bervariasi tergantung rute dan jenis kapal. Umumnya tersedia: toilet, tempat duduk nyaman, area makan, toko kecil, dan deck observasi. Kapal untuk rute jarak jauh dilengkapi dengan kabin tidur, restoran, dan ruang hiburan. Detail fasilitas untuk setiap kapal dapat dilihat pada halaman detail pemesanan.',
+            'keywords' => 'fasilitas,facility,kapal,ferry,tersedia,ada,service',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $facilities->id,
+            'question_pattern' => 'makanan di kapal',
+            'answer' => 'Sebagian besar kapal feri kami menyediakan layanan makanan dan minuman yang dapat dibeli selama perjalanan. Untuk perjalanan jarak jauh (>3 jam), tersedia restoran atau kafetaria dengan berbagai pilihan menu. Anda juga diperbolehkan membawa makanan dan minuman sendiri ke dalam kapal.',
+            'keywords' => 'makanan,minuman,makan,food,beverage,restoran,cafe',
+            'priority' => 6
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $facilities->id,
+            'question_pattern' => 'wifi dan colokan',
+            'answer' => 'Beberapa kapal feri kami menyediakan WiFi gratis dan colokan listrik di area tertentu. Namun, koneksi WiFi dapat tidak stabil saat berada di tengah laut. Kami sarankan untuk mengunduh hiburan offline dan membawa power bank. Untuk informasi tentang ketersediaan WiFi dan colokan pada rute spesifik, silakan cek halaman detail kapal.',
+            'keywords' => 'wifi,internet,colokan,listrik,charging,power,socket',
+            'priority' => 6
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $facilities->id,
+            'question_pattern' => 'toilet',
+            'answer' => 'Semua kapal feri kami dilengkapi dengan fasilitas toilet yang memadai. Jumlah toilet bervariasi tergantung ukuran kapal. Kami berupaya menjaga kebersihan toilet secara berkala selama perjalanan.',
+            'keywords' => 'toilet,wc,kamar mandi,bathroom,restroom',
+            'priority' => 5
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $facilities->id,
+            'question_pattern' => 'fasilitas terminal',
+            'answer' => 'Terminal feri kami dilengkapi dengan berbagai fasilitas, termasuk: ruang tunggu, toilet, tempat parkir, ATM, toko dan restoran, area bermain anak, musholla, dan loket informasi. Fasilitas dapat bervariasi di setiap terminal. Detail fasilitas terminal dapat dilihat di menu "Informasi Terminal" pada aplikasi.',
+            'keywords' => 'terminal,pelabuhan,port,fasilitas,facility,terminal feri',
+            'priority' => 6
+        ]);
+
+        // Template tambahan untuk fasilitas
+        ChatTemplate::create([
+            'category_id' => $facilities->id,
+            'question_pattern' => 'hiburan di kapal',
+            'answer' => 'Untuk rute jarak jauh, beberapa kapal kami menyediakan fasilitas hiburan seperti: 1) Layar TV dengan film atau tayangan umum, 2) Sistem audio untuk musik, 3) Spot foto di deck observasi, dan 4) Area permainan untuk anak-anak pada kapal tertentu. Kami juga menyarankan membawa hiburan pribadi seperti buku atau gadget dengan konten yang sudah diunduh sebelumnya.',
+            'keywords' => 'hiburan,entertainment,film,musik,game,televisi,tv',
+            'priority' => 5
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $facilities->id,
+            'question_pattern' => 'kabin VIP',
+            'answer' => 'Kami menyediakan kabin VIP pada rute tertentu dengan jarak tempuh lebih dari 3 jam. Fasilitas kabin VIP meliputi: 1) Tempat tidur privat atau sofa bed, 2) AC individual, 3) TV layar datar (pada kapal tertentu), 4) Akses ke lounge khusus, 5) Makanan dan minuman gratis, dan 6) Antrian prioritas saat boarding dan debarkasi. Untuk memesan kabin VIP, pilih opsi kelas "VIP" saat pemesanan tiket.',
+            'keywords' => 'vip,kabin,cabin,kelas,premium,executive,luxury,privat',
+            'priority' => 6
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $facilities->id,
+            'question_pattern' => 'area merokok',
+            'answer' => 'Demi kenyamanan semua penumpang, merokok hanya diperbolehkan di area khusus yang telah ditentukan di bagian luar deck kapal. Area dalam ruangan sepenuhnya bebas asap rokok. Mohon perhatikan tanda-tanda area merokok dan ikuti arahan dari kru kapal. Pelanggaran aturan ini dapat dikenakan denda.',
+            'keywords' => 'rokok,merokok,smoking,area,smoke,tempat,cigarette',
+            'priority' => 5
+        ]);
+
+        // Template untuk kendaraan & bagasi
+        ChatTemplate::create([
+            'category_id' => $vehicles->id,
+            'question_pattern' => 'membawa kendaraan',
+            'answer' => 'Ya, sebagian besar rute feri kami mengakomodasi kendaraan pribadi. Saat memesan tiket, Anda dapat memilih opsi "Dengan Kendaraan" dan memasukkan detail kendaraan Anda (jenis, plat nomor, dll). Biaya tambahan akan dikenakan berdasarkan jenis dan ukuran kendaraan. Harap datang minimal 90 menit sebelum keberangkatan untuk proses check-in kendaraan.',
+            'keywords' => 'kendaraan,mobil,motor,vehicle,car,motorcycle,bawa',
+            'priority' => 8
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $vehicles->id,
+            'question_pattern' => 'tarif kendaraan',
+            'answer' => 'Tarif kendaraan bervariasi tergantung rute dan jenis kendaraan. Secara umum, motor dikenakan biaya mulai dari Rp150.000, mobil pribadi mulai dari Rp350.000, dan kendaraan besar seperti bus atau truk memiliki tarif yang lebih tinggi. Tarif pasti akan ditampilkan saat proses pemesanan setelah Anda memilih jenis kendaraan.',
+            'keywords' => 'tarif,harga,biaya,kendaraan,price,rate,cost,vehicle',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $vehicles->id,
+            'question_pattern' => 'batas bagasi',
+            'answer' => 'Setiap penumpang dewasa diperbolehkan membawa bagasi seberat maksimal 20kg dan 1 tas tangan. Bagasi tambahan dikenakan biaya Rp20.000/kg. Untuk barang berharga, harap dibawa sebagai bagasi tangan. Kami tidak bertanggung jawab atas kehilangan barang berharga yang dititipkan sebagai bagasi.',
+            'keywords' => 'bagasi,barang,luggage,baggage,bawaan,berat,limit',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $vehicles->id,
+            'question_pattern' => 'barang terlarang',
+            'answer' => 'Barang yang dilarang dibawa ke kapal feri meliputi: bahan peledak, senjata api, bahan yang mudah terbakar, narkotika, hewan liar dilindungi, dan barang ilegal lainnya. Untuk hewan peliharaan, silakan lihat kebijakan khusus kami tentang transportasi hewan. Semua bagasi akan melalui pemeriksaan keamanan di terminal.',
+            'keywords' => 'terlarang,prohibited,dilarang,tidak boleh,forbidden,illegal',
+            'priority' => 6
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $vehicles->id,
+            'question_pattern' => 'membawa hewan peliharaan',
+            'answer' => 'Hewan peliharaan diperbolehkan di sebagian rute dengan syarat: 1) Ditempatkan dalam kandang yang aman, 2) Memiliki sertifikat vaksin yang valid, 3) Membayar biaya tambahan mulai dari Rp100.000 tergantung ukuran hewan. Harap memberi tahu saat pemesanan dengan memilih opsi "Dengan Hewan Peliharaan" dan mengisi detail yang diperlukan.',
+            'keywords' => 'hewan,peliharaan,pet,anjing,kucing,dog,cat,animal',
+            'priority' => 6
+        ]);
+
+        // Template tambahan untuk kendaraan & bagasi
+        ChatTemplate::create([
+            'category_id' => $vehicles->id,
+            'question_pattern' => 'prosedur check-in kendaraan',
+            'answer' => 'Prosedur check-in kendaraan: 1) Datang minimal 90 menit sebelum keberangkatan, 2) Menuju loket check-in kendaraan dengan membawa tiket dan STNK asli, 3) Petugas akan memeriksa dokumen dan memberikan stiker/kartu boarding kendaraan, 4) Parkir kendaraan di area tunggu yang ditentukan, 5) Masuk ke kapal sesuai arahan petugas saat boarding dimulai. Pastikan bahan bakar kendaraan tidak lebih dari setengah tangki untuk alasan keamanan.',
+            'keywords' => 'check-in,checkin,kendaraan,prosedur,car,proses,masuk',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $vehicles->id,
+            'question_pattern' => 'bagasi khusus',
+            'answer' => 'Untuk bagasi khusus seperti peralatan olahraga (sepeda, papan selancar, perlengkapan diving), alat musik berukuran besar, atau peralatan medis, silakan pilih opsi "Bagasi Khusus" saat pemesanan. Biaya tambahan akan diterapkan berdasarkan ukuran dan berat. Kami menyarankan untuk membungkus bagasi khusus Anda dengan pelindung yang memadai. Untuk informasi lebih lanjut, hubungi layanan pelanggan kami di 0800-123-4567.',
+            'keywords' => 'khusus,special,bagasi khusus,alat olahraga,sepeda,papan,diving',
+            'priority' => 6
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $vehicles->id,
+            'question_pattern' => 'jenis kendaraan yang diperbolehkan',
+            'answer' => 'Jenis kendaraan yang diperbolehkan di kapal feri kami meliputi: 1) Motor dan skuter, 2) Mobil penumpang reguler, 3) SUV dan MPV, 4) Pick-up dan truk kecil, 5) Bus mini. Untuk kendaraan berat seperti truk besar, bus, atau kendaraan dengan muatan khusus, harap hubungi layanan pelanggan terlebih dahulu. Setiap kapal memiliki batasan tinggi dan berat kendaraan yang berbeda, jadi pastikan untuk memeriksa detail di halaman pemesanan.',
+            'keywords' => 'jenis,kendaraan,types,vehicle,allowed,diizinkan,boleh',
+            'priority' => 7
+        ]);
+
+        // Template untuk layanan pelanggan
+        ChatTemplate::create([
+            'category_id' => $customerService->id,
+            'question_pattern' => 'kontak layanan pelanggan',
+            'answer' => 'Anda dapat menghubungi layanan pelanggan kami melalui: 1) Telepon: 0800-123-4567 (24/7), 2) Email: cs@ferryapp.id, 3) Live chat di aplikasi (08.00-22.00), 4) Whatsapp: 0812-3456-7890, atau 5) Media sosial kami @ferryapp.id.',
+            'keywords' => 'kontak,hubungi,contact,cs,layanan pelanggan,customer service,bantuan',
+            'priority' => 9
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $customerService->id,
+            'question_pattern' => 'kehilangan barang',
+            'answer' => 'Jika Anda kehilangan barang di kapal atau terminal: 1) Segera laporkan ke petugas terdekat, 2) Hubungi layanan pelanggan kami di 0800-123-4567, 3) Berikan deskripsi detail barang yang hilang, waktu dan lokasi perkiraan kehilangan. Kami akan berusaha membantu menemukan barang Anda. Untuk klaim asuransi, laporan kehilangan harus dibuat dalam 24 jam.',
+            'keywords' => 'hilang,lost,kehilangan,barang,luggage,bagasi,found',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $customerService->id,
+            'question_pattern' => 'pengaduan layanan',
+            'answer' => 'Kami sangat menghargai umpan balik Anda. Untuk menyampaikan keluhan atau saran, silakan: 1) Gunakan fitur "Umpan Balik" di aplikasi, 2) Email ke feedback@ferryapp.id, atau 3) Hubungi layanan pelanggan kami di 0800-123-4567. Setiap pengaduan akan ditindaklanjuti dalam waktu maksimal 2x24 jam kerja.',
+            'keywords' => 'komplain,keluhan,pengaduan,complaint,kritik,saran,feedback',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $customerService->id,
+            'question_pattern' => 'bantuan khusus',
+            'answer' => 'Kami menyediakan bantuan khusus untuk penumpang lansia, ibu hamil, penumpang dengan anak kecil, dan penyandang disabilitas. Layanan meliputi prioritas boarding, bantuan membawa bagasi, dan kursi khusus. Untuk mendapatkan layanan ini, silakan pilih opsi "Membutuhkan Bantuan Khusus" saat pemesanan tiket dan jelaskan kebutuhan spesifik Anda.',
+            'keywords' => 'bantuan,khusus,disability,disabilitas,lansia,hamil,special assistance',
+            'priority' => 6
+        ]);
+
+        // Template tambahan untuk layanan pelanggan
+        ChatTemplate::create([
+            'category_id' => $customerService->id,
+            'question_pattern' => 'jam operasional customer service',
+            'answer' => 'Jam operasional layanan pelanggan kami: 1) Call center 0800-123-4567: 24 jam setiap hari, 2) Live chat di aplikasi: 08.00-22.00 WIB setiap hari, 3) Email: Direspon dalam 1x24 jam kerja, 4) WhatsApp: 08.00-20.00 WIB setiap hari. Untuk pertanyaan umum, chatbot ini tersedia 24/7 untuk membantu Anda dengan informasi dasar.',
+            'keywords' => 'jam,operasional,cs,customer service,layanan pelanggan,hours',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $customerService->id,
+            'question_pattern' => 'prosedur pengaduan',
+            'answer' => 'Prosedur pengaduan layanan: 1) Sampaikan keluhan melalui salah satu kanal layanan pelanggan kami, 2) Sertakan detail seperti no. tiket, tanggal/waktu kejadian, dan deskripsi masalah, 3) Tim kami akan memberikan nomor tiket pengaduan, 4) Pengaduan Anda akan diproses dalam 2x24 jam kerja, 5) Anda akan mendapatkan notifikasi penyelesaian melalui email/SMS. Untuk pengaduan serius yang memerlukan penanganan segera, hubungi call center 0800-123-4567.',
+            'keywords' => 'pengaduan,aduan,komplain,keluhan,prosedur,cara,complaint',
+            'priority' => 6
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $customerService->id,
+            'question_pattern' => 'umpan balik layanan',
+            'answer' => 'Kami selalu berusaha meningkatkan layanan. Anda dapat memberikan umpan balik melalui: 1) Survei kepuasan yang dikirim setelah perjalanan, 2) Menu "Umpan Balik" di aplikasi, 3) Menghubungi layanan pelanggan. Umpan balik Anda akan ditinjau langsung oleh tim manajemen kami dan digunakan untuk perbaikan layanan. Sebagai apresiasi, Anda mungkin mendapatkan poin loyalty untuk setiap umpan balik yang diberikan.',
+            'keywords' => 'umpan balik,feedback,saran,kritik,penilaian,rating,review',
+            'priority' => 6
+        ]);
+
+        // Template untuk kebijakan & peraturan
+        ChatTemplate::create([
+            'category_id' => $policies->id,
+            'question_pattern' => 'check-in',
+            'answer' => 'Proses check-in dibuka 2 jam sebelum jadwal keberangkatan dan ditutup 30 menit sebelum keberangkatan. Untuk penumpang dengan kendaraan, check-in harus dilakukan minimal 90 menit sebelum keberangkatan. Harap bawa identitas (KTP/Paspor) asli dan tiket elektronik (e-ticket) saat check-in.',
+            'keywords' => 'check-in,checkin,daftar,registrasi,lapor',
+            'priority' => 8
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $policies->id,
+            'question_pattern' => 'dokumen perjalanan',
+            'answer' => 'Dokumen yang diperlukan untuk perjalanan feri: 1) Tiket elektronik, 2) KTP/Paspor/SIM asli untuk setiap penumpang dewasa, 3) Akta kelahiran/Kartu Pelajar untuk anak-anak, 4) STNK asli untuk penumpang dengan kendaraan. Untuk rute internasional, pastikan Anda memiliki paspor dan visa yang valid.',
+            'keywords' => 'dokumen,document,identitas,id,ktp,persyaratan,requirement',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $policies->id,
+            'question_pattern' => 'anak-anak dan bayi',
+            'answer' => 'Kebijakan untuk anak-anak dan bayi: 1) Bayi (0-2 tahun): gratis, tanpa kursi terpisah, 2) Anak-anak (3-11 tahun): tarif khusus anak (75% dari harga dewasa), 3) Usia 12+ tahun: tarif dewasa. Semua anak, termasuk bayi, harus didaftarkan saat pemesanan. Anak di bawah 15 tahun harus didampingi orang dewasa.',
+            'keywords' => 'anak,bayi,infant,child,kid,baby,balita,children',
+            'priority' => 6
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $policies->id,
+            'question_pattern' => 'asuransi perjalanan',
+            'answer' => 'Semua tiket feri kami sudah termasuk asuransi dasar yang mencakup kecelakaan selama perjalanan. Untuk perlindungan lebih komprehensif, Anda dapat membeli asuransi tambahan saat proses pemesanan dengan biaya mulai dari Rp25.000 per orang. Asuransi tambahan mencakup pembatalan perjalanan, keterlambatan, dan perlindungan bagasi.',
+            'keywords' => 'asuransi,insurance,perlindungan,protection,kecelakaan,accident',
+            'priority' => 6
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $policies->id,
+            'question_pattern' => 'pembatalan karena cuaca',
+            'answer' => 'Jika perjalanan dibatalkan oleh perusahaan karena kondisi cuaca buruk atau alasan teknis, Anda berhak mendapatkan: 1) Pengembalian dana penuh, atau 2) Penjadwalan ulang ke keberangkatan berikutnya tanpa biaya tambahan. Pembaruan status akan dikirim melalui SMS, email, dan notifikasi aplikasi.',
+            'keywords' => 'cuaca,batal,pembatalan,weather,cancel,reschedule,buruk,hujan,badai',
+            'priority' => 8
+        ]);
+
+        // Template tambahan untuk kebijakan & peraturan
+        ChatTemplate::create([
+            'category_id' => $policies->id,
+            'question_pattern' => 'keterlambatan keberangkatan',
+            'answer' => 'Jika kapal terlambat berangkat: 1) Keterlambatan 1-2 jam: Anda akan mendapatkan voucher makanan gratis, 2) Keterlambatan 2-4 jam: Anda akan mendapatkan kompensasi 25% dari harga tiket dalam bentuk poin loyalty, 3) Keterlambatan >4 jam: Anda dapat memilih untuk mendapatkan kompensasi 50% atau penjadwalan ulang gratis. Semua informasi keterlambatan akan disampaikan melalui pengumuman di terminal dan notifikasi aplikasi.',
+            'keywords' => 'terlambat,keterlambatan,delay,lambat,telat,tidak tepat waktu',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $policies->id,
+            'question_pattern' => 'kebijakan keselamatan',
+            'answer' => 'Kebijakan keselamatan kami meliputi: 1) Semua kapal dilengkapi alat keselamatan sesuai standar internasional, 2) Briefing keselamatan dilakukan sebelum keberangkatan, 3) Latihan evakuasi darurat rutin untuk kru, 4) Pemeriksaan teknis kapal secara berkala, 5) Pemantauan cuaca 24/7, 6) Pembatasan operasi saat kondisi cuaca ekstrem. Semua penumpang wajib mengikuti arahan kru terkait prosedur keselamatan selama di kapal.',
+            'keywords' => 'keselamatan,safety,aman,darurat,emergency,prosedur,evakuasi',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $policies->id,
+            'question_pattern' => 'kebijakan penundaan keberangkatan',
+            'answer' => 'Jika Anda perlu menunda keberangkatan: 1) Pemberitahuan minimal 48 jam sebelum jadwal: dapat diubah tanpa biaya, 2) Pemberitahuan 24-48 jam: dikenakan biaya admin Rp50.000, 3) Pemberitahuan <24 jam: dikenakan biaya 25% dari harga tiket, 4) Tanpa pemberitahuan (no-show): tidak ada pengembalian dana. Penundaan hanya dapat dilakukan melalui layanan pelanggan kami di 0800-123-4567 atau di aplikasi melalui menu "Tiket Saya".',
+            'keywords' => 'tunda,penundaan,postpone,delay,ubah,pindah,ganti,reschedule',
+            'priority' => 7
+        ]);
+
+        // Template untuk FAQ
+        ChatTemplate::create([
+            'category_id' => $faq->id,
+            'question_pattern' => 'feri terlambat',
+            'answer' => 'Jika feri Anda terlambat lebih dari 1 jam, Anda berhak mendapatkan kompensasi berupa voucher makanan atau diskon untuk perjalanan berikutnya. Untuk keterlambatan lebih dari 3 jam, Anda dapat memilih untuk membatalkan perjalanan dengan pengembalian dana penuh. Silakan hubungi petugas di terminal atau layanan pelanggan kami untuk mengajukan klaim.',
+            'keywords' => 'terlambat,delay,telat,mundur,late,kompensasi',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $faq->id,
+            'question_pattern' => 'penumpang hamil',
+            'answer' => 'Ibu hamil dapat melakukan perjalanan dengan feri kami sampai usia kehamilan 36 minggu, dengan surat keterangan sehat dari dokter untuk kehamilan di atas 28 minggu. Kami menyediakan kursi prioritas dan bantuan khusus. Silakan pilih opsi "Membutuhkan Bantuan Khusus" saat pemesanan dan informasikan kepada petugas check-in.',
+            'keywords' => 'hamil,pregnant,kehamilan,pregnancy,bumil,ibu hamil',
+            'priority' => 6
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $faq->id,
+            'question_pattern' => 'penumpang disabilitas',
+            'answer' => 'Kami berkomitmen untuk memberikan aksesibilitas bagi semua penumpang. Sebagian besar kapal dan terminal kami memiliki fasilitas ramah difabel. Untuk mendapatkan bantuan khusus, pilih opsi "Membutuhkan Bantuan Khusus" saat pemesanan dan jelaskan kebutuhan spesifik Anda. Staf kami akan membantu selama proses check-in, boarding, dan selama perjalanan.',
+            'keywords' => 'disabilitas,disability,difabel,kursi roda,tuna netra,wheelchair,disabled',
+            'priority' => 6
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $faq->id,
+            'question_pattern' => 'program loyalitas',
+            'answer' => 'Program loyalitas FerryPoints memberi Anda 1 poin untuk setiap Rp10.000 yang dibelanjakan. Poin dapat ditukarkan dengan diskon tiket, upgrade kelas, atau voucher makanan. Untuk bergabung, cukup daftar di aplikasi dan aktifkan fitur FerryPoints di menu profil. Lihat status dan riwayat poin Anda di menu "FerryPoints" pada aplikasi.',
+            'keywords' => 'loyalitas,loyalty,poin,point,reward,membership,member',
+            'priority' => 5
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $faq->id,
+            'question_pattern' => 'tiket hilang',
+            'answer' => 'Jangan khawatir jika e-ticket Anda hilang. Anda dapat mengakses kembali tiket elektronik melalui: 1) Aplikasi Ferry Booking di menu "Tiket Saya", 2) Email yang dikirimkan saat pemesanan, atau 3) Mencetak ulang di konter layanan pelanggan di terminal dengan menunjukkan identitas dan bukti pemesanan.',
+            'keywords' => 'tiket,hilang,lost,ticket,tidak ada,lupa,cetak,print',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $faq->id,
+            'question_pattern' => 'mabuk laut',
+            'answer' => 'Untuk mencegah mabuk laut: 1) Pilih tempat duduk di tengah kapal dimana guncangan minimal, 2) Hindari membaca atau melihat layar terlalu lama, 3) Pandang horison yang stabil, 4) Konsumsi makanan ringan sebelum perjalanan, 5) Pertimbangkan obat anti mabuk laut. Beberapa kapal kami pada rute tertentu dilengkapi dengan stabilizer untuk mengurangi guncangan.',
+            'keywords' => 'mabuk,laut,seasick,motion sickness,mual,muntah,pusing',
+            'priority' => 6
+        ]);
+
+        // Template tambahan untuk FAQ
+        ChatTemplate::create([
+            'category_id' => $faq->id,
+            'question_pattern' => 'apakah bisa beli tiket di pelabuhan',
+            'answer' => 'Ya, Anda masih dapat membeli tiket langsung di loket pelabuhan, namun kami sangat menyarankan untuk memesan melalui aplikasi karena: 1) Menghindari antrean, 2) Memastikan ketersediaan kursi, 3) Sering ada promo khusus di aplikasi, 4) Pilihan metode pembayaran lebih banyak. Loket tiket di pelabuhan biasanya buka 2 jam sebelum keberangkatan dan ditutup 30 menit sebelum kapal berangkat.',
+            'keywords' => 'beli,tiket,pelabuhan,loket,counter,langsung,on the spot',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $faq->id,
+            'question_pattern' => 'tarif anak-anak',
+            'answer' => 'Kebijakan tarif untuk anak-anak: 1) Bayi 0-2 tahun: gratis (tanpa kursi terpisah, duduk bersama orang tua), 2) Anak-anak 3-11 tahun: 75% dari harga tiket dewasa, 3) Anak di atas 12 tahun: tarif dewasa penuh. Saat pemesanan, pastikan untuk memilih kategori usia yang benar untuk setiap penumpang. Kami berhak meminta bukti usia saat check-in.',
+            'keywords' => 'anak,tarif,harga,child,kid,rate,diskon,potongan,bayi,infant',
+            'priority' => 6
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $faq->id,
+            'question_pattern' => 'nomor darurat',
+            'answer' => 'Nomor darurat yang dapat dihubungi: 1) Layanan Darurat Ferry Booking: 0800-999-7777 (24/7), 2) Call Center: 0800-123-4567, 3) Whatsapp Darurat: 0812-3456-7890. Untuk keadaan darurat di kapal, segera hubungi kru kapal atau gunakan tombol bantuan darurat yang tersedia di berbagai lokasi di kapal. Semua insiden akan ditangani sesuai dengan protokol keselamatan standar internasional.',
+            'keywords' => 'darurat,emergency,nomor,telepon,kontak,kecelakaan,bantuan',
+            'priority' => 8
+        ]);
+
+        // Template untuk Akun Pengguna
+        ChatTemplate::create([
+            'category_id' => $accountInfo->id,
+            'question_pattern' => 'cara daftar akun',
+            'answer' => 'Untuk mendaftar akun di aplikasi Ferry Booking: 1) Unduh aplikasi dari App Store atau Google Play, 2) Buka aplikasi dan klik "Daftar", 3) Masukkan nama, email, dan nomor telepon, 4) Buat kata sandi, 5) Verifikasi akun melalui email atau SMS, 6) Lengkapi data profil dasar. Proses pendaftaran hanya membutuhkan waktu sekitar 2 menit. Anda juga dapat mendaftar menggunakan akun Google atau Facebook untuk lebih cepat.',
+            'keywords' => 'daftar,register,buat akun,signup,sign up,registrasi,akun baru',
+            'priority' => 9
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $accountInfo->id,
+            'question_pattern' => 'verifikasi akun',
+            'answer' => 'Verifikasi akun diperlukan untuk keamanan. Setelah mendaftar, Anda akan menerima kode verifikasi melalui SMS atau email. Masukkan kode tersebut di aplikasi untuk menyelesaikan proses verifikasi. Jika tidak menerima kode dalam 5 menit, gunakan opsi "Kirim Ulang Kode". Pastikan email dan nomor telepon yang Anda daftarkan aktif dan benar.',
+            'keywords' => 'verifikasi,verification,otp,kode,code,aktivasi,activate',
+            'priority' => 8
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $accountInfo->id,
+            'question_pattern' => 'lupa kata sandi',
+            'answer' => 'Jika lupa kata sandi: 1) Klik "Lupa Kata Sandi" di halaman login, 2) Masukkan email terdaftar, 3) Cek email untuk tautan reset kata sandi, 4) Klik tautan dan buat kata sandi baru, 5) Login dengan kata sandi baru. Tautan reset kata sandi hanya berlaku selama 1 jam. Jika masih mengalami masalah, hubungi layanan pelanggan kami di 0800-123-4567.',
+            'keywords' => 'lupa,password,kata sandi,reset,forgot,ganti password',
+            'priority' => 8
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $accountInfo->id,
+            'question_pattern' => 'ubah data profil',
+            'answer' => 'Untuk mengubah data profil: 1) Login ke aplikasi, 2) Buka menu "Profil Saya", 3) Klik "Edit Profil", 4) Perbarui informasi yang ingin diubah, 5) Klik "Simpan". Beberapa data seperti nama lengkap, tanggal lahir, dan nomor identitas memerlukan verifikasi ulang jika diubah. Alamat email utama tidak dapat diubah tanpa menghubungi layanan pelanggan.',
+            'keywords' => 'ubah,profil,edit,perbarui,data diri,profile,update,data',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $accountInfo->id,
+            'question_pattern' => 'hapus akun',
+            'answer' => 'Untuk menghapus akun: 1) Login ke aplikasi, 2) Buka menu "Profil", 3) Pilih "Pengaturan Akun", 4) Pilih "Hapus Akun", 5) Ikuti proses verifikasi keamanan, 6) Konfirmasi penghapusan. Harap diperhatikan bahwa semua data dan riwayat transaksi akan dihapus permanen setelah 30 hari. Tiket aktif tidak akan terpengaruh oleh penghapusan akun.',
+            'keywords' => 'hapus,delete,tutup,remove,account,akun,hapus akun,hapus data',
+            'priority' => 6
+        ]);
+
+        // Template untuk Refund & Reschedule
+        ChatTemplate::create([
+            'category_id' => $refundReschedule->id,
+            'question_pattern' => 'cara refund tiket',
+            'answer' => 'Untuk refund tiket: 1) Buka menu "Tiket Saya", 2) Pilih tiket yang ingin di-refund, 3) Klik tombol "Batalkan & Refund", 4) Pilih alasan pembatalan, 5) Pilih metode pengembalian dana, 6) Konfirmasi permintaan. Jumlah refund tergantung kebijakan waktu pembatalan. Proses refund membutuhkan waktu 7-14 hari kerja, dana akan dikembalikan ke metode pembayaran asli.',
+            'keywords' => 'refund,uang kembali,cara,how to,pembatalan,refund tiket,cancel',
+            'priority' => 8
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $refundReschedule->id,
+            'question_pattern' => 'cara reschedule tiket',
+            'answer' => 'Untuk mengubah jadwal (reschedule): 1) Buka menu "Tiket Saya", 2) Pilih tiket yang ingin diubah, 3) Klik "Ubah Jadwal", 4) Pilih tanggal dan jadwal baru, 5) Bayar selisih harga jika ada (atau terima refund parsial jika harga baru lebih murah), 6) Konfirmasi perubahan. Reschedule hanya dapat dilakukan maksimal 24 jam sebelum keberangkatan awal dan tiket baru akan dikirim melalui email.',
+            'keywords' => 'reschedule,ubah jadwal,ganti tanggal,change,pindah,jadwal baru',
+            'priority' => 8
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $refundReschedule->id,
+            'question_pattern' => 'biaya refund',
+            'answer' => 'Biaya yang dikenakan untuk refund tergantung waktu pembatalan: 1) >7 hari sebelum keberangkatan: 10% dari harga tiket, 2) 3-7 hari: 25% dari harga tiket, 3) 1-2 hari: 50% dari harga tiket, 4) Hari H: 100% (tidak ada refund). Semua refund juga dikenakan biaya admin Rp25.000 per transaksi. Untuk pembatalan karena alasan medis dengan bukti, biaya bisa dikurangi.',
+            'keywords' => 'biaya,refund,potongan,deduction,fee,charge,cancelation fee',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $refundReschedule->id,
+            'question_pattern' => 'biaya reschedule',
+            'answer' => 'Biaya reschedule adalah sebagai berikut: 1) >7 hari sebelum keberangkatan: gratis (hanya membayar selisih harga tiket jika ada), 2) 3-7 hari: Rp25.000 per tiket, 3) 1-2 hari: Rp50.000 per tiket. Perubahan jadwal pada hari keberangkatan tidak diperbolehkan. Jika harga tiket baru lebih tinggi, Anda perlu membayar selisihnya; jika lebih rendah, selisihnya akan dikembalikan dalam bentuk kredit aplikasi.',
+            'keywords' => 'biaya,reschedule,ubah jadwal,fee,charge,cost,bayar',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $refundReschedule->id,
+            'question_pattern' => 'status refund',
+            'answer' => 'Untuk memeriksa status refund: 1) Buka aplikasi Ferry Booking, 2) Masuk ke menu "Riwayat Transaksi", 3) Pilih tab "Refund", 4) Cari transaksi yang ingin diperiksa. Status akan terlihat (Menunggu Konfirmasi, Diproses, Selesai, atau Ditolak). Proses refund biasanya membutuhkan 7-14 hari kerja tergantung metode pembayaran yang digunakan. Anda juga akan menerima update melalui email.',
+            'keywords' => 'status,refund,cek,check,progress,update,uang kembali',
+            'priority' => 6
+        ]);
+
+        // Template untuk Layanan Tambahan
+        ChatTemplate::create([
+            'category_id' => $additionalServices->id,
+            'question_pattern' => 'layanan bagasi tambahan',
+            'answer' => 'Untuk menambah kuota bagasi: 1) Pada proses pemesanan tiket, pilih "Layanan Tambahan", 2) Pilih "Bagasi Tambahan", 3) Tentukan berat tambahan yang diperlukan (maksimal 30kg per orang), 4) Biaya Rp20.000/kg akan ditambahkan ke total pembayaran. Anda juga dapat menambah layanan bagasi hingga 24 jam sebelum keberangkatan melalui menu "Tiket Saya" > "Tambah Layanan".',
+            'keywords' => 'bagasi,tambahan,extra,luggage,baggage,additional,tambah berat',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $additionalServices->id,
+            'question_pattern' => 'layanan makanan',
+            'answer' => 'Layanan makanan dapat dipesan untuk perjalanan jarak menengah dan jauh (>2 jam): 1) Saat pemesanan tiket, pilih "Layanan Tambahan" > "Makanan", 2) Pilih dari menu yang tersedia (regular, vegetarian, atau anak-anak), 3) Makanan akan disajikan di kapal. Harga mulai dari Rp45.000 per porsi. Anda juga dapat memesan hingga 12 jam sebelum keberangkatan melalui menu "Tiket Saya" > "Tambah Layanan".',
+            'keywords' => 'makanan,pesan,food,meal,makan,catering,snack,minum',
+            'priority' => 6
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $additionalServices->id,
+            'question_pattern' => 'layanan prioritas',
+            'answer' => 'Layanan prioritas seharga Rp75.000 per orang meliputi: 1) Check-in dan boarding prioritas (tanpa antre), 2) Kursi premium di area khusus, 3) Welcome drink dan snack, 4) Bagasi prioritas saat tiba, 5) Akses lounge di terminal (jika tersedia). Layanan ini dapat ditambahkan saat pemesanan atau nanti melalui menu "Tiket Saya" > "Tambah Layanan" hingga 24 jam sebelum keberangkatan.',
+            'keywords' => 'prioritas,priority,vip,premium,khusus,special,exclusive',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $additionalServices->id,
+            'question_pattern' => 'paket keluarga',
+            'answer' => 'Paket Keluarga adalah layanan khusus untuk 4-6 orang yang meliputi: 1) Area duduk keluarga khusus, 2) Bagasi tambahan 10kg per orang, 3) Paket makanan keluarga, 4) Prioritas boarding, 5) Hiburan untuk anak-anak. Harga paket mulai dari Rp250.000 per keluarga (diluar harga tiket). Untuk memesan, pilih "Layanan Tambahan" > "Paket Keluarga" saat pemesanan tiket atau hubungi layanan pelanggan.',
+            'keywords' => 'keluarga,family,paket,package,anak,group,rombongan',
+            'priority' => 6
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $additionalServices->id,
+            'question_pattern' => 'asuransi perjalanan tambahan',
+            'answer' => 'Asuransi perjalanan tambahan seharga Rp25.000-Rp50.000 per orang mencakup: 1) Perlindungan pembatalan perjalanan hingga Rp2 juta, 2) Kehilangan bagasi hingga Rp5 juta, 3) Kecelakaan diri hingga Rp50 juta, 4) Penundaan perjalanan Rp500.000, 5) Layanan medis darurat. Untuk menambahkan asuransi, pilih "Layanan Tambahan" > "Asuransi Perjalanan" saat pemesanan atau melalui menu "Tiket Saya".',
+            'keywords' => 'asuransi,insurance,tambahan,extra,protection,perlindungan',
+            'priority' => 6
+        ]);
+
+        // Template untuk Check-in
+        ChatTemplate::create([
+            'category_id' => $checkin->id,
+            'question_pattern' => 'cara check in',
+            'answer' => 'Ada dua cara check-in: 1) Online: Melalui aplikasi 24 jam hingga 1 jam sebelum keberangkatan, buka menu "Tiket Saya" > pilih tiket > "Check-in Online", lalu tunjukkan boarding pass digital saat boarding; 2) Di terminal: Datang minimal 1 jam sebelum (2 jam untuk kendaraan), tunjukkan e-ticket dan identitas di konter check-in. Check-in ditutup 30 menit sebelum keberangkatan, jadi pastikan Anda datang tepat waktu.',
+            'keywords' => 'check-in,checkin,cara,how to,prosedur,daftar,proses',
+            'priority' => 8
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $checkin->id,
+            'question_pattern' => 'dokumen check in',
+            'answer' => 'Dokumen yang diperlukan saat check-in: 1) E-ticket atau kode booking, 2) Identitas asli yang sesuai dengan tiket (KTP/SIM/Paspor untuk dewasa; Kartu Pelajar/Akta Kelahiran untuk anak-anak), 3) Untuk kendaraan: STNK asli yang sesuai dengan data pemesanan, 4) Bukti khusus untuk penumpang dengan diskon (kartu pelajar, kartu lansia, dll). Sediakan dokumen fisik, meskipun sudah check-in online.',
+            'keywords' => 'dokumen,check-in,identitas,document,persyaratan,ktp,requirement',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $checkin->id,
+            'question_pattern' => 'check in kendaraan',
+            'answer' => 'Prosedur check-in kendaraan: 1) Datang minimal 90 menit sebelum keberangkatan, 2) Bawa STNK asli dan tiket kendaraan, 3) Lapor ke konter check-in kendaraan, 4) Petugas akan memeriksa dokumen dan memberikan stiker/kartu kendaraan, 5) Ikuti arahan untuk parkir di area tunggu, 6) Boarding kendaraan biasanya dimulai 45-60 menit sebelum keberangkatan. Pastikan bahan bakar tidak lebih dari setengah tangki untuk alasan keamanan.',
+            'keywords' => 'check-in,kendaraan,vehicle,mobil,motor,car,motorcycle',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $checkin->id,
+            'question_pattern' => 'boarding pass',
+            'answer' => 'Boarding pass dapat diakses dengan dua cara: 1) Digital: Setelah check-in online, boarding pass akan tersedia di aplikasi pada menu "Tiket Saya" > pilih tiket > "Lihat Boarding Pass". Anda dapat menyimpannya sebagai PDF atau screenshot, 2) Cetak: Setelah check-in di terminal, Anda akan menerima boarding pass cetak. Boarding pass berisi informasi nomor kursi, gate, waktu boarding, dan informasi kapal. Simpan boarding pass hingga akhir perjalanan.',
+            'keywords' => 'boarding,pass,kartu,naik,tiket,ticket,digital',
+            'priority' => 6
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $checkin->id,
+            'question_pattern' => 'keterlambatan check in',
+            'answer' => 'Jika Anda terlambat: 1) Check-in ditutup 30 menit sebelum keberangkatan (60 menit untuk kendaraan), 2) Jika terlambat kurang dari 15 menit dari batas waktu, hubungi petugas untuk kemungkinan akomodasi khusus, 3) Jika terlambat lebih dari itu, tiket dianggap hangus tanpa refund. Dalam kasus keterlambatan karena keadaan luar biasa (kecelakaan, bencana alam), hubungi layanan pelanggan segera dengan bukti untuk pengecualian kebijakan.',
+            'keywords' => 'terlambat,late,telat,miss,ketinggalan,check-in,lewat',
+            'priority' => 7
+        ]);
+
+        // Template untuk Keamanan & Data
+        ChatTemplate::create([
+            'category_id' => $security->id,
+            'question_pattern' => 'keamanan data pengguna',
+            'answer' => 'Keamanan data pengguna adalah prioritas kami. Data Anda dilindungi dengan: 1) Enkripsi end-to-end untuk transaksi dan data sensitif, 2) Standar keamanan PCI DSS untuk pembayaran, 3) Autentikasi multi-faktor untuk akses akun, 4) Server dilindungi firewall canggih, 5) Pemantauan keamanan 24/7, 6) Akses terbatas hanya untuk personel yang berwenang. Kami tidak pernah menjual data pengguna ke pihak ketiga dan hanya menggunakannya sesuai dengan kebijakan privasi.',
+            'keywords' => 'keamanan,data,pribadi,security,privacy,protect,lindung',
+            'priority' => 8
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $security->id,
+            'question_pattern' => 'kebijakan privasi',
+            'answer' => 'Kebijakan privasi kami meliputi: 1) Pengumpulan data hanya yang diperlukan untuk layanan, 2) Perlindungan data dengan teknologi enkripsi, 3) Tidak menjual data ke pihak ketiga, 4) Penggunaan data untuk personalisasi layanan, 5) Hak pengguna untuk mengakses dan menghapus data, 6) Penyimpanan data sesuai regulasi. Kebijakan lengkap dapat dibaca di aplikasi pada menu "Pengaturan" > "Kebijakan Privasi" atau di website kami.',
+            'keywords' => 'privasi,privacy,kebijakan,policy,data,perlindungan,protection',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $security->id,
+            'question_pattern' => 'pembayaran aman',
+            'answer' => 'Sistem pembayaran kami menggunakan teknologi keamanan terkini: 1) Enkripsi SSL/TLS untuk semua transaksi, 2) Kepatuhan standar PCI DSS, 3) Tokenisasi data kartu pembayaran, 4) Gateway pembayaran terpercaya dan terverifikasi, 5) Verifikasi 3D Secure untuk transaksi kartu, 6) Notifikasi real-time untuk semua transaksi. Kami tidak pernah menyimpan data kartu kredit lengkap dan semua pembayaran melalui e-wallet menggunakan protokol keamanan resmi penyedia masing-masing.',
+            'keywords' => 'pembayaran,payment,aman,secure,security,transaksi,transaction',
+            'priority' => 7
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $security->id,
+            'question_pattern' => 'verifikasi akun dua faktor',
+            'answer' => 'Verifikasi dua faktor (2FA) memberikan lapisan keamanan tambahan. Cara mengaktifkan: 1) Login ke aplikasi, 2) Buka menu "Profil" > "Keamanan Akun", 3) Aktifkan "Verifikasi Dua Faktor", 4) Pilih metode (SMS atau aplikasi autentikator), 5) Ikuti instruksi untuk menyelesaikan pengaturan. Setelah diaktifkan, setiap login memerlukan kode verifikasi tambahan. Kami sangat menyarankan penggunaan 2FA untuk melindungi akun Anda.',
+            'keywords' => 'verifikasi,dua faktor,2fa,factor,authentication,otp,keamanan',
+            'priority' => 6
+        ]);
+
+        ChatTemplate::create([
+            'category_id' => $security->id,
+            'question_pattern' => 'lapor aktivitas mencurigakan',
+            'answer' => 'Jika Anda melihat aktivitas mencurigakan di akun: 1) Segera ubah kata sandi, 2) Aktifkan verifikasi dua faktor jika belum, 3) Laporkan ke tim keamanan kami melalui email security@ferryapp.id atau telepon 0800-123-4567 (pilih opsi keamanan), 4) Berikan detail seperti waktu kejadian dan aktivitas yang mencurigakan. Tim kami akan merespons dalam 24 jam dan membantu menyelidiki serta mengamankan akun Anda.',
+            'keywords' => 'mencurigakan,suspicious,hack,retas,aktivitas,lapor,report',
+            'priority' => 8
+        ]);
+    }
+}

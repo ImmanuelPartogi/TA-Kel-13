@@ -85,6 +85,8 @@ dependencies:
   share_plus: ^11.0.0
   universal_html: ^2.2.4
   flutter_chat_bubble: ^2.0.2
+  flutter_markdown: ^0.7.7
+  animated_text_kit: ^4.2.2
 
 dev_dependencies:
   flutter_test:

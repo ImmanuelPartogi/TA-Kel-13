@@ -1,0 +1,1243 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\ChatConversation;
+use App\Models\ChatMessage;
+use App\Models\ChatTemplate;
+use App\Models\ChatCategory;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
+
+class ChatbotService
+{
+    /**
+     * Mendapatkan atau membuat percakapan baru
+     */
+    public function getOrCreateConversation($userId = null, $deviceId = null)
+    {
+        // Cek apakah pengguna sudah memiliki percakapan yang aktif
+        if ($userId) {
+            $conversation = ChatConversation::where('user_id', $userId)
+                            ->latest()
+                            ->first();
+            if ($conversation) {
+                return $conversation;
+            }
+        }
+
+        // Cek apakah ada percakapan berdasarkan session/device ID
+        if ($deviceId) {
+            $conversation = ChatConversation::where('session_id', $deviceId)
+                            ->latest()
+                            ->first();
+            if ($conversation) {
+                // Update dengan user_id jika user login
+                if ($userId && !$conversation->user_id) {
+                    $conversation->update(['user_id' => $userId]);
+                }
+                return $conversation;
+            }
+        }
+
+        // Jika tidak ada, buat percakapan baru
+        return ChatConversation::create([
+            'user_id' => $userId,
+            'session_id' => $deviceId,
+            'context' => json_encode([
+                'last_category_id' => null,
+                'recent_keywords' => [],
+                'chat_count' => 0,
+                'unanswered_count' => 0,
+                'user_preferences' => [],
+                'last_queries' => []
+            ])
+        ]);
+    }
+
+    /**
+     * Simpan pesan
+     */
+    public function saveMessage($conversationId, $message, $isFromUser, $templateId = null, $confidenceScore = null)
+    {
+        return ChatMessage::create([
+            'conversation_id' => $conversationId,
+            'is_from_user' => $isFromUser,
+            'message' => $message,
+            'matched_template_id' => $templateId,
+            'confidence_score' => $confidenceScore,
+            'created_at' => now()
+        ]);
+    }
+
+    /**
+     * Mencari jawaban untuk pesan pengguna
+     */
+    public function findAnswer($message, $conversationId = null)
+    {
+        // Log pesan untuk analisis
+        Log::info('Menerima pesan dari pengguna: ' . $message);
+
+        // Bersihkan teks pertanyaan
+        $cleanedMessage = $this->cleanText($message);
+
+        // Ekstrak kata kunci dari pesan
+        $keywords = $this->extractKeywords($cleanedMessage);
+
+        // Dapatkan konteks percakapan jika ada
+        $context = $this->getConversationContext($conversationId);
+
+        // Update last queries dalam konteks
+        if ($conversationId) {
+            $this->updateLastQueriesContext($conversationId, $context, $cleanedMessage);
+        }
+
+        // Analisis sentimen dasar untuk personalisasi
+        $sentiment = $this->analyzeBasicSentiment($cleanedMessage);
+
+        // Identifikasi intent dan entity dari pertanyaan user
+        $intentEntity = $this->identifyIntentAndEntity($cleanedMessage, $keywords);
+
+        // Deteksi jenis pertanyaan (informasi, aksi, konfirmasi, dll)
+        $questionType = $this->detectQuestionType($cleanedMessage);
+
+        // Cari template yang cocok dengan memperhatikan konteks
+        $bestMatch = $this->findBestTemplate($cleanedMessage, $keywords, $context, $intentEntity, $questionType);
+
+        // Jika tidak ada template yang cocok, berikan respons default
+        if (!$bestMatch) {
+            Log::warning('Tidak ditemukan template yang cocok untuk: ' . $message);
+
+            // Update konteks untuk mencatat pertanyaan tidak terjawab
+            if ($conversationId) {
+                $this->updateContextForUnansweredQuestion($conversationId, $context);
+            }
+
+            // Coba berikan jawaban fallback berdasarkan kategori terakhir jika ada
+            if (isset($context['last_category_id']) && $context['last_category_id']) {
+                $fallbackResponse = $this->generateFallbackResponse($context['last_category_id']);
+                if ($fallbackResponse) {
+                    return $fallbackResponse;
+                }
+            }
+
+            // Jika tidak ada fallback berdasarkan kategori, coba cari alternatif berdasarkan kata kunci
+            $alternativeMatch = $this->findAlternativeMatch($keywords, $context);
+            if ($alternativeMatch) {
+                return [
+                    'answer' => $this->processTemplateAnswer($alternativeMatch->answer, $context),
+                    'template_id' => $alternativeMatch->id,
+                    'confidence_score' => 0.4, // Skor rendah karena ini alternatif
+                    'category_id' => $alternativeMatch->category_id,
+                    'suggested_questions' => $this->getRelatedQuestions($alternativeMatch->category_id, $alternativeMatch->id),
+                    'is_alternative_match' => true
+                ];
+            }
+
+            return [
+                'answer' => 'Maaf, saya belum bisa menjawab pertanyaan tersebut. Silakan tanyakan hal lain terkait layanan feri kami atau hubungi customer service di 0800-123-4567.',
+                'template_id' => null,
+                'confidence_score' => 0,
+                'suggested_questions' => $this->getSuggestedQuestions($keywords, $context)
+            ];
+        }
+
+        Log::info('Template yang cocok ditemukan: ' . $bestMatch->question_pattern . ' (score: ' . $bestMatch->score . ')');
+
+        // Update konteks percakapan
+        if ($conversationId) {
+            $this->updateConversationContext($conversationId, $context, $keywords, $bestMatch, $sentiment, $intentEntity);
+        }
+
+        return [
+            'answer' => $this->processTemplateAnswer($bestMatch->answer, $context),
+            'template_id' => $bestMatch->id,
+            'confidence_score' => $bestMatch->score,
+            'category_id' => $bestMatch->category_id,
+            'suggested_questions' => $this->getRelatedQuestions($bestMatch->category_id, $bestMatch->id)
+        ];
+    }
+
+    /**
+     * Mencari template alternatif jika tidak ada match yang bagus
+     */
+    private function findAlternativeMatch($keywords, $context)
+    {
+        if (empty($keywords)) {
+            return null;
+        }
+
+        // Gunakan keyword dengan bobot lebih tinggi
+        $primaryKeywords = array_slice($keywords, 0, min(3, count($keywords)));
+
+        // Cari template yang memiliki setidaknya satu keyword yang cocok
+        $templateIds = [];
+
+        foreach ($primaryKeywords as $keyword) {
+            $matches = ChatTemplate::whereRaw('LOWER(keywords) LIKE ?', ['%' . strtolower($keyword) . '%'])
+                ->orderBy('priority', 'desc')
+                ->take(5)
+                ->pluck('id')
+                ->toArray();
+
+            $templateIds = array_merge($templateIds, $matches);
+        }
+
+        // Hilangkan duplikat
+        $templateIds = array_unique($templateIds);
+
+        if (empty($templateIds)) {
+            return null;
+        }
+
+        // Prioritaskan kategori yang terakhir diakses jika ada
+        if (!empty($context['last_category_id'])) {
+            $template = ChatTemplate::whereIn('id', $templateIds)
+                ->where('category_id', $context['last_category_id'])
+                ->orderBy('priority', 'desc')
+                ->first();
+
+            if ($template) {
+                return $template;
+            }
+        }
+
+        // Jika tidak ada kategori yang cocok, ambil template dengan prioritas tertinggi
+        return ChatTemplate::whereIn('id', $templateIds)
+            ->orderBy('priority', 'desc')
+            ->first();
+    }
+
+    /**
+     * Identifikasi intent dan entity dari pertanyaan
+     */
+    private function identifyIntentAndEntity($message, $keywords)
+    {
+        // Daftar intent umum
+        $intents = [
+            'informasi' => ['apa', 'bagaimana', 'kapan', 'dimana', 'siapa', 'berapa', 'jelaskan', 'info'],
+            'pemesanan' => ['pesan', 'booking', 'beli', 'reservasi', 'order', 'tiket'],
+            'pembayaran' => ['bayar', 'payment', 'transfer', 'e-wallet', 'va', 'virtual account', 'refund'],
+            'bantuan' => ['bantuan', 'bantu', 'tolong', 'help', 'support'],
+            'keluhan' => ['komplain', 'keluhan', 'masalah', 'problem', 'issue', 'tidak bisa'],
+            'konfirmasi' => ['apakah', 'bisakah', 'dapatkah', 'bolehkah', 'mungkinkah'],
+            'perubahan' => ['ubah', 'ganti', 'edit', 'modifikasi', 'perbarui', 'update']
+        ];
+
+        // Daftar entity umum
+        $entities = [
+            'tiket' => ['tiket', 'ticket', 'boarding pass', 'e-ticket'],
+            'jadwal' => ['jadwal', 'schedule', 'waktu', 'jam', 'tanggal'],
+            'kapal' => ['kapal', 'ferry', 'boat', 'ship', 'feri'],
+            'kendaraan' => ['kendaraan', 'mobil', 'motor', 'vehicle', 'car', 'bike'],
+            'harga' => ['harga', 'tarif', 'biaya', 'price', 'cost'],
+            'akun' => ['akun', 'account', 'profil', 'profile', 'login', 'daftar'],
+            'bagasi' => ['bagasi', 'barang', 'luggage', 'baggage', 'bawaan'],
+            'terminal' => ['terminal', 'pelabuhan', 'port', 'dermaga', 'dock']
+        ];
+
+        // Deteksi intent
+        $detectedIntent = null;
+        $highestIntentScore = 0;
+
+        foreach ($intents as $intent => $intentKeywords) {
+            $score = 0;
+            foreach ($intentKeywords as $intentKeyword) {
+                if (stripos($message, $intentKeyword) !== false) {
+                    $score += 1;
+                }
+            }
+
+            if ($score > $highestIntentScore) {
+                $highestIntentScore = $score;
+                $detectedIntent = $intent;
+            }
+        }
+
+        // Deteksi entity
+        $detectedEntity = null;
+        $highestEntityScore = 0;
+
+        foreach ($entities as $entity => $entityKeywords) {
+            $score = 0;
+            foreach ($entityKeywords as $entityKeyword) {
+                if (stripos($message, $entityKeyword) !== false) {
+                    $score += 1;
+                }
+            }
+
+            if ($score > $highestEntityScore) {
+                $highestEntityScore = $score;
+                $detectedEntity = $entity;
+            }
+        }
+
+        // Analisis tambahan untuk kata kunci
+        foreach ($keywords as $keyword) {
+            // Periksa apakah keyword cocok dengan entity yang belum terdeteksi
+            foreach ($entities as $entity => $entityKeywords) {
+                if ($detectedEntity !== $entity) { // Hanya periksa entity yang belum terdeteksi
+                    foreach ($entityKeywords as $entityKeyword) {
+                        if (stripos($keyword, $entityKeyword) !== false || stripos($entityKeyword, $keyword) !== false) {
+                            // Jika ada kesamaan, tambahkan sebagai entity sekunder
+                            $detectedEntity = $detectedEntity ?? $entity;
+                            break 2;
+                        }
+                    }
+                }
+            }
+        }
+
+        return [
+            'intent' => $detectedIntent,
+            'entity' => $detectedEntity,
+            'confidence' => ($highestIntentScore > 0 || $highestEntityScore > 0) ? 0.6 : 0.3
+        ];
+    }
+
+    /**
+     * Deteksi tipe pertanyaan (informasi, aksi, konfirmasi, dll)
+     */
+    private function detectQuestionType($message)
+    {
+        // Marker untuk tipe pertanyaan
+        $informationMarkers = ['apa', 'siapa', 'dimana', 'kapan', 'mengapa', 'bagaimana', 'berapa'];
+        $confirmationMarkers = ['apakah', 'bisakah', 'bolehkah', 'dapatkah', 'mungkinkah'];
+        $actionMarkers = ['tolong', 'bantu', 'lakukan', 'carikan', 'cek', 'periksa'];
+
+        // Cek tanda tanya
+        $hasQuestionMark = strpos($message, '?') !== false;
+
+        // Deteksi dengan marker
+        foreach ($informationMarkers as $marker) {
+            if (preg_match('/\b' . $marker . '\b/i', $message)) {
+                return 'information';
+            }
+        }
+
+        foreach ($confirmationMarkers as $marker) {
+            if (preg_match('/\b' . $marker . '\b/i', $message)) {
+                return 'confirmation';
+            }
+        }
+
+        foreach ($actionMarkers as $marker) {
+            if (preg_match('/\b' . $marker . '\b/i', $message)) {
+                return 'action';
+            }
+        }
+
+        // Default: jika ada tanda tanya, anggap information
+        if ($hasQuestionMark) {
+            return 'information';
+        }
+
+        // Jika tidak ada marker dan tidak ada tanda tanya, mungkin pernyataan
+        return 'statement';
+    }
+
+    /**
+     * Analisis sentimen dasar (positif, negatif, netral)
+     */
+    private function analyzeBasicSentiment($message)
+    {
+        // Kata positif
+        $positiveWords = [
+            'bagus', 'baik', 'senang', 'suka', 'puas', 'terima kasih', 'thanks',
+            'hebat', 'cepat', 'nyaman', 'ramah', 'membantu', 'mudah', 'berhasil'
+        ];
+
+        // Kata negatif
+        $negativeWords = [
+            'buruk', 'jelek', 'lambat', 'marah', 'kecewa', 'kesal', 'sulit',
+            'tidak bisa', 'gagal', 'masalah', 'problem', 'error', 'salah', 'bingung'
+        ];
+
+        // Hitung skor
+        $positiveScore = 0;
+        $negativeScore = 0;
+
+        foreach ($positiveWords as $word) {
+            if (stripos($message, $word) !== false) {
+                $positiveScore++;
+            }
+        }
+
+        foreach ($negativeWords as $word) {
+            if (stripos($message, $word) !== false) {
+                $negativeScore++;
+            }
+        }
+
+        // Tentukan sentimen
+        if ($positiveScore > $negativeScore) {
+            return 'positive';
+        } elseif ($negativeScore > $positiveScore) {
+            return 'negative';
+        } else {
+            return 'neutral';
+        }
+    }
+
+    /**
+     * Memproses jawaban template untuk personalisasi
+     */
+    private function processTemplateAnswer($answer, $context)
+    {
+        // Jika ada variabel yang perlu dimasukkan ke dalam template
+        $processedAnswer = $answer;
+
+        // Ubah placeholder {user_name} jika ada di konteks
+        if (isset($context['user_name']) && $context['user_name']) {
+            $processedAnswer = str_replace('{user_name}', $context['user_name'], $processedAnswer);
+        }
+
+        // Ubah placeholder {last_search} jika ada
+        if (isset($context['last_search']) && $context['last_search']) {
+            $processedAnswer = str_replace('{last_search}', $context['last_search'], $processedAnswer);
+        }
+
+        // Tambahkan personalisasi berdasarkan riwayat
+        if (!empty($context['user_preferences'])) {
+            // Misalnya, jika user sering tanya tentang kendaraan, tambahkan info kendaraan
+            if (isset($context['user_preferences']['vehicle_interest']) && $context['user_preferences']['vehicle_interest'] > 2) {
+                if (strpos($processedAnswer, 'kendaraan') !== false && !strpos($processedAnswer, 'Untuk informasi lebih lengkap tentang kendaraan')) {
+                    $processedAnswer .= "\n\nUntuk informasi lebih lengkap tentang kendaraan di kapal kami, silakan lihat bagian 'Kendaraan & Bagasi' di aplikasi.";
+                }
+            }
+        }
+
+        return $processedAnswer;
+    }
+
+    /**
+     * Mendapatkan konteks percakapan
+     */
+    private function getConversationContext($conversationId)
+    {
+        if (!$conversationId) {
+            return [
+                'last_category_id' => null,
+                'recent_keywords' => [],
+                'chat_count' => 0,
+                'unanswered_count' => 0,
+                'user_preferences' => [],
+                'last_queries' => []
+            ];
+        }
+
+        $conversation = ChatConversation::find($conversationId);
+        if (!$conversation || !$conversation->context) {
+            return [
+                'last_category_id' => null,
+                'recent_keywords' => [],
+                'chat_count' => 0,
+                'unanswered_count' => 0,
+                'user_preferences' => [],
+                'last_queries' => []
+            ];
+        }
+
+        return json_decode($conversation->context, true);
+    }
+
+    /**
+     * Update konteks last queries untuk analisis percakapan
+     */
+    private function updateLastQueriesContext($conversationId, &$context, $message)
+    {
+        // Simpan 5 pertanyaan terakhir untuk analisis konteks percakapan
+        $lastQueries = $context['last_queries'] ?? [];
+        array_unshift($lastQueries, [
+            'message' => $message,
+            'timestamp' => time()
+        ]);
+
+        // Keep only the last 5 queries
+        $context['last_queries'] = array_slice($lastQueries, 0, 5);
+
+        // Save the updated context
+        $conversation = ChatConversation::find($conversationId);
+        if ($conversation) {
+            $conversation->update(['context' => json_encode($context)]);
+        }
+    }
+
+    /**
+     * Update konteks percakapan setelah menemukan template yang cocok
+     */
+    private function updateConversationContext($conversationId, $context, $keywords, $bestMatch, $sentiment = null, $intentEntity = null)
+    {
+        // Update data konteks
+        $context['last_category_id'] = $bestMatch->category_id;
+        $context['chat_count'] = ($context['chat_count'] ?? 0) + 1;
+
+        // Simpan keywords terbaru (maksimal 15)
+        $recentKeywords = $context['recent_keywords'] ?? [];
+        $recentKeywords = array_merge($recentKeywords, $keywords);
+        $recentKeywords = array_unique($recentKeywords);
+        $context['recent_keywords'] = array_slice($recentKeywords, 0, 15);
+
+        // Analisis preferensi pengguna berdasarkan kategori pertanyaan
+        $userPreferences = $context['user_preferences'] ?? [];
+
+        // Track kategori yang sering ditanyakan
+        $categoryKey = 'category_' . $bestMatch->category_id;
+        $userPreferences[$categoryKey] = ($userPreferences[$categoryKey] ?? 0) + 1;
+
+        // Track entity yang menarik bagi pengguna
+        if ($intentEntity && $intentEntity['entity']) {
+            $entityKey = $intentEntity['entity'] . '_interest';
+            $userPreferences[$entityKey] = ($userPreferences[$entityKey] ?? 0) + 1;
+        }
+
+        // Catat sentimen untuk analisis kualitas layanan
+        if ($sentiment) {
+            $userPreferences['sentiment_history'] = $userPreferences['sentiment_history'] ?? [];
+            $userPreferences['sentiment_history'][] = [
+                'sentiment' => $sentiment,
+                'timestamp' => time()
+            ];
+
+            // Batasi riwayat sentimen (simpan 10 terakhir)
+            if (count($userPreferences['sentiment_history']) > 10) {
+                $userPreferences['sentiment_history'] = array_slice($userPreferences['sentiment_history'], -10);
+            }
+        }
+
+        $context['user_preferences'] = $userPreferences;
+
+        // Simpan konteks yang diperbarui ke database
+        $conversation = ChatConversation::find($conversationId);
+        if ($conversation) {
+            $conversation->update(['context' => json_encode($context)]);
+        }
+    }
+
+    /**
+     * Update konteks untuk pertanyaan yang tidak terjawab
+     */
+    private function updateContextForUnansweredQuestion($conversationId, $context)
+    {
+        // Tingkatkan hitungan pertanyaan tidak terjawab
+        $context['unanswered_count'] = ($context['unanswered_count'] ?? 0) + 1;
+
+        // Jika banyak pertanyaan tidak terjawab, kita mungkin ingin menandai untuk eskalasi
+        if ($context['unanswered_count'] >= 3) {
+            $context['needs_human_help'] = true;
+        }
+
+        // Simpan konteks yang diperbarui
+        $conversation = ChatConversation::find($conversationId);
+        if ($conversation) {
+            $conversation->update(['context' => json_encode($context)]);
+        }
+    }
+
+    /**
+     * Dapatkan pertanyaan terkait berdasarkan kategori
+     */
+    private function getRelatedQuestions($categoryId, $excludeTemplateId)
+    {
+        $relatedTemplates = ChatTemplate::where('category_id', $categoryId)
+            ->where('id', '!=', $excludeTemplateId)
+            ->orderBy('priority', 'desc')
+            ->take(3)
+            ->get(['id', 'question_pattern']);
+
+        $suggestedQuestions = [];
+        foreach ($relatedTemplates as $template) {
+            $suggestedQuestions[] = [
+                'id' => $template->id,
+                'question' => $template->question_pattern
+            ];
+        }
+
+        return $suggestedQuestions;
+    }
+
+    /**
+     * Dapatkan pertanyaan yang disarankan berdasarkan kata kunci
+     */
+    private function getSuggestedQuestions($keywords, $context = null)
+    {
+        if (empty($keywords)) {
+            // Jika tidak ada kata kunci, berikan pertanyaan populer atau berbasis konteks
+            if ($context && !empty($context['user_preferences'])) {
+                // Cari kategori yang paling sering ditanyakan oleh pengguna
+                $maxCount = 0;
+                $preferredCategory = null;
+
+                foreach ($context['user_preferences'] as $key => $count) {
+                    if (strpos($key, 'category_') === 0 && $count > $maxCount) {
+                        $maxCount = $count;
+                        $preferredCategory = (int)str_replace('category_', '', $key);
+                    }
+                }
+
+                if ($preferredCategory) {
+                    // Ambil pertanyaan dari kategori yang disukai
+                    $templates = ChatTemplate::where('category_id', $preferredCategory)
+                        ->orderBy('priority', 'desc')
+                        ->take(3)
+                        ->get(['id', 'question_pattern']);
+
+                    $suggestedQuestions = [];
+                    foreach ($templates as $template) {
+                        $suggestedQuestions[] = [
+                            'id' => $template->id,
+                            'question' => $template->question_pattern
+                        ];
+                    }
+
+                    if (!empty($suggestedQuestions)) {
+                        return $suggestedQuestions;
+                    }
+                }
+            }
+
+            // Fallback ke pertanyaan populer jika tidak ada preferensi
+            $popularTemplates = ChatTemplate::orderBy('priority', 'desc')
+                ->take(3)
+                ->get(['id', 'question_pattern']);
+
+            $suggestedQuestions = [];
+            foreach ($popularTemplates as $template) {
+                $suggestedQuestions[] = [
+                    'id' => $template->id,
+                    'question' => $template->question_pattern
+                ];
+            }
+
+            return $suggestedQuestions;
+        }
+
+        // Strategi 1: Coba cari match berdasarkan keyword
+        $suggestedQuestions = [];
+        $processedKeywords = array_slice($keywords, 0, min(3, count($keywords))); // Ambil 3 keyword teratas
+
+        foreach ($processedKeywords as $keyword) {
+            $templates = ChatTemplate::whereRaw('LOWER(keywords) LIKE ?', ['%' . strtolower($keyword) . '%'])
+                ->orderBy('priority', 'desc')
+                ->take(2) // Ambil 2 per keyword
+                ->get(['id', 'question_pattern']);
+
+            foreach ($templates as $template) {
+                // Cek duplikat
+                $isDuplicate = false;
+                foreach ($suggestedQuestions as $existing) {
+                    if ($existing['id'] == $template->id) {
+                        $isDuplicate = true;
+                        break;
+                    }
+                }
+
+                if (!$isDuplicate) {
+                    $suggestedQuestions[] = [
+                        'id' => $template->id,
+                        'question' => $template->question_pattern
+                    ];
+                }
+
+                // Batasi total suggestion ke-5
+                if (count($suggestedQuestions) >= 5) {
+                    break 2; // Keluar dari kedua loop
+                }
+            }
+        }
+
+        // Jika kurang dari 3 saran, tambahkan dari kategori terkait (jika ada)
+        if (count($suggestedQuestions) < 3 && isset($context['last_category_id']) && $context['last_category_id']) {
+            $additionalTemplates = ChatTemplate::where('category_id', $context['last_category_id'])
+                ->orderBy('priority', 'desc')
+                ->take(5)
+                ->get(['id', 'question_pattern']);
+
+            foreach ($additionalTemplates as $template) {
+                // Cek duplikat
+                $isDuplicate = false;
+                foreach ($suggestedQuestions as $existing) {
+                    if ($existing['id'] == $template->id) {
+                        $isDuplicate = true;
+                        break;
+                    }
+                }
+
+                if (!$isDuplicate) {
+                    $suggestedQuestions[] = [
+                        'id' => $template->id,
+                        'question' => $template->question_pattern
+                    ];
+                }
+
+                // Stop jika sudah 3 saran
+                if (count($suggestedQuestions) >= 3) {
+                    break;
+                }
+            }
+        }
+
+        // Batasi output ke 3 saran
+        return array_slice($suggestedQuestions, 0, 3);
+    }
+
+    /**
+     * Menghasilkan respons fallback berdasarkan kategori terakhir
+     */
+    private function generateFallbackResponse($categoryId)
+    {
+        $category = ChatCategory::find($categoryId);
+        if (!$category) {
+            return null;
+        }
+
+        // Berikan respons fallback berdasarkan kategori
+        return [
+            'answer' => "Maaf, saya belum dapat menjawab secara spesifik tentang pertanyaan Anda mengenai {$category->name}. Tapi saya dapat membantu Anda dengan pertanyaan lain terkait kategori ini.",
+            'template_id' => null,
+            'confidence_score' => 0.1,
+            'category_id' => $categoryId,
+            'suggested_questions' => $this->getQuestionsFromCategory($categoryId)
+        ];
+    }
+
+    /**
+     * Dapatkan pertanyaan dari kategori tertentu
+     */
+    private function getQuestionsFromCategory($categoryId)
+    {
+        $templates = ChatTemplate::where('category_id', $categoryId)
+            ->orderBy('priority', 'desc')
+            ->take(3)
+            ->get(['id', 'question_pattern']);
+
+        $suggestedQuestions = [];
+        foreach ($templates as $template) {
+            $suggestedQuestions[] = [
+                'id' => $template->id,
+                'question' => $template->question_pattern
+            ];
+        }
+
+        return $suggestedQuestions;
+    }
+
+    /**
+     * Membersihkan teks dari karakter khusus dan mengubah ke huruf kecil
+     */
+    private function cleanText($text)
+    {
+        // Ubah ke huruf kecil
+        $text = strtolower($text);
+
+        // Hapus karakter khusus tapi pertahankan tanda tanya untuk analisis pertanyaan
+        $text = preg_replace('/[^\p{L}\p{N}\s\?]/u', '', $text);
+
+        // Hapus spasi berlebih
+        $text = preg_replace('/\s+/', ' ', $text);
+
+        return trim($text);
+    }
+
+    /**
+     * Ekstrak kata kunci dari pesan dengan peningkatan
+     */
+    private function extractKeywords($text)
+    {
+        // Stopwords dalam Bahasa Indonesia - diperluas untuk lebih akurat
+        $stopwords = [
+            'yang', 'dan', 'di', 'dengan', 'ke', 'pada', 'untuk', 'dari', 'ini', 'itu',
+            'atau', 'adalah', 'ada', 'jika', 'maka', 'saya', 'kami', 'kita', 'mereka',
+            'dia', 'kamu', 'anda', 'bagaimana', 'kapan', 'dimana', 'mengapa', 'apa',
+            'apakah', 'ya', 'tidak', 'bisa', 'boleh', 'harus', 'akan', 'sudah', 'belum',
+            'telah', 'oleh', 'sebagai', 'juga', 'tentang', 'hal', 'dapat', 'secara',
+            'sangat', 'hanya', 'mungkin', 'setiap', 'semua', 'saat', 'sedang', 'masih',
+            'lagi', 'tapi', 'namun', 'karena', 'ketika', 'sebelum', 'sesudah', 'selama',
+            'bahwa', 'sampai', 'hingga', 'seperti', 'sebab', 'akibat', 'jadi', 'agar',
+            'supaya', 'sehingga', 'tetapi', 'melainkan', 'selain', 'kecuali', 'terhadap',
+            'mengenai', 'melalui', 'berdasarkan', 'menurut', 'sesuai', 'ingin', 'mau'
+        ];
+
+        // Deteksi tipe pertanyaan berdasarkan kata tanya
+        $questionIndicators = ['apa', 'bagaimana', 'kapan', 'dimana', 'mengapa', 'siapa', 'berapa', 'kenapa'];
+        $questionType = null;
+
+        // Pisahkan kata-kata
+        $words = explode(' ', $text);
+
+        // Identifikasi tipe pertanyaan jika ada
+        foreach ($words as $word) {
+            if (in_array($word, $questionIndicators)) {
+                $questionType = $word;
+                break;
+            }
+        }
+
+        // Filter stopwords
+        $keywords = array_filter($words, function ($word) use ($stopwords) {
+            return !in_array($word, $stopwords) && strlen($word) > 2;
+        });
+
+        // Analisis frasa dengan sliding window
+        $phrases = [];
+        $wordCount = count($words);
+
+        // Jendela 2-gram dan 3-gram
+        for ($i = 0; $i < $wordCount - 1; $i++) {
+            // 2-gram
+            $phrase2 = $words[$i] . ' ' . $words[$i + 1];
+            $isStopPhrase = false;
+
+            // Cek apakah frasa hanya terdiri dari stopwords
+            $phraseWords = [$words[$i], $words[$i + 1]];
+            $stopwordCount = 0;
+            foreach ($phraseWords as $w) {
+                if (in_array($w, $stopwords)) {
+                    $stopwordCount++;
+                }
+            }
+
+            if ($stopwordCount < count($phraseWords)) {
+                $phrases[] = $phrase2;
+            }
+
+            // 3-gram
+            if ($i < $wordCount - 2) {
+                $phrase3 = $words[$i] . ' ' . $words[$i + 1] . ' ' . $words[$i + 2];
+
+                // Cek apakah frasa hanya terdiri dari stopwords
+                $phraseWords = [$words[$i], $words[$i + 1], $words[$i + 2]];
+                $stopwordCount = 0;
+                foreach ($phraseWords as $w) {
+                    if (in_array($w, $stopwords)) {
+                        $stopwordCount++;
+                    }
+                }
+
+                if ($stopwordCount < count($phraseWords)) {
+                    $phrases[] = $phrase3;
+                }
+            }
+        }
+
+        // Tambahkan frasa ke keyword list
+        $keywordList = array_values($keywords);
+        $keywordList = array_merge($keywordList, $phrases);
+
+        // Tambahkan tipe pertanyaan sebagai kata kunci jika ada
+        if ($questionType && !in_array($questionType, $keywordList)) {
+            array_unshift($keywordList, $questionType);
+        }
+
+        return $keywordList;
+    }
+
+    /**
+     * Temukan template terbaik berdasarkan kecocokan dengan algoritma yang ditingkatkan
+     */
+    private function findBestTemplate($message, $keywords, $context = null, $intentEntity = null, $questionType = null)
+    {
+        // Gunakan cache untuk mempercepat jika pesan sering ditanyakan
+        $cacheKey = 'chatbot_template_' . md5($message);
+        if (Cache::has($cacheKey)) {
+            return Cache::get($cacheKey);
+        }
+
+        // Ambil semua template
+        $templates = ChatTemplate::all();
+
+        $bestMatch = null;
+        $highestScore = 0;
+        $secondHighestScore = 0;
+        $secondBestMatch = null;
+
+        // Faktor bobot untuk konteks percakapan
+        $contextBoost = 0.15; // Maksimal 15% boost untuk konteks
+        $intentBoost = 0.1; // Boost untuk kecocokan intent
+        $continuityBoost = 0.05; // Boost untuk kontinuitas dialog
+
+        foreach ($templates as $template) {
+            // Hitung skor kecocokan dengan algoritma yang ditingkatkan
+            $score = $this->calculateEnhancedMatchScore($message, $keywords, $template);
+
+            // Tambahkan bobot kontekstual jika ada konteks
+            if ($context && isset($context['last_category_id']) && $context['last_category_id'] == $template->category_id) {
+                $score += $contextBoost;
+            }
+
+            // Tambahkan bobot untuk kata kunci yang baru-baru ini disebutkan
+            if ($context && isset($context['recent_keywords']) && !empty($context['recent_keywords'])) {
+                $keywordBoost = $this->calculateKeywordContextBoost($template, $context['recent_keywords']);
+                $score += $keywordBoost;
+            }
+
+            // Tambahkan bobot untuk intent entity match
+            if ($intentEntity && isset($intentEntity['entity'])) {
+                $intentEntityBoost = $this->calculateIntentEntityBoost($template, $intentEntity);
+                $score += $intentEntityBoost;
+            }
+
+            // Tambahkan boost untuk kontinuitas percakapan (jika ini kelanjutan dari pertanyaan sebelumnya)
+            if ($context && !empty($context['last_queries'])) {
+                $continuity = $this->checkDialogContinuity($message, $context['last_queries'], $template);
+                $score += $continuity * $continuityBoost;
+            }
+
+            // Jika skor lebih tinggi dari yang sebelumnya, update bestMatch
+            if ($score > $highestScore) {
+                $secondHighestScore = $highestScore;
+                $secondBestMatch = $bestMatch;
+
+                $highestScore = $score;
+                $template->score = $score;
+                $bestMatch = $template;
+            } else if ($score > $secondHighestScore) {
+                $secondHighestScore = $score;
+                $template->score = $score;
+                $secondBestMatch = $template;
+            }
+        }
+
+        // Jika skor terlalu rendah atau beda dengan kedua skor teratas terlalu kecil (ambiguitas tinggi)
+        if ($highestScore < 0.4) {
+            return null;
+        }
+
+        // Jika perbedaan skor terlalu kecil dan ambiguitas tinggi, prioritaskan template dengan prioritas lebih tinggi
+        if ($secondBestMatch && ($highestScore - $secondHighestScore < 0.1) && $bestMatch->priority < $secondBestMatch->priority) {
+            $bestMatch = $secondBestMatch;
+            $bestMatch->score = $secondHighestScore;
+        }
+
+        // Simpan hasil ke cache selama 1 jam untuk optimasi performa
+        if ($bestMatch) {
+            Cache::put($cacheKey, $bestMatch, 3600);
+        }
+
+        return $bestMatch;
+    }
+
+    /**
+     * Cek kontinuitas dialog
+     */
+    private function checkDialogContinuity($currentMessage, $lastQueries, $template)
+    {
+        if (empty($lastQueries) || count($lastQueries) < 2) {
+            return 0;
+        }
+
+        // Ambil pertanyaan terakhir (tidak termasuk pesan saat ini)
+        $lastQuery = $lastQueries[0]['message'] ?? '';
+
+        // Cek apakah ada pola kontinuitas
+        $continuityPatterns = [
+            // Jawaban singkat yang merujuk pada konteks sebelumnya
+            '/^(ya|tidak|oke|ok|baik|bagaimana|lalu|kemudian|terus)/i',
+            // Pertanyaan lanjutan tanpa subjek lengkap
+            '/^(bagaimana dengan|kapan|dimana|mengapa|siapa|berapa)/i',
+            // Referensi ke percakapan sebelumnya
+            '/(tersebut|itu|tadi|sebelumnya)/i'
+        ];
+
+        foreach ($continuityPatterns as $pattern) {
+            if (preg_match($pattern, $currentMessage)) {
+                // Ada indikasi kontinuitas, beri boost jika kategori sama dengan template sebelumnya
+                $lastCategory = $this->extractCategoryFromMessage($lastQuery);
+                if ($lastCategory && $lastCategory == $template->category_id) {
+                    return 1.0; // Full boost untuk kontinuitas yang jelas
+                } else {
+                    return 0.5; // Setengah boost jika kategori berbeda
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * Ekstrak kategori dari pesan (untuk kontinuitas dialog)
+     */
+    private function extractCategoryFromMessage($message)
+    {
+        // Clean message
+        $cleanedMessage = $this->cleanText($message);
+
+        // Extract keywords
+        $keywords = $this->extractKeywords($cleanedMessage);
+
+        if (empty($keywords)) {
+            return null;
+        }
+
+        // Cari template yang cocok
+        $bestScore = 0;
+        $bestCategory = null;
+
+        $templates = ChatTemplate::all();
+
+        foreach ($templates as $template) {
+            $score = $this->calculateBasicMatchScore($cleanedMessage, $keywords, $template);
+
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $bestCategory = $template->category_id;
+            }
+        }
+
+        // Hanya return jika skor cukup tinggi
+        return ($bestScore > 0.3) ? $bestCategory : null;
+    }
+
+    /**
+     * Hitung skor kecocokan dasar (untuk kontinuitas dialog)
+     */
+    private function calculateBasicMatchScore($message, $keywords, $template)
+    {
+        // Skor dasar
+        $score = 0;
+
+        // Pattern matching sederhana
+        $pattern = $this->cleanText($template->question_pattern);
+
+        // Directly check for keyword matches in template keywords
+        $templateKeywords = explode(',', $template->keywords);
+        $keywordMatches = 0;
+
+        foreach ($keywords as $keyword) {
+            foreach ($templateKeywords as $templateKeyword) {
+                $templateKeyword = trim($templateKeyword);
+
+                if (strpos($keyword, $templateKeyword) !== false ||
+                    strpos($templateKeyword, $keyword) !== false) {
+                    $keywordMatches++;
+                    break;
+                }
+            }
+        }
+
+        $score = count($keywords) > 0 ? min(1, $keywordMatches / count($keywords)) : 0;
+
+        return $score;
+    }
+
+    /**
+     * Hitung bobot dari kecocokan intent & entity
+     */
+    private function calculateIntentEntityBoost($template, $intentEntity)
+    {
+        $boost = 0;
+
+        // Periksa apakah keyword template mengandung entity yang terdeteksi
+        if (isset($intentEntity['entity'])) {
+            $entity = $intentEntity['entity'];
+            if (stripos($template->keywords, $entity) !== false) {
+                $boost += 0.05;
+            }
+
+            // Periksa juga di question pattern
+            if (stripos($template->question_pattern, $entity) !== false) {
+                $boost += 0.05;
+            }
+        }
+
+        // Cek intent juga
+        if (isset($intentEntity['intent'])) {
+            $intent = $intentEntity['intent'];
+
+            // Petakan intent ke kategori
+            $intentCategoryMap = [
+                'informasi' => [1, 2, 5, 6, 10], // Map ke ID kategori yang cocok
+                'pemesanan' => [3, 13],
+                'pembayaran' => [4, 12],
+                'bantuan' => [8, 9],
+                'keluhan' => [8, 9],
+                'konfirmasi' => [1, 3, 4, 5],
+                'perubahan' => [3, 12]
+            ];
+
+            if (isset($intentCategoryMap[$intent]) && in_array($template->category_id, $intentCategoryMap[$intent])) {
+                $boost += 0.05;
+            }
+        }
+
+        return min(0.1, $boost); // Maksimal 10% boost
+    }
+
+    /**
+     * Hitung bobot kontekstual untuk kata kunci yang baru disebutkan
+     */
+    private function calculateKeywordContextBoost($template, $recentKeywords)
+    {
+        $templateKeywords = explode(',', $template->keywords);
+        $matchCount = 0;
+        $weightedMatchCount = 0;
+
+        foreach ($templateKeywords as $templateKeyword) {
+            $templateKeyword = trim($templateKeyword);
+            foreach ($recentKeywords as $index => $recentKeyword) {
+                $weight = 1 - ($index / count($recentKeywords)) * 0.5; // Keywords terbaru memiliki bobot lebih tinggi
+
+                if (stripos($templateKeyword, $recentKeyword) !== false || stripos($recentKeyword, $templateKeyword) !== false) {
+                    $matchCount++;
+                    $weightedMatchCount += $weight;
+                }
+            }
+        }
+
+        // Maksimal boost 12% untuk kata kunci terkait konteks
+        return min(0.12, $weightedMatchCount * 0.02);
+    }
+
+    /**
+     * Hitung skor kecocokan dengan algoritma yang ditingkatkan
+     */
+    private function calculateEnhancedMatchScore($message, $keywords, $template)
+    {
+        // Skor dasar
+        $score = 0;
+
+        // Pattern matching
+        $pattern = $this->cleanText($template->question_pattern);
+
+        // TF-IDF like scoring dengan kesamaan teks
+        $messageWords = explode(' ', $message);
+        $patternWords = explode(' ', $pattern);
+
+        // Hitung term frequency untuk pesan dan pattern
+        $messageTF = array_count_values($messageWords);
+        $patternTF = array_count_values($patternWords);
+
+        // Hitung cosine similarity berdasarkan vector terms
+        $dotProduct = 0;
+        $magnitudeMessage = 0;
+        $magnitudePattern = 0;
+
+        $allTerms = array_unique(array_merge(array_keys($messageTF), array_keys($patternTF)));
+
+        foreach ($allTerms as $term) {
+            $mTF = isset($messageTF[$term]) ? $messageTF[$term] : 0;
+            $pTF = isset($patternTF[$term]) ? $patternTF[$term] : 0;
+
+            $dotProduct += $mTF * $pTF;
+            $magnitudeMessage += $mTF * $mTF;
+            $magnitudePattern += $pTF * $pTF;
+        }
+
+        $magnitudeMessage = sqrt($magnitudeMessage);
+        $magnitudePattern = sqrt($magnitudePattern);
+
+        $cosineSimilarity = 0;
+        if ($magnitudeMessage > 0 && $magnitudePattern > 0) {
+            $cosineSimilarity = $dotProduct / ($magnitudeMessage * $magnitudePattern);
+        }
+
+        // Tambahkan skor cosine similarity (25%)
+        $score += $cosineSimilarity * 0.25;
+
+        // Tambahkan skor Levenshtein yang dinormalisasi (15%)
+        $messageLength = strlen($message);
+        $patternLength = strlen($pattern);
+        $maxLength = max($messageLength, $patternLength);
+
+        if ($maxLength > 0) {
+            $levenDist = levenshtein($message, $pattern);
+            $levenSimilarity = ($maxLength - $levenDist) / $maxLength;
+            $score += $levenSimilarity * 0.15;
+        }
+
+        // Kecocokan kata kunci dengan template (45%)
+        $templateKeywords = explode(',', $template->keywords);
+        $keywordMatches = 0;
+        $totalTemplateKeywords = count($templateKeywords);
+        $keywordImportance = [];
+
+        // Identifikasi kata kunci penting
+        foreach ($templateKeywords as $index => $templateKeyword) {
+            $templateKeyword = trim($templateKeyword);
+            // Keyword di awal list lebih penting (lebih relevan)
+            $keywordImportance[$templateKeyword] = 1 + ($totalTemplateKeywords - $index) / $totalTemplateKeywords;
+        }
+
+        // Kecocokan kata kunci individu
+        foreach ($keywords as $keyword) {
+            foreach ($templateKeywords as $templateKeyword) {
+                $templateKeyword = trim($templateKeyword);
+
+                // Cek kecocokan partial dan pola stemming sederhana
+                $keywordStem = $this->simpleStem($keyword);
+                $templateStem = $this->simpleStem($templateKeyword);
+
+                if (strpos($keywordStem, $templateStem) !== false ||
+                    strpos($templateStem, $keywordStem) !== false ||
+                    similar_text($keywordStem, $templateStem) / max(strlen($keywordStem), strlen($templateStem)) > 0.8) {
+                    $matchValue = isset($keywordImportance[$templateKeyword]) ? $keywordImportance[$templateKeyword] : 1;
+                    $keywordMatches += $matchValue;
+                    break;
+                }
+            }
+        }
+
+        // Kecocokan frasa
+        foreach ($keywords as $keyword) {
+            // Cek apakah ini adalah frasa (multi-kata)
+            if (strpos($keyword, ' ') !== false) {
+                // Ini adalah frasa
+                foreach ($templateKeywords as $templateKeyword) {
+                    $templateKeyword = trim($templateKeyword);
+
+                    // Cek kecocokan phrase yang lebih kuat
+                    if (stripos($keyword, $templateKeyword) !== false ||
+                        stripos($templateKeyword, $keyword) !== false ||
+                        similar_text($keyword, $templateKeyword) / max(strlen($keyword), strlen($templateKeyword)) > 0.7) {
+                        // Frasa memberikan bobot lebih tinggi (2x) dari kata kunci biasa
+                        $matchValue = (isset($keywordImportance[$templateKeyword]) ? $keywordImportance[$templateKeyword] : 1) * 2;
+                        $keywordMatches += $matchValue;
+                        break;
+                    }
+                }
+            }
+        }
+
+        $keywordScore = count($keywords) > 0 ? min(1, $keywordMatches / (count($keywords) * 1.5)) : 0;
+        $score += $keywordScore * 0.45;
+
+        // Prioritas template (0-10) dengan pengaruh yang lebih signifikan (15%)
+        $priorityBoost = $template->priority / 10 * 0.15;
+        $score += $priorityBoost;
+
+        return $score;
+    }
+
+    /**
+     * Stemming sederhana untuk Bahasa Indonesia
+     * Catatan: Ini hanya implementasi dasar, untuk produksi gunakan library NLP
+     */
+    private function simpleStem($word)
+    {
+        $word = strtolower(trim($word));
+
+        // Akhiran sederhana dalam Bahasa Indonesia
+        $suffixes = ['kan', 'an', 'i', 'lah', 'kah', 'nya', 'ku', 'mu'];
+
+        // Awalan sederhana dalam Bahasa Indonesia
+        $prefixes = ['me', 'pe', 'be', 'te', 'di', 'ke', 'se'];
+
+        // Coba hapus akhiran
+        foreach ($suffixes as $suffix) {
+            if (strlen($word) > strlen($suffix) + 2 && substr($word, -strlen($suffix)) === $suffix) {
+                $word = substr($word, 0, -strlen($suffix));
+                break; // Hanya hapus satu akhiran
+            }
+        }
+
+        // Coba hapus awalan
+        foreach ($prefixes as $prefix) {
+            if (strlen($word) > strlen($prefix) + 2 && substr($word, 0, strlen($prefix)) === $prefix) {
+                $word = substr($word, strlen($prefix));
+                break; // Hanya hapus satu awalan
+            }
+        }
+
+        return $word;
+    }
+}

@@ -333,29 +333,29 @@ class ScheduleController extends Controller
     }
 
     /**
- * Menghapus tanggal jadwal tertentu
- */
-public function destroyDate($id, $dateId)
-{
-    $scheduleDate = ScheduleDate::where('schedule_id', $id)
-        ->where('id', $dateId)
-        ->firstOrFail();
+     * Menghapus tanggal jadwal tertentu
+     */
+    public function destroyDate($id, $dateId)
+    {
+        $scheduleDate = ScheduleDate::where('schedule_id', $id)
+            ->where('id', $dateId)
+            ->firstOrFail();
 
-    // Periksa apakah tanggal jadwal memiliki penumpang atau kendaraan
-    $hasBookings = $scheduleDate->passenger_count > 0 ||
-                  $scheduleDate->motorcycle_count > 0 ||
-                  $scheduleDate->car_count > 0 ||
-                  $scheduleDate->bus_count > 0 ||
-                  $scheduleDate->truck_count > 0;
+        // Periksa apakah tanggal jadwal memiliki penumpang atau kendaraan
+        $hasBookings = $scheduleDate->passenger_count > 0 ||
+            $scheduleDate->motorcycle_count > 0 ||
+            $scheduleDate->car_count > 0 ||
+            $scheduleDate->bus_count > 0 ||
+            $scheduleDate->truck_count > 0;
 
-    if ($hasBookings) {
+        if ($hasBookings) {
+            return redirect()->route('admin.schedules.dates', $id)
+                ->with('error', 'Tanggal jadwal tidak dapat dihapus karena memiliki booking terkait');
+        }
+
+        $scheduleDate->delete();
+
         return redirect()->route('admin.schedules.dates', $id)
-            ->with('error', 'Tanggal jadwal tidak dapat dihapus karena memiliki booking terkait');
+            ->with('success', 'Tanggal jadwal berhasil dihapus');
     }
-
-    $scheduleDate->delete();
-
-    return redirect()->route('admin.schedules.dates', $id)
-        ->with('success', 'Tanggal jadwal berhasil dihapus');
-}
 }

@@ -61,6 +61,10 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
     }
   }
 
+  String _formatDateForApi(DateTime date) {
+    return DateFormat('yyyy-MM-dd').format(date);
+  }
+
   // Tambahkan fungsi untuk menyimpan tanggal secara persisten
   void _selectSchedule(Schedule schedule) {
     final bookingProvider = Provider.of<BookingProvider>(
@@ -69,24 +73,15 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
     );
 
     // Log untuk debugging
+    final formattedDate = _formatDateForApi(_selectedDate);
     print(
-      'DEBUG: Selecting schedule with ID ${schedule.id} for date ${DateFormat('yyyy-MM-dd').format(_selectedDate)}',
+      'DEBUG: Selecting schedule with ID ${schedule.id} for date $formattedDate',
     );
 
     try {
       // Pastikan tanggal dan jadwal disimpan dengan benar
       bookingProvider.setSelectedSchedule(schedule);
       bookingProvider.setSelectedDate(_selectedDate);
-
-      // Simpan ke SharedPreferences dengan format konsisten
-      final formattedDate = DateFormat('yyyy-MM-dd').format(_selectedDate);
-      SharedPreferences.getInstance().then((prefs) {
-        prefs.setString('selected_date', formattedDate);
-        prefs.setInt('selected_schedule_id', schedule.id);
-        print(
-          'DEBUG: Saved to SharedPreferences: date=$formattedDate, scheduleId=${schedule.id}',
-        );
-      });
 
       // Navigasi ke halaman berikutnya
       Navigator.pushNamed(context, '/booking/passengers');
@@ -105,16 +100,10 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
       listen: false,
     );
     try {
-      // Log lebih detail untuk debugging
-      print('DEBUG: Loading schedules for route ${widget.route.id}');
-      print('DEBUG: Selected date (original): $_selectedDate');
-      print(
-        'DEBUG: Selected date (formatted): ${DateFormat('yyyy-MM-dd').format(_selectedDate)}',
-      );
-      print('DEBUG: Local timezone offset: ${DateTime.now().timeZoneOffset}');
+      // Gunakan method pembantu untuk format tanggal
+      final formattedDate = _formatDateForApi(_selectedDate);
+      print('DEBUG: Loading schedules for date: $formattedDate');
 
-      // Kirim tanggal yang konsisten ke backend
-      final formattedDate = DateFormat('yyyy-MM-dd').format(_selectedDate);
       await scheduleProvider.getSchedulesByFormattedDate(
         widget.route.id,
         formattedDate,

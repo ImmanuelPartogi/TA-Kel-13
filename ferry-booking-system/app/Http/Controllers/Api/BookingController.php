@@ -104,7 +104,21 @@ class BookingController extends Controller
 
         // Cek ketersediaan jadwal
         $schedule = Schedule::findOrFail($request->schedule_id);
-        $bookingDate = Carbon::parse($request->booking_date);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $request->booking_date)) {
+            $bookingDate = Carbon::createFromFormat('Y-m-d', $request->booking_date, 'Asia/Jakarta');
+        } else {
+            // Format khusus untuk parsing tanggal ISO atau format lainnya
+            $bookingDate = Carbon::parse($request->booking_date)->setTimezone('Asia/Jakarta');
+            // Pastikan hanya mengambil tanggal (tanpa waktu)
+            $bookingDate = Carbon::createFromFormat('Y-m-d', $bookingDate->format('Y-m-d'), 'Asia/Jakarta');
+        }
+
+        // Tambahkan log debug untuk memastikan tanggal yang diproses benar
+        Log::info('Processed booking date', [
+            'raw_date' => $request->booking_date,
+            'parsed_date' => $bookingDate->format('Y-m-d'),
+            'day_of_week' => $bookingDate->dayOfWeek
+        ]);
 
         Log::info('Checking schedule availability', [
             'schedule_id' => $schedule->id,
@@ -132,6 +146,13 @@ class BookingController extends Controller
         $scheduleDate = ScheduleDate::where('schedule_id', $schedule->id)
             ->where('date', $bookingDate->format('Y-m-d'))
             ->first();
+
+        // Tambahkan log untuk memeriksa hasil query
+        Log::info('ScheduleDate query', [
+            'schedule_id' => $schedule->id,
+            'formatted_date' => $bookingDate->format('Y-m-d'),
+            'found' => $scheduleDate ? true : false
+        ]);
 
         if (!$scheduleDate || $scheduleDate->status !== 'AVAILABLE') {
             return response()->json([
@@ -285,7 +306,7 @@ class BookingController extends Controller
                 'booking_code' => 'FBS-' . strtoupper(Str::random(8)),
                 'user_id' => $user->id,
                 'schedule_id' => $request->schedule_id,
-                'booking_date' => $request->booking_date,
+                'booking_date' => $bookingDate->format('Y-m-d'), // Format standard Y-m-d
                 'passenger_count' => $request->passenger_count,
                 'vehicle_count' => $request->vehicle_count,
                 'total_amount' => $totalAmount,

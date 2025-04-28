@@ -79,24 +79,18 @@ class ScheduleController extends Controller
 
             // PERBAIKAN: Auto-create ScheduleDate jika belum ada
             if ($scheduleDatesCount === 0) {
-                Log::info('Tidak ada ScheduleDate, mencoba membuat otomatis', [
+                Log::info('Tidak ada ScheduleDate, tanggal tidak tersedia', [
                     'schedule_ids' => $scheduleIds->toArray(),
                     'date' => $date->format('Y-m-d')
                 ]);
 
-                // Buat ScheduleDate untuk semua jadwal pada tanggal ini
-                foreach ($schedules as $schedule) {
-                    ScheduleDate::create([
-                        'schedule_id' => $schedule->id,
-                        'date' => $date->format('Y-m-d'),
-                        'passenger_count' => 0,
-                        'motorcycle_count' => 0,
-                        'car_count' => 0,
-                        'bus_count' => 0,
-                        'truck_count' => 0,
-                        'status' => 'AVAILABLE', // Default ke AVAILABLE
-                    ]);
-                }
+                // SOLUSI UTAMA: JANGAN membuat jadwal secara otomatis
+                // Kembalikan array kosong jika tidak ada jadwal
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Tidak ada jadwal tersedia untuk tanggal ini',
+                    'data' => []
+                ], 200);
             }
 
             // Ambil ScheduleDate setelah mungkin dibuat

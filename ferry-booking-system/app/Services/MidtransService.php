@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\Payment;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class MidtransService
 {
@@ -77,8 +78,7 @@ class MidtransService
             $params['bank_transfer'] = [
                 'bank' => $paymentMethod
             ];
-        }
-        elseif ($paymentType == 'e_wallet') {
+        } elseif ($paymentType == 'e_wallet') {
             // Perbaikan untuk E-wallet: tambahkan parameter yang diperlukan
             if ($paymentMethod == 'gopay') {
                 $params['payment_type'] = 'gopay';
@@ -86,16 +86,14 @@ class MidtransService
                     'enable_callback' => true,
                     'callback_url' => $this->callbackUrl
                 ];
-            }
-            elseif ($paymentMethod == 'shopeepay') {
+            } elseif ($paymentMethod == 'shopeepay') {
                 $params['payment_type'] = 'shopeepay';
                 $params['shopeepay'] = [
                     'callback_url' => $this->callbackUrl
                 ];
             }
             // Catatan: DANA dan OVO tidak didukung di Sandbox saat ini
-        }
-        elseif ($paymentType == 'credit_card') {
+        } elseif ($paymentType == 'credit_card') {
             $params['payment_type'] = 'credit_card';
             $params['credit_card'] = [
                 'secure' => true,
@@ -104,8 +102,7 @@ class MidtransService
                 'installment_term' => $options['installment_term'] ?? 0,
                 'bins' => $options['bins'] ?? [],
             ];
-        }
-        elseif ($paymentType == 'qris') {
+        } elseif ($paymentType == 'qris') {
             $params['payment_type'] = 'qris';
             $params['qris'] = [
                 'acquirer' => 'gopay'
@@ -131,8 +128,7 @@ class MidtransService
                 ]);
 
                 return $response;
-            }
-            catch (\Exception $e) {
+            } catch (\Exception $e) {
                 Log::error("Midtrans API attempt {$attempt} failed", [
                     'booking_code' => $booking->booking_code,
                     'error_message' => $e->getMessage(),
@@ -142,8 +138,7 @@ class MidtransService
                 if ($attempt < $maxRetries) {
                     sleep($backoff);
                     $backoff *= 2; // Eksponensial backoff
-                }
-                else {
+                } else {
                     // Jika semua percobaan gagal, coba gunakan fallback
                     return $this->createFallbackTransaction($booking, $paymentType, $paymentMethod);
                 }
@@ -156,65 +151,43 @@ class MidtransService
     /**
      * Metode fallback untuk membuat transaksi saat API Midtrans gagal
      */
-    protected function createFallbackTransaction(Booking $booking, $paymentType, $paymentMethod)
-    {
-        Log::warning('Using fallback transaction method', [
+    // Di MidtransService.php
+protected function createFallbackTransaction(Booking $booking, $paymentType, $paymentMethod)
+{
+    Log::info('Creating fallback transaction', [
+        'booking_code' => $booking->booking_code,
+        'payment_type' => $paymentType,
+        'payment_method' => $paymentMethod
+    ]);
+
+    // Menggunakan prefix dari konfigurasi
+    $bankPrefix = config('midtrans.fallback.bank_prefix.' . strtolower($paymentMethod), '99');
+    $vaNumber = $bankPrefix . substr(str_pad($booking->id, 8, '0', STR_PAD_LEFT), 0, 8) . mt_rand(1000, 9999);
+
+    $payment = Payment::where('booking_id', $booking->id)->latest()->first();
+
+    if ($payment) {
+        $payment->virtual_account_number = $vaNumber;
+        $payment->external_reference = $paymentMethod . ' ' . $vaNumber;
+        $payment->save();
+
+        Log::info('Fallback VA number created', [
             'booking_code' => $booking->booking_code,
-            'payment_type' => $paymentType,
-            'payment_method' => $paymentMethod
+            'va_number' => $vaNumber
         ]);
 
-        $payment = Payment::where('booking_id', $booking->id)->latest()->first();
-
-        if (!$payment) {
-            return null;
-        }
-
-        // Buat data fallback berdasarkan tipe pembayaran
-        if ($paymentType == 'virtual_account') {
-            // Buat nomor VA dummy untuk testing
-            $vaPrefix = '99'; // Prefix untuk VA dummy
-            $vaNumber = $vaPrefix . substr(str_pad($booking->id, 8, '0', STR_PAD_LEFT), 0, 8) . mt_rand(1000, 9999);
-
-            $payment->virtual_account_number = $vaNumber;
-            $payment->external_reference = $paymentMethod . ' ' . $vaNumber;
-            $payment->save();
-
-            return [
-                'status_code' => '201',
-                'transaction_status' => 'pending',
-                'va_numbers' => [
-                    ['bank' => $paymentMethod, 'va_number' => $vaNumber]
-                ],
-                'is_fallback' => true
-            ];
-        }
-        elseif ($paymentType == 'e_wallet') {
-            // Buat QR code URL dummy untuk e-wallet
-            $qrCodeUrl = 'https://api.sandbox.midtrans.com/v2/qris/simulator/static';
-            $payment->qr_code_url = $qrCodeUrl;
-            $payment->deep_link_url = 'gojek://gopay/merchant?=dummy_deeplink_' . $booking->id;
-            $payment->save();
-
-            return [
-                'status_code' => '201',
-                'transaction_status' => 'pending',
-                'actions' => [
-                    [
-                        'name' => 'generate-qr-code',
-                        'url' => $qrCodeUrl
-                    ],
-                    [
-                        'name' => 'deeplink-redirect',
-                        'url' => $payment->deep_link_url
-                    ]
-                ],
-                'is_fallback' => true
-            ];
-        }
-
-        return null;
+        return [
+            'status_code' => '201',
+            'transaction_status' => 'pending',
+            'va_numbers' => [
+                ['bank' => $paymentMethod, 'va_number' => $vaNumber]
+            ],
+            'is_fallback' => true
+        ];
     }
+
+    return null;
+}
 
     /**
      * Metode yang ditingkatkan untuk API request dengan HTTP client
@@ -842,6 +815,119 @@ class MidtransService
                 'Selesaikan pembayaran sebelum batas waktu',
                 'Simpan bukti pembayaran sebagai referensi'
             ]
+        ];
+    }
+
+    /**
+     * Request refund to Midtrans
+     */
+    public function requestRefund($transactionId, $amount, $reason)
+    {
+        $url = $this->getBaseUrl() . '/' . $transactionId . '/refund';
+
+        $payload = [
+            'refund_key' => 'REF-' . Str::random(8),
+            'amount' => $amount,
+            'reason' => $reason
+        ];
+
+        Log::info('Requesting refund to Midtrans', [
+            'transaction_id' => $transactionId,
+            'amount' => $amount,
+            'reason' => $reason
+        ]);
+
+        $response = Http::withHeaders($this->getHeaders())
+            ->post($url, $payload);
+
+        $responseData = $response->json();
+
+        Log::info('Midtrans refund response', [
+            'transaction_id' => $transactionId,
+            'response' => $responseData
+        ]);
+
+        if ($response->successful()) {
+            return $responseData;
+        } else {
+            throw new \Exception('Midtrans refund failed: ' . ($responseData['status_message'] ?? 'Unknown error'));
+        }
+    }
+
+    /**
+     * Check refund status
+     */
+    public function checkRefundStatus($refundKey)
+    {
+        $url = $this->getBaseUrl() . '/refund/' . $refundKey;
+
+        $response = Http::withHeaders($this->getHeaders())
+            ->get($url);
+
+        $responseData = $response->json();
+
+        Log::info('Midtrans refund status check', [
+            'refund_key' => $refundKey,
+            'response' => $responseData
+        ]);
+
+        if ($response->successful()) {
+            return $responseData;
+        } else {
+            throw new \Exception('Midtrans refund status check failed: ' . ($responseData['status_message'] ?? 'Unknown error'));
+        }
+    }
+
+    /**
+     * Cancel a pending refund
+     */
+    public function cancelRefund($refundKey)
+    {
+        $url = $this->getBaseUrl() . '/refund/' . $refundKey . '/cancel';
+
+        $response = Http::withHeaders($this->getHeaders())
+            ->post($url);
+
+        $responseData = $response->json();
+
+        Log::info('Midtrans refund cancellation', [
+            'refund_key' => $refundKey,
+            'response' => $responseData
+        ]);
+
+        if ($response->successful()) {
+            return $responseData;
+        } else {
+            throw new \Exception('Midtrans refund cancellation failed: ' . ($responseData['status_message'] ?? 'Unknown error'));
+        }
+    }
+
+    /**
+     * Get Midtrans API base URL based on environment
+     */
+    private function getBaseUrl()
+    {
+        $isProduction = env('MIDTRANS_PRODUCTION', false);
+
+        if ($isProduction) {
+            return 'https://api.midtrans.com/v2';
+        } else {
+            return 'https://api.sandbox.midtrans.com/v2';
+        }
+    }
+
+    /**
+     * Get headers for Midtrans API
+     */
+    private function getHeaders()
+    {
+        $serverKey = env('MIDTRANS_SERVER_KEY', '');
+        $auth = base64_encode($serverKey . ':');
+
+        return [
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json',
+            'Authorization' => 'Basic ' . $auth
         ];
     }
 }

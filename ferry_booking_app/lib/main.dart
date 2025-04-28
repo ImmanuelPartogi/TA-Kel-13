@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:ferry_booking_app/models/route.dart';
+import 'package:ferry_booking_app/screens/notification/notification_screen.dart';
 import 'package:ferry_booking_app/screens/payment/payment_method_screen.dart';
 import 'package:ferry_booking_app/screens/booking/schedule_selection_screen.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ import 'package:ferry_booking_app/providers/booking_provider.dart';
 import 'package:ferry_booking_app/providers/schedule_provider.dart';
 import 'package:ferry_booking_app/providers/notification_provider.dart';
 import 'package:ferry_booking_app/providers/chatbot_provider.dart';
+import 'package:ferry_booking_app/providers/refund_provider.dart';
 import 'package:ferry_booking_app/screens/splash_screen.dart';
 import 'package:ferry_booking_app/screens/auth/login_screen.dart';
 import 'package:ferry_booking_app/screens/auth/register_screen.dart';
@@ -30,6 +32,7 @@ import 'package:uuid/uuid.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:ferry_booking_app/screens/auth/forgot_password_screen.dart';
 import 'package:ferry_booking_app/screens/auth/reset_password_screen.dart';
+import 'package:ferry_booking_app/services/local_notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,14 +52,17 @@ Future<void> main() async {
     return true; // Return true untuk mencegah propagasi error
   };
 
-  // Inisialisasi locale data untuk format tanggal
+  // Initialize Notification Service
+  await LocalNotificationService().init();
+
+  // Initialize locale data for date formatting
   await initializeDateFormatting('id_ID', null);
 
   // Initialize device ID if it doesn't exist
   final prefs = await SharedPreferences.getInstance();
   if (prefs.getString('device_id') == null) {
     final uuid = Uuid();
-    final deviceId = uuid.v4(); // Generate a unique UUID v4
+    final deviceId = uuid.v4();
     await prefs.setString('device_id', deviceId);
   }
 
@@ -75,6 +81,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ScheduleProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => ChatbotProvider()),
+        ChangeNotifierProvider(create: (_) => RefundProvider()), // Provider untuk Refund
       ],
       child: MaterialApp(
         title: 'Ferry Booking',
@@ -107,6 +114,7 @@ class MyApp extends StatelessWidget {
 
           '/booking/payment-method': (context) => const PaymentMethodScreen(),
           '/forgot-password': (context) => const ForgotPasswordScreen(),
+          '/notifications': (context) => const NotificationScreen(),
         },
 
         // Di bagian onGenerateRoute (rute dengan parameter wajib)

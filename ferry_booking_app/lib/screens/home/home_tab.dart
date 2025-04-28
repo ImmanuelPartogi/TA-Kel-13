@@ -139,47 +139,6 @@ class HomeTab extends StatelessWidget {
           // Spacing after search box - PERBAIKAN: SizedBox harus dibungkus SliverToBoxAdapter
           SliverToBoxAdapter(child: SizedBox(height: 40)),
 
-          // Quick Links
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildQuickLink(context, Icons.history, 'Riwayat', () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const HistoryScreen(),
-                      ),
-                    );
-                  }),
-                  _buildQuickLink(
-                    context,
-                    Icons.notifications_outlined,
-                    'Notifikasi',
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const NotificationScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildQuickLink(context, Icons.help_outline, 'Bantuan', () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const HelpScreen(),
-                      ),
-                    );
-                  }),
-                ],
-              ),
-            ),
-          ),
-
           // Active Bookings
           SliverToBoxAdapter(
             child: Padding(

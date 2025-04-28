@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\VehicleController;
 use App\Http\Controllers\Api\ChatbotController;
 use App\Http\Controllers\Api\PollingController;
+use App\Http\Controllers\Api\RefundController;
 
 // Public routes
 Route::post('/auth/register', [AuthController::class, 'register']);
@@ -81,6 +82,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notifications/{id}', [NotificationController::class, 'show']);
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
     Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+    Route::get('/notifications/unread-count', [NotificationController::class, 'getUnreadCount']);
 
     // Vehicles
     Route::get('/vehicles', [VehicleController::class, 'index']);
@@ -91,4 +93,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Chatbot routes yang memerlukan autentikasi
     Route::get('/chatbot/conversations', [ChatbotController::class, 'getUserConversations']);
+
+    // Refund routes
+    Route::post('/refunds/request', [RefundController::class, 'requestRefund']);
+    Route::get('/refunds/booking/{bookingId}', [RefundController::class, 'getRefundDetails']);
+    Route::post('/refunds/{refundId}/cancel', [RefundController::class, 'cancelRefund']);
 });

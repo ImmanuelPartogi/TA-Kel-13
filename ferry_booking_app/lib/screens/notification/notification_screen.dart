@@ -18,21 +18,27 @@ class _NotificationScreenState extends State<NotificationScreen> {
     super.initState();
     _loadNotifications();
   }
-  
+
   Future<void> _loadNotifications() async {
-    final notificationProvider = Provider.of<NotificationProvider>(context, listen: false);
+    final notificationProvider = Provider.of<NotificationProvider>(
+      context,
+      listen: false,
+    );
     await notificationProvider.getNotifications();
   }
-  
+
   Future<void> _refreshNotifications() async {
     await _loadNotifications();
   }
-  
+
   Future<void> _markAllAsRead() async {
-    final notificationProvider = Provider.of<NotificationProvider>(context, listen: false);
+    final notificationProvider = Provider.of<NotificationProvider>(
+      context,
+      listen: false,
+    );
     await notificationProvider.markAllAsRead();
   }
-  
+
   Widget _getNotificationIcon(String type) {
     switch (type) {
       case 'BOOKING':
@@ -55,11 +61,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
             color: Colors.green[50],
             shape: BoxShape.circle,
           ),
-          child: Icon(
-            Icons.payment,
-            color: Colors.green[700],
-            size: 24,
-          ),
+          child: Icon(Icons.payment, color: Colors.green[700], size: 24),
         );
       case 'SCHEDULE_CHANGE':
         return Container(
@@ -68,11 +70,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
             color: Colors.orange[50],
             shape: BoxShape.circle,
           ),
-          child: Icon(
-            Icons.schedule,
-            color: Colors.orange[700],
-            size: 24,
-          ),
+          child: Icon(Icons.schedule, color: Colors.orange[700], size: 24),
         );
       case 'PROMO':
         return Container(
@@ -81,9 +79,31 @@ class _NotificationScreenState extends State<NotificationScreen> {
             color: Colors.purple[50],
             shape: BoxShape.circle,
           ),
+          child: Icon(Icons.local_offer, color: Colors.purple[700], size: 24),
+        );
+      case 'BOARDING':
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.orange[50],
+            shape: BoxShape.circle,
+          ),
           child: Icon(
-            Icons.local_offer,
-            color: Colors.purple[700],
+            Icons.directions_boat,
+            color: Colors.orange[700],
+            size: 24,
+          ),
+        );
+      case 'ADMIN_BOARDING':
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.indigo[50],
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            Icons.admin_panel_settings,
+            color: Colors.indigo[700],
             size: 24,
           ),
         );
@@ -94,11 +114,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
             color: Colors.grey[200],
             shape: BoxShape.circle,
           ),
-          child: Icon(
-            Icons.notifications,
-            color: Colors.grey[700],
-            size: 24,
-          ),
+          child: Icon(Icons.notifications, color: Colors.grey[700], size: 24),
         );
     }
   }
@@ -107,7 +123,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   Widget build(BuildContext context) {
     final notificationProvider = Provider.of<NotificationProvider>(context);
     final notifications = notificationProvider.notifications;
-    
+
     return Scaffold(
       appBar: CustomAppBar(
         title: 'Notifikasi',
@@ -115,32 +131,34 @@ class _NotificationScreenState extends State<NotificationScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.done_all),
-            onPressed: notifications != null && notifications.isNotEmpty
-                ? _markAllAsRead
-                : null,
+            onPressed:
+                notifications != null && notifications.isNotEmpty
+                    ? _markAllAsRead
+                    : null,
             tooltip: 'Tandai semua sebagai dibaca',
           ),
         ],
       ),
       body: RefreshIndicator(
         onRefresh: _refreshNotifications,
-        child: notificationProvider.isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : notifications == null || notifications.isEmpty
+        child:
+            notificationProvider.isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : notifications == null || notifications.isEmpty
                 ? _buildEmptyNotifications()
                 : ListView.separated(
-                    padding: const EdgeInsets.all(16.0),
-                    itemCount: notifications.length,
-                    separatorBuilder: (context, index) => const Divider(),
-                    itemBuilder: (context, index) {
-                      final notification = notifications[index];
-                      return _buildNotificationItem(notification);
-                    },
-                  ),
+                  padding: const EdgeInsets.all(16.0),
+                  itemCount: notifications.length,
+                  separatorBuilder: (context, index) => const Divider(),
+                  itemBuilder: (context, index) {
+                    final notification = notifications[index];
+                    return _buildNotificationItem(notification);
+                  },
+                ),
       ),
     );
   }
-  
+
   Widget _buildEmptyNotifications() {
     return Center(
       child: SingleChildScrollView(
@@ -156,29 +174,29 @@ class _NotificationScreenState extends State<NotificationScreen> {
             const SizedBox(height: 16),
             Text(
               'Tidak ada notifikasi',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.grey[600], fontSize: 16),
             ),
           ],
         ),
       ),
     );
   }
-  
+
   Widget _buildNotificationItem(UserNotification notification) {
     // Format datetime
     final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'id_ID');
     final createdAt = DateTime.parse(notification.createdAt);
-    
+
     return InkWell(
       onTap: () {
         if (!notification.isRead) {
-          final notificationProvider = Provider.of<NotificationProvider>(context, listen: false);
+          final notificationProvider = Provider.of<NotificationProvider>(
+            context,
+            listen: false,
+          );
           notificationProvider.markAsRead(notification.id);
         }
-        
+
         // Handle notification action if any
         if (notification.data != null && notification.data!['action'] != null) {
           switch (notification.data!['action']) {
@@ -208,7 +226,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         child: Text(
                           notification.title,
                           style: TextStyle(
-                            fontWeight: !notification.isRead ? FontWeight.bold : null,
+                            fontWeight:
+                                !notification.isRead ? FontWeight.bold : null,
                             fontSize: 16,
                           ),
                         ),
@@ -227,17 +246,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   const SizedBox(height: 4),
                   Text(
                     notification.message,
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(color: Colors.grey[600]),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     dateFormat.format(createdAt),
-                    style: TextStyle(
-                      color: Colors.grey[500],
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
                   ),
                 ],
               ),

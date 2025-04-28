@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ferry_booking_app/providers/auth_provider.dart';
 import 'package:ferry_booking_app/providers/booking_provider.dart';
+import 'package:ferry_booking_app/providers/notification_provider.dart'; // Tambahkan import
 import 'package:ferry_booking_app/screens/home/home_tab.dart';
 import 'package:ferry_booking_app/screens/tickets/ticket_list_screen.dart';
 import 'package:ferry_booking_app/screens/profile/profile_screen.dart';
-import 'package:ferry_booking_app/widgets/chatbot_fab.dart'; // Tambahkan import
+import 'package:ferry_booking_app/widgets/chatbot_fab.dart';
+import 'package:ferry_booking_app/widgets/notification_badge.dart'; // Tambahkan import
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -17,11 +19,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _tabs = [
-    const HomeTab(),
-    const TicketListScreen(),
-    const ProfileScreen(),
-  ];
+  late List<Widget> _tabs;
 
   @override
   void initState() {
@@ -30,6 +28,8 @@ class _HomeScreenState extends State<HomeScreen> {
     // Gunakan ini untuk menunda pemanggilan sampai setelah build selesai
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadUserData();
+      // Muat notifikasi saat aplikasi dibuka
+      _loadNotifications();
     });
   }
 
@@ -41,9 +41,40 @@ class _HomeScreenState extends State<HomeScreen> {
     await bookingProvider.getBookings();
   }
 
+  Future<void> _loadNotifications() async {
+    final notificationProvider = Provider.of<NotificationProvider>(
+      context,
+      listen: false,
+    );
+    await notificationProvider.getNotifications();
+    // Mulai auto-refresh notifikasi
+    notificationProvider.startAutoRefresh();
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Inisialisasi tabs di sini untuk memastikan context tersedia untuk Provider
+    _tabs = [
+      const HomeTab(),
+      const TicketListScreen(),
+      const ProfileScreen(),
+    ];
+
     return Scaffold(
+      appBar: AppBar(
+        title: _getAppBarTitle(),
+        actions: [
+          NotificationBadge(
+            child: IconButton(
+              icon: const Icon(Icons.notifications),
+              onPressed: () {
+                Navigator.pushNamed(context, '/notifications');
+              },
+            ),
+          ),
+          const SizedBox(width: 10),
+        ],
+      ),
       body: _tabs[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
@@ -63,5 +94,30 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       floatingActionButton: const ChatbotFAB(),
     );
+  }
+
+  // Method untuk mendapatkan judul AppBar berdasarkan tab yang aktif
+  Widget _getAppBarTitle() {
+    switch (_currentIndex) {
+      case 0:
+        return const Text('Beranda');
+      case 1:
+        return const Text('Tiket Saya');
+      case 2:
+        return const Text('Profil');
+      default:
+        return const Text('Ferry Booking');
+    }
+  }
+
+  @override
+  void dispose() {
+    // Hentikan auto-refresh saat screen dihancurkan
+    final notificationProvider = Provider.of<NotificationProvider>(
+      context,
+      listen: false,
+    );
+    notificationProvider.stopAutoRefresh();
+    super.dispose();
   }
 }

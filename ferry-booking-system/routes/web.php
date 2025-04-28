@@ -55,6 +55,7 @@ Route::post('/operator/logout', [BackendLoginController::class, 'operatorLogout'
 | Import admin controllers
 |
 */
+
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\OperatorController;
@@ -63,7 +64,9 @@ use App\Http\Controllers\Admin\FerryController;
 use App\Http\Controllers\Admin\ScheduleController as AdminScheduleController;
 use App\Http\Controllers\Admin\BookingController as AdminBookingController;
 use App\Http\Controllers\Admin\ReportController as AdminReportController;
+use App\Http\Controllers\Admin\RefundController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\BookingController;
 
 // Admin routes with authentication
 Route::prefix('admin')->middleware(['auth:admin'])->name('admin.')->group(function () {
@@ -112,6 +115,24 @@ Route::prefix('admin')->middleware(['auth:admin'])->name('admin.')->group(functi
         Route::get('/booking/export', [AdminReportController::class, 'exportBookingReport'])->name('booking.export');
         Route::get('/revenue/export', [AdminReportController::class, 'exportRevenueReport'])->name('revenue.export');
     });
+
+    // Refund routes
+    Route::prefix('refunds')->name('refunds.')->group(function () {
+        Route::get('/', [RefundController::class, 'index'])->name('index');
+        Route::get('/{id}', [RefundController::class, 'show'])->name('show');
+        Route::get('/create/{bookingId}', [RefundController::class, 'create'])->name('create');
+        Route::post('/store/{bookingId}', [RefundController::class, 'store'])->name('store');
+        Route::post('/{id}/approve', [RefundController::class, 'approve'])->name('approve');
+        Route::post('/{id}/reject', [RefundController::class, 'reject'])->name('reject');
+        Route::post('/{id}/complete', [RefundController::class, 'complete'])->name('complete');
+    });
+
+    // Reschedule routes
+    Route::prefix('bookings')->name('bookings.')->group(function () {
+        Route::get('/{id}/reschedule', [BookingController::class, 'rescheduleForm'])->name('reschedule');
+        Route::post('/get-available-schedules', [BookingController::class, 'getAvailableSchedules'])->name('get-available-schedules');
+        Route::post('/{id}/process-reschedule', [BookingController::class, 'processReschedule'])->name('process-reschedule');
+    });
 });
 
 /*
@@ -122,6 +143,7 @@ Route::prefix('admin')->middleware(['auth:admin'])->name('admin.')->group(functi
 | Import operator controllers
 |
 */
+
 use App\Http\Controllers\Operator\DashboardController as OperatorDashboardController;
 use App\Http\Controllers\Operator\ScheduleController as OperatorScheduleController;
 use App\Http\Controllers\Operator\BookingController as OperatorBookingController;
@@ -182,7 +204,7 @@ Route::prefix('operator')->middleware(['auth:operator'])->name('operator.')->gro
 */
 
 // API untuk operator
-Route::prefix('api/operator')->middleware(['auth:operator', 'throttle:60,1'])->name('api.operator.')->group(function() {
+Route::prefix('api/operator')->middleware(['auth:operator', 'throttle:60,1'])->name('api.operator.')->group(function () {
     // Check kapasitas dan ketersediaan jadwal
     Route::post('/schedules/check-availability', [OperatorScheduleController::class, 'checkAvailability'])
         ->name('schedules.check-availability');
@@ -193,7 +215,7 @@ Route::prefix('api/operator')->middleware(['auth:operator', 'throttle:60,1'])->n
 });
 
 // API untuk admin
-Route::prefix('api/admin')->middleware(['auth:admin', 'throttle:60,1'])->name('api.admin.')->group(function() {
+Route::prefix('api/admin')->middleware(['auth:admin', 'throttle:60,1'])->name('api.admin.')->group(function () {
     // Dashboard stats
     Route::get('/dashboard/stats', [AdminDashboardController::class, 'getStats'])
         ->name('dashboard.stats');
@@ -204,6 +226,6 @@ Route::prefix('api/admin')->middleware(['auth:admin', 'throttle:60,1'])->name('a
 });
 
 // Error dan Fallback routes
-Route::fallback(function() {
+Route::fallback(function () {
     return response()->view('errors.404', [], 404);
 });

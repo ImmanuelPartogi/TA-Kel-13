@@ -19,6 +19,11 @@ class Kernel extends ConsoleKernel
             ->everyMinute()
             ->withoutOverlapping()
             ->appendOutputTo(storage_path('logs/payment-polling.log'));
+
+        $schedule->command('notifications:send-boarding-reminders')
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->appendOutputTo(storage_path('logs/payment-polling.log'));
     }
 
     protected function commands()

@@ -31,14 +31,14 @@ class BookingController extends Controller
 
         // Filter berdasarkan nama pengguna
         if ($request->has('user_name') && $request->user_name) {
-            $query->whereHas('user', function($q) use ($request) {
+            $query->whereHas('user', function ($q) use ($request) {
                 $q->where('name', 'like', '%' . $request->user_name . '%');
             });
         }
 
         // Filter berdasarkan rute
         if ($request->has('route_id') && $request->route_id) {
-            $query->whereHas('schedule', function($q) use ($request) {
+            $query->whereHas('schedule', function ($q) use ($request) {
                 $q->where('route_id', $request->route_id);
             });
         }
@@ -381,7 +381,6 @@ class BookingController extends Controller
 
             return redirect()->route('admin.bookings.show', $booking->id)
                 ->with('success', 'Booking berhasil dibuat');
-
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -501,12 +500,311 @@ class BookingController extends Controller
 
             return redirect()->route('admin.bookings.show', $id)
                 ->with('success', 'Status booking berhasil diperbarui');
-
         } catch (\Exception $e) {
             DB::rollBack();
 
             return redirect()->back()
                 ->withErrors(['error' => 'Terjadi kesalahan saat mengubah status booking: ' . $e->getMessage()]);
+        }
+    }
+
+    public function rescheduleForm($id)
+    {
+        $booking = Booking::with(['user', 'schedule.route', 'schedule.ferry', 'tickets', 'vehicles'])
+            ->findOrFail($id);
+
+        // Validasi booking yang bisa di-reschedule
+        if (!in_array($booking->status, ['CONFIRMED'])) {
+            return redirect()->route('admin.bookings.show', $id)
+                ->with('error', 'Hanya booking dengan status CONFIRMED yang dapat dijadwalkan ulang');
+        }
+
+        $routes = Route::where('status', 'ACTIVE')->get();
+
+        return view('admin.bookings.reschedule', compact('booking', 'routes'));
+    }
+
+    public function getAvailableSchedules(Request $request)
+    {
+        $request->validate([
+            'route_id' => 'required|exists:routes,id',
+            'date' => 'required|date|after_or_equal:today',
+            'passenger_count' => 'required|integer|min:1',
+            'vehicle_counts' => 'nullable|array',
+        ]);
+
+        $date = Carbon::parse($request->date);
+        $dayOfWeek = $date->dayOfWeek + 1; // Konversi ke format 1-7 (Senin-Minggu)
+
+        $query = Schedule::where('route_id', $request->route_id)
+            ->where('status', 'ACTIVE')
+            ->whereRaw("FIND_IN_SET('$dayOfWeek', days)")
+            ->with(['ferry', 'route']);
+
+        $schedules = $query->get();
+        $scheduleIds = $schedules->pluck('id');
+
+        // Ambil ketersediaan untuk tanggal yang dipilih
+        $scheduleDates = ScheduleDate::whereIn('schedule_id', $scheduleIds)
+            ->where('date', $date->format('Y-m-d'))
+            ->get()
+            ->keyBy('schedule_id');
+
+        $vehicleCounts = $request->vehicle_counts ?? [];
+
+        $result = $schedules->map(function ($schedule) use ($scheduleDates, $date, $request, $vehicleCounts) {
+            $scheduleDate = $scheduleDates->get($schedule->id);
+
+            // Kalau tidak ada data specifik untuk tanggal tersebut,
+            // tambahkan data default
+            if (!$scheduleDate) {
+                $scheduleDate = new ScheduleDate([
+                    'schedule_id' => $schedule->id,
+                    'date' => $date->format('Y-m-d'),
+                    'passenger_count' => 0,
+                    'motorcycle_count' => 0,
+                    'car_count' => 0,
+                    'bus_count' => 0,
+                    'truck_count' => 0,
+                    'status' => 'AVAILABLE'
+                ]);
+            }
+
+            // Cek ketersediaan
+            $passengerAvailable = ($schedule->ferry->capacity_passenger - $scheduleDate->passenger_count) >= $request->passenger_count;
+            $motorcycleAvailable = true;
+            $carAvailable = true;
+            $busAvailable = true;
+            $truckAvailable = true;
+
+            if (isset($vehicleCounts['MOTORCYCLE']) && $vehicleCounts['MOTORCYCLE'] > 0) {
+                $motorcycleAvailable = ($schedule->ferry->capacity_vehicle_motorcycle - $scheduleDate->motorcycle_count) >= $vehicleCounts['MOTORCYCLE'];
+            }
+
+            if (isset($vehicleCounts['CAR']) && $vehicleCounts['CAR'] > 0) {
+                $carAvailable = ($schedule->ferry->capacity_vehicle_car - $scheduleDate->car_count) >= $vehicleCounts['CAR'];
+            }
+
+            if (isset($vehicleCounts['BUS']) && $vehicleCounts['BUS'] > 0) {
+                $busAvailable = ($schedule->ferry->capacity_vehicle_bus - $scheduleDate->bus_count) >= $vehicleCounts['BUS'];
+            }
+
+            if (isset($vehicleCounts['TRUCK']) && $vehicleCounts['TRUCK'] > 0) {
+                $truckAvailable = ($schedule->ferry->capacity_vehicle_truck - $scheduleDate->truck_count) >= $vehicleCounts['TRUCK'];
+            }
+
+            $isAvailable = $passengerAvailable && $motorcycleAvailable && $carAvailable && $busAvailable && $truckAvailable && $scheduleDate->status === 'AVAILABLE';
+
+            // Gabungkan data jadwal dengan ketersediaan
+            $schedule->available_passenger = $schedule->ferry->capacity_passenger - $scheduleDate->passenger_count;
+            $schedule->available_motorcycle = $schedule->ferry->capacity_vehicle_motorcycle - $scheduleDate->motorcycle_count;
+            $schedule->available_car = $schedule->ferry->capacity_vehicle_car - $scheduleDate->car_count;
+            $schedule->available_bus = $schedule->ferry->capacity_vehicle_bus - $scheduleDate->bus_count;
+            $schedule->available_truck = $schedule->ferry->capacity_vehicle_truck - $scheduleDate->truck_count;
+            $schedule->schedule_date_status = $scheduleDate->status;
+            $schedule->is_available = $isAvailable;
+
+            return $schedule;
+        })->filter(function ($schedule) {
+            // Filter jadwal yang tidak tersedia
+            return $schedule->schedule_date_status === 'AVAILABLE';
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $result
+        ]);
+    }
+
+    public function processReschedule(Request $request, $id)
+    {
+        $request->validate([
+            'schedule_id' => 'required|exists:schedules,id',
+            'booking_date' => 'required|date|after_or_equal:today',
+            'notes' => 'nullable|string',
+        ]);
+
+        $originalBooking = Booking::with(['user', 'schedule.route', 'tickets', 'vehicles'])
+            ->findOrFail($id);
+
+        if ($originalBooking->status !== 'CONFIRMED') {
+            return redirect()->back()->with('error', 'Hanya booking dengan status CONFIRMED yang dapat dijadwalkan ulang');
+        }
+
+        $newSchedule = Schedule::with(['route', 'ferry'])->findOrFail($request->schedule_id);
+        $bookingDate = $request->booking_date;
+
+        // Verify schedule is available for the date
+        $dayOfWeek = date('N', strtotime($bookingDate)); // 1-7 for Monday-Sunday
+        if (!in_array($dayOfWeek, explode(',', $newSchedule->days))) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['schedule_id' => 'Jadwal tidak tersedia untuk tanggal yang dipilih']);
+        }
+
+        // Check seat availability
+        $scheduleDate = ScheduleDate::firstOrCreate(
+            ['schedule_id' => $newSchedule->id, 'date' => $bookingDate],
+            [
+                'passenger_count' => 0,
+                'motorcycle_count' => 0,
+                'car_count' => 0,
+                'bus_count' => 0,
+                'truck_count' => 0,
+                'status' => 'AVAILABLE'
+            ]
+        );
+
+        if ($scheduleDate->status !== 'AVAILABLE') {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['schedule_id' => 'Jadwal tidak tersedia untuk tanggal yang dipilih']);
+        }
+
+        // Cek ketersediaan untuk penumpang dan kendaraan
+        if ($scheduleDate->passenger_count + $originalBooking->passenger_count > $newSchedule->ferry->capacity_passenger) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['passenger_count' => 'Maaf, kursi penumpang tidak mencukupi']);
+        }
+
+        // Count vehicles by type
+        $vehicleCounts = [
+            'MOTORCYCLE' => 0,
+            'CAR' => 0,
+            'BUS' => 0,
+            'TRUCK' => 0
+        ];
+
+        foreach ($originalBooking->vehicles as $vehicle) {
+            $vehicleCounts[$vehicle->type]++;
+        }
+
+        // Check availability for each vehicle type
+        if ($scheduleDate->motorcycle_count + $vehicleCounts['MOTORCYCLE'] > $newSchedule->ferry->capacity_vehicle_motorcycle) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['vehicles' => 'Maaf, kapasitas motor tidak mencukupi']);
+        }
+
+        if ($scheduleDate->car_count + $vehicleCounts['CAR'] > $newSchedule->ferry->capacity_vehicle_car) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['vehicles' => 'Maaf, kapasitas mobil tidak mencukupi']);
+        }
+
+        if ($scheduleDate->bus_count + $vehicleCounts['BUS'] > $newSchedule->ferry->capacity_vehicle_bus) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['vehicles' => 'Maaf, kapasitas bus tidak mencukupi']);
+        }
+
+        if ($scheduleDate->truck_count + $vehicleCounts['TRUCK'] > $newSchedule->ferry->capacity_vehicle_truck) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['vehicles' => 'Maaf, kapasitas truk tidak mencukupi']);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            // Update status booking lama
+            $previousStatus = $originalBooking->status;
+            $originalBooking->status = 'RESCHEDULED';
+            $originalBooking->notes = ($originalBooking->notes ? $originalBooking->notes . "\n" : '') .
+                "Dijadwalkan ulang ke " . $bookingDate .
+                " dengan alasan: " . ($request->notes ?? 'Tidak ada alasan');
+            $originalBooking->save();
+
+            // Buat booking baru
+            $newBooking = new Booking([
+                'booking_code' => 'FBS-' . strtoupper(Str::random(8)),
+                'user_id' => $originalBooking->user_id,
+                'schedule_id' => $newSchedule->id,
+                'booking_date' => $bookingDate,
+                'passenger_count' => $originalBooking->passenger_count,
+                'vehicle_count' => $originalBooking->vehicle_count,
+                'total_amount' => $originalBooking->total_amount,
+                'status' => 'CONFIRMED',
+                'booked_by' => 'COUNTER',
+                'booking_channel' => 'ADMIN',
+                'notes' => "Reschedule dari booking {$originalBooking->booking_code}. " . ($request->notes ?? ''),
+            ]);
+
+            $newBooking->save();
+
+            // Create tickets for each passenger
+            foreach ($originalBooking->tickets as $oldTicket) {
+                $ticket = new Ticket([
+                    'ticket_code' => 'TKT-' . strtoupper(Str::random(8)),
+                    'booking_id' => $newBooking->id,
+                    'qr_code' => 'QR-' . strtoupper(Str::random(12)),
+                    'passenger_id' => $oldTicket->passenger_id,
+                    'boarding_status' => 'NOT_BOARDED',
+                    'status' => 'ACTIVE',
+                    'checked_in' => false,
+                    'ticket_type' => $oldTicket->ticket_type
+                ]);
+
+                $ticket->save();
+            }
+
+            // Create vehicles
+            foreach ($originalBooking->vehicles as $oldVehicle) {
+                $vehicle = new Vehicle([
+                    'booking_id' => $newBooking->id,
+                    'user_id' => $oldVehicle->user_id,
+                    'type' => $oldVehicle->type,
+                    'license_plate' => $oldVehicle->license_plate,
+                    'brand' => $oldVehicle->brand,
+                    'model' => $oldVehicle->model,
+                    'weight' => $oldVehicle->weight,
+                ]);
+
+                $vehicle->save();
+            }
+
+            // Update schedule date untuk booking baru
+            $scheduleDate->passenger_count += $originalBooking->passenger_count;
+            $scheduleDate->motorcycle_count += $vehicleCounts['MOTORCYCLE'];
+            $scheduleDate->car_count += $vehicleCounts['CAR'];
+            $scheduleDate->bus_count += $vehicleCounts['BUS'];
+            $scheduleDate->truck_count += $vehicleCounts['TRUCK'];
+            $scheduleDate->save();
+
+            // Create booking log untuk booking lama
+            $bookingLog = new BookingLog([
+                'booking_id' => $originalBooking->id,
+                'previous_status' => $previousStatus,
+                'new_status' => 'RESCHEDULED',
+                'changed_by_type' => 'ADMIN',
+                'changed_by_id' => Auth::id(),
+                'notes' => 'Booking dijadwalkan ulang ke ' . $bookingDate,
+                'ip_address' => $request->ip(),
+            ]);
+
+            $bookingLog->save();
+
+            // Create booking log untuk booking baru
+            $bookingLog = new BookingLog([
+                'booking_id' => $newBooking->id,
+                'previous_status' => 'NEW',
+                'new_status' => 'CONFIRMED',
+                'changed_by_type' => 'ADMIN',
+                'changed_by_id' => Auth::id(),
+                'notes' => 'Booking baru dari reschedule booking ' . $originalBooking->booking_code,
+                'ip_address' => $request->ip(),
+            ]);
+
+            $bookingLog->save();
+
+            DB::commit();
+
+            return redirect()->route('admin.bookings.show', $newBooking->id)
+                ->with('success', 'Booking berhasil dijadwalkan ulang');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
 }

@@ -93,6 +93,15 @@
                             <span>Vessels</span>
                         </a>
 
+                        <!-- Schedules -->
+                        <a href="{{ route('admin.schedules.index') }}"
+                            class="nav-item group flex items-center px-2 py-2 text-sm font-medium rounded-md {{ request()->routeIs('admin.schedules.*') ? 'bg-primary-800 text-white' : 'text-primary-100 hover:bg-primary-800 hover:text-white' }}">
+                            <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
+                                <i class="fas fa-calendar-alt"></i>
+                            </div>
+                            <span>Schedules</span>
+                        </a>
+
                         <!-- Bookings -->
                         <a href="{{ route('admin.bookings.index') }}"
                             class="nav-item group flex items-center px-2 py-2 text-sm font-medium rounded-md {{ request()->routeIs('admin.bookings.*') ? 'bg-primary-800 text-white' : 'text-primary-100 hover:bg-primary-800 hover:text-white' }}">
@@ -102,13 +111,13 @@
                             <span>Bookings</span>
                         </a>
 
-                        <!-- Schedules -->
-                        <a href="{{ route('admin.schedules.index') }}"
-                            class="nav-item group flex items-center px-2 py-2 text-sm font-medium rounded-md {{ request()->routeIs('admin.schedules.*') ? 'bg-primary-800 text-white' : 'text-primary-100 hover:bg-primary-800 hover:text-white' }}">
+                        <!-- Refunds -->
+                        <a href="{{ route('admin.refunds.index') }}"
+                            class="nav-item group flex items-center px-2 py-2 text-sm font-medium rounded-md {{ request()->routeIs('admin.refunds.*') ? 'bg-primary-800 text-white' : 'text-primary-100 hover:bg-primary-800 hover:text-white' }}">
                             <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
-                                <i class="fas fa-calendar-alt"></i>
+                                <i class="fas fa-ticket-alt"></i>
                             </div>
-                            <span>Schedules</span>
+                            <span>Refund</span>
                         </a>
 
                         <!-- Passengers -->
@@ -272,6 +281,15 @@
                                 <span>Vessels</span>
                             </a>
 
+                            <!-- Schedules -->
+                            <a href="{{ route('admin.schedules.index') }}"
+                                class="nav-item group flex items-center px-2 py-2 text-sm font-medium rounded-md {{ request()->routeIs('admin.schedules.*') ? 'bg-primary-800 text-white' : 'text-primary-100 hover:bg-primary-800 hover:text-white' }}">
+                                <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
+                                    <i class="fas fa-calendar-alt"></i>
+                                </div>
+                                <span>Schedules</span>
+                            </a>
+
                             <!-- Bookings -->
                             <a href="{{ route('admin.bookings.index') }}"
                                 class="nav-item group flex items-center px-2 py-2 text-sm font-medium rounded-md {{ request()->routeIs('admin.bookings.*') ? 'bg-primary-800 text-white' : 'text-primary-100 hover:bg-primary-800 hover:text-white' }}">
@@ -281,13 +299,13 @@
                                 <span>Bookings</span>
                             </a>
 
-                            <!-- Schedules -->
-                            <a href="{{ route('admin.schedules.index') }}"
-                                class="nav-item group flex items-center px-2 py-2 text-sm font-medium rounded-md {{ request()->routeIs('admin.schedules.*') ? 'bg-primary-800 text-white' : 'text-primary-100 hover:bg-primary-800 hover:text-white' }}">
+                            <!-- Refunds -->
+                            <a href="{{ route('admin.refunds.index') }}"
+                                class="nav-item group flex items-center px-2 py-2 text-sm font-medium rounded-md {{ request()->routeIs('admin.refunds.*') ? 'bg-primary-800 text-white' : 'text-primary-100 hover:bg-primary-800 hover:text-white' }}">
                                 <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
-                                    <i class="fas fa-calendar-alt"></i>
+                                    <i class="fas fa-ticket-alt"></i>
                                 </div>
-                                <span>Schedules</span>
+                                <span>Refund</span>
                             </a>
 
                             <!-- Passengers -->

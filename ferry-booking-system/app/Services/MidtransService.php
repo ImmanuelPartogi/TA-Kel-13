@@ -152,42 +152,42 @@ class MidtransService
      * Metode fallback untuk membuat transaksi saat API Midtrans gagal
      */
     // Di MidtransService.php
-protected function createFallbackTransaction(Booking $booking, $paymentType, $paymentMethod)
-{
-    Log::info('Creating fallback transaction', [
-        'booking_code' => $booking->booking_code,
-        'payment_type' => $paymentType,
-        'payment_method' => $paymentMethod
-    ]);
-
-    // Menggunakan prefix dari konfigurasi
-    $bankPrefix = config('midtrans.fallback.bank_prefix.' . strtolower($paymentMethod), '99');
-    $vaNumber = $bankPrefix . substr(str_pad($booking->id, 8, '0', STR_PAD_LEFT), 0, 8) . mt_rand(1000, 9999);
-
-    $payment = Payment::where('booking_id', $booking->id)->latest()->first();
-
-    if ($payment) {
-        $payment->virtual_account_number = $vaNumber;
-        $payment->external_reference = $paymentMethod . ' ' . $vaNumber;
-        $payment->save();
-
-        Log::info('Fallback VA number created', [
+    protected function createFallbackTransaction(Booking $booking, $paymentType, $paymentMethod)
+    {
+        Log::info('Creating fallback transaction', [
             'booking_code' => $booking->booking_code,
-            'va_number' => $vaNumber
+            'payment_type' => $paymentType,
+            'payment_method' => $paymentMethod
         ]);
 
-        return [
-            'status_code' => '201',
-            'transaction_status' => 'pending',
-            'va_numbers' => [
-                ['bank' => $paymentMethod, 'va_number' => $vaNumber]
-            ],
-            'is_fallback' => true
-        ];
-    }
+        // Menggunakan prefix dari konfigurasi
+        $bankPrefix = config('midtrans.fallback.bank_prefix.' . strtolower($paymentMethod), '99');
+        $vaNumber = $bankPrefix . substr(str_pad($booking->id, 8, '0', STR_PAD_LEFT), 0, 8) . mt_rand(1000, 9999);
 
-    return null;
-}
+        $payment = Payment::where('booking_id', $booking->id)->latest()->first();
+
+        if ($payment) {
+            $payment->virtual_account_number = $vaNumber;
+            $payment->external_reference = $paymentMethod . ' ' . $vaNumber;
+            $payment->save();
+
+            Log::info('Fallback VA number created', [
+                'booking_code' => $booking->booking_code,
+                'va_number' => $vaNumber
+            ]);
+
+            return [
+                'status_code' => '201',
+                'transaction_status' => 'pending',
+                'va_numbers' => [
+                    ['bank' => $paymentMethod, 'va_number' => $vaNumber]
+                ],
+                'is_fallback' => true
+            ];
+        }
+
+        return null;
+    }
 
     /**
      * Metode yang ditingkatkan untuk API request dengan HTTP client
@@ -823,34 +823,63 @@ protected function createFallbackTransaction(Booking $booking, $paymentType, $pa
      */
     public function requestRefund($transactionId, $amount, $reason)
     {
-        $url = $this->getBaseUrl() . '/' . $transactionId . '/refund';
+        try {
+            // Cek metode pembayaran dari transaction ID
+            $transaction = $this->getStatus($transactionId);
+            $paymentType = $transaction['payment_type'] ?? '';
 
-        $payload = [
-            'refund_key' => 'REF-' . Str::random(8),
-            'amount' => $amount,
-            'reason' => $reason
-        ];
+            // List metode pembayaran yang didukung refund otomatis
+            $supportedRefundMethods = [
+                'credit_card',
+                'gopay',
+                'shopeepay',
+                'qris',
+                'kredivo',
+                'akulaku'
+            ];
 
-        Log::info('Requesting refund to Midtrans', [
-            'transaction_id' => $transactionId,
-            'amount' => $amount,
-            'reason' => $reason
-        ]);
+            // Jika metode pembayaran tidak didukung refund otomatis
+            if (!in_array($paymentType, $supportedRefundMethods)) {
+                // Catat sebagai refund manual dan kembalikan response sukses simulasi
+                Log::info('Refund request recorded for manual processing', [
+                    'transaction_id' => $transactionId,
+                    'amount' => $amount,
+                    'reason' => $reason,
+                    'payment_type' => $paymentType
+                ]);
 
-        $response = Http::withHeaders($this->getHeaders())
-            ->post($url, $payload);
+                return [
+                    'status_code' => '200',
+                    'status_message' => 'Success, manual refund request is recorded',
+                    'transaction_id' => $transactionId,
+                    'payment_type' => $paymentType,
+                    'transaction_time' => now()->format('Y-m-d H:i:s'),
+                    'transaction_status' => 'pending_refund',
+                    'refund_amount' => $amount,
+                    'refund_key' => 'manual-' . Str::random(10),
+                    'requires_manual_process' => true
+                ];
+            }
 
-        $responseData = $response->json();
+            // Jika metode pembayaran didukung, lakukan refund otomatis via Midtrans
+            $url = $this->getBaseUrl() . "/{$transactionId}/refund";
+            $payload = [
+                'refund_key' => 'ref-' . Str::random(10),
+                'amount' => $amount,
+                'reason' => $reason
+            ];
 
-        Log::info('Midtrans refund response', [
-            'transaction_id' => $transactionId,
-            'response' => $responseData
-        ]);
+            $response = Http::withHeaders($this->getHeaders())
+                ->post($url, $payload);
 
-        if ($response->successful()) {
-            return $responseData;
-        } else {
-            throw new \Exception('Midtrans refund failed: ' . ($responseData['status_message'] ?? 'Unknown error'));
+            return json_decode($response->getBody(), true);
+        } catch (\Exception $e) {
+            Log::error('Midtrans refund failed', [
+                'transaction_id' => $transactionId,
+                'error' => $e->getMessage()
+            ]);
+
+            throw new \Exception('Midtrans refund failed: ' . $e->getMessage());
         }
     }
 

@@ -8,7 +8,7 @@ class Booking {
   final String bookingCode;
   final int userId;
   final int scheduleId;
-  final String departureDate; // Ganti bookingDate 
+  final String departureDate; // Ganti bookingDate
   final int passengerCount;
   final int vehicleCount;
   final double totalAmount;
@@ -80,7 +80,8 @@ class Booking {
       bookingCode: json['booking_code'],
       userId: json['user_id'],
       scheduleId: json['schedule_id'],
-      departureDate: json['departure_date'], // Ganti bookingDate -> departure_date
+      departureDate:
+          json['departure_date'], // Ganti bookingDate -> departure_date
       passengerCount: json['passenger_count'],
       vehicleCount: json['vehicle_count'],
       totalAmount: double.parse(json['total_amount'].toString()),
@@ -145,6 +146,26 @@ class Booking {
         return 'Dijadwalkan Ulang';
       default:
         return status;
+    }
+  }
+
+  // Di class Booking
+  String get statusDescription {
+    switch (status) {
+      case 'PENDING':
+        return 'Menunggu pembayaran Anda.';
+      case 'CONFIRMED':
+        return 'Tiket Anda telah dikonfirmasi dan siap digunakan.';
+      case 'CANCELLED':
+        return 'Booking ini telah dibatalkan.';
+      case 'COMPLETED':
+        return 'Perjalanan Anda telah selesai.';
+      case 'REFUND_PENDING':
+        return 'Permintaan refund sedang diproses. Mohon tunggu 3-7 hari kerja.';
+      case 'REFUNDED':
+        return 'Dana telah dikembalikan ke rekening Anda.';
+      default:
+        return '';
     }
   }
 

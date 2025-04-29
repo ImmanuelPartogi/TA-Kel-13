@@ -44,34 +44,10 @@ class RefundController extends Controller
         }
 
         try {
-            // Mulai transaksi database
             DB::beginTransaction();
 
-            // Ambil data booking
-            $user = $request->user();
-            $booking = Booking::where('id', $request->booking_id)
-                ->where('user_id', $user->id)
-                ->with(['payments'])
-                ->firstOrFail();
-
-            // Cek apakah booking memenuhi syarat untuk refund
-            if (!in_array($booking->status, ['CONFIRMED', 'PENDING'])) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Booking tidak memenuhi syarat untuk refund'
-                ], 400);
-            }
-
-            // Cek apakah sudah ada refund untuk booking ini
-            $existingRefund = Refund::where('booking_id', $booking->id)->first();
-            if ($existingRefund) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Permintaan refund sudah pernah dibuat'
-                ], 400);
-            }
-
-            // Ambil payment terakhir yang sukses
+            // Ambil data booking dan payment
+            $booking = Booking::findOrFail($request->booking_id);
             $payment = $booking->payments()
                 ->where('status', 'SUCCESS')
                 ->latest()
@@ -84,12 +60,16 @@ class RefundController extends Controller
                 ], 400);
             }
 
-            // Buat permintaan refund ke Midtrans
+            // Coba buat refund via Midtrans
             $refundResponse = $this->midtransService->requestRefund(
-                $payment->payment_code,
+                $payment->transaction_id,
                 $payment->amount,
                 $request->reason
             );
+
+            // Cek apakah perlu proses manual (untuk virtual account dll)
+            $requiresManualProcess = $refundResponse['requires_manual_process'] ?? false;
+            $refundStatus = $requiresManualProcess ? 'PENDING' : 'PROCESSING';
 
             // Buat record refund
             $refund = new Refund([
@@ -97,8 +77,9 @@ class RefundController extends Controller
                 'payment_id' => $payment->id,
                 'amount' => $payment->amount,
                 'reason' => $request->reason,
-                'status' => 'PENDING', // Status awal
-                'refund_method' => 'BANK_TRANSFER',
+                'status' => $refundStatus,
+                // Gunakan nilai enum yang valid untuk refund_method
+                'refund_method' => 'BANK_TRANSFER', // Atau gunakan ORIGINAL_PAYMENT_METHOD jika sesuai
                 'transaction_id' => $refundResponse['refund_key'] ?? null,
                 'bank_account_number' => $request->bank_account_number,
                 'bank_account_name' => $request->bank_account_name,
@@ -113,20 +94,17 @@ class RefundController extends Controller
 
             DB::commit();
 
-            // Log refund request
-            Log::info('Refund requested', [
-                'user_id' => $user->id,
-                'booking_id' => $booking->id,
-                'amount' => $payment->amount,
-                'refund_id' => $refund->id
-            ]);
+            // Pesan yang informatif berdasarkan jenis proses refund
+            $message = $requiresManualProcess
+                ? 'Permintaan refund berhasil dibuat dan akan diproses secara manual dalam 3-7 hari kerja'
+                : 'Permintaan refund berhasil dibuat dan sedang diproses';
 
             return response()->json([
                 'success' => true,
-                'message' => 'Permintaan refund berhasil dibuat',
-                'data' => $refund
+                'message' => $message,
+                'data' => $refund,
+                'requires_manual_process' => $requiresManualProcess
             ], 201);
-
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -245,7 +223,6 @@ class RefundController extends Controller
                 'message' => 'Permintaan refund berhasil dibatalkan',
                 'data' => $refund
             ], 200);
-
         } catch (\Exception $e) {
             DB::rollBack();
 

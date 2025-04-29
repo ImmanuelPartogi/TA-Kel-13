@@ -536,15 +536,17 @@ class BookingController extends Controller
         $date = Carbon::parse($request->date);
         $dayOfWeek = $date->dayOfWeek + 1; // Konversi ke format 1-7 (Senin-Minggu)
 
-        $query = Schedule::where('route_id', $request->route_id)
+        // Ambil semua jadwal untuk rute yang dipilih pada hari yang sesuai
+        $schedules = Schedule::where('route_id', $request->route_id)
             ->where('status', 'ACTIVE')
             ->whereRaw("FIND_IN_SET('$dayOfWeek', days)")
-            ->with(['ferry', 'route']);
+            ->with(['ferry', 'route'])
+            ->get();
 
-        $schedules = $query->get();
         $scheduleIds = $schedules->pluck('id');
 
         // Ambil ketersediaan untuk tanggal yang dipilih
+        // Penting: tidak menggunakan firstOrCreate, hanya mengambil yang sudah ada
         $scheduleDates = ScheduleDate::whereIn('schedule_id', $scheduleIds)
             ->where('date', $date->format('Y-m-d'))
             ->get()
@@ -553,62 +555,228 @@ class BookingController extends Controller
         $vehicleCounts = $request->vehicle_counts ?? [];
 
         $result = $schedules->map(function ($schedule) use ($scheduleDates, $date, $request, $vehicleCounts) {
+            // Cek apakah ada data ScheduleDate untuk jadwal ini
             $scheduleDate = $scheduleDates->get($schedule->id);
 
-            // Kalau tidak ada data specifik untuk tanggal tersebut,
-            // tambahkan data default
             if (!$scheduleDate) {
-                $scheduleDate = new ScheduleDate([
-                    'schedule_id' => $schedule->id,
-                    'date' => $date->format('Y-m-d'),
-                    'passenger_count' => 0,
-                    'motorcycle_count' => 0,
-                    'car_count' => 0,
-                    'bus_count' => 0,
-                    'truck_count' => 0,
-                    'status' => 'AVAILABLE'
-                ]);
+                // Jika tidak ada data ScheduleDate, berarti tanggal ini belum dibuat
+                // Maka tidak tersedia untuk booking
+                return [
+                    'id' => $schedule->id,
+                    'departure_time' => $schedule->departure_time,
+                    'arrival_time' => $schedule->arrival_time,
+                    'ferry' => [
+                        'name' => $schedule->ferry->name,
+                        'capacity_passenger' => $schedule->ferry->capacity_passenger,
+                        'capacity_vehicle_motorcycle' => $schedule->ferry->capacity_vehicle_motorcycle,
+                        'capacity_vehicle_car' => $schedule->ferry->capacity_vehicle_car,
+                        'capacity_vehicle_bus' => $schedule->ferry->capacity_vehicle_bus,
+                        'capacity_vehicle_truck' => $schedule->ferry->capacity_vehicle_truck,
+                    ],
+                    'available_passenger' => 0,
+                    'available_motorcycle' => 0,
+                    'available_car' => 0,
+                    'available_bus' => 0,
+                    'available_truck' => 0,
+                    'schedule_date_status' => 'NOT_AVAILABLE',
+                    'is_available' => false,
+                    'reason' => 'Jadwal untuk tanggal ini belum dibuat'
+                ];
             }
 
+            // Jika status schedule date bukan AVAILABLE
+            if ($scheduleDate->status !== 'AVAILABLE') {
+                return [
+                    'id' => $schedule->id,
+                    'departure_time' => $schedule->departure_time,
+                    'arrival_time' => $schedule->arrival_time,
+                    'ferry' => [
+                        'name' => $schedule->ferry->name,
+                        'capacity_passenger' => $schedule->ferry->capacity_passenger,
+                        'capacity_vehicle_motorcycle' => $schedule->ferry->capacity_vehicle_motorcycle,
+                        'capacity_vehicle_car' => $schedule->ferry->capacity_vehicle_car,
+                        'capacity_vehicle_bus' => $schedule->ferry->capacity_vehicle_bus,
+                        'capacity_vehicle_truck' => $schedule->ferry->capacity_vehicle_truck,
+                    ],
+                    'available_passenger' => 0,
+                    'available_motorcycle' => 0,
+                    'available_car' => 0,
+                    'available_bus' => 0,
+                    'available_truck' => 0,
+                    'schedule_date_status' => $scheduleDate->status,
+                    'is_available' => false,
+                    'reason' => 'Jadwal tidak tersedia untuk tanggal ini'
+                ];
+            }
+
+            // Hitung ketersediaan
+            $availablePassenger = $schedule->ferry->capacity_passenger - $scheduleDate->passenger_count;
+            $availableMotorcycle = $schedule->ferry->capacity_vehicle_motorcycle - $scheduleDate->motorcycle_count;
+            $availableCar = $schedule->ferry->capacity_vehicle_car - $scheduleDate->car_count;
+            $availableBus = $schedule->ferry->capacity_vehicle_bus - $scheduleDate->bus_count;
+            $availableTruck = $schedule->ferry->capacity_vehicle_truck - $scheduleDate->truck_count;
+
             // Cek ketersediaan
-            $passengerAvailable = ($schedule->ferry->capacity_passenger - $scheduleDate->passenger_count) >= $request->passenger_count;
+            $passengerAvailable = $availablePassenger >= $request->passenger_count;
             $motorcycleAvailable = true;
             $carAvailable = true;
             $busAvailable = true;
             $truckAvailable = true;
+            $reason = '';
+
+            if (!$passengerAvailable) {
+                $reason = 'Kapasitas penumpang tidak mencukupi';
+            }
 
             if (isset($vehicleCounts['MOTORCYCLE']) && $vehicleCounts['MOTORCYCLE'] > 0) {
-                $motorcycleAvailable = ($schedule->ferry->capacity_vehicle_motorcycle - $scheduleDate->motorcycle_count) >= $vehicleCounts['MOTORCYCLE'];
+                $motorcycleAvailable = $availableMotorcycle >= $vehicleCounts['MOTORCYCLE'];
+                if (!$motorcycleAvailable && empty($reason)) {
+                    $reason = 'Kapasitas motor tidak mencukupi';
+                }
             }
 
             if (isset($vehicleCounts['CAR']) && $vehicleCounts['CAR'] > 0) {
-                $carAvailable = ($schedule->ferry->capacity_vehicle_car - $scheduleDate->car_count) >= $vehicleCounts['CAR'];
+                $carAvailable = $availableCar >= $vehicleCounts['CAR'];
+                if (!$carAvailable && empty($reason)) {
+                    $reason = 'Kapasitas mobil tidak mencukupi';
+                }
             }
 
             if (isset($vehicleCounts['BUS']) && $vehicleCounts['BUS'] > 0) {
-                $busAvailable = ($schedule->ferry->capacity_vehicle_bus - $scheduleDate->bus_count) >= $vehicleCounts['BUS'];
+                $busAvailable = $availableBus >= $vehicleCounts['BUS'];
+                if (!$busAvailable && empty($reason)) {
+                    $reason = 'Kapasitas bus tidak mencukupi';
+                }
             }
 
             if (isset($vehicleCounts['TRUCK']) && $vehicleCounts['TRUCK'] > 0) {
-                $truckAvailable = ($schedule->ferry->capacity_vehicle_truck - $scheduleDate->truck_count) >= $vehicleCounts['TRUCK'];
+                $truckAvailable = $availableTruck >= $vehicleCounts['TRUCK'];
+                if (!$truckAvailable && empty($reason)) {
+                    $reason = 'Kapasitas truk tidak mencukupi';
+                }
             }
 
-            $isAvailable = $passengerAvailable && $motorcycleAvailable && $carAvailable && $busAvailable && $truckAvailable && $scheduleDate->status === 'AVAILABLE';
+            $isAvailable = $passengerAvailable && $motorcycleAvailable && $carAvailable && $busAvailable && $truckAvailable;
 
-            // Gabungkan data jadwal dengan ketersediaan
-            $schedule->available_passenger = $schedule->ferry->capacity_passenger - $scheduleDate->passenger_count;
-            $schedule->available_motorcycle = $schedule->ferry->capacity_vehicle_motorcycle - $scheduleDate->motorcycle_count;
-            $schedule->available_car = $schedule->ferry->capacity_vehicle_car - $scheduleDate->car_count;
-            $schedule->available_bus = $schedule->ferry->capacity_vehicle_bus - $scheduleDate->bus_count;
-            $schedule->available_truck = $schedule->ferry->capacity_vehicle_truck - $scheduleDate->truck_count;
-            $schedule->schedule_date_status = $scheduleDate->status;
-            $schedule->is_available = $isAvailable;
-
-            return $schedule;
-        })->filter(function ($schedule) {
-            // Filter jadwal yang tidak tersedia
-            return $schedule->schedule_date_status === 'AVAILABLE';
+            return [
+                'id' => $schedule->id,
+                'departure_time' => $schedule->departure_time,
+                'arrival_time' => $schedule->arrival_time,
+                'ferry' => [
+                    'name' => $schedule->ferry->name,
+                    'capacity_passenger' => $schedule->ferry->capacity_passenger,
+                    'capacity_vehicle_motorcycle' => $schedule->ferry->capacity_vehicle_motorcycle,
+                    'capacity_vehicle_car' => $schedule->ferry->capacity_vehicle_car,
+                    'capacity_vehicle_bus' => $schedule->ferry->capacity_vehicle_bus,
+                    'capacity_vehicle_truck' => $schedule->ferry->capacity_vehicle_truck,
+                ],
+                'available_passenger' => $availablePassenger,
+                'available_motorcycle' => $availableMotorcycle,
+                'available_car' => $availableCar,
+                'available_bus' => $availableBus,
+                'available_truck' => $availableTruck,
+                'schedule_date_status' => $scheduleDate->status,
+                'is_available' => $isAvailable,
+                'reason' => $isAvailable ? '' : $reason
+            ];
         });
+
+        // Menambahkan fitur cari jadwal terdekat jika diminta
+        if ($request->has('find_nearest') && $request->find_nearest) {
+            // Jika tidak ada jadwal tersedia pada tanggal yang dipilih
+            $availableSchedule = $result->firstWhere('is_available', true);
+
+            if (!$availableSchedule) {
+                // Cari jadwal terdekat dalam range 7 hari ke depan
+                $nearestDate = null;
+                $nearestSchedules = [];
+
+                for ($i = 1; $i <= 7; $i++) {
+                    $nextDate = $date->copy()->addDays($i);
+                    $nextDayOfWeek = $nextDate->dayOfWeek + 1;
+
+                    // Cek apakah ada jadwal untuk hari tersebut
+                    $nextSchedules = Schedule::where('route_id', $request->route_id)
+                        ->where('status', 'ACTIVE')
+                        ->whereRaw("FIND_IN_SET('$nextDayOfWeek', days)")
+                        ->with(['ferry'])
+                        ->get();
+
+                    if ($nextSchedules->isNotEmpty()) {
+                        // Cek ketersediaan
+                        $nextScheduleIds = $nextSchedules->pluck('id');
+                        $nextScheduleDates = ScheduleDate::whereIn('schedule_id', $nextScheduleIds)
+                            ->where('date', $nextDate->format('Y-m-d'))
+                            ->where('status', 'AVAILABLE')
+                            ->get();
+
+                        if ($nextScheduleDates->isNotEmpty()) {
+                            // Cek kapasitas
+                            foreach ($nextScheduleDates as $nextScheduleDate) {
+                                $schedule = $nextSchedules->firstWhere('id', $nextScheduleDate->schedule_id);
+                                if (!$schedule) continue;
+
+                                $passengerAvailable = ($schedule->ferry->capacity_passenger - $nextScheduleDate->passenger_count) >= $request->passenger_count;
+
+                                // Cek kendaraan
+                                $vehicleAvailable = true;
+                                foreach ($vehicleCounts as $type => $count) {
+                                    if ($count <= 0) continue;
+
+                                    switch ($type) {
+                                        case 'MOTORCYCLE':
+                                            if (($schedule->ferry->capacity_vehicle_motorcycle - $nextScheduleDate->motorcycle_count) < $count) {
+                                                $vehicleAvailable = false;
+                                            }
+                                            break;
+                                        case 'CAR':
+                                            if (($schedule->ferry->capacity_vehicle_car - $nextScheduleDate->car_count) < $count) {
+                                                $vehicleAvailable = false;
+                                            }
+                                            break;
+                                        case 'BUS':
+                                            if (($schedule->ferry->capacity_vehicle_bus - $nextScheduleDate->bus_count) < $count) {
+                                                $vehicleAvailable = false;
+                                            }
+                                            break;
+                                        case 'TRUCK':
+                                            if (($schedule->ferry->capacity_vehicle_truck - $nextScheduleDate->truck_count) < $count) {
+                                                $vehicleAvailable = false;
+                                            }
+                                            break;
+                                    }
+
+                                    if (!$vehicleAvailable) break;
+                                }
+
+                                if ($passengerAvailable && $vehicleAvailable) {
+                                    $nearestDate = $nextDate;
+                                    $nearestSchedules[] = [
+                                        'date' => $nextDate->format('Y-m-d'),
+                                        'day' => $nextDate->format('l'),
+                                        'schedule_id' => $schedule->id,
+                                        'departure_time' => $schedule->departure_time,
+                                        'arrival_time' => $schedule->arrival_time,
+                                        'ferry_name' => $schedule->ferry->name,
+                                    ];
+                                }
+                            }
+
+                            if (!empty($nearestSchedules)) {
+                                break; // Keluar dari loop jika sudah menemukan jadwal terdekat
+                            }
+                        }
+                    }
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'data' => $result,
+                    'nearest_date' => $nearestDate ? $nearestDate->format('Y-m-d') : null,
+                    'nearest_schedules' => $nearestSchedules
+                ]);
+            }
+        }
 
         return response()->json([
             'success' => true,
@@ -642,18 +810,16 @@ class BookingController extends Controller
                 ->withErrors(['schedule_id' => 'Jadwal tidak tersedia untuk tanggal yang dipilih']);
         }
 
-        // Check seat availability
-        $scheduleDate = ScheduleDate::firstOrCreate(
-            ['schedule_id' => $newSchedule->id, 'date' => $bookingDate],
-            [
-                'passenger_count' => 0,
-                'motorcycle_count' => 0,
-                'car_count' => 0,
-                'bus_count' => 0,
-                'truck_count' => 0,
-                'status' => 'AVAILABLE'
-            ]
-        );
+        // Check seat availability - PENTING: tidak membuat data baru jika tidak ada
+        $scheduleDate = ScheduleDate::where('schedule_id', $newSchedule->id)
+            ->where('date', $bookingDate)
+            ->first();
+
+        if (!$scheduleDate) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['schedule_id' => 'Jadwal belum tersedia untuk tanggal yang dipilih']);
+        }
 
         if ($scheduleDate->status !== 'AVAILABLE') {
             return redirect()->back()
@@ -708,6 +874,25 @@ class BookingController extends Controller
         DB::beginTransaction();
 
         try {
+            // Bebaskan kapasitas pada jadwal lama
+            $originalScheduleDate = ScheduleDate::where('schedule_id', $originalBooking->schedule_id)
+                ->where('date', $originalBooking->booking_date)
+                ->first();
+
+            if ($originalScheduleDate) {
+                // Kurangi jumlah penumpang dan kendaraan dari jadwal lama
+                $originalScheduleDate->passenger_count = max(0, $originalScheduleDate->passenger_count - $originalBooking->passenger_count);
+                $originalScheduleDate->motorcycle_count = max(0, $originalScheduleDate->motorcycle_count - $vehicleCounts['MOTORCYCLE']);
+                $originalScheduleDate->car_count = max(0, $originalScheduleDate->car_count - $vehicleCounts['CAR']);
+                $originalScheduleDate->bus_count = max(0, $originalScheduleDate->bus_count - $vehicleCounts['BUS']);
+                $originalScheduleDate->truck_count = max(0, $originalScheduleDate->truck_count - $vehicleCounts['TRUCK']);
+                $originalScheduleDate->save();
+            }
+
+            // Update status tiket menjadi CANCELLED
+            Ticket::where('booking_id', $originalBooking->id)
+                ->update(['status' => 'CANCELLED']);
+
             // Update status booking lama
             $previousStatus = $originalBooking->status;
             $originalBooking->status = 'RESCHEDULED';
@@ -772,6 +957,25 @@ class BookingController extends Controller
             $scheduleDate->truck_count += $vehicleCounts['TRUCK'];
             $scheduleDate->save();
 
+            // Duplikasi payment untuk booking baru jika perlu
+            $originalPayment = Payment::where('booking_id', $originalBooking->id)
+                ->where('status', 'SUCCESS')
+                ->first();
+
+            if ($originalPayment) {
+                $newPayment = new Payment([
+                    'booking_id' => $newBooking->id,
+                    'amount' => $originalPayment->amount,
+                    'payment_method' => $originalPayment->payment_method,
+                    'payment_channel' => $originalPayment->payment_channel,
+                    'status' => 'SUCCESS',
+                    'payment_date' => now(),
+                    'notes' => 'Payment dari reschedule booking ' . $originalBooking->booking_code
+                ]);
+
+                $newPayment->save();
+            }
+
             // Create booking log untuk booking lama
             $bookingLog = new BookingLog([
                 'booking_id' => $originalBooking->id,
@@ -804,7 +1008,8 @@ class BookingController extends Controller
                 ->with('success', 'Booking berhasil dijadwalkan ulang');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            return redirect()->back()
+                ->with('error', 'Terjadi kesalahan saat reschedule: ' . $e->getMessage());
         }
     }
 }

@@ -29,7 +29,9 @@ class BookingApi {
   }
 
   // Create booking
-  Future<Map<String, dynamic>> createBooking(Map<String, dynamic> bookingData) async {
+  Future<Map<String, dynamic>> createBooking(
+    Map<String, dynamic> bookingData,
+  ) async {
     final response = await _apiService.post('bookings', bookingData);
 
     if (response['success']) {
@@ -45,6 +47,43 @@ class BookingApi {
   // Cancel booking
   Future<void> cancelBooking(int bookingId) async {
     final response = await _apiService.post('bookings/$bookingId/cancel', {});
+
+    if (!response['success']) {
+      throw Exception(response['message']);
+    }
+  }
+
+  // Request refund
+  Future<Map<String, dynamic>> requestRefund(
+    int bookingId,
+    Map<String, dynamic> refundData,
+  ) async {
+    final response = await _apiService.post('refunds/request', {
+      'booking_id': bookingId,
+      ...refundData,
+    });
+
+    if (response['success']) {
+      return response['data'];
+    } else {
+      throw Exception(response['message']);
+    }
+  }
+
+  // Get refund details
+  Future<Map<String, dynamic>> getRefundDetails(int bookingId) async {
+    final response = await _apiService.get('refunds/booking/$bookingId');
+
+    if (response['success']) {
+      return response['data'];
+    } else {
+      throw Exception(response['message']);
+    }
+  }
+
+  // Cancel refund request
+  Future<void> cancelRefund(int refundId) async {
+    final response = await _apiService.post('refunds/$refundId/cancel', {});
 
     if (!response['success']) {
       throw Exception(response['message']);

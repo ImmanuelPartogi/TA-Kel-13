@@ -14,42 +14,40 @@ import 'package:universal_html/html.dart' as html;
 
 class TicketDetailScreen extends StatefulWidget {
   final int bookingId;
-  
-  const TicketDetailScreen({
-    Key? key,
-    required this.bookingId,
-  }) : super(key: key);
+
+  const TicketDetailScreen({Key? key, required this.bookingId})
+    : super(key: key);
 
   @override
   _TicketDetailScreenState createState() => _TicketDetailScreenState();
 }
 
-class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTickerProviderStateMixin {
+class _TicketDetailScreenState extends State<TicketDetailScreen>
+    with SingleTickerProviderStateMixin {
   bool _isLoading = false;
   bool _isDownloading = false;
   int _selectedTicketIndex = 0;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   bool _showTicketDetails = false;
-  
+
   // QR Code key references for capturing QR images
   final List<GlobalKey> _qrKeys = [];
-  
+
   @override
   void initState() {
     super.initState();
     _loadTicketDetails();
-    
+
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
-    
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeIn,
-    ));
-    
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
+    );
+
     // Delay showing ticket details for smoother animation
     Future.delayed(const Duration(milliseconds: 100), () {
       setState(() {
@@ -58,22 +56,25 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
       _animationController.forward();
     });
   }
-  
+
   @override
   void dispose() {
     _animationController.dispose();
     super.dispose();
   }
-  
+
   Future<void> _loadTicketDetails() async {
     setState(() {
       _isLoading = true;
     });
-    
+
     try {
-      final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
+      final bookingProvider = Provider.of<BookingProvider>(
+        context,
+        listen: false,
+      );
       await bookingProvider.getBookingDetails(widget.bookingId);
-      
+
       // Setup QR keys
       final booking = bookingProvider.currentBooking;
       if (booking != null && booking.tickets != null) {
@@ -90,43 +91,47 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
       }
     }
   }
-  
+
   Future<void> _cancelBooking() async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Batalkan Pemesanan?'),
-        content: const Text(
-          'Apakah Anda yakin ingin membatalkan pemesanan ini? '
-          'Proses ini tidak dapat dibatalkan.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Tidak'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Ya, Batalkan'),
-          ),
-        ],
-      ),
-    ) ?? false;
-    
+    final result =
+        await showDialog<bool>(
+          context: context,
+          builder:
+              (context) => AlertDialog(
+                title: const Text('Batalkan Pemesanan?'),
+                content: const Text(
+                  'Apakah Anda yakin ingin membatalkan pemesanan ini? '
+                  'Proses ini tidak dapat dibatalkan.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Tidak'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Ya, Batalkan'),
+                  ),
+                ],
+              ),
+        ) ??
+        false;
+
     if (result) {
       setState(() {
         _isLoading = true;
       });
-      
+
       try {
-        final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
+        final bookingProvider = Provider.of<BookingProvider>(
+          context,
+          listen: false,
+        );
         final success = await bookingProvider.cancelBooking(widget.bookingId);
-        
+
         if (success && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Pemesanan berhasil dibatalkan'),
-            ),
+            const SnackBar(content: Text('Pemesanan berhasil dibatalkan')),
           );
         }
       } finally {
@@ -138,14 +143,17 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
       }
     }
   }
-  
+
   // Capture a widget as an image
   Future<Uint8List?> _captureWidget(GlobalKey key) async {
     try {
-      final RenderRepaintBoundary boundary = key.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      final RenderRepaintBoundary boundary =
+          key.currentContext!.findRenderObject() as RenderRepaintBoundary;
       final ui.Image image = await boundary.toImage(pixelRatio: 3.0);
-      final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      
+      final ByteData? byteData = await image.toByteData(
+        format: ui.ImageByteFormat.png,
+      );
+
       if (byteData != null) {
         return byteData.buffer.asUint8List();
       }
@@ -154,13 +162,13 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
     }
     return null;
   }
-  
+
   // Create a base64 encoded data URL from image bytes
   String _imageToDataUrl(Uint8List bytes) {
     final base64 = base64Encode(bytes);
     return 'data:image/png;base64,$base64';
   }
-  
+
   // Improved download ticket function for Web with actual QR codes
   Future<void> _downloadTicket(BuildContext context, booking) async {
     setState(() {
@@ -173,15 +181,15 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
         _showSnackBar('Tidak ada tiket untuk diunduh');
         return;
       }
-      
+
       // Capture all QR codes first if they exist
       final List<String> qrDataUrls = [];
-      
+
       // Only try to capture if we have QR keys and we're on web
       if (_qrKeys.isNotEmpty && kIsWeb) {
         // Short delay to ensure QR codes are rendered
         await Future.delayed(const Duration(milliseconds: 500));
-        
+
         for (int i = 0; i < _qrKeys.length && i < tickets.length; i++) {
           final bytes = await _captureWidget(_qrKeys[i]);
           if (bytes != null) {
@@ -196,7 +204,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
       // Format date
       final dateFormat = DateFormat('EEEE, d MMMM yyyy', 'id_ID');
       final bookingDate = DateTime.parse(booking.bookingDate);
-      
+
       // Create PDF-like HTML page
       if (kIsWeb) {
         // Create HTML content with embedded JavaScript QR code generator
@@ -276,22 +284,27 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
             <div class="ticket-section">
               <h3>Tiket (${tickets.length})</h3>
         ''';
-        
+
         // Add each ticket with QR code
         for (int i = 0; i < tickets.length; i++) {
           final ticket = tickets[i];
           final qrCodeId = 'qrcode-${i}';
-          
+
           // Get QR data URL if we captured it
           String qrHtml = '';
-          if (i < qrDataUrls.length && qrDataUrls[i].isNotEmpty) {
+          if (i < qrDataUrls.length &&
+              qrDataUrls[i] != null &&
+              qrDataUrls[i] != '' &&
+              qrDataUrls[i] != false) {
             // Use captured QR image if available
-            qrHtml = '<img src="${qrDataUrls[i]}" width="200" height="200" alt="QR Code" />';
+            qrHtml =
+                '<img src="${qrDataUrls[i]}" width="200" height="200" alt="QR Code" />';
           } else {
             // Otherwise use JavaScript-generated QR code
-            qrHtml = '<canvas id="${qrCodeId}" width="200" height="200"></canvas>';
+            qrHtml =
+                '<canvas id="${qrCodeId}" width="200" height="200"></canvas>';
           }
-          
+
           htmlContent += '''
               <div class="ticket-card">
                 <div class="ticket-header">
@@ -323,7 +336,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
               </div>
           ''';
         }
-        
+
         // Add payment info and footer
         htmlContent += '''
             </div>
@@ -360,7 +373,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
             // Generate QR codes using QRious library
             window.onload = function() {
         ''';
-        
+
         // Add JavaScript to generate QR codes
         for (int i = 0; i < tickets.length; i++) {
           if (i >= qrDataUrls.length || qrDataUrls[i].isEmpty) {
@@ -380,7 +393,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
             ''';
           }
         }
-        
+
         // Close JavaScript and HTML
         htmlContent += '''
             }
@@ -393,24 +406,28 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
         </body>
         </html>
         ''';
-        
+
         // Convert to blob and trigger download or open in new tab
         final bytes = Uint8List.fromList(htmlContent.codeUnits);
         final blob = html.Blob([bytes], 'text/html');
         final url = html.Url.createObjectUrlFromBlob(blob);
-        
+
         // Open in new tab for better printing experience
         html.window.open(url, '_blank');
-        
+
         // Clean up
         Future.delayed(const Duration(seconds: 5), () {
           html.Url.revokeObjectUrl(url);
         });
-        
-        _showSnackBar('Tiket telah dibuka di tab baru. Anda bisa mencetak atau menyimpannya sebagai PDF.');
+
+        _showSnackBar(
+          'Tiket telah dibuka di tab baru. Anda bisa mencetak atau menyimpannya sebagai PDF.',
+        );
       } else {
         // For non-web platforms, show message that this feature needs native implementation
-        _showSnackBar('Fitur unduh tiket tersedia di versi mobile. Silahkan gunakan browser untuk mencetak tiket.');
+        _showSnackBar(
+          'Fitur unduh tiket tersedia di versi mobile. Silahkan gunakan browser untuk mencetak tiket.',
+        );
       }
     } catch (e) {
       print('Error saat mengunduh tiket: $e');
@@ -423,14 +440,11 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
       }
     }
   }
-  
+
   void _showSnackBar(String message) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          behavior: SnackBarBehavior.floating,
-        ),
+        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
       );
     }
   }
@@ -472,7 +486,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
       //   Navigator.pop(context);
       //   final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
       //   final booking = bookingProvider.currentBooking;
-        
+
       //   if (booking != null) {
       //     if (label == 'Cetak') {
       //       // For print option, we'll download and open in a new tab for printing
@@ -488,19 +502,12 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
           CircleAvatar(
             radius: 25,
             backgroundColor: color.withOpacity(0.2),
-            child: Icon(
-              icon,
-              color: color,
-              size: 25,
-            ),
+            child: Icon(icon, color: color, size: 25),
           ),
           const SizedBox(height: 8),
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -511,60 +518,50 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
   Widget build(BuildContext context) {
     final bookingProvider = Provider.of<BookingProvider>(context);
     final booking = bookingProvider.currentBooking;
-    
+
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    
+
     if (booking == null) {
       return Scaffold(
-        appBar: const CustomAppBar(
-          title: 'Detail Tiket',
-          showBackButton: true,
-        ),
+        appBar: const CustomAppBar(title: 'Detail Tiket', showBackButton: true),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.error_outline,
-                size: 64,
-                color: Colors.grey[400],
-              ),
+              Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
               const SizedBox(height: 16),
               Text(
                 'Tiket tidak ditemukan',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 16,
-                ),
+                style: TextStyle(color: Colors.grey[600], fontSize: 16),
               ),
             ],
           ),
         ),
       );
     }
-    
+
     // Format date
     final dateFormat = DateFormat('EEEE, d MMMM yyyy', 'id_ID');
     final bookingDate = DateTime.parse(booking.departureDate);
-    
+
     // Check if can be cancelled
     final now = DateTime.now();
     final isWithin24Hours = bookingDate.difference(now).inHours <= 24;
-    final canCancel = booking.status == 'CONFIRMED' && !isWithin24Hours;
-    
+    final canCancel = booking.status == 'PENDING' && !isWithin24Hours;
+    final canRefund = booking.status == 'CONFIRMED' && !isWithin24Hours;
+
     // Get all tickets
     final tickets = booking.tickets ?? [];
     final hasMultipleTickets = tickets.length > 1;
-    
+
     // Get selected ticket
-    final selectedTicket = tickets.isNotEmpty && _selectedTicketIndex < tickets.length
-        ? tickets[_selectedTicketIndex]
-        : null;
-    
+    final selectedTicket =
+        tickets.isNotEmpty && _selectedTicketIndex < tickets.length
+            ? tickets[_selectedTicketIndex]
+            : null;
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Tiket #${booking.bookingCode}'),
@@ -577,28 +574,28 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
           // IconButton(
           //   icon: Icon(kIsWeb ? Icons.print : Icons.share),
           //   tooltip: kIsWeb ? 'Cetak Tiket' : 'Bagikan Tiket',
-          //   onPressed: kIsWeb 
+          //   onPressed: kIsWeb
           //       ? () => _downloadTicket(context, booking)
           //       : _showShareOptions,
           // ),
           // Download Button
           _isDownloading
               ? const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
+                padding: EdgeInsets.all(16.0),
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
-                )
-              : IconButton(
-                  icon: const Icon(Icons.download),
-                  tooltip: 'Unduh Tiket',
-                  onPressed: () => _downloadTicket(context, booking),
                 ),
+              )
+              : IconButton(
+                icon: const Icon(Icons.download),
+                tooltip: 'Unduh Tiket',
+                onPressed: () => _downloadTicket(context, booking),
+              ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
@@ -615,7 +612,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
             SliverToBoxAdapter(
               child: Container(
                 color: _getStatusColor(booking.status),
-                padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 16.0,
+                  horizontal: 24.0,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -718,7 +718,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                 ),
               ),
             ),
-            
+
             // Content
             SliverToBoxAdapter(
               child: AnimatedBuilder(
@@ -751,7 +751,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                                     width: 40,
                                     height: 40,
                                     decoration: BoxDecoration(
-                                      color: Theme.of(context).primaryColor.withOpacity(0.1),
+                                      color: Theme.of(
+                                        context,
+                                      ).primaryColor.withOpacity(0.1),
                                       shape: BoxShape.circle,
                                     ),
                                     child: Icon(
@@ -762,7 +764,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                                   ),
                                   const SizedBox(width: 12),
                                   Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'Informasi Perjalanan',
@@ -784,12 +787,14 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                                 ],
                               ),
                               const SizedBox(height: 16),
-                              
+
                               const Divider(),
-                              
+
                               // Date & Time
                               Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8.0,
+                                ),
                                 child: Row(
                                   children: [
                                     Expanded(
@@ -803,7 +808,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                                           const SizedBox(width: 8),
                                           Expanded(
                                             child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
                                                 const Text(
                                                   'Tanggal',
@@ -813,7 +819,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                                                   ),
                                                 ),
                                                 Text(
-                                                  dateFormat.format(bookingDate),
+                                                  dateFormat.format(
+                                                    bookingDate,
+                                                  ),
                                                   style: const TextStyle(
                                                     fontWeight: FontWeight.bold,
                                                     fontSize: 14,
@@ -836,7 +844,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                                           const SizedBox(width: 8),
                                           Expanded(
                                             child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
                                                 const Text(
                                                   'Waktu',
@@ -861,12 +870,14 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                                   ],
                                 ),
                               ),
-                              
+
                               const Divider(),
-                              
+
                               // Passenger & Vehicle
                               Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8.0,
+                                ),
                                 child: Row(
                                   children: [
                                     Expanded(
@@ -880,7 +891,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                                           const SizedBox(width: 8),
                                           Expanded(
                                             child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
                                                 const Text(
                                                   'Penumpang',
@@ -914,7 +926,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                                             const SizedBox(width: 8),
                                             Expanded(
                                               child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
                                                 children: [
                                                   const Text(
                                                     'Kendaraan',
@@ -926,7 +939,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                                                   Text(
                                                     '${booking.vehicleCount} unit',
                                                     style: const TextStyle(
-                                                      fontWeight: FontWeight.bold,
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                       fontSize: 14,
                                                     ),
                                                   ),
@@ -943,7 +957,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                           ),
                         ),
                       ),
-                      
+
                       // Multiple Tickets Selector
                       if (hasMultipleTickets) ...[
                         const SizedBox(height: 24),
@@ -977,7 +991,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                             itemCount: tickets.length,
                             itemBuilder: (context, index) {
                               final isSelected = index == _selectedTicketIndex;
-                              
+
                               return Padding(
                                 padding: const EdgeInsets.only(right: 8.0),
                                 child: GestureDetector(
@@ -992,19 +1006,23 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                                       vertical: 8.0,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? Theme.of(context).primaryColor
-                                          : Colors.grey[200],
+                                      color:
+                                          isSelected
+                                              ? Theme.of(context).primaryColor
+                                              : Colors.grey[200],
                                       borderRadius: BorderRadius.circular(24),
-                                      boxShadow: isSelected
-                                          ? [
-                                              BoxShadow(
-                                                color: Theme.of(context).primaryColor.withOpacity(0.3),
-                                                blurRadius: 8,
-                                                offset: const Offset(0, 2),
-                                              ),
-                                            ]
-                                          : null,
+                                      boxShadow:
+                                          isSelected
+                                              ? [
+                                                BoxShadow(
+                                                  color: Theme.of(context)
+                                                      .primaryColor
+                                                      .withOpacity(0.3),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, 2),
+                                                ),
+                                              ]
+                                              : null,
                                     ),
                                     child: Row(
                                       children: [
@@ -1013,16 +1031,23 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                                               ? Icons.directions_car
                                               : Icons.person,
                                           size: 16,
-                                          color: isSelected ? Colors.white : Colors.grey[700],
+                                          color:
+                                              isSelected
+                                                  ? Colors.white
+                                                  : Colors.grey[700],
                                         ),
                                         const SizedBox(width: 6),
                                         Text(
                                           'Tiket ${index + 1}',
                                           style: TextStyle(
-                                            color: isSelected ? Colors.white : Colors.black87,
-                                            fontWeight: isSelected
-                                                ? FontWeight.bold
-                                                : FontWeight.normal,
+                                            color:
+                                                isSelected
+                                                    ? Colors.white
+                                                    : Colors.black87,
+                                            fontWeight:
+                                                isSelected
+                                                    ? FontWeight.bold
+                                                    : FontWeight.normal,
                                           ),
                                         ),
                                       ],
@@ -1034,7 +1059,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                           ),
                         ),
                       ],
-                      
+
                       // Selected Ticket QR Code
                       if (selectedTicket != null) ...[
                         const SizedBox(height: 24),
@@ -1049,10 +1074,13 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                               children: [
                                 // Ticket Header with Type Badge
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
-                                      hasMultipleTickets ? 'Tiket #${_selectedTicketIndex + 1}' : 'Tiket',
+                                      hasMultipleTickets
+                                          ? 'Tiket #${_selectedTicketIndex + 1}'
+                                          : 'Tiket',
                                       style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 18,
@@ -1064,10 +1092,14 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                                         vertical: 6.0,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Theme.of(context).primaryColor.withOpacity(0.1),
+                                        color: Theme.of(
+                                          context,
+                                        ).primaryColor.withOpacity(0.1),
                                         borderRadius: BorderRadius.circular(16),
                                         border: Border.all(
-                                          color: Theme.of(context).primaryColor.withOpacity(0.3),
+                                          color: Theme.of(
+                                            context,
+                                          ).primaryColor.withOpacity(0.3),
                                         ),
                                       ),
                                       child: Row(
@@ -1078,13 +1110,19 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                                                 ? Icons.directions_car
                                                 : Icons.person,
                                             size: 16,
-                                            color: Theme.of(context).primaryColor,
+                                            color:
+                                                Theme.of(context).primaryColor,
                                           ),
                                           const SizedBox(width: 4),
                                           Text(
-                                            _getTicketTypeText(selectedTicket.ticketType),
+                                            _getTicketTypeText(
+                                              selectedTicket.ticketType,
+                                            ),
                                             style: TextStyle(
-                                              color: Theme.of(context).primaryColor,
+                                              color:
+                                                  Theme.of(
+                                                    context,
+                                                  ).primaryColor,
                                               fontWeight: FontWeight.bold,
                                               fontSize: 12,
                                             ),
@@ -1094,9 +1132,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                                     ),
                                   ],
                                 ),
-                                
+
                                 const SizedBox(height: 20),
-                                
+
                                 // QR Code - Use RepaintBoundary to capture for downloading
                                 Container(
                                   padding: const EdgeInsets.all(16),
@@ -1114,9 +1152,11 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                                   child: Column(
                                     children: [
                                       RepaintBoundary(
-                                        key: _selectedTicketIndex < _qrKeys.length 
-                                            ? _qrKeys[_selectedTicketIndex] 
-                                            : GlobalKey(),
+                                        key:
+                                            _selectedTicketIndex <
+                                                    _qrKeys.length
+                                                ? _qrKeys[_selectedTicketIndex]
+                                                : GlobalKey(),
                                         child: SizedBox(
                                           width: 200,
                                           height: 200,
@@ -1147,9 +1187,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                                     ],
                                   ),
                                 ),
-                                
+
                                 const SizedBox(height: 20),
-                                
+
                                 // Boarding Info
                                 Container(
                                   padding: const EdgeInsets.all(12),
@@ -1158,10 +1198,12 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             'Status Boarding',
@@ -1185,18 +1227,22 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                                           Container(
                                             padding: const EdgeInsets.all(8),
                                             decoration: BoxDecoration(
-                                              color: selectedTicket.checkedIn
-                                                  ? Colors.green.withOpacity(0.2)
-                                                  : Colors.orange.withOpacity(0.2),
+                                              color:
+                                                  selectedTicket.checkedIn
+                                                      ? Colors.green
+                                                          .withOpacity(0.2)
+                                                      : Colors.orange
+                                                          .withOpacity(0.2),
                                               shape: BoxShape.circle,
                                             ),
                                             child: Icon(
                                               selectedTicket.checkedIn
                                                   ? Icons.check
                                                   : Icons.pending,
-                                              color: selectedTicket.checkedIn
-                                                  ? Colors.green
-                                                  : Colors.orange,
+                                              color:
+                                                  selectedTicket.checkedIn
+                                                      ? Colors.green
+                                                      : Colors.orange,
                                               size: 18,
                                             ),
                                           ),
@@ -1207,9 +1253,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                                                 : 'Belum Check-In',
                                             style: TextStyle(
                                               fontWeight: FontWeight.bold,
-                                              color: selectedTicket.checkedIn
-                                                  ? Colors.green
-                                                  : Colors.orange,
+                                              color:
+                                                  selectedTicket.checkedIn
+                                                      ? Colors.green
+                                                      : Colors.orange,
                                               fontSize: 14,
                                             ),
                                           ),
@@ -1218,7 +1265,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                                     ],
                                   ),
                                 ),
-                                
+
                                 // Ticket Actions
                                 const SizedBox(height: 16),
                                 Row(
@@ -1253,7 +1300,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                           ),
                         ),
                       ],
-                      
+
                       // Booking Information (unchanged)
                       const SizedBox(height: 24),
                       const Text(
@@ -1273,20 +1320,32 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                           padding: const EdgeInsets.all(16.0),
                           child: Column(
                             children: [
-                              _buildInfoRow('Kode Booking', booking.bookingCode),
+                              _buildInfoRow(
+                                'Kode Booking',
+                                booking.bookingCode,
+                              ),
                               const Divider(height: 24),
-                              _buildInfoRow('Status Pembayaran', _getPaymentStatus(booking)),
+                              _buildInfoRow(
+                                'Status Pembayaran',
+                                _getPaymentStatus(booking),
+                              ),
                               const Divider(height: 24),
-                              _buildInfoRow('Total Pembayaran', _formatCurrency(booking.totalAmount)),
+                              _buildInfoRow(
+                                'Total Pembayaran',
+                                _formatCurrency(booking.totalAmount),
+                              ),
                               if (booking.status == 'CANCELLED') ...[
                                 const Divider(height: 24),
-                                _buildInfoRow('Alasan Pembatalan', booking.cancellationReason ?? '-'),
+                                _buildInfoRow(
+                                  'Alasan Pembatalan',
+                                  booking.cancellationReason ?? '-',
+                                ),
                               ],
                             ],
                           ),
                         ),
                       ),
-                      
+
                       // Daftar Seluruh Tiket dalam bentuk card expandable (unchanged)
                       if (hasMultipleTickets) ...[
                         const SizedBox(height: 24),
@@ -1317,31 +1376,38 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                                 physics: const NeverScrollableScrollPhysics(),
                                 shrinkWrap: true,
                                 itemCount: tickets.length,
-                                separatorBuilder: (context, index) => const Divider(height: 1),
+                                separatorBuilder:
+                                    (context, index) =>
+                                        const Divider(height: 1),
                                 itemBuilder: (context, index) {
                                   final ticket = tickets[index];
-                                  final isSelected = index == _selectedTicketIndex;
-                                  
+                                  final isSelected =
+                                      index == _selectedTicketIndex;
+
                                   return ListTile(
                                     selected: isSelected,
-                                    selectedTileColor: Theme.of(context).primaryColor.withOpacity(0.1),
+                                    selectedTileColor: Theme.of(
+                                      context,
+                                    ).primaryColor.withOpacity(0.1),
                                     leading: CircleAvatar(
-                                      backgroundColor: isSelected
-                                          ? Theme.of(context).primaryColor
-                                          : Colors.grey[300],
+                                      backgroundColor:
+                                          isSelected
+                                              ? Theme.of(context).primaryColor
+                                              : Colors.grey[300],
                                       child: Text(
                                         '${index + 1}',
                                         style: TextStyle(
-                                          color: isSelected ? Colors.white : Colors.black,
+                                          color:
+                                              isSelected
+                                                  ? Colors.white
+                                                  : Colors.black,
                                         ),
                                       ),
                                     ),
                                     title: Text('Tiket #${ticket.ticketCode}'),
                                     subtitle: Text(
                                       _getTicketTypeDescription(ticket),
-                                      style: TextStyle(
-                                        color: Colors.grey[600],
-                                      ),
+                                      style: TextStyle(color: Colors.grey[600]),
                                     ),
                                     trailing: Row(
                                       mainAxisSize: MainAxisSize.min,
@@ -1350,9 +1416,12 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                                           ticket.checkedIn
                                               ? Icons.check_circle
                                               : Icons.qr_code,
-                                          color: ticket.checkedIn
-                                              ? Colors.green
-                                              : Theme.of(context).primaryColor,
+                                          color:
+                                              ticket.checkedIn
+                                                  ? Colors.green
+                                                  : Theme.of(
+                                                    context,
+                                                  ).primaryColor,
                                         ),
                                         const SizedBox(width: 8),
                                         Icon(
@@ -1374,9 +1443,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                           ),
                         ),
                       ],
-                      
+
                       const SizedBox(height: 32),
-                      
+
                       // Cancel Button (if applicable) (unchanged)
                       if (canCancel)
                         SizedBox(
@@ -1392,7 +1461,23 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
                             onPressed: _cancelBooking,
                           ),
                         ),
-                      
+
+                      // Tombol refund (untuk CONFIRMED)
+                      if (canRefund)
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.money),
+                            label: const Text('Minta Refund'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.orange,
+                              side: const BorderSide(color: Colors.orange),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            onPressed: _showRefundDialog,
+                          ),
+                        ),
+
                       const SizedBox(height: 16),
                     ],
                   ),
@@ -1404,30 +1489,189 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
       ),
     );
   }
-  
+
+  Future<void> _showRefundDialog() async {
+    TextEditingController reasonController = TextEditingController();
+    TextEditingController bankNameController = TextEditingController();
+    TextEditingController accountNameController = TextEditingController();
+    TextEditingController accountNumberController = TextEditingController();
+
+    final result =
+        await showDialog<bool>(
+          context: context,
+          builder:
+              (context) => AlertDialog(
+                title: const Text('Minta Refund'),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Permintaan refund akan diproses dalam waktu 3-5 hari kerja. '
+                        'Dana akan dikembalikan sesuai dengan kebijakan refund yang berlaku.\n',
+                      ),
+                      const SizedBox(height: 16),
+
+                      const Text('Alasan Refund:'),
+                      TextField(
+                        controller: reasonController,
+                        decoration: const InputDecoration(
+                          hintText: 'Masukkan alasan refund',
+                          border: OutlineInputBorder(),
+                        ),
+                        maxLines: 2,
+                      ),
+
+                      const SizedBox(height: 16),
+                      const Text('Informasi Rekening:'),
+
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: bankNameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Nama Bank',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: accountNameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Nama Pemilik Rekening',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: accountNumberController,
+                        decoration: const InputDecoration(
+                          labelText: 'Nomor Rekening',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Batal'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      // Validasi
+                      if (reasonController.text.isEmpty ||
+                          bankNameController.text.isEmpty ||
+                          accountNameController.text.isEmpty ||
+                          accountNumberController.text.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Semua field harus diisi'),
+                          ),
+                        );
+                        return;
+                      }
+                      Navigator.pop(context, true);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: Colors.orange,
+                    ),
+                    child: const Text('Ajukan Refund'),
+                  ),
+                ],
+              ),
+        ) ??
+        false;
+
+    if (result) {
+      setState(() {
+        _isLoading = true;
+      });
+
+      try {
+        final bookingProvider = Provider.of<BookingProvider>(
+          context,
+          listen: false,
+        );
+
+        // Panggil requestRefund dan simpan hasilnya - pastikan tipe data sesuai dengan hasil
+        final Map<String, dynamic> response = await bookingProvider
+            .requestRefund(
+              widget.bookingId,
+              reasonController.text,
+              bankNameController.text,
+              accountNameController.text,
+              accountNumberController.text,
+            );
+
+        if (mounted) {
+          // Akses properti dalam Map
+          final bool success = response['success'] ?? false;
+          final bool isManualProcess =
+              response['requires_manual_process'] ?? true;
+
+          if (success) {
+            final String message =
+                isManualProcess
+                    ? 'Permintaan refund berhasil dikirim dan akan diproses secara manual oleh tim kami dalam 3-7 hari kerja. Dana akan dikembalikan ke rekening yang Anda berikan.'
+                    : 'Permintaan refund berhasil dikirim dan sedang diproses. Status refund akan diperbarui secara otomatis.';
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(message), duration: Duration(seconds: 6)),
+            );
+
+            // Refresh detail booking untuk menampilkan status baru
+            _loadTicketDetails();
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Gagal mengajukan refund. Silakan coba lagi nanti.',
+                ),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Gagal mengajukan refund: ${e.toString()}. Silakan hubungi customer service kami.',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
+    }
+  }
+
   Widget _buildInfoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.grey,
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          Text(label, style: const TextStyle(color: Colors.grey)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
         ],
       ),
     );
   }
-  
+
   Color _getStatusColor(String status) {
     switch (status) {
       case 'CONFIRMED':
@@ -1443,7 +1687,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
         return Colors.grey;
     }
   }
-  
+
   IconData _getStatusIcon(String status) {
     switch (status) {
       case 'CONFIRMED':
@@ -1459,7 +1703,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
         return Icons.info;
     }
   }
-  
+
   String _getStatusText(String status) {
     switch (status) {
       case 'CONFIRMED':
@@ -1476,7 +1720,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
         return status;
     }
   }
-  
+
   String _getStatusDescription(String status) {
     switch (status) {
       case 'CONFIRMED':
@@ -1493,13 +1737,13 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
         return '';
     }
   }
-  
+
   String _getPaymentStatus(booking) {
     final payments = booking.payments;
     if (payments == null || payments.isEmpty) {
       return 'Belum dibayar';
     }
-    
+
     final latestPayment = payments.first;
     switch (latestPayment.status) {
       case 'SUCCESS':
@@ -1516,7 +1760,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
         return latestPayment.status;
     }
   }
-  
+
   String _formatCurrency(double amount) {
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
@@ -1525,7 +1769,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
     );
     return currencyFormat.format(amount);
   }
-  
+
   String _getTicketTypeText(String type) {
     switch (type.toUpperCase()) {
       case 'PASSENGER':
@@ -1538,7 +1782,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> with SingleTick
         return type;
     }
   }
-  
+
   String _getTicketTypeDescription(ticket) {
     if (ticket.vehicleId != null) {
       return 'Tiket Kendaraan';

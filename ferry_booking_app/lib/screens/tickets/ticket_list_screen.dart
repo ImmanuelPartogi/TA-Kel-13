@@ -62,7 +62,6 @@ class _TicketListScreenState extends State<TicketListScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tiket Saya'),
         bottom: TabBar(
           controller: _tabController,
           tabs: const [Tab(text: 'Akan Datang'), Tab(text: 'Riwayat')],

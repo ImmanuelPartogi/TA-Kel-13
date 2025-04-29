@@ -401,6 +401,82 @@ class BookingProvider extends ChangeNotifier {
     }
   }
 
+  // Request refund untuk booking yang sudah dibayar
+  Future<Map<String, dynamic>> requestRefund(
+    int bookingId,
+    String reason,
+    String bankName,
+    String bankAccountName,
+    String bankAccountNumber,
+  ) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final refundData = {
+        'reason': reason,
+        'bank_name': bankName,
+        'bank_account_name': bankAccountName,
+        'bank_account_number': bankAccountNumber,
+      };
+
+      try {
+        // Coba minta refund
+        await _bookingApi.requestRefund(bookingId, refundData);
+
+        // Update current booking if it's the refunded one
+        if (_currentBooking != null && _currentBooking!.id == bookingId) {
+          _currentBooking = await _bookingApi.getBookingDetails(bookingId);
+        }
+
+        // Update bookings list if it exists
+        if (_bookings != null) {
+          await getBookings();
+        }
+
+        _isLoading = false;
+        notifyListeners();
+
+        // Return Map dengan informasi tambahan
+        return {
+          'success': true,
+          'requires_manual_process':
+              true, // Default true untuk memastikan pesan yang tepat
+        };
+      } catch (e) {
+        _isLoading = false;
+        _errorMessage = e.toString();
+        notifyListeners();
+        return {'success': false, 'error': e.toString()};
+      }
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  // Get refund details
+  Future<Map<String, dynamic>> getRefundDetails(int bookingId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final result = await _bookingApi.getRefundDetails(bookingId);
+      _isLoading = false;
+      notifyListeners();
+      return result;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return {};
+    }
+  }
+
   // Simpan metode pembayaran yang dipilih ke dalam objek booking
   void updatePaymentMethod(String paymentMethod, String paymentType) {
     try {

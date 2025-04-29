@@ -521,7 +521,7 @@ class BookingController extends Controller
             'current_status' => $booking->status
         ]);
 
-        if (!in_array($booking->status, ['PENDING', 'CONFIRMED'])) {
+        if ($booking->status !== 'PENDING') {
             Log::warning('Cannot cancel booking with current status', [
                 'booking_id' => $booking->id,
                 'status' => $booking->status
@@ -529,7 +529,7 @@ class BookingController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Booking tidak dapat dibatalkan'
+                'message' => 'Booking dengan status sudah CONFIRMED tidak dapat dibatalkan. Silakan gunakan fitur refund.'
             ], 400);
         }
 
@@ -668,6 +668,107 @@ class BookingController extends Controller
                 'message' => 'Terjadi kesalahan saat membatalkan booking',
                 'error' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    public function requestRefund($id, Request $request)
+    {
+        $user = request()->user();
+        $booking = Booking::where('id', $id)
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+
+        // Hanya izinkan refund untuk status CONFIRMED
+        if ($booking->status !== 'CONFIRMED') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya booking yang sudah dikonfirmasi yang dapat di-refund'
+            ], 400);
+        }
+
+        // Validasi waktu refund
+        $bookingDate = Carbon::parse($booking->departure_date);
+        $today = Carbon::today();
+        $daysUntilDeparture = $today->diffInDays($bookingDate, false);
+
+        // Contoh kebijakan refund
+        $refundPercentage = 0;
+        if ($daysUntilDeparture >= 7) {
+            $refundPercentage = 100; // Full refund jika H-7 atau lebih
+        } elseif ($daysUntilDeparture >= 3) {
+            $refundPercentage = 75; // 75% refund jika H-3 sampai H-6
+        } elseif ($daysUntilDeparture >= 1) {
+            $refundPercentage = 50; // 50% refund jika H-1 atau H-2
+        } else {
+            return response()->json([
+                'success' => false,
+                'message' => 'Maaf, refund tidak dapat dilakukan pada hari H keberangkatan'
+            ], 400);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Hitung jumlah refund
+            $refundAmount = ($booking->total_amount * $refundPercentage) / 100;
+
+            // Update status booking
+            $booking->status = 'REFUNDED';
+            $booking->cancellation_reason = $request->reason ?? 'Permintaan refund oleh penumpang';
+            $booking->save();
+
+            // Update status tiket dan lakukan proses refund
+            Ticket::where('booking_id', $booking->id)
+                ->update(['status' => 'REFUNDED']);
+
+            // Proses refund ke payment
+            $payment = Payment::where('booking_id', $booking->id)
+                ->where('status', 'SUCCESS')
+                ->first();
+
+            if ($payment) {
+                $payment->status = 'REFUNDED';
+                $payment->refund_amount = $refundAmount;
+                $payment->refund_date = now();
+                $payment->save();
+
+                // Buat catatan refund jika menggunakan model Refund
+                if (class_exists('App\Models\Refund')) {
+                    $refund = new \App\Models\Refund([
+                        'booking_id' => $booking->id,
+                        'payment_id' => $payment->id,
+                        'amount' => $refundAmount,
+                        'status' => 'PROCESSED',
+                        'reason' => $request->reason,
+                        'refund_percentage' => $refundPercentage
+                    ]);
+                    $refund->save();
+                }
+            }
+
+            // Kembalikan ketersediaan tempat
+            $scheduleDate = ScheduleDate::where('schedule_id', $booking->schedule_id)
+                ->where('date', $booking->departure_date)
+                ->first();
+
+            if ($scheduleDate) {
+                // Logika pengurangan kapasitas (sama seperti di cancel)
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Permintaan refund berhasil diproses',
+                'data' => [
+                    'booking' => $booking->fresh(),
+                    'refund_amount' => $refundAmount,
+                    'refund_percentage' => $refundPercentage
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            // Error handling
         }
     }
 }

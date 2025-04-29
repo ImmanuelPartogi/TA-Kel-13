@@ -24,7 +24,7 @@ class UpdateExpiredTickets extends Command
                 ->join('bookings', 'tickets.booking_id', '=', 'bookings.id')
                 ->where('tickets.status', '=', 'ACTIVE')
                 ->where('tickets.checked_in', '=', false)
-                ->whereDate('bookings.booking_date', '<', Carbon::today())
+                ->whereDate('bookings.departure_date', '<', Carbon::today())
                 ->update(['tickets.status' => 'EXPIRED']);
 
             $this->info("Tiket tanggal lalu diperbarui: {$pastTicketsCount}");
@@ -35,12 +35,12 @@ class UpdateExpiredTickets extends Command
             Ticket::where('status', 'ACTIVE')
                 ->where('checked_in', false)
                 ->whereHas('booking', function($query) {
-                    $query->whereDate('booking_date', Carbon::today());
+                    $query->whereDate('departure_date', Carbon::today());
                 })
                 ->with(['booking.schedule'])
                 ->chunk(100, function($tickets) use (&$todayTicketsCount) {
                     foreach ($tickets as $ticket) {
-                        $bookingDate = Carbon::parse($ticket->booking->booking_date);
+                        $bookingDate = Carbon::parse($ticket->booking->departure_date);
                         $departureTime = $ticket->booking->schedule->departure_time;
 
                         // Normalisasi format waktu

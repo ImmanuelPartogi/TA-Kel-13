@@ -1,7 +1,7 @@
 import 'ferry.dart';
 import 'route.dart';
 
-class Schedule {
+class Schedule {  
   final int id;
   final int routeId;
   final int ferryId;

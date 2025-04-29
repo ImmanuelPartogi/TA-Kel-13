@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use App\Helpers\DateHelper;
 
 class BookingController extends Controller
 {
@@ -66,14 +67,13 @@ class BookingController extends Controller
     {
         // Logging informasi awal
         Log::info('Booking date received', [
-            'booking_date' => $request->booking_date,
+            'departure_date' => $request->departure_date,
             'current_date' => now()->toDateString()
         ]);
 
         // FIX: Perbaikan aturan validasi untuk field vehicles dan passengers
         $validator = Validator::make($request->all(), [
             'schedule_id' => 'required|exists:schedules,id',
-            'booking_date' => 'required|date|after_or_equal:today',
             'passenger_count' => 'required|integer|min:1',
             'vehicle_count' => 'required|integer|min:0',
             // Hanya memerlukan vehicles jika vehicle_count > 0
@@ -104,18 +104,40 @@ class BookingController extends Controller
 
         // Cek ketersediaan jadwal
         $schedule = Schedule::findOrFail($request->schedule_id);
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $request->booking_date)) {
-            $bookingDate = Carbon::createFromFormat('Y-m-d', $request->booking_date, 'Asia/Jakarta');
-        } else {
-            // Format khusus untuk parsing tanggal ISO atau format lainnya
-            $bookingDate = Carbon::parse($request->booking_date)->setTimezone('Asia/Jakarta');
-            // Pastikan hanya mengambil tanggal (tanpa waktu)
-            $bookingDate = Carbon::createFromFormat('Y-m-d', $bookingDate->format('Y-m-d'), 'Asia/Jakarta');
+        // Logging raw input untuk debugging
+        Log::info('Raw booking date input:', [
+            'departure_date' => $request->departure_date,
+            'type' => gettype($request->departure_date)
+        ]);
+
+        try {
+            // Standarisasi parsing tanggal dengan pendekatan yang lebih konsisten
+            if (is_string($request->departure_date)) {
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $request->departure_date)) {
+                    // Format YYYY-MM-DD
+                    $bookingDate = Carbon::createFromFormat('Y-m-d', $request->departure_date, 'Asia/Jakarta')->startOfDay();
+                } else {
+                    // Format lain (ISO, timestamp, dll)
+                    $bookingDate = Carbon::parse($request->departure_date)->setTimezone('Asia/Jakarta')->startOfDay();
+                }
+            } else {
+                throw new \Exception('Format tanggal tidak valid');
+            }
+        } catch (\Exception $e) {
+            Log::error('Error parsing booking date', [
+                'input' => $request->departure_date,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Format tanggal tidak valid: ' . $e->getMessage()
+            ], 422);
         }
 
         // Tambahkan log debug untuk memastikan tanggal yang diproses benar
         Log::info('Processed booking date', [
-            'raw_date' => $request->booking_date,
+            'raw_date' => $request->departure_date,
             'parsed_date' => $bookingDate->format('Y-m-d'),
             'day_of_week' => $bookingDate->dayOfWeek
         ]);
@@ -123,17 +145,57 @@ class BookingController extends Controller
         Log::info('Checking schedule availability', [
             'schedule_id' => $schedule->id,
             'route_id' => $schedule->route_id,
-            'booking_date' => $bookingDate
+            'departure_date' => $bookingDate
         ]);
 
         // Cek apakah jadwal tersedia untuk tanggal tersebut
-        $dayOfWeek = date('N', strtotime($bookingDate)); // 1-7 for Monday-Sunday
-        if (!in_array($dayOfWeek, explode(',', $schedule->days))) {
+        $dayOfWeek = $bookingDate->format('N');
+        $availableDays = explode(',', $schedule->days);
+
+        Log::info('Checking schedule day availability', [
+            'schedule_id' => $schedule->id,
+            'departure_date' => $bookingDate->format('Y-m-d'),
+            'day_of_week' => $dayOfWeek,
+            'day_name' => $bookingDate->format('l'),
+            'available_days' => $availableDays
+        ]);
+
+        if (!in_array($dayOfWeek, $availableDays)) {
             Log::warning('Schedule not available for selected day', [
                 'schedule_id' => $schedule->id,
-                'booking_date' => $bookingDate,
+                'departure_date' => $bookingDate->format('Y-m-d'),
                 'day_of_week' => $dayOfWeek,
+                'day_name' => $bookingDate->format('l'),
                 'available_days' => $schedule->days
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Jadwal tidak tersedia untuk hari ' . $bookingDate->isoFormat('dddd')
+            ], 400);
+        }
+
+        // Cek ketersediaan kursi
+        $formattedDate = $bookingDate->format('Y-m-d');
+
+        // Query dengan lebih eksplisit dan tambahkan logging
+        $scheduleDate = ScheduleDate::where('schedule_id', $schedule->id)
+            ->whereDate('date', $formattedDate)
+            ->first();
+
+        Log::info('ScheduleDate query', [
+            'schedule_id' => $schedule->id,
+            'formatted_date' => $formattedDate,
+            'raw_departure_date' => $request->departure_date,
+            'found' => $scheduleDate ? true : false,
+            'status' => $scheduleDate ? $scheduleDate->status : 'N/A'
+        ]);
+
+        // Buat jadwal otomatis jika belum ada & jadwal tersedia untuk hari tersebut
+        if (!$scheduleDate) {
+            Log::warning('Schedule date not found for booking', [
+                'schedule_id' => $schedule->id,
+                'date' => $formattedDate
             ]);
 
             return response()->json([
@@ -142,22 +204,17 @@ class BookingController extends Controller
             ], 400);
         }
 
-        // Cek ketersediaan kursi
-        $scheduleDate = ScheduleDate::where('schedule_id', $schedule->id)
-            ->where('date', $bookingDate->format('Y-m-d'))
-            ->first();
+        // Jika status jadwal bukan AVAILABLE, tolak booking
+        if ($scheduleDate->status !== 'AVAILABLE') {
+            Log::warning('Schedule date found but not available', [
+                'schedule_id' => $schedule->id,
+                'date' => $formattedDate,
+                'status' => $scheduleDate->status
+            ]);
 
-        // Tambahkan log untuk memeriksa hasil query
-        Log::info('ScheduleDate query', [
-            'schedule_id' => $schedule->id,
-            'formatted_date' => $bookingDate->format('Y-m-d'),
-            'found' => $scheduleDate ? true : false
-        ]);
-
-        if (!$scheduleDate || $scheduleDate->status !== 'AVAILABLE') {
             return response()->json([
                 'success' => false,
-                'message' => 'Jadwal tidak tersedia untuk tanggal yang dipilih'
+                'message' => 'Jadwal tidak tersedia untuk tanggal yang dipilih (Status: ' . $scheduleDate->status . ')'
             ], 400);
         }
 
@@ -306,7 +363,7 @@ class BookingController extends Controller
                 'booking_code' => 'FBS-' . strtoupper(Str::random(8)),
                 'user_id' => $user->id,
                 'schedule_id' => $request->schedule_id,
-                'booking_date' => $bookingDate->format('Y-m-d'), // Format standard Y-m-d
+                'departure_date' => $formattedDate, // Tambahkan ini
                 'passenger_count' => $request->passenger_count,
                 'vehicle_count' => $request->vehicle_count,
                 'total_amount' => $totalAmount,
@@ -477,12 +534,12 @@ class BookingController extends Controller
         }
 
         // Jika sudah dekat dengan tanggal keberangkatan (misal H-1), tolak pembatalan
-        $bookingDate = \Carbon\Carbon::parse($booking->booking_date);
-        $today = \Carbon\Carbon::today();
+        $bookingDate = Carbon::parse($booking->departure_date); // Ganti departure_date
+        $today = Carbon::today();
         $daysUntilDeparture = $today->diffInDays($bookingDate, false);
 
         Log::info('Checking cancellation window', [
-            'booking_date' => $booking->booking_date,
+            'departure_date' => $booking->departure_date,
             'days_until_departure' => $daysUntilDeparture
         ]);
 
@@ -520,7 +577,7 @@ class BookingController extends Controller
 
             // Update ketersediaan tempat di jadwal
             $scheduleDate = ScheduleDate::where('schedule_id', $booking->schedule_id)
-                ->where('date', $booking->booking_date)
+                ->where('date', $booking->departure_date)
                 ->first();
 
             if ($scheduleDate) {
@@ -567,7 +624,7 @@ class BookingController extends Controller
             } else {
                 Log::warning('ScheduleDate not found for cancellation', [
                     'schedule_id' => $booking->schedule_id,
-                    'booking_date' => $booking->booking_date
+                    'departure_date' => $booking->departure_date
                 ]);
             }
 

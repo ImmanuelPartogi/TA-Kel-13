@@ -16,7 +16,7 @@ class BookingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     // Format date
     final dateFormat = DateFormat('EEEE, d MMM yyyy', 'id_ID');
-    final dateObj = DateTime.parse(booking.bookingDate);
+    final dateObj = DateTime.parse(booking.departureDate).toLocal();
     final formattedDate = dateFormat.format(dateObj);
     
     // Format time

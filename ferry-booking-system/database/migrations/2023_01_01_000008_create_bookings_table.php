@@ -13,7 +13,7 @@ return new class extends Migration
             $table->string('booking_code', 20);
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('schedule_id')->constrained()->onDelete('cascade');
-            $table->date('booking_date');
+            $table->date('departure_date');
             $table->unsignedInteger('passenger_count')->default(1);
             $table->unsignedInteger('vehicle_count')->default(0);
             $table->decimal('total_amount', 12, 2);

@@ -67,30 +67,61 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
 
   // Tambahkan fungsi untuk menyimpan tanggal secara persisten
   void _selectSchedule(Schedule schedule) {
+    // Validasi sederhana hanya dengan memeriksa tanggal
+    final DateTime now = DateTime.now();
+    final bool isToday =
+        _selectedDate.year == now.year &&
+        _selectedDate.month == now.month &&
+        _selectedDate.day == now.day;
+
+    // Jika hari ini, pastikan jam keberangkatan belum lewat
+    if (isToday) {
+      // Asumsikan departureTime adalah String dalam format "HH:mm:ss" atau DateTime
+      if (schedule.departureTime != null) {
+        DateTime departureDateTime;
+        if (schedule.departureTime is String) {
+          final parts = schedule.departureTime.split(':');
+          final hour = int.parse(parts[0]);
+          final minute = parts.length > 1 ? int.parse(parts[1]) : 0;
+          departureDateTime = DateTime(
+            _selectedDate.year,
+            _selectedDate.month,
+            _selectedDate.day,
+            hour,
+            minute,
+          );
+        } else {
+          final parts = schedule.departureTime.split(':');
+          final hour = int.parse(parts[0]);
+          final minute = parts.length > 1 ? int.parse(parts[1]) : 0;
+          departureDateTime = DateTime(
+            _selectedDate.year,
+            _selectedDate.month,
+            _selectedDate.day,
+            hour,
+            minute,
+          );
+        }
+
+        if (departureDateTime.isBefore(now)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Jadwal ini sudah lewat waktu keberangkatan'),
+            ),
+          );
+          return;
+        }
+      }
+    }
+
+    // Lanjutkan dengan booking
     final bookingProvider = Provider.of<BookingProvider>(
       context,
       listen: false,
     );
-
-    // Log untuk debugging
-    final formattedDate = _formatDateForApi(_selectedDate);
-    print(
-      'DEBUG: Selecting schedule with ID ${schedule.id} for date $formattedDate',
-    );
-
-    try {
-      // Pastikan tanggal dan jadwal disimpan dengan benar
-      bookingProvider.setSelectedSchedule(schedule);
-      bookingProvider.setSelectedDate(_selectedDate);
-
-      // Navigasi ke halaman berikutnya
-      Navigator.pushNamed(context, '/booking/passengers');
-    } catch (e) {
-      print('ERROR: Failed to select schedule: $e');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Gagal memilih jadwal: $e')));
-    }
+    bookingProvider.setSelectedSchedule(schedule);
+    bookingProvider.setSelectedDate(_selectedDate);
+    Navigator.pushNamed(context, '/booking/passengers');
   }
 
   // Modifikasi method _loadSchedules()

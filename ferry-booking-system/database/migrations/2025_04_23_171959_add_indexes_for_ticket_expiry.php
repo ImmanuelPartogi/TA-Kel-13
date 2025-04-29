@@ -14,7 +14,7 @@ return new class extends Migration
         });
 
         Schema::table('bookings', function (Blueprint $table) {
-            $table->index('booking_date', 'idx_booking_date');
+            $table->index('departure_date', 'idx_departure_date');
         });
     }
 
@@ -25,7 +25,7 @@ return new class extends Migration
         });
 
         Schema::table('bookings', function (Blueprint $table) {
-            $table->dropIndex('idx_booking_date');
+            $table->dropIndex('idx_departure_date');
         });
     }
 };

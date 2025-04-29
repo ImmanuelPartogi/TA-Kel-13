@@ -5,23 +5,26 @@ import 'package:ferry_booking_app/models/booking.dart';
 class TicketCard extends StatelessWidget {
   final Booking booking;
   final VoidCallback onTap;
-  
-  const TicketCard({
-    Key? key,
-    required this.booking,
-    required this.onTap,
-  }) : super(key: key);
+
+  const TicketCard({Key? key, required this.booking, required this.onTap})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     // Format date
+    // Format date - ubah untuk menggunakan UTC
     final dateFormat = DateFormat('EEEE, d MMM yyyy', 'id_ID');
-    final dateObj = DateTime.parse(booking.bookingDate);
+    final dateObj = DateTime.parse(booking.departureDate).toLocal();
+
     final formattedDate = dateFormat.format(dateObj);
-    
-    // Check if the booking date is today
-    final isToday = DateTime.now().difference(dateObj).inDays == 0;
-    
+
+    // Check if the booking date is today - gunakan UTC untuk perbandingan
+    final now = DateTime.now().toUtc();
+    final isToday =
+        now.year == dateObj.year &&
+        now.month == dateObj.month &&
+        now.day == dateObj.day;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       clipBehavior: Clip.antiAlias,
@@ -42,10 +45,7 @@ class TicketCard extends StatelessWidget {
               color: Theme.of(context).primaryColor,
               child: Row(
                 children: [
-                  const Icon(
-                    Icons.confirmation_number,
-                    color: Colors.white,
-                  ),
+                  const Icon(Icons.confirmation_number, color: Colors.white),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -91,7 +91,7 @@ class TicketCard extends StatelessWidget {
                 ],
               ),
             ),
-            
+
             // Ticket body
             Padding(
               padding: const EdgeInsets.all(16.0),
@@ -134,7 +134,11 @@ class TicketCard extends StatelessWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              booking.schedule?.departureTime?.substring(0, 5) ?? '--:--',
+                              booking.schedule?.departureTime?.substring(
+                                    0,
+                                    5,
+                                  ) ??
+                                  '--:--',
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                               ),
@@ -147,7 +151,7 @@ class TicketCard extends StatelessWidget {
                   const SizedBox(height: 12),
                   const Divider(height: 1),
                   const SizedBox(height: 12),
-                  
+
                   // Booking details
                   Row(
                     children: [
@@ -167,7 +171,7 @@ class TicketCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  
+
                   if (isToday && booking.status == 'CONFIRMED') ...[
                     const SizedBox(height: 16),
                     Container(
@@ -210,15 +214,11 @@ class TicketCard extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildDetailItem(String label, String value, IconData icon) {
     return Row(
       children: [
-        Icon(
-          icon,
-          size: 16,
-          color: Colors.grey[600],
-        ),
+        Icon(icon, size: 16, color: Colors.grey[600]),
         const SizedBox(width: 8),
         Expanded(
           child: Column(
@@ -226,17 +226,12 @@ class TicketCard extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
               ),
               const SizedBox(height: 2),
               Text(
                 value,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: const TextStyle(fontWeight: FontWeight.bold),
                 overflow: TextOverflow.ellipsis,
               ),
             ],
@@ -245,7 +240,7 @@ class TicketCard extends StatelessWidget {
       ],
     );
   }
-  
+
   String _getStatusText(String status) {
     switch (status) {
       case 'CONFIRMED':

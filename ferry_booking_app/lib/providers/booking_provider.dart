@@ -1,6 +1,5 @@
 import 'package:ferry_booking_app/services/payment_polling_service.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../api/booking_api.dart';
 import '../api/payment_api.dart';
 import '../models/booking.dart';
@@ -105,7 +104,7 @@ class BookingProvider extends ChangeNotifier {
         bookingCode: 'TEMP-${DateTime.now().millisecondsSinceEpoch}',
         userId: -1,
         scheduleId: _selectedSchedule!.id,
-        bookingDate:
+        departureDate:
             _selectedDate?.toIso8601String().split('T')[0] ??
             DateTime.now().toIso8601String().split('T')[0],
         passengerCount: totalPassengers, // Gunakan total dari semua kategori
@@ -368,18 +367,10 @@ class BookingProvider extends ChangeNotifier {
               )
               .toList();
 
-      // Konversi tanggal ke format standar (YYYY-MM-DD)
-      final standardDateFormat = DateFormat('yyyy-MM-dd');
-      final formattedBookingDate = standardDateFormat.format(_selectedDate!);
-
-      print(
-        'DEBUG: Sending booking with formatted date: $formattedBookingDate',
-      );
-
       // Buat data booking
       final Map<String, dynamic> bookingData = {
         'schedule_id': _selectedSchedule!.id,
-        'booking_date': formattedBookingDate, // Format standar
+        'departure_date': _selectedDate!.toIso8601String().split('T')[0],
         'passenger_count': totalPassengers,
         'vehicle_count': _vehicles.length,
         'passengers': _passengers,

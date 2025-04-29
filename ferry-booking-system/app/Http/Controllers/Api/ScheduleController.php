@@ -18,20 +18,36 @@ class ScheduleController extends Controller
             $requestDate = $request->date;
             $currentTime = Carbon::now('Asia/Jakarta');
 
-            // PERBAIKAN: Parsing tanggal dengan lebih jelas
-            if ($requestDate) {
-                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $requestDate)) {
-                    $date = Carbon::createFromFormat('Y-m-d', $requestDate, 'Asia/Jakarta');
+            try {
+                if ($requestDate) {
+                    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $requestDate)) {
+                        $date = Carbon::createFromFormat('Y-m-d', $requestDate, 'Asia/Jakarta')->startOfDay();
+                    } else {
+                        // Format lain (ISO, timestamp, dll)
+                        $date = Carbon::parse($requestDate)->setTimezone('Asia/Jakarta')->startOfDay();
+                    }
                 } else {
-                    // Jika format bukan Y-m-d, coba parse dengan lebih fleksibel
-                    $date = Carbon::parse($requestDate)->setTimezone('Asia/Jakarta');
+                    $date = Carbon::today('Asia/Jakarta');
                 }
-            } else {
-                $date = Carbon::today('Asia/Jakarta');
-            }
 
-            // Hitung hari dalam minggu
-            $dayOfWeek = $date->dayOfWeek + 1; // Konversi ke format 1-7 (Senin-Minggu)
+                // Format ulang untuk memastikan konsistensi
+                $formattedDate = $date->format('Y-m-d');
+                $date = Carbon::createFromFormat('Y-m-d', $formattedDate, 'Asia/Jakarta');
+
+                // Hitung hari dalam minggu (1-7 untuk Senin-Minggu)
+                $dayOfWeek = $date->format('N');
+            } catch (\Exception $e) {
+                Log::error('Error parsing date', [
+                    'request_date' => $requestDate,
+                    'error' => $e->getMessage()
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Format tanggal tidak valid',
+                    'error' => $e->getMessage()
+                ], 422);
+            }
 
             // Logging untuk debugging
             Log::info('Mencari jadwal', [
@@ -86,11 +102,41 @@ class ScheduleController extends Controller
 
                 // SOLUSI UTAMA: JANGAN membuat jadwal secara otomatis
                 // Kembalikan array kosong jika tidak ada jadwal
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Tidak ada jadwal tersedia untuk tanggal ini',
-                    'data' => []
-                ], 200);
+                Log::info('Auto-creating ScheduleDate records for available schedules', [
+                    'date' => $date->format('Y-m-d'),
+                    'schedule_count' => $scheduleIds->count()
+                ]);
+
+                if ($scheduleDatesCount === 0) {
+                    Log::info('Tidak ada ScheduleDate, tanggal tidak tersedia', [
+                        'schedule_ids' => $scheduleIds->toArray(),
+                        'date' => $date->format('Y-m-d')
+                    ]);
+
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Tidak ada jadwal tersedia untuk tanggal ini',
+                        'data' => []
+                    ], 200);
+                }
+
+                // Ambil ScheduleDate lagi setelah pembuatan
+                $scheduleDates = ScheduleDate::whereIn('schedule_id', $scheduleIds)
+                    ->where('date', $date->format('Y-m-d'))
+                    ->get()
+                    ->keyBy('schedule_id');
+
+                if ($scheduleDates->isEmpty()) {
+                    Log::warning('Still no schedule dates after auto-creation', [
+                        'date' => $date->format('Y-m-d')
+                    ]);
+
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Tidak ada jadwal tersedia untuk tanggal ini',
+                        'data' => []
+                    ], 200);
+                }
             }
 
             // Ambil ScheduleDate setelah mungkin dibuat

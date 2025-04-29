@@ -8,7 +8,7 @@ class Booking {
   final String bookingCode;
   final int userId;
   final int scheduleId;
-  final String bookingDate;
+  final String departureDate; // Ganti bookingDate 
   final int passengerCount;
   final int vehicleCount;
   final double totalAmount;
@@ -32,7 +32,7 @@ class Booking {
     required this.bookingCode,
     required this.userId,
     required this.scheduleId,
-    required this.bookingDate,
+    required this.departureDate, // Ganti parameter
     required this.passengerCount,
     required this.vehicleCount,
     required this.totalAmount,
@@ -80,7 +80,7 @@ class Booking {
       bookingCode: json['booking_code'],
       userId: json['user_id'],
       scheduleId: json['schedule_id'],
-      bookingDate: json['booking_date'],
+      departureDate: json['departure_date'], // Ganti bookingDate -> departure_date
       passengerCount: json['passenger_count'],
       vehicleCount: json['vehicle_count'],
       totalAmount: double.parse(json['total_amount'].toString()),
@@ -187,7 +187,7 @@ class Booking {
 
   bool get isExpired {
     try {
-      final bookingDateObj = DateTime.parse(bookingDate);
+      final bookingDateObj = DateTime.parse(departureDate);
       return DateTime.now().isAfter(bookingDateObj);
     } catch (e) {
       return false;

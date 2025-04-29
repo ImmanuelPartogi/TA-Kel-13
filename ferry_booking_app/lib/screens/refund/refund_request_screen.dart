@@ -141,7 +141,7 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                         _buildInfoRow(
                           'Tanggal Booking',
                           DateFormat('dd MMMM yyyy', 'id_ID').format(
-                            DateTime.parse(widget.booking.bookingDate),
+                            DateTime.parse(widget.booking.departureDate),
                           ),
                         ),
                       ],

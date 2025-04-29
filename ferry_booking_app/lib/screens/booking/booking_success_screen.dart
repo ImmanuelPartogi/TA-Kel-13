@@ -58,7 +58,7 @@ class BookingSuccessScreen extends StatelessWidget {
     
     // Format date
     final dateFormat = DateFormat('EEEE, d MMMM yyyy', 'id_ID');
-    final bookingDate = DateTime.parse(booking.bookingDate);
+    final bookingDate = DateTime.parse(booking.departureDate);
     
     return Column(
       children: [

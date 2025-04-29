@@ -13,7 +13,7 @@ class Booking extends Model
         'booking_code',
         'user_id',
         'schedule_id',
-        'booking_date',
+        'departure_date',
         'passenger_count',
         'vehicle_count',
         'total_amount',
@@ -25,7 +25,7 @@ class Booking extends Model
     ];
 
     protected $casts = [
-        'booking_date' => 'date',
+        'departure_date' => 'date',
     ];
 
     public function user()

@@ -17,64 +17,113 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        // Menghitung total pengguna
-        $totalUsers = User::count();
+       // Statistik dasar
+       $users_count = User::count();
+       $ferries_count = Ferry::count();
+       $routes_count = Route::count();
+       $active_schedules = Schedule::where('status', 'ACTIVE')->count();
 
-        // Menghitung total feri
-        $totalFerries = Ferry::count();
+       // Booking bulan ini dan pendapatan
+       $startOfMonth = Carbon::now()->startOfMonth();
+       $endOfMonth = Carbon::now()->endOfMonth();
 
-        // Menghitung total rute
-        $totalRoutes = Route::count();
+       $monthly_bookings = Booking::whereBetween('created_at', [$startOfMonth, $endOfMonth])->count();
+       $monthly_income = Booking::whereBetween('created_at', [$startOfMonth, $endOfMonth])
+           ->whereIn('status', ['CONFIRMED', 'COMPLETED'])
+           ->sum('total_amount');
 
-        // Menghitung total jadwal aktif
-        $totalActiveSchedules = Schedule::where('status', 'ACTIVE')->count();
+       // Perbandingan dengan bulan lalu
+       $lastMonthStart = Carbon::now()->subMonth()->startOfMonth();
+       $lastMonthEnd = Carbon::now()->subMonth()->endOfMonth();
 
-        // Mendapatkan data booking berdasarkan status
-        $bookingsByStatus = Booking::select('status', DB::raw('count(*) as total'))
-            ->groupBy('status')
-            ->get()
-            ->pluck('total', 'status')
-            ->toArray();
+       $lastMonthBookings = Booking::whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])->count();
+       $lastMonthIncome = Booking::whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])
+           ->whereIn('status', ['CONFIRMED', 'COMPLETED'])
+           ->sum('total_amount');
 
-        // Mendapatkan data booking bulan ini
-        $startOfMonth = Carbon::now()->startOfMonth();
-        $endOfMonth = Carbon::now()->endOfMonth();
+       $bookingGrowth = $lastMonthBookings > 0
+           ? round((($monthly_bookings - $lastMonthBookings) / $lastMonthBookings) * 100, 1)
+           : 0;
+       $incomeGrowth = $lastMonthIncome > 0
+           ? round((($monthly_income - $lastMonthIncome) / $lastMonthIncome) * 100, 1)
+           : 0;
 
-        $bookingsThisMonth = Booking::whereBetween('created_at', [$startOfMonth, $endOfMonth])
-            ->count();
+       // Data booking 7 hari terakhir untuk grafik
+       $startDate = Carbon::now()->subDays(6);
+       $weekly_booking_data = [];
+       $weekly_booking_labels = [];
 
-        // Mendapatkan total pendapatan bulan ini
-        $revenueThisMonth = Booking::whereBetween('created_at', [$startOfMonth, $endOfMonth])
-            ->whereIn('status', ['CONFIRMED', 'COMPLETED'])
-            ->sum('total_amount');
+       for ($i = 0; $i <= 6; $i++) {
+           $date = $startDate->copy()->addDays($i);
+           $count = Booking::whereDate('created_at', $date)->count();
 
-        // Mendapatkan data booking per hari dalam seminggu terakhir
-        $lastWeekBookings = Booking::select(
-                DB::raw('DATE(created_at) as date'),
-                DB::raw('count(*) as total')
-            )
-            ->where('created_at', '>=', Carbon::now()->subDays(7))
-            ->groupBy('date')
-            ->orderBy('date')
-            ->get();
+           $weekly_booking_data[] = $count;
+           // Translasi ke bahasa Indonesia
+           $dayNames = [
+               'Mon' => 'Sen',
+               'Tue' => 'Sel',
+               'Wed' => 'Rab',
+               'Thu' => 'Kam',
+               'Fri' => 'Jum',
+               'Sat' => 'Sab',
+               'Sun' => 'Min'
+           ];
+           $weekly_booking_labels[] = $dayNames[$date->format('D')];
+       }
 
-        $bookingChartData = [];
-        foreach ($lastWeekBookings as $item) {
-            $bookingChartData[] = [
-                'date' => Carbon::parse($item->date)->format('d M'),
-                'total' => $item->total
-            ];
-        }
+       // Data booking bulanan untuk grafik
+       $monthly_booking_data = [];
+       $monthly_booking_labels = [];
 
-        return view('admin.dashboard', compact(
-            'totalUsers',
-            'totalFerries',
-            'totalRoutes',
-            'totalActiveSchedules',
-            'bookingsByStatus',
-            'bookingsThisMonth',
-            'revenueThisMonth',
-            'bookingChartData'
-        ));
+       // Ambil data 30 hari terakhir dari bulan ini
+       $daysInMonth = $startOfMonth->daysInMonth;
+       for ($i = 1; $i <= $daysInMonth; $i++) {
+           $date = Carbon::createFromDate(now()->year, now()->month, $i);
+           $count = Booking::whereDate('created_at', $date)->count();
+
+           $monthly_booking_data[] = $count;
+           $monthly_booking_labels[] = $i; // Hanya menampilkan tanggal
+       }
+
+       // Status booking
+       $pending_payment_count = Booking::where('status', 'PENDING')->count();
+       $not_checked_in_count = Booking::where('status', 'CONFIRMED')
+           ->whereDate('departure_date', '>=', Carbon::today())
+           ->count();
+       $checked_in_count = Booking::where('status', 'COMPLETED')->count();
+       $cancelled_count = Booking::where('status', 'CANCELLED')->count();
+
+       // Booking terbaru
+       $latest_bookings = Booking::with('user', 'schedule.route')
+           ->orderBy('created_at', 'desc')
+           ->take(5)
+           ->get();
+
+       // Pertumbuhan jumlah user
+       $lastMonthUsers = User::whereDate('created_at', '<', $startOfMonth)->count();
+       $userGrowth = $lastMonthUsers > 0
+           ? round((($users_count - $lastMonthUsers) / $lastMonthUsers) * 100, 1)
+           : 0;
+
+       return view('admin.dashboard', compact(
+           'users_count',
+           'ferries_count',
+           'routes_count',
+           'active_schedules',
+           'monthly_bookings',
+           'monthly_income',
+           'bookingGrowth',
+           'incomeGrowth',
+           'userGrowth',
+           'weekly_booking_data',
+           'weekly_booking_labels',
+           'monthly_booking_data',
+           'monthly_booking_labels',
+           'pending_payment_count',
+           'not_checked_in_count',
+           'checked_in_count',
+           'cancelled_count',
+           'latest_bookings'
+       ));
     }
 }

@@ -78,10 +78,10 @@
                                 </div>
 
                                 <div>
-                                    <label for="booking_date" class="block text-sm font-medium text-gray-700 mb-1">
+                                    <label for="departure_date" class="block text-sm font-medium text-gray-700 mb-1">
                                         Tanggal Baru <span class="text-red-500">*</span>
                                     </label>
-                                    <input type="date" id="booking_date" name="booking_date"
+                                    <input type="date" id="departure_date" name="departure_date"
                                         class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                                         min="{{ date('Y-m-d') }}" required>
                                 </div>
@@ -182,7 +182,7 @@
                             <div class="py-3 flex justify-between">
                                 <dt class="text-sm font-medium text-gray-500">Tanggal</dt>
                                 <dd class="text-sm text-gray-900">
-                                    {{ \Carbon\Carbon::parse($booking->booking_date)->format('d M Y') }}</dd>
+                                    {{ \Carbon\Carbon::parse($booking->departure_date)->format('d M Y') }}</dd>
                             </div>
                             <div class="py-3 flex justify-between">
                                 <dt class="text-sm font-medium text-gray-500">Jadwal</dt>
@@ -250,7 +250,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const routeId = document.getElementById('route_id');
-            const bookingDate = document.getElementById('booking_date');
+            const bookingDate = document.getElementById('departure_date');
             const checkSchedulesBtn = document.getElementById('checkSchedulesBtn');
             const findNearestBtn = document.getElementById('findNearestBtn');
             const scheduleResults = document.getElementById('scheduleResults');

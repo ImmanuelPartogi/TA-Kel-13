@@ -49,12 +49,12 @@ class BookingController extends Controller
         }
 
         // Filter berdasarkan tanggal booking
-        if ($request->has('booking_date_from') && $request->booking_date_from) {
-            $query->where('booking_date', '>=', $request->booking_date_from);
+        if ($request->has('departure_date_from') && $request->departure_date_from) {
+            $query->where('departure_date', '>=', $request->departure_date_from);
         }
 
-        if ($request->has('booking_date_to') && $request->booking_date_to) {
-            $query->where('booking_date', '<=', $request->booking_date_to);
+        if ($request->has('departure_date_to') && $request->departure_date_to) {
+            $query->where('departure_date', '<=', $request->departure_date_to);
         }
 
         $bookings = $query->orderBy('created_at', 'desc')->paginate(10);
@@ -169,7 +169,7 @@ class BookingController extends Controller
         $request->validate([
             'user_id' => 'required|exists:users,id',
             'schedule_id' => 'required|exists:schedules,id',
-            'booking_date' => 'required|date|after_or_equal:today',
+            'departure_date' => 'required|date|after_or_equal:today',
             'passenger_count' => 'required|integer|min:1',
             'vehicle_count' => 'required|integer|min:0',
             'vehicles' => 'required_if:vehicle_count,>,0|array',
@@ -185,7 +185,7 @@ class BookingController extends Controller
 
         // Get schedule
         $schedule = Schedule::with(['route', 'ferry'])->findOrFail($request->schedule_id);
-        $bookingDate = $request->booking_date;
+        $bookingDate = $request->departure_date;
 
         // Verify schedule is available for the date
         $dayOfWeek = date('N', strtotime($bookingDate)); // 1-7 for Monday-Sunday
@@ -294,7 +294,7 @@ class BookingController extends Controller
                 'booking_code' => 'FBS-' . strtoupper(Str::random(8)),
                 'user_id' => $user->id,
                 'schedule_id' => $request->schedule_id,
-                'booking_date' => $request->booking_date,
+                'departure_date' => $request->departure_date,
                 'passenger_count' => $request->passenger_count,
                 'vehicle_count' => $request->vehicle_count,
                 'total_amount' => $totalAmount,
@@ -374,7 +374,7 @@ class BookingController extends Controller
 
             // Update user stats
             $user->total_bookings += 1;
-            $user->last_booking_date = now();
+            $user->last_departure_date = now();
             $user->save();
 
             DB::commit();
@@ -428,7 +428,7 @@ class BookingController extends Controller
 
                 // Free up space in schedule date
                 $scheduleDate = ScheduleDate::where('schedule_id', $booking->schedule_id)
-                    ->where('date', $booking->booking_date)
+                    ->where('date', $booking->departure_date)
                     ->first();
 
                 if ($scheduleDate) {
@@ -788,7 +788,7 @@ class BookingController extends Controller
     {
         $request->validate([
             'schedule_id' => 'required|exists:schedules,id',
-            'booking_date' => 'required|date|after_or_equal:today',
+            'departure_date' => 'required|date|after_or_equal:today',
             'notes' => 'nullable|string',
         ]);
 
@@ -800,7 +800,7 @@ class BookingController extends Controller
         }
 
         $newSchedule = Schedule::with(['route', 'ferry'])->findOrFail($request->schedule_id);
-        $bookingDate = $request->booking_date;
+        $bookingDate = $request->departure_date;
 
         // Verify schedule is available for the date
         $dayOfWeek = date('N', strtotime($bookingDate)); // 1-7 for Monday-Sunday
@@ -876,7 +876,7 @@ class BookingController extends Controller
         try {
             // Bebaskan kapasitas pada jadwal lama
             $originalScheduleDate = ScheduleDate::where('schedule_id', $originalBooking->schedule_id)
-                ->where('date', $originalBooking->booking_date)
+                ->where('date', $originalBooking->departure_date)
                 ->first();
 
             if ($originalScheduleDate) {
@@ -906,7 +906,7 @@ class BookingController extends Controller
                 'booking_code' => 'FBS-' . strtoupper(Str::random(8)),
                 'user_id' => $originalBooking->user_id,
                 'schedule_id' => $newSchedule->id,
-                'booking_date' => $bookingDate,
+                'departure_date' => $bookingDate,
                 'passenger_count' => $originalBooking->passenger_count,
                 'vehicle_count' => $originalBooking->vehicle_count,
                 'total_amount' => $originalBooking->total_amount,

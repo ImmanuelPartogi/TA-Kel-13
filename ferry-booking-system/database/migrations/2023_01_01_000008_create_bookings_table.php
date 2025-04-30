@@ -17,7 +17,7 @@ return new class extends Migration
             $table->unsignedInteger('passenger_count')->default(1);
             $table->unsignedInteger('vehicle_count')->default(0);
             $table->decimal('total_amount', 12, 2);
-            $table->enum('status', ['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'REFUNDED', 'EXPIRED', 'REFUND_PENDING'])->default('PENDING');
+            $table->enum('status', ['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'REFUNDED', 'EXPIRED', 'REFUND_PENDING', 'RESCHEDULED'])->default('PENDING');
             $table->text('cancellation_reason')->nullable();
             $table->enum('booked_by', ['WEB', 'MOBILE_APP', 'COUNTER'])->default('MOBILE_APP');
             $table->string('booking_channel', 50)->nullable()->comment('Spesifik kanal booking');

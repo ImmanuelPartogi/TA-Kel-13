@@ -15,7 +15,7 @@ class AddExpiredStatusToBookingsTable extends Migration
     public function up()
     {
         // Jika perlu tambahkan enum value 'EXPIRED' ke kolom status
-        DB::statement("ALTER TABLE bookings MODIFY COLUMN status ENUM('PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'REFUNDED', 'EXPIRED', 'REFUND_PENDING') NOT NULL DEFAULT 'PENDING'");
+        DB::statement("ALTER TABLE bookings MODIFY COLUMN status ENUM('PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'REFUNDED', 'EXPIRED', 'REFUND_PENDING', 'RESCHEDULED') NOT NULL DEFAULT 'PENDING'");
 
         // Jika perlu tambahkan enum value 'MISSED' ke kolom boarding_status di tabel tickets
         DB::statement("ALTER TABLE tickets MODIFY COLUMN boarding_status ENUM('NOT_BOARDED', 'BOARDED', 'MISSED') NOT NULL DEFAULT 'NOT_BOARDED'");

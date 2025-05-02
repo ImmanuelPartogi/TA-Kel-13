@@ -17,7 +17,7 @@ class ScheduleDate extends Model
         'car_count',
         'bus_count',
         'truck_count',
-        'status',
+        'status', // ACTIVE, INACTIVE, FULL, CANCELLED, DEPARTED, WEATHER_ISSUE
         'status_reason',
         'status_expiry_date',
         'created_by',

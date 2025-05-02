@@ -95,6 +95,8 @@ Route::prefix('admin')->middleware(['auth:admin'])->name('admin.')->group(functi
         Route::post('/{id}/dates/add', [AdminScheduleController::class, 'addDates'])->name('add-dates');
         Route::put('/{schedule}/dates/{dateId}', [AdminScheduleController::class, 'updateDate'])->name('update-date');
         Route::delete('/{schedule}/dates/{date}', [AdminScheduleController::class, 'destroyDate'])->name('destroy-date');
+        Route::get('/{schedule}/dates/{dateId}', [AdminScheduleController::class, 'showDate'])->name('show-date');
+        Route::get('/{id}/dates/{dateId?}', [AdminScheduleController::class, 'dates'])->name('dates');
     });
 
     // Bookings Management

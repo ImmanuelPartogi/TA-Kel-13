@@ -389,7 +389,7 @@ class _SplashScreenState extends State<SplashScreen>
                                 ).createShader(bounds);
                               },
                               child: Text(
-                                'AQUAVOYAGE',
+                                'FERRY TICKET',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w800,
                                   color: Colors.white,

@@ -753,7 +753,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                                 children: [
                                   Text(
                                     _recoveryMethod == 'email'
-                                      ? 'KIRIM INSTRUKSI EMAIL'
+                                      ? 'KIRIM'
                                       : 'KIRIM KODE SMS',
                                     style: const TextStyle(
                                       fontSize: 15,
@@ -931,48 +931,48 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
           ),
           
           // Phone tab
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _recoveryMethod = 'phone';
-                });
-              },
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _recoveryMethod == 'phone' ? theme.primaryColor : Colors.transparent,
-                  borderRadius: BorderRadius.circular(15),
-                  boxShadow: _recoveryMethod == 'phone' ? [
-                    BoxShadow(
-                      color: theme.primaryColor.withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ] : null,
-                ),
-                child: Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.smartphone_rounded,
-                        size: 18,
-                        color: _recoveryMethod == 'phone' ? Colors.white : Colors.grey.shade700,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Telepon',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: _recoveryMethod == 'phone' ? Colors.white : Colors.grey.shade700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
+          // Expanded(
+          //   child: GestureDetector(
+          //     onTap: () {
+          //       setState(() {
+          //         _recoveryMethod = 'phone';
+          //       });
+          //     },
+          //     child: Container(
+          //       decoration: BoxDecoration(
+          //         color: _recoveryMethod == 'phone' ? theme.primaryColor : Colors.transparent,
+          //         borderRadius: BorderRadius.circular(15),
+          //         boxShadow: _recoveryMethod == 'phone' ? [
+          //           BoxShadow(
+          //             color: theme.primaryColor.withOpacity(0.3),
+          //             blurRadius: 8,
+          //             offset: const Offset(0, 3),
+          //           ),
+          //         ] : null,
+          //       ),
+          //       child: Center(
+          //         child: Row(
+          //           mainAxisSize: MainAxisSize.min,
+          //           children: [
+          //             Icon(
+          //               Icons.smartphone_rounded,
+          //               size: 18,
+          //               color: _recoveryMethod == 'phone' ? Colors.white : Colors.grey.shade700,
+          //             ),
+          //             const SizedBox(width: 8),
+          //             Text(
+          //               'Telepon',
+          //               style: TextStyle(
+          //                 fontWeight: FontWeight.w600,
+          //                 color: _recoveryMethod == 'phone' ? Colors.white : Colors.grey.shade700,
+          //               ),
+          //             ),
+          //           ],
+          //         ),
+          //       ),
+          //     ),
+          //   ),
+          // ),
         ],
       ),
     );
@@ -1699,14 +1699,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
           ),
           _buildHelpItem(
             'Lupa email terdaftar?',
-            'Hubungi customer service kami melalui +62 XXX-XXXX-XXXX.',
+            'Hubungi kami melalui +62 812-6320-6428.',
             Icons.support_agent_rounded,
           ),
-          _buildHelpItem(
-            'Masalah lainnya?',
-            'Kunjungi Pusat Bantuan atau hubungi email support@ferryapp.com',
-            Icons.info_outline_rounded,
-          ),
+          // _buildHelpItem(
+          //   'Masalah lainnya?',
+          //   'Kunjungi Pusat Bantuan atau hubungi email support@ferryapp.com',
+          //   Icons.info_outline_rounded,
+          // ),
         ],
       ),
     );

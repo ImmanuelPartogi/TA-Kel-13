@@ -24,6 +24,9 @@ class Kernel extends ConsoleKernel
             ->everyMinute()
             ->withoutOverlapping()
             ->appendOutputTo(storage_path('logs/payment-polling.log'));
+
+        $schedule->command('schedules:update-expired')->everyMinute();
+        $schedule->command('schedules:update-expired-statuses')->everyMinute();
     }
 
     protected function commands()

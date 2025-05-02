@@ -17,7 +17,7 @@ return new class extends Migration
             $table->unsignedInteger('car_count')->default(0);
             $table->unsignedInteger('bus_count')->default(0);
             $table->unsignedInteger('truck_count')->default(0);
-            $table->enum('status', ['AVAILABLE', 'UNAVAILABLE', 'FULL', 'CANCELLED', 'DEPARTED', 'WEATHER_ISSUE'])->default('AVAILABLE');
+            $table->enum('status', ['ACTIVE', 'INACTIVE', 'FULL', 'CANCELLED', 'DEPARTED', 'WEATHER_ISSUE'])->default('ACTIVE'); // Perubahan di sini
             $table->string('status_reason', 191)->nullable()->comment('Alasan perubahan status');
             $table->timestamp('status_expiry_date')->nullable()->comment('Tanggal saat status cuaca akan otomatis berubah');
             $table->foreignId('created_by')->nullable()->constrained('admins')->onDelete('set null')->comment('Admin atau Operator yang membuat jadwal');

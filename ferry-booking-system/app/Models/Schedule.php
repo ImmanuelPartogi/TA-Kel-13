@@ -15,7 +15,7 @@ class Schedule extends Model
         'departure_time',
         'arrival_time',
         'days',
-        'status',
+        'status', // Sekarang hanya ACTIVE atau INACTIVE
         'status_reason',
         'status_updated_at',
         'status_expiry_date',

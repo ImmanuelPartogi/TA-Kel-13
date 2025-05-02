@@ -45,7 +45,7 @@ class ReportController extends Controller
 
         // Get bookings
         $bookings = Booking::whereIn('schedule_id', $scheduleIds)
-            ->where('booking_date', $date->format('Y-m-d'))
+            ->where('departure_date', $date->format('Y-m-d'))
             ->with(['user', 'tickets', 'vehicles'])
             ->orderBy('created_at')
             ->get()
@@ -173,7 +173,7 @@ class ReportController extends Controller
         $bookings = Booking::whereHas('schedule', function($q) use ($assignedRouteIds) {
                 $q->whereIn('route_id', $assignedRouteIds);
             })
-            ->whereBetween('booking_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+            ->whereBetween('departure_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
             ->with(['schedule.route', 'schedule.ferry'])
             ->get();
 
@@ -181,7 +181,7 @@ class ReportController extends Controller
         $routeData = [];
         foreach ($bookings as $booking) {
             $routeId = $booking->schedule->route_id;
-            $date = Carbon::parse($booking->booking_date)->format('Y-m-d');
+            $date = Carbon::parse($booking->departure_date)->format('Y-m-d');
 
             if (!isset($routeData[$routeId])) {
                 $routeData[$routeId] = [

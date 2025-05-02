@@ -818,93 +818,6 @@
         </div>
     </section>
 
-    <!-- Testimonials -->
-    <section class="py-16 sm:py-20 bg-white">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center">
-                <h2 class="text-2xl sm:text-3xl font-bold text-gray-900">Apa Yang Dikatakan Pelanggan Kami</h2>
-                <p class="mt-2 sm:mt-4 text-base sm:text-lg text-gray-600">Baca testimoni dari penumpang yang pernah
-                    bepergian bersama kami</p>
-            </div>
-
-            <div class="mt-10 sm:mt-16 grid gap-6 sm:gap-8 md:grid-cols-2 lg:grid-cols-3">
-                <!-- Testimonial 1 -->
-                <div class="bg-gray-50 rounded-lg p-4 sm:p-6 shadow-sm h-full">
-                    <div class="flex items-center mb-4">
-                        <div class="text-yellow-400 flex">
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                        </div>
-                        <span class="ml-2 text-gray-600">5.0</span>
-                    </div>
-                    <p class="text-gray-700 mb-6 text-sm sm:text-base">"Proses pemesanan online sangat mudah. Saya
-                        langsung menerima e-tiket saya, dan ferry-nya bersih serta nyaman. Saya pasti akan menggunakan
-                        layanan ini lagi!"</p>
-                    <div class="flex items-center mt-auto">
-                        <img class="h-10 w-10 rounded-full object-cover"
-                            src="https://randomuser.me/api/portraits/women/17.jpg" alt="Customer">
-                        <div class="ml-3">
-                            <h4 class="text-sm font-medium text-gray-900">Sarah Johnson</h4>
-                            <p class="text-xs sm:text-sm text-gray-500">Bepergian dari Balige ke Onanrunggu</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Testimonial 2 -->
-                <div class="bg-gray-50 rounded-lg p-4 sm:p-6 shadow-sm h-full">
-                    <div class="flex items-center mb-4">
-                        <div class="text-yellow-400 flex">
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star-half-alt"></i>
-                        </div>
-                        <span class="ml-2 text-gray-600">4.5</span>
-                    </div>
-                    <p class="text-gray-700 mb-6 text-sm sm:text-base">"Layanan yang sangat baik dan keberangkatan yang
-                        tepat waktu. Sangat direkomendasikan untuk perjalanan keluarga melintasi pulau-pulau!"</p>
-                    <div class="flex items-center mt-auto">
-                        <img class="h-10 w-10 rounded-full object-cover"
-                            src="https://randomuser.me/api/portraits/men/32.jpg" alt="Customer">
-                        <div class="ml-3">
-                            <h4 class="text-sm font-medium text-gray-900">Budi Santoso</h4>
-                            <p class="text-xs sm:text-sm text-gray-500">Bepergian dari Balige ke Onanrunggu</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Testimonial 3 -->
-                <div class="bg-gray-50 rounded-lg p-4 sm:p-6 shadow-sm h-full">
-                    <div class="flex items-center mb-4">
-                        <div class="text-yellow-400 flex">
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                        </div>
-                        <span class="ml-2 text-gray-600">5.0</span>
-                    </div>
-                    <p class="text-gray-700 mb-6 text-sm sm:text-base">"Saya terkesan dengan standar keselamatan di
-                        atas kapal. Kru bersikap profesional, dan perjalanan berlangsung lancar. Sistem online membuat
-                        pemesanan menjadi sangat mudah."</p>
-                    <div class="flex items-center mt-auto">
-                        <img class="h-10 w-10 rounded-full object-cover"
-                            src="https://randomuser.me/api/portraits/women/62.jpg" alt="Customer">
-                        <div class="ml-3">
-                            <h4 class="text-sm font-medium text-gray-900">Dewi Putri</h4>
-                            <p class="text-xs sm:text-sm text-gray-500">Bepergian dari Balige ke Onanrunggu</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
     <!-- About Us -->
     <section id="about" class="py-16 sm:py-20 bg-primary-600 text-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -913,7 +826,7 @@
                     <h2 class="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">
                         {{ $settings['about_title'] ?? 'Tentang Layanan Ferry Kami' }}</h2>
                     <p class="text-primary-100 mb-4 sm:mb-6 text-sm sm:text-lg">
-                        {{ $settings['about_content'] ?? 'Berdiri sejak tahun 2010, platform tiket ferry kami telah memainkan peran penting dalam mendukung transportasi air di Kawasan Danau Toba. Kami berkomitmen untuk menyediakan layanan yang aman, terpercaya, dan terjangkau bagi penumpang maupun kendaraan.' }}
+                        {{ $settings['about_content'] ?? 'Platform tiket ferry kami telah memainkan peran penting dalam mendukung transportasi air di Kawasan Danau Toba. Kami berkomitmen untuk menyediakan layanan yang aman, terpercaya, dan terjangkau bagi penumpang maupun kendaraan.' }}
                     </p>
                     <p class="text-primary-100 mb-4 sm:mb-6 text-sm sm:text-lg">
                         {{ $settings['about_mission'] ?? 'Misi kami adalah menyederhanakan perjalanan air melalui teknologi, sambil tetap menjaga standar keselamatan dan layanan pelanggan yang tinggi. Dengan jaringan rute yang luas, kami mendukung konektivitas transportasi air di berbagai kawasan, terutama di Kawasan Danau Toba. Kami bangga menjadi bagian dari solusi perjalanan yang efisien dan terpercaya bagi masyarakat.' }}
@@ -1054,12 +967,12 @@
                         <li class="flex items-start">
                             <i class="fas fa-map-marker-alt text-primary-500 mt-1 mr-3 flex-shrink-0"></i>
                             <span
-                                class="text-gray-400 text-sm sm:text-base">{{ $settings['footer_address'] ?? 'Jl. Pelabuhan Raya No. 123, Jakarta Utara, Indonesia' }}</span>
+                                class="text-gray-400 text-sm sm:text-base">{{ $settings['footer_address'] ?? 'Jln Siliwangi balige; Balige, Sumatera Utara, Indonesia 22315' }}</span>
                         </li>
                         <li class="flex items-start">
                             <i class="fas fa-phone-alt text-primary-500 mt-1 mr-3 flex-shrink-0"></i>
                             <span
-                                class="text-gray-400 text-sm sm:text-base">{{ $settings['footer_phone'] ?? '+62 21 1234 5678' }}</span>
+                                class="text-gray-400 text-sm sm:text-base">{{ $settings['footer_phone'] ?? '(0632) 322777' }}</span>
                         </li>
                         <li class="flex items-start">
                             <i class="fas fa-envelope text-primary-500 mt-1 mr-3 flex-shrink-0"></i>
@@ -1073,7 +986,7 @@
                     </ul>
                 </div>
 
-                <!-- Newsletter -->
+                {{-- <!-- Newsletter -->
                 <div>
                     <h3 class="text-lg font-semibold mb-4 sm:mb-6">Berlangganan Buletin</h3>
                     <p class="text-gray-400 mb-4 text-sm sm:text-base">Dapatkan informasi terbaru tentang rute baru dan
@@ -1086,7 +999,7 @@
                             <i class="fas fa-paper-plane"></i>
                         </button>
                     </form>
-                </div>
+                </div> --}}
             </div>
 
             <div class="border-t border-gray-800 mt-10 sm:mt-16 pt-6 sm:pt-8 flex flex-col md:flex-row justify-between items-center">

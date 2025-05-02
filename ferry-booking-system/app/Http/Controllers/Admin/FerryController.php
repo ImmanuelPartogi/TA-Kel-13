@@ -58,10 +58,12 @@ class FerryController extends Controller
 
         $ferry = new Ferry($request->except('image'));
 
-        // Upload gambar jika ada
+        // Upload gambar langsung ke folder public jika ada
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('ferries', 'public');
-            $ferry->image = $path;
+            $file = $request->file('image');
+            $fileName = time() . '_' . $file->getClientOriginalName();
+            $file->move(public_path('ferries'), $fileName);
+            $ferry->image = 'ferries/' . $fileName;
         }
 
         $ferry->save();
@@ -107,19 +109,31 @@ class FerryController extends Controller
             'image' => 'nullable|image|max:2048',
             'year_built' => 'nullable|integer|min:1900|max:' . date('Y'),
             'last_maintenance_date' => 'nullable|date',
+            // Menghapus validasi remove_image karena akan dihandle secara terpisah
         ]);
 
-        $ferry->fill($request->except('image'));
+        $ferry->fill($request->except('image', 'remove_image'));
 
-        // Upload gambar baru jika ada
-        if ($request->hasFile('image')) {
+        // Cek apakah checkbox remove_image dicentang
+        if ($request->has('remove_image')) {
             // Hapus gambar lama jika ada
-            if ($ferry->image) {
-                Storage::disk('public')->delete($ferry->image);
+            if ($ferry->image && file_exists(public_path($ferry->image))) {
+                unlink(public_path($ferry->image));
+            }
+            // Set kolom image menjadi null
+            $ferry->image = null;
+        }
+        // Jika ada file image baru yang diunggah
+        elseif ($request->hasFile('image')) {
+            // Hapus gambar lama jika ada
+            if ($ferry->image && file_exists(public_path($ferry->image))) {
+                unlink(public_path($ferry->image));
             }
 
-            $path = $request->file('image')->store('ferries', 'public');
-            $ferry->image = $path;
+            $file = $request->file('image');
+            $fileName = time() . '_' . $file->getClientOriginalName();
+            $file->move(public_path('ferries'), $fileName);
+            $ferry->image = 'ferries/' . $fileName;
         }
 
         $ferry->save();
@@ -141,8 +155,8 @@ class FerryController extends Controller
         }
 
         // Hapus gambar jika ada
-        if ($ferry->image) {
-            Storage::disk('public')->delete($ferry->image);
+        if ($ferry->image && file_exists(public_path($ferry->image))) {
+            unlink(public_path($ferry->image));
         }
 
         $ferry->delete();

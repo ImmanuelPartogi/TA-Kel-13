@@ -28,7 +28,7 @@
             </div>
             <div class="p-6 text-center">
                 @if($ferry->image)
-                    <img src="{{ asset('storage/' . $ferry->image) }}" alt="{{ $ferry->name }}" class="max-h-64 mx-auto rounded-lg shadow">
+                    <img src="{{ asset('/' . $ferry->image) }}" alt="{{ $ferry->name }}" class="max-h-64 mx-auto rounded-lg shadow">
                 @else
                     <div class="flex flex-col items-center justify-center py-12 bg-gray-50 rounded-lg">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

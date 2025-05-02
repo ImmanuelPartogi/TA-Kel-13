@@ -1,9 +1,55 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ferry_booking_app/providers/auth_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
+
+// Custom painter untuk animasi gelombang
+class WavePainter extends CustomPainter {
+  final double animationValue;
+  final Color color;
+
+  WavePainter({required this.animationValue, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint =
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.fill;
+
+    final path = Path();
+
+    // Animasi lebih lambat dengan pembagian nilai animasi
+    final slowedAnimation = animationValue / 2; // Memperlambat animasi
+    final y = size.height * (0.5 + 0.25 * sin(slowedAnimation * 2 * 3.14159));
+
+    path.moveTo(0, size.height);
+    path.lineTo(0, y);
+
+    // Draw wave dengan amplitudo lebih besar dan frekuensi lebih rendah
+    for (double i = 0; i <= size.width; i++) {
+      path.lineTo(
+        i,
+        y +
+            12 *
+                sin(
+                  (i / size.width) * 3 * 3.14159 + slowedAnimation * 8,
+                ), // Amplitudo lebih besar, frekuensi lebih rendah
+      );
+    }
+
+    path.lineTo(size.width, size.height);
+    path.close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => true;
+}
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({Key? key}) : super(key: key);
@@ -12,7 +58,8 @@ class SplashScreen extends StatefulWidget {
   _SplashScreenState createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeInAnimation;
   late Animation<double> _scaleAnimation;
@@ -21,47 +68,50 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
-    
+
     // Set status bar to transparent
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark, // Ubah menjadi dark agar sesuai dengan login
+        statusBarIconBrightness: Brightness.dark,
       ),
     );
-    
-    // Initialize animations
+
+    // Initialize animations dengan durasi yang lebih panjang
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 5000),
     );
-    
+
     _fadeInAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: const Interval(0.0, 0.7, curve: Curves.easeOut),
+        curve: const Interval(0.0, 0.5, curve: Curves.easeOut),
       ),
     );
-    
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+
+    _scaleAnimation = Tween<double>(begin: 0.9, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: const Interval(0.0, 0.7, curve: Curves.easeOutCubic),
+        curve: const Interval(0.0, 0.5, curve: Curves.easeOutCubic),
       ),
     );
-    
-    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.05),
+      end: Offset.zero,
+    ).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: const Interval(0.0, 0.8, curve: Curves.easeOutCubic),
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOutCubic),
       ),
     );
-    
-    // Start animation
-    Future.delayed(const Duration(milliseconds: 100), () {
+
+    // Start animation dengan delay yang lebih lama
+    Future.delayed(const Duration(milliseconds: 400), () {
       _animationController.forward();
     });
-    
+
     // Initialize app and handle navigation
     _initializeApp();
   }
@@ -73,18 +123,18 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   }
 
   Future<void> _initializeApp() async {
-    // Give time for splash screen animation
-    await Future.delayed(const Duration(seconds: 3));
-    
+    // Perpanjang durasi splash screen menjadi 3 detik
+    await Future.delayed(const Duration(milliseconds: 2000));
+
     if (!mounted) return;
-    
+
     // Check login status
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     await authProvider.checkLoginStatus();
-    
+
     // Navigate based on login status
     if (!mounted) return;
-    
+
     if (authProvider.isLoggedIn) {
       Navigator.pushReplacementNamed(context, '/home');
     } else {
@@ -97,13 +147,13 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     // Get screen dimensions for responsive design
     final screenSize = MediaQuery.of(context).size;
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       body: Container(
         width: double.infinity,
         height: double.infinity,
         decoration: BoxDecoration(
-          // Selaraskan gradien dengan login screen
+          // Gradient background
           gradient: LinearGradient(
             begin: Alignment.topRight,
             end: Alignment.bottomLeft,
@@ -116,61 +166,79 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         ),
         child: Stack(
           children: [
-            // Background elements - mirip dengan login screen
+            // Background elements
             Positioned(
-              top: -50,
-              right: -50,
-              child: Container(
-                width: 180,
-                height: 180,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: theme.primaryColor.withOpacity(0.1),
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: -80,
-              left: -80,
+              top: -60,
+              right: -60,
               child: Container(
                 width: 200,
                 height: 200,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
+                  color: theme.primaryColor.withOpacity(0.07),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: -100,
+              left: -100,
+              child: Container(
+                width: 250,
+                height: 250,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: theme.primaryColor.withOpacity(0.07),
+                ),
+              ),
+            ),
+
+            // Small boat icons in the background with animation
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 6000),
+              curve: Curves.easeInOut,
+              top: screenSize.height * 0.12,
+              left: screenSize.width * 0.1,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 2000),
+                opacity: _fadeInAnimation.value * 0.7,
+                child: Icon(
+                  Icons.sailing_outlined,
+                  size: 22,
+                  color: theme.primaryColor.withOpacity(0.2),
+                ),
+              ),
+            ),
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 8000),
+              curve: Curves.easeInOut,
+              top: screenSize.height * 0.3,
+              right: screenSize.width * 0.15,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 2000),
+                opacity: _fadeInAnimation.value * 0.7,
+                child: Icon(
+                  Icons.directions_boat_outlined,
+                  size: 28,
+                  color: theme.primaryColor.withOpacity(0.15),
+                ),
+              ),
+            ),
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 7000),
+              curve: Curves.easeInOut,
+              bottom: screenSize.height * 0.25,
+              left: screenSize.width * 0.2,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 2000),
+                opacity: _fadeInAnimation.value * 0.7,
+                child: Icon(
+                  Icons.directions_boat_filled_outlined,
+                  size: 24,
                   color: theme.primaryColor.withOpacity(0.1),
                 ),
               ),
             ),
-            
-            // Small boat icons in the background - mirip dengan login screen
-            Positioned(
-              top: screenSize.height * 0.15,
-              left: screenSize.width * 0.1,
-              child: Icon(
-                Icons.sailing_outlined,
-                size: 20,
-                color: theme.primaryColor.withOpacity(0.2),
-              ),
-            ),
-            Positioned(
-              top: screenSize.height * 0.3,
-              right: screenSize.width * 0.15,
-              child: Icon(
-                Icons.directions_boat_outlined,
-                size: 25,
-                color: theme.primaryColor.withOpacity(0.15),
-              ),
-            ),
-            Positioned(
-              bottom: screenSize.height * 0.25,
-              left: screenSize.width * 0.2,
-              child: Icon(
-                Icons.directions_boat_filled_outlined,
-                size: 22,
-                color: theme.primaryColor.withOpacity(0.1),
-              ),
-            ),
-            
+
             // Main content with animation
             AnimatedBuilder(
               animation: _animationController,
@@ -189,15 +257,34 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                             Stack(
                               alignment: Alignment.center,
                               children: [
-                                // Shadow
+                                // Outer glow
                                 Container(
-                                  width: 140,
-                                  height: 140,
+                                  width: 160,
+                                  height: 160,
                                   decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(40),
+                                    borderRadius: BorderRadius.circular(48),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: theme.primaryColor.withOpacity(0.5),
+                                        color: theme.primaryColor.withOpacity(
+                                          0.2,
+                                        ),
+                                        blurRadius: 40,
+                                        spreadRadius: 10,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                // Shadow
+                                Container(
+                                  width: 150,
+                                  height: 150,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(45),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: theme.primaryColor.withOpacity(
+                                          0.5,
+                                        ),
                                         blurRadius: 25,
                                         offset: const Offset(0, 10),
                                         spreadRadius: 0,
@@ -207,8 +294,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                                 ),
                                 // Main logo container
                                 Container(
-                                  width: 140,
-                                  height: 140,
+                                  width: 150,
+                                  height: 150,
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
                                       colors: [
@@ -218,12 +305,46 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                     ),
-                                    borderRadius: BorderRadius.circular(40),
+                                    borderRadius: BorderRadius.circular(45),
                                   ),
-                                  child: const Icon(
-                                    Icons.directions_boat_rounded,
-                                    size: 80,
-                                    color: Colors.white,
+                                  child: const Center(),
+                                ),
+                                // Overlay design
+                                Positioned(
+                                  top: 0,
+                                  bottom: 0,
+                                  left: 0,
+                                  right: 0,
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(45),
+                                    child: Stack(
+                                      children: [
+                                        // Background wave
+                                        Positioned(
+                                          bottom: -5,
+                                          left: -10,
+                                          right: -10,
+                                          child: Container(
+                                            height: 60,
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(
+                                                0.1,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                            ),
+                                          ),
+                                        ),
+                                        // Icon
+                                        const Center(
+                                          child: Icon(
+                                            Icons.directions_boat_rounded,
+                                            size: 80,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                                 // Reflection effect
@@ -231,13 +352,13 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                                   top: 0,
                                   left: 0,
                                   child: Container(
-                                    width: 80,
-                                    height: 50,
+                                    width: 90,
+                                    height: 55,
                                     decoration: BoxDecoration(
                                       borderRadius: const BorderRadius.only(
-                                        topLeft: Radius.circular(40),
-                                        topRight: Radius.circular(40),
-                                        bottomRight: Radius.circular(40),
+                                        topLeft: Radius.circular(45),
+                                        topRight: Radius.circular(45),
+                                        bottomRight: Radius.circular(45),
                                       ),
                                       gradient: LinearGradient(
                                         colors: [
@@ -252,63 +373,94 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                                 ),
                               ],
                             ),
-                            
+
                             const SizedBox(height: 40),
-                            
-                            // Title dengan efek shader - selaraskan dengan login screen
+
+                            // Title dengan efek shader
                             ShaderMask(
                               shaderCallback: (Rect bounds) {
                                 return LinearGradient(
                                   colors: [
-                                    Colors.black.withOpacity(0.8),
-                                    Colors.black,
+                                    theme.primaryColor.withOpacity(0.9),
+                                    theme.primaryColor.withOpacity(1.0),
                                   ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
                                 ).createShader(bounds);
                               },
                               child: Text(
-                                'FERRY BOOKING',
-                                style: theme.textTheme.headlineSmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
+                                'AQUAVOYAGE',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
                                   color: Colors.white,
-                                  fontSize: 28,
-                                  letterSpacing: 1.5,
+                                  fontSize: 32,
+                                  letterSpacing: 2.0,
+                                  height: 1.2,
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.black26,
+                                      offset: Offset(0, 3),
+                                      blurRadius: 5,
+                                    ),
+                                  ],
                                 ),
                                 textAlign: TextAlign.center,
                               ),
                             ),
-                            
+
                             const SizedBox(height: 12),
-                            
-                            // Animated text - pakai gaya dari login screen
+
                             AnimatedTextKit(
                               animatedTexts: [
-                                TypewriterAnimatedText(
-                                  'Pesan Tiket Ferry dengan Mudah',
+                                FadeAnimatedText(
+                                  'Perjalanan Laut Jadi Lebih Mudah',
                                   textStyle: TextStyle(
                                     color: Colors.grey.shade700,
                                     fontSize: 15,
                                     height: 1.5,
                                   ),
-                                  speed: const Duration(milliseconds: 100),
+                                  duration: const Duration(milliseconds: 2000),
+                                  fadeOutBegin: 0.8,
+                                  fadeInEnd: 0.2,
+                                ),
+                                FadeAnimatedText(
+                                  'Pesan Tiket Kapanpun, Dimanapun',
+                                  textStyle: TextStyle(
+                                    color: Colors.grey.shade700,
+                                    fontSize: 15,
+                                    height: 1.5,
+                                  ),
+                                  duration: const Duration(milliseconds: 2000),
+                                  fadeOutBegin: 0.8,
+                                  fadeInEnd: 0.2,
+                                ),
+                                FadeAnimatedText(
+                                  'Solusi Terbaik Perjalanan Laut Anda',
+                                  textStyle: TextStyle(
+                                    color: Colors.grey.shade700,
+                                    fontSize: 15,
+                                    height: 1.5,
+                                  ),
+                                  duration: const Duration(milliseconds: 2000),
+                                  fadeOutBegin: 0.8,
+                                  fadeInEnd: 0.2,
                                 ),
                               ],
-                              totalRepeatCount: 1,
+                              repeatForever: true,
                             ),
-                            
+
                             const SizedBox(height: 50),
-                            
-                            // Loading indicator - gaya selaraskan dengan login
+
+                            // Loading indicator dengan efek gelombang
                             Container(
-                              width: 55,
-                              height: 55,
+                              width: 65,
+                              height: 65,
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(22),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: theme.primaryColor.withOpacity(0.4),
-                                    blurRadius: 15,
+                                    color: theme.primaryColor.withOpacity(0.3),
+                                    blurRadius: 20,
                                     offset: const Offset(0, 8),
                                     spreadRadius: -5,
                                   ),
@@ -316,7 +468,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                               ),
                               child: Material(
                                 color: Colors.transparent,
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(22),
                                 child: Ink(
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
@@ -327,32 +479,87 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                     ),
-                                    borderRadius: BorderRadius.circular(20),
+                                    borderRadius: BorderRadius.circular(22),
                                   ),
-                                  child: Container(
+                                  child: Stack(
                                     alignment: Alignment.center,
-                                    constraints: const BoxConstraints(minHeight: 55),
-                                    child: const SizedBox(
-                                      height: 24,
-                                      width: 24,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.5,
-                                        color: Colors.white,
+                                    children: [
+                                      // Wave animation overlay
+                                      Positioned.fill(
+                                        child: LayoutBuilder(
+                                          builder: (context, constraints) {
+                                            return AnimatedBuilder(
+                                              animation: _animationController,
+                                              builder: (context, _) {
+                                                return ClipRRect(
+                                                  borderRadius:
+                                                      BorderRadius.circular(22),
+                                                  child: CustomPaint(
+                                                    size: Size(
+                                                      constraints.maxWidth,
+                                                      constraints.maxHeight,
+                                                    ),
+                                                    painter: WavePainter(
+                                                      animationValue:
+                                                          _animationController
+                                                              .value,
+                                                      color: Colors.white
+                                                          .withOpacity(0.15),
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                            );
+                                          },
+                                        ),
                                       ),
-                                    ),
+                                      // Spinner
+                                      Container(
+                                        alignment: Alignment.center,
+                                        constraints: const BoxConstraints(
+                                          minHeight: 65,
+                                        ),
+                                        child: const SizedBox(
+                                          height: 28,
+                                          width: 28,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2.5,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                  Colors.white,
+                                                ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
                             ),
-                            
-                            const SizedBox(height: 30),
-                            
-                            // Version information
-                            Text(
-                              "v1.0.0",
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey.shade700,
+
+                            // Version information dengan style yang lebih profesional
+                            Container(
+                              margin: const EdgeInsets.only(top: 20),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(30),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.1),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Text(
+                                "v1.0.0",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey.shade700,
+                                  letterSpacing: 1,
+                                ),
                               ),
                             ),
                           ],

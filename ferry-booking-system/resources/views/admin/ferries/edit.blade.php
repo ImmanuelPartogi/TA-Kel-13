@@ -113,7 +113,7 @@
                     <label for="image" class="block text-sm font-medium text-gray-700 mb-1">Foto Kapal</label>
                     @if($ferry->image)
                         <div class="mb-3">
-                            <img src="{{ asset('storage/' . $ferry->image) }}" alt="{{ $ferry->name }}" class="h-40 object-cover rounded-md shadow-sm">
+                            <img src="{{ asset('/' . $ferry->image) }}" alt="{{ $ferry->name }}" class="h-40 object-cover rounded-md shadow-sm">
                         </div>
                         <div class="mb-3 flex items-center">
                             <input type="checkbox" id="remove_image" name="remove_image" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">

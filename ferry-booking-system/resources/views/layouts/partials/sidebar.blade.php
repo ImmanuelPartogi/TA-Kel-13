@@ -115,7 +115,7 @@
                         <a href="{{ route('admin.refunds.index') }}"
                             class="nav-item group flex items-center px-2 py-2 text-sm font-medium rounded-md {{ request()->routeIs('admin.refunds.*') ? 'bg-primary-800 text-white' : 'text-primary-100 hover:bg-primary-800 hover:text-white' }}">
                             <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
-                                <i class="fas fa-ticket-alt"></i>
+                                <i class="fas fa-money-bill-wave"></i>
                             </div>
                             <span>Refund</span>
                         </a>
@@ -303,7 +303,7 @@
                             <a href="{{ route('admin.refunds.index') }}"
                                 class="nav-item group flex items-center px-2 py-2 text-sm font-medium rounded-md {{ request()->routeIs('admin.refunds.*') ? 'bg-primary-800 text-white' : 'text-primary-100 hover:bg-primary-800 hover:text-white' }}">
                                 <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
-                                    <i class="fas fa-ticket-alt"></i>
+                                    <i class="fas fa-money-bill-wave"></i>
                                 </div>
                                 <span>Refund</span>
                             </a>

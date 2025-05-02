@@ -8,11 +8,11 @@
             <h1 class="text-2xl font-bold text-gray-800">Manajemen Booking</h1>
             <p class="mt-1 text-gray-600">Kelola semua booking tiket kapal ferry</p>
         </div>
-        <div class="mt-4 md:mt-0">
+        {{-- <div class="mt-4 md:mt-0">
             <a href="{{ route('admin.bookings.create') }}" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white transition-colors shadow-sm">
                 <i class="fas fa-plus mr-2 text-sm"></i> Tambah Booking
             </a>
-        </div>
+        </div> --}}
     </div>
 
     <!-- Search Form -->

@@ -169,7 +169,7 @@ class ScheduleController extends Controller
 
             foreach ($upcomingDates as $date) {
                 $date->booking_count = Booking::where('schedule_id', $schedule->id)
-                    ->where('booking_date', $date->date)
+                    ->where('departure_date', $date->date)
                     ->where('status', 'confirmed')
                     ->count();
             }
@@ -221,7 +221,7 @@ class ScheduleController extends Controller
         foreach ($dates as $date) {
             // Tetap hitung jumlah booking untuk informasi
             $date->booking_count = Booking::where('schedule_id', $schedule->id)
-                ->where('booking_date', $date->date)
+                ->where('departure_date', $date->date)
                 ->where('status', 'confirmed')
                 ->count();
         }
@@ -295,7 +295,7 @@ class ScheduleController extends Controller
         $cacheKey = "booking_counts_schedule_{$schedule->id}_date_{$date}";
         $bookingCounts = Cache::remember($cacheKey, 60, function () use ($schedule, $date) {
             return Booking::where('schedule_id', $schedule->id)
-                ->where('booking_date', $date)
+                ->where('departure_date', $date)
                 ->where('status', 'confirmed')
                 ->selectRaw('SUM(passenger_count) as total_passengers,
                              SUM(motorcycle_count) as total_motorcycles,
@@ -661,6 +661,108 @@ class ScheduleController extends Controller
             ->with('success', 'Tanggal jadwal berhasil diperbarui.');
     }
 
+    public function updateDateStatus(Request $request, $id, $dateId)
+    {
+        $operator = Auth::guard('operator')->user();
+        $assignedRouteIds = $operator->assigned_routes ?? [];
+
+        $schedule = Schedule::findOrFail($id);
+
+        // Periksa akses operator ke rute
+        if (!in_array($schedule->route_id, $assignedRouteIds)) {
+            return redirect()->route('operator.schedules.index')
+                ->with('error', 'Anda tidak memiliki akses ke jadwal ini.');
+        }
+
+        $scheduleDate = ScheduleDate::where('schedule_id', $id)
+            ->where('id', $dateId)
+            ->firstOrFail();
+
+        $request->validate([
+            'status' => 'required|in:AVAILABLE,UNAVAILABLE,FULL,CANCELLED,WEATHER_ISSUE',
+            'status_reason' => 'nullable|string|max:255',
+            'status_expiry_date' => 'nullable|date|after:today',
+        ]);
+
+        // Simpan status lama untuk log
+        $oldStatus = $scheduleDate->status;
+
+        // Update status
+        $scheduleDate->status = $request->status;
+        $scheduleDate->status_reason = $request->status_reason;
+        $scheduleDate->operator_id = $operator->id;
+        $scheduleDate->modified_by_schedule = false;
+
+        // Update tanggal kedaluwarsa status jika diperlukan
+        if (in_array($request->status, ['UNAVAILABLE', 'WEATHER_ISSUE']) && $request->has('status_expiry_date')) {
+            $scheduleDate->status_expiry_date = Carbon::parse($request->status_expiry_date);
+        } else {
+            $scheduleDate->status_expiry_date = null;
+        }
+
+        $scheduleDate->save();
+
+        // Logging untuk audit
+        Log::info('Schedule date status updated', [
+            'schedule_id' => $id,
+            'date_id' => $dateId,
+            'old_status' => $oldStatus,
+            'new_status' => $scheduleDate->status,
+            'operator_id' => $operator->id
+        ]);
+
+        // Hapus cache terkait
+        $this->clearScheduleCache($schedule->id);
+
+        return redirect()->route('operator.schedules.dates', $id)
+            ->with('success', 'Status tanggal jadwal berhasil diperbarui');
+    }
+
+    /**
+     * Tambahkan metode untuk memeriksa jadwal yang kedaluwarsa - sama seperti di admin
+     */
+    private function checkExpiredSchedules()
+    {
+        $now = Carbon::now();
+
+        // Update jadwal INACTIVE yang sudah melewati tanggal kedaluwarsa
+        $expiredSchedules = Schedule::whereIn('route_id', Auth::guard('operator')->user()->assigned_routes ?? [])
+            ->where('status', 'INACTIVE')
+            ->whereNotNull('status_expiry_date')
+            ->where('status_expiry_date', '<', $now)
+            ->get();
+
+        foreach ($expiredSchedules as $schedule) {
+            $schedule->status = 'ACTIVE';
+            $schedule->status_reason = 'Otomatis diaktifkan setelah masa tidak aktif berakhir';
+            $schedule->status_updated_at = $now;
+            $schedule->status_expiry_date = null;
+            $schedule->save();
+
+            // Update juga status tanggal jadwal terkait
+            ScheduleDate::where('schedule_id', $schedule->id)
+                ->where('date', '>=', Carbon::today())
+                ->where('modified_by_schedule', true)
+                ->where('status', 'INACTIVE')
+                ->update([
+                    'status' => 'ACTIVE',
+                    'status_reason' => 'Otomatis diaktifkan karena jadwal telah aktif kembali',
+                ]);
+        }
+
+        // Update jadwal dengan status WEATHER_ISSUE yang sudah kedaluwarsa
+        ScheduleDate::whereIn('schedule_id', Schedule::whereIn('route_id', Auth::guard('operator')->user()->assigned_routes ?? [])
+            ->pluck('id'))
+            ->where('status', 'WEATHER_ISSUE')
+            ->whereNotNull('status_expiry_date')
+            ->where('status_expiry_date', '<', $now)
+            ->update([
+                'status' => 'ACTIVE',
+                'status_reason' => 'Otomatis diaktifkan setelah masa masalah cuaca berakhir',
+                'status_expiry_date' => null
+            ]);
+    }
+
     /**
      * Delete the schedule date.
      *
@@ -688,7 +790,7 @@ class ScheduleController extends Controller
 
         // Cek apakah ada booking untuk tanggal ini
         $bookingCount = Booking::where('schedule_id', $schedule->id)
-            ->where('booking_date', $scheduleDate->date)
+            ->where('departure_date', $scheduleDate->date)
             ->count();
 
         if ($bookingCount > 0) {

@@ -44,14 +44,17 @@ class NotificationProvider extends ChangeNotifier {
   Future<void> getNotifications() async {
     if (_isLoading) return;
 
+    // Set loading tanpa notifyListeners
     _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
 
     try {
-      _notifications = await _notificationApi.getNotifications();
+      final notifications = await _notificationApi.getNotifications();
+
+      // Update state dan beri tahu listeners setelah operasi async selesai
+      _notifications = notifications;
       _isLoading = false;
-      notifyListeners();
+      _errorMessage = null;
+      notifyListeners(); // Panggil sekali saja setelah semua perubahan state
     } catch (e) {
       _isLoading = false;
       _errorMessage = e.toString();

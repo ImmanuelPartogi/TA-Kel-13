@@ -16,7 +16,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
   @override
   void initState() {
     super.initState();
-    _loadNotifications();
+    // Gunakan Future.microtask untuk menunda pemanggilan
+    // hingga build selesai
+    Future.microtask(() => _loadNotifications());
   }
 
   Future<void> _loadNotifications() async {

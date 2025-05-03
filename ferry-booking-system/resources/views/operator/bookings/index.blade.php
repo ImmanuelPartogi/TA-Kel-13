@@ -9,6 +9,14 @@
                 <h3 class="text-lg font-semibold text-gray-800">Daftar Booking</h3>
             </div>
 
+            @if (empty(Auth::guard('operator')->user()->assigned_routes))
+                <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4" role="alert">
+                    <p class="font-semibold">Perhatian</p>
+                    <p>Anda belum memiliki rute yang ditugaskan. Silakan hubungi administrator untuk mengatur rute yang
+                        dapat Anda akses.</p>
+                </div>
+            @endif
+
             <div class="px-6 py-4">
                 <form action="{{ route('operator.bookings.index') }}" method="GET" class="space-y-4">
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">

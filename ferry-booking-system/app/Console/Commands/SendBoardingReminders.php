@@ -36,7 +36,7 @@ class SendBoardingReminders extends Command
 
         // Cari booking dengan jadwal keberangkatan 1 jam dari sekarang
         $bookings = Booking::where('status', 'CONFIRMED')
-            ->where('booking_date', $targetDate)
+            ->where('departure_date', $targetDate)
             ->whereHas('schedule', function ($query) use ($targetTime) {
                 // Dapatkan jadwal dengan waktu keberangkatan 1 jam dari sekarang
                 $query->whereTime('departure_time', $targetTime);
@@ -65,17 +65,7 @@ class SendBoardingReminders extends Command
 
                 $this->info("Sent boarding reminder to: {$booking->user->name} for booking: {$booking->booking_code}");
 
-                // Kirim notifikasi ke admin
-                foreach ($admins as $admin) {
-                    $notificationService->sendAdminBoardingNotification(
-                        $admin,
-                        $booking->booking_code,
-                        $routeName,
-                        $departureTime,
-                        $booking->passenger_count
-                    );
-                }
-            } catch (\Exception $e) {
+           } catch (\Exception $e) {
                 Log::error('Failed to send boarding notification', [
                     'booking_id' => $booking->id,
                     'error' => $e->getMessage()

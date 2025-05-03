@@ -4,22 +4,30 @@
 <div class="container px-4 py-6 mx-auto">
     <div class="flex flex-col md:flex-row items-center justify-between mb-6">
         <h1 class="text-2xl font-bold text-gray-800">Laporan Booking</h1>
-        <form action="{{ route('admin.reports.booking') }}" method="GET" class="mt-3 md:mt-0">
-            <input type="hidden" name="start_date" value="{{ $startDate->format('Y-m-d') }}">
-            <input type="hidden" name="end_date" value="{{ $endDate->format('Y-m-d') }}">
-            @if(request('route_id'))
-                <input type="hidden" name="route_id" value="{{ request('route_id') }}">
-            @endif
-            @if(request('status'))
-                <input type="hidden" name="status" value="{{ request('status') }}">
-            @endif
-            <button type="submit" class="flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-all shadow-md" name="export" value="csv">
+        <div class="flex space-x-2">
+            <form action="{{ route('admin.reports.booking') }}" method="GET" class="mt-3 md:mt-0">
+                <input type="hidden" name="start_date" value="{{ $startDate->format('Y-m-d') }}">
+                <input type="hidden" name="end_date" value="{{ $endDate->format('Y-m-d') }}">
+                @if(request('route_id'))
+                    <input type="hidden" name="route_id" value="{{ request('route_id') }}">
+                @endif
+                @if(request('status'))
+                    <input type="hidden" name="status" value="{{ request('status') }}">
+                @endif
+                <button type="submit" class="flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-all shadow-md" name="export" value="csv">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Export CSV
+                </button>
+            </form>
+            <button id="printReport" class="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-md mt-3 md:mt-0">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
-                Export CSV
+                Print
             </button>
-        </form>
+        </div>
     </div>
 
     <!-- Informasi Rentang Tanggal -->
@@ -48,6 +56,12 @@
                     <span class="font-medium">Status: <span class="text-gray-700">{{ request('status') }}</span></span>
                 </div>
                 @endif
+                <div class="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span class="font-medium">Data Terakhir: <span class="text-gray-700">{{ \Carbon\Carbon::now()->format('d F Y H:i:s') }}</span></span>
+                </div>
             </div>
         </div>
     </div>
@@ -61,6 +75,9 @@
                     <div>
                         <p class="text-xs font-semibold text-blue-600 uppercase">Total Booking</p>
                         <p class="mt-2 text-3xl font-bold text-gray-800">{{ $totalBookings }}</p>
+                        @if($startDate->diffInDays($endDate) > 0)
+                        <p class="text-xs text-gray-500">{{ number_format($totalBookings / ($startDate->diffInDays($endDate) + 1), 1) }} per hari</p>
+                        @endif
                     </div>
                     <div class="rounded-full bg-blue-100 p-3">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -78,6 +95,7 @@
                     <div>
                         <p class="text-xs font-semibold text-green-600 uppercase">Total Pendapatan</p>
                         <p class="mt-2 text-3xl font-bold text-gray-800">Rp {{ number_format($totalRevenue, 0, ',', '.') }}</p>
+                        <p class="text-xs text-gray-500">Aktual: Rp {{ number_format($actualRevenue, 0, ',', '.') }}</p>
                     </div>
                     <div class="rounded-full bg-green-100 p-3">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -95,6 +113,7 @@
                     <div>
                         <p class="text-xs font-semibold text-indigo-600 uppercase">Total Penumpang</p>
                         <p class="mt-2 text-3xl font-bold text-gray-800">{{ $totalPassengers }}</p>
+                        <p class="text-xs text-gray-500">{{ number_format($totalPassengers / max(1, $totalBookings), 1) }} per booking</p>
                     </div>
                     <div class="rounded-full bg-indigo-100 p-3">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -112,6 +131,7 @@
                     <div>
                         <p class="text-xs font-semibold text-yellow-600 uppercase">Total Kendaraan</p>
                         <p class="mt-2 text-3xl font-bold text-gray-800">{{ $totalVehicles }}</p>
+                        <p class="text-xs text-gray-500">{{ number_format($totalVehicles / max(1, $totalBookings), 1) }} per booking</p>
                     </div>
                     <div class="rounded-full bg-yellow-100 p-3">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -125,89 +145,80 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <!-- Grafik Trend Booking -->
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="border-b border-gray-200 bg-gray-50 px-6 py-3">
+                <h2 class="text-lg font-semibold text-blue-600">Tren Booking Harian</h2>
+            </div>
+            <div class="p-6">
+                <canvas id="bookingTrendChart" height="300"></canvas>
+            </div>
+        </div>
+
         <!-- Breakdown Status -->
         <div class="bg-white rounded-lg shadow-lg overflow-hidden">
             <div class="border-b border-gray-200 bg-gray-50 px-6 py-3">
                 <h2 class="text-lg font-semibold text-blue-600">Breakdown Status</h2>
             </div>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Nilai</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        @foreach($statusCount as $item)
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $item['status'] }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $item['count'] }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Rp {{ number_format($item['amount'], 0, ',', '.') }}</td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+            <div class="p-6">
+                <canvas id="statusChart" height="300"></canvas>
             </div>
         </div>
+    </div>
 
-        <!-- Filter Form -->
-        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
-            <div class="border-b border-gray-200 bg-gray-50 px-6 py-3">
-                <h2 class="text-lg font-semibold text-blue-600">Filter Laporan</h2>
-            </div>
-            <div class="p-6">
-                <form action="{{ route('admin.reports.booking') }}" method="GET">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                        <div>
-                            <label for="start_date" class="block text-sm font-medium text-gray-700 mb-1">Tanggal Mulai</label>
-                            <input type="date" id="start_date" name="start_date" value="{{ $startDate->format('Y-m-d') }}" required
-                                   class="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                        </div>
-                        <div>
-                            <label for="end_date" class="block text-sm font-medium text-gray-700 mb-1">Tanggal Akhir</label>
-                            <input type="date" id="end_date" name="end_date" value="{{ $endDate->format('Y-m-d') }}" required
-                                   class="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                        <div>
-                            <label for="route_id" class="block text-sm font-medium text-gray-700 mb-1">Rute</label>
-                            <select id="route_id" name="route_id"
-                                    class="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                <option value="">Semua Rute</option>
-                                @foreach(\App\Models\Route::where('status', 'ACTIVE')->get() as $route)
-                                    <option value="{{ $route->id }}" {{ request('route_id') == $route->id ? 'selected' : '' }}>
-                                        {{ $route->origin }} - {{ $route->destination }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div>
-                            <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                            <select id="status" name="status"
-                                    class="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                <option value="">Semua Status</option>
-                                <option value="PENDING" {{ request('status') == 'PENDING' ? 'selected' : '' }}>Pending</option>
-                                <option value="CONFIRMED" {{ request('status') == 'CONFIRMED' ? 'selected' : '' }}>Confirmed</option>
-                                <option value="CANCELLED" {{ request('status') == 'CANCELLED' ? 'selected' : '' }}>Cancelled</option>
-                                <option value="COMPLETED" {{ request('status') == 'COMPLETED' ? 'selected' : '' }}>Completed</option>
-                                <option value="REFUNDED" {{ request('status') == 'REFUNDED' ? 'selected' : '' }}>Refunded</option>
-                                <option value="RESCHEDULED" {{ request('status') == 'RESCHEDULED' ? 'selected' : '' }}>Rescheduled</option>
-                            </select>
-                        </div>
+    <!-- Filter Form -->
+    <div class="bg-white rounded-lg shadow-lg overflow-hidden mb-6">
+        <div class="border-b border-gray-200 bg-gray-50 px-6 py-3">
+            <h2 class="text-lg font-semibold text-blue-600">Filter Laporan</h2>
+        </div>
+        <div class="p-6">
+            <form action="{{ route('admin.reports.booking') }}" method="GET">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-4">
+                    <div>
+                        <label for="start_date" class="block text-sm font-medium text-gray-700 mb-1">Tanggal Mulai</label>
+                        <input type="date" id="start_date" name="start_date" value="{{ $startDate->format('Y-m-d') }}" required
+                               class="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     </div>
                     <div>
-                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md shadow-sm transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                            </svg>
-                            Filter
-                        </button>
+                        <label for="end_date" class="block text-sm font-medium text-gray-700 mb-1">Tanggal Akhir</label>
+                        <input type="date" id="end_date" name="end_date" value="{{ $endDate->format('Y-m-d') }}" required
+                               class="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     </div>
-                </form>
-            </div>
+                    <div>
+                        <label for="route_id" class="block text-sm font-medium text-gray-700 mb-1">Rute</label>
+                        <select id="route_id" name="route_id"
+                                class="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">Semua Rute</option>
+                            @foreach(\App\Models\Route::where('status', 'ACTIVE')->get() as $route)
+                                <option value="{{ $route->id }}" {{ request('route_id') == $route->id ? 'selected' : '' }}>
+                                    {{ $route->origin }} - {{ $route->destination }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <select id="status" name="status"
+                                class="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">Semua Status</option>
+                            <option value="PENDING" {{ request('status') == 'PENDING' ? 'selected' : '' }}>Pending</option>
+                            <option value="CONFIRMED" {{ request('status') == 'CONFIRMED' ? 'selected' : '' }}>Confirmed</option>
+                            <option value="CANCELLED" {{ request('status') == 'CANCELLED' ? 'selected' : '' }}>Cancelled</option>
+                            <option value="COMPLETED" {{ request('status') == 'COMPLETED' ? 'selected' : '' }}>Completed</option>
+                            <option value="REFUNDED" {{ request('status') == 'REFUNDED' ? 'selected' : '' }}>Refunded</option>
+                            <option value="RESCHEDULED" {{ request('status') == 'RESCHEDULED' ? 'selected' : '' }}>Rescheduled</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md shadow-sm transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                        </svg>
+                        Filter
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -229,6 +240,7 @@
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kendaraan</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Waktu Pesan</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                     </tr>
                 </thead>
@@ -258,6 +270,7 @@
                                 <span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">{{ $booking->status }}</span>
                             @endif
                         </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $booking->created_at->format('d M Y H:i') }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <a href="{{ route('admin.bookings.show', $booking->id) }}" class="inline-flex items-center px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded shadow-sm transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -277,9 +290,169 @@
 @endsection
 
 @section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     $(document).ready(function() {
-        $('#dataTable').DataTable();
+        // DataTable dengan penambahan opsi
+        $('#dataTable').DataTable({
+            responsive: true,
+            pageLength: 25,
+            order: [[9, 'desc']], // Urutkan berdasarkan waktu pesan (descending)
+            language: {
+                search: "Cari:",
+                lengthMenu: "Tampilkan _MENU_ entri",
+                info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ entri",
+                infoEmpty: "Menampilkan 0 sampai 0 dari 0 entri",
+                infoFiltered: "(disaring dari _MAX_ total entri)",
+                paginate: {
+                    first: "Pertama",
+                    last: "Terakhir",
+                    next: "Selanjutnya",
+                    previous: "Sebelumnya"
+                }
+            }
+        });
+
+        // Status Chart
+        const statusCtx = document.getElementById('statusChart').getContext('2d');
+        const statusLabels = {!! json_encode($statusCount->pluck('status')->toArray()) !!};
+        const statusData = {!! json_encode($statusCount->pluck('count')->toArray()) !!};
+        const statusAmounts = {!! json_encode($statusCount->pluck('amount')->toArray()) !!};
+
+        // Warna untuk status
+        const statusColors = {
+            'PENDING': 'rgba(245, 158, 11, 0.7)',
+            'CONFIRMED': 'rgba(16, 185, 129, 0.7)',
+            'CANCELLED': 'rgba(239, 68, 68, 0.7)',
+            'COMPLETED': 'rgba(59, 130, 246, 0.7)',
+            'REFUNDED': 'rgba(107, 114, 128, 0.7)',
+            'RESCHEDULED': 'rgba(139, 92, 246, 0.7)'
+        };
+
+        const statusBackgroundColors = statusLabels.map(status => statusColors[status] || 'rgba(156, 163, 175, 0.7)');
+
+        new Chart(statusCtx, {
+            type: 'pie',
+            data: {
+                labels: statusLabels,
+                datasets: [{
+                    data: statusData,
+                    backgroundColor: statusBackgroundColors,
+                    borderColor: statusBackgroundColors.map(color => color.replace('0.7', '1')),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const amount = statusAmounts[context.dataIndex] || 0;
+                                const percentage = ((value / statusData.reduce((a, b) => a + b, 0)) * 100).toFixed(1);
+                                return `${label}: ${value} (${percentage}%) - Rp ${amount.toLocaleString('id-ID')}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Booking Trend Chart
+        const trendCtx = document.getElementById('bookingTrendChart').getContext('2d');
+
+        // Asumsikan kita memiliki data tren dari controller
+        @if(isset($bookingTrend))
+            const trendDates = {!! json_encode($bookingTrend->pluck('date')->toArray()) !!};
+            const trendCounts = {!! json_encode($bookingTrend->pluck('count')->toArray()) !!};
+            const trendAmounts = {!! json_encode($bookingTrend->pluck('amount')->toArray()) !!};
+
+            new Chart(trendCtx, {
+                type: 'bar',
+                data: {
+                    labels: trendDates,
+                    datasets: [
+                        {
+                            label: 'Jumlah Booking',
+                            data: trendCounts,
+                            backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                            borderColor: 'rgba(59, 130, 246, 1)',
+                            borderWidth: 1,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Total Nominal (Rp)',
+                            data: trendAmounts,
+                            type: 'line',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderColor: 'rgba(16, 185, 129, 1)',
+                            borderWidth: 2,
+                            yAxisID: 'y1',
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Jumlah Booking'
+                            }
+                        },
+                        y1: {
+                            beginAtZero: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Total Nominal (Rp)'
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    }
+                }
+            });
+        @else
+            // Jika tidak ada data tren, tampilkan chart kosong
+            new Chart(trendCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Jumlah Booking',
+                        data: [],
+                        backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        @endif
+
+        // Print functionality
+        $('#printReport').on('click', function() {
+            window.print();
+        });
     });
 </script>
 @endsection

@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Models\ActivityLog;
 use Illuminate\Support\Facades\Log;
+use App\Models\Route;
 
 class BookingController extends Controller
 {
@@ -22,6 +23,9 @@ class BookingController extends Controller
         $operator = Auth::guard('operator')->user();
         $assignedRouteIds = $operator->assigned_routes ?? [];
 
+        // Log untuk debugging
+        Log::info("Operator ID: " . $operator->id . " assigned routes: " . json_encode($assignedRouteIds));
+
         $query = Booking::query();
 
         // Filter berdasarkan assigned routes
@@ -29,10 +33,14 @@ class BookingController extends Controller
             $query->whereHas('schedule', function ($q) use ($assignedRouteIds) {
                 $q->whereIn('route_id', $assignedRouteIds);
             });
+        } else {
+            // Jika operator tidak memiliki rute yang ditugaskan, buat query yang tidak mengembalikan hasil
+            Log::warning("Operator tidak memiliki assigned routes. Operator ID: " . $operator->id);
+            $query->whereRaw('1 = 0'); // Kondisi selalu false untuk memastikan tidak ada hasil
         }
 
         // Load relasi yang dibutuhkan
-        $query->with(['user', 'schedule.route', 'schedule.ferry']);
+        $query->with(['user', 'schedule.route', 'schedule.ferry', 'payments', 'tickets']);
 
         // Filter berdasarkan kode booking
         if ($request->has('booking_code') && $request->booking_code) {
@@ -59,18 +67,29 @@ class BookingController extends Controller
         }
 
         // Filter berdasarkan tanggal booking
-        if ($request->has('booking_date_from') && $request->booking_date_from) {
-            $query->where('booking_date', '>=', $request->booking_date_from);
+        if ($request->has('departure_date_from') && $request->departure_date_from) {
+            $query->where('departure_date', '>=', $request->departure_date_from);
         }
 
-        if ($request->has('booking_date_to') && $request->booking_date_to) {
-            $query->where('booking_date', '<=', $request->booking_date_to);
+        if ($request->has('departure_date_to') && $request->departure_date_to) {
+            $query->where('departure_date', '<=', $request->departure_date_to);
         }
 
         // Urutkan dan paginate hasil
         $bookings = $query->orderBy('created_at', 'desc')->paginate(10);
 
-        return view('operator.bookings.index', compact('bookings'));
+        // Get data rute untuk filter dropdown
+        $routes = [];
+        if (!empty($assignedRouteIds)) {
+            $routes = Route::whereIn('id', $assignedRouteIds)->get(['id', 'origin', 'destination'])
+                ->pluck('origin_destination', 'id')
+                ->toArray();
+        }
+
+        // Tambahkan pesan jika operator tidak memiliki rute yang ditugaskan
+        $noRouteAssigned = empty($assignedRouteIds);
+
+        return view('operator.bookings.index', compact('bookings', 'routes', 'noRouteAssigned'));
     }
 
     public function show($id)
@@ -79,8 +98,18 @@ class BookingController extends Controller
         $assignedRouteIds = $operator->assigned_routes ?? [];
 
         try {
-            // Coba dulu tanpa filter rute untuk debugging
-            $booking = Booking::where('id', $id)
+            // Jika operator tidak memiliki rute yang ditugaskan, kembalikan error
+            if (empty($assignedRouteIds)) {
+                Log::warning("Operator ID: " . $operator->id . " mencoba mengakses booking tanpa rute yang ditugaskan");
+                return redirect()->route('operator.bookings.index')
+                    ->with('error', 'Anda tidak memiliki akses ke booking ini karena belum ada rute yang ditugaskan');
+            }
+
+            // Langsung filter berdasarkan rute
+            $booking = Booking::whereHas('schedule', function ($q) use ($assignedRouteIds) {
+                $q->whereIn('route_id', $assignedRouteIds);
+            })
+                ->where('id', $id)
                 ->with([
                     'user',
                     'schedule.route',
@@ -92,24 +121,11 @@ class BookingController extends Controller
                 ])
                 ->firstOrFail();
 
-            // Verifikasi apakah booking ini seharusnya bisa diakses oleh operator ini
-            if (
-                !empty($assignedRouteIds) && $booking->schedule &&
-                !in_array($booking->schedule->route_id, $assignedRouteIds)
-            ) {
-                // Logging untuk debugging
-                Log::warning("Operator ID: " . $operator->id . " mencoba mengakses booking ID: " . $id .
-                    " yang bukan di rute mereka. Route ID: " . $booking->schedule->route_id);
-
-                // Opsional: kembalikan ke halaman sebelumnya dengan pesan error
-                // return redirect()->back()->with('error', 'Anda tidak memiliki akses ke booking ini');
-            }
-
             return view('operator.bookings.show', compact('booking'));
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            Log::error("Booking tidak ditemukan: " . $id);
+            Log::error("Booking tidak ditemukan atau operator tidak memiliki akses: " . $id);
             return redirect()->route('operator.bookings.index')
-                ->with('error', 'Booking tidak ditemukan');
+                ->with('error', 'Booking tidak ditemukan atau Anda tidak memiliki akses ke booking ini');
         }
     }
 
@@ -156,7 +172,7 @@ class BookingController extends Controller
 
                 // Free up space in schedule date
                 $scheduleDate = ScheduleDate::where('schedule_id', $booking->schedule_id)
-                    ->where('date', $booking->booking_date)
+                    ->where('date', $booking->departure_date)
                     ->first();
 
                 if ($scheduleDate) {
@@ -241,17 +257,36 @@ class BookingController extends Controller
         $operator = Auth::guard('operator')->user();
         $assignedRouteIds = $operator->assigned_routes ?? [];
 
+        // Tambahkan logging untuk debug
+        Log::info("Operator ID: " . $operator->id . " assigned routes: " . json_encode($assignedRouteIds));
+
         $ticket = null;
 
         if ($request->has('ticket_code')) {
-            $ticket = Ticket::where('ticket_code', $request->ticket_code)
-                ->whereHas('booking', function ($q) use ($assignedRouteIds) {
-                    $q->whereHas('schedule', function ($sq) use ($assignedRouteIds) {
-                        $sq->whereIn('route_id', $assignedRouteIds);
+            // Cek apakah tiket ada tanpa filter dulu
+            $rawTicket = Ticket::where('ticket_code', $request->ticket_code)->first();
+
+            if ($rawTicket) {
+                Log::info("Tiket ditemukan: " . $rawTicket->ticket_code . ", Booking ID: " . $rawTicket->booking_id);
+
+                // Baru terapkan filter assigned routes jika ada
+                $ticketQuery = Ticket::where('ticket_code', $request->ticket_code);
+
+                if (!empty($assignedRouteIds)) {
+                    $ticketQuery->whereHas('booking', function ($q) use ($assignedRouteIds) {
+                        $q->whereHas('schedule', function ($sq) use ($assignedRouteIds) {
+                            $sq->whereIn('route_id', $assignedRouteIds);
+                        });
                     });
-                })
-                ->with(['booking.user', 'booking.schedule.route', 'vehicle'])
-                ->first();
+                } else {
+                    // Jika assigned routes kosong, tampilkan semua tiket
+                    Log::warning("Operator tidak memiliki rute yang ditugaskan, semua tiket akan ditampilkan");
+                }
+
+                $ticket = $ticketQuery->with(['booking.user', 'booking.schedule.route', 'vehicle'])->first();
+            } else {
+                Log::warning("Tiket tidak ditemukan: " . $request->ticket_code);
+            }
         }
 
         return view('operator.bookings.check-in', compact('ticket'));
@@ -287,19 +322,39 @@ class BookingController extends Controller
         $operator = Auth::guard('operator')->user();
         $assignedRouteIds = $operator->assigned_routes ?? [];
 
-        $ticket = Ticket::where('ticket_code', $request->ticket_code)
-            ->whereHas('booking', function ($q) use ($assignedRouteIds) {
-                $q->whereHas('schedule', function ($sq) use ($assignedRouteIds) {
-                    $sq->whereIn('route_id', $assignedRouteIds);
-                });
-            })
-            ->with(['booking.user', 'booking.schedule.route'])
-            ->first();
+        Log::info("Processing check-in for ticket: " . $request->ticket_code);
 
-        if (!$ticket) {
+        // Cek tiket tanpa filter dulu
+        $rawTicket = Ticket::where('ticket_code', $request->ticket_code)->first();
+
+        if (!$rawTicket) {
+            Log::warning("Tiket tidak ditemukan: " . $request->ticket_code);
             return redirect()->route('operator.bookings.check-in')
                 ->withInput()
                 ->withErrors(['ticket_code' => 'Tiket tidak ditemukan']);
+        }
+
+        // Baru terapkan filter assigned routes jika ada dan tidak kosong
+        $ticketQuery = Ticket::where('ticket_code', $request->ticket_code);
+
+        if (!empty($assignedRouteIds)) {
+            $ticketQuery->whereHas('booking', function ($q) use ($assignedRouteIds) {
+                $q->whereHas('schedule', function ($sq) use ($assignedRouteIds) {
+                    $sq->whereIn('route_id', $assignedRouteIds);
+                });
+            });
+        }
+
+        $ticket = $ticketQuery->with(['booking.user', 'booking.schedule.route'])->first();
+
+        if (!$ticket) {
+            Log::warning("Tiket tidak ditemukan dengan filter rute: " . $request->ticket_code);
+            if (!empty($assignedRouteIds)) {
+                Log::warning("Operator ID: " . $operator->id . " tidak memiliki akses ke rute tiket ini");
+            }
+            return redirect()->route('operator.bookings.check-in')
+                ->withInput()
+                ->withErrors(['ticket_code' => 'Tiket tidak ditemukan atau operator tidak memiliki akses ke rute ini']);
         }
 
         // Verify booking is confirmed
@@ -311,7 +366,7 @@ class BookingController extends Controller
 
         // Verify date matches
         $today = Carbon::today()->format('Y-m-d');
-        $bookingDate = $ticket->booking->booking_date;
+        $bookingDate = $ticket->booking->departure_date;
 
         if ($today !== $bookingDate) {
             return redirect()->route('operator.bookings.check-in')

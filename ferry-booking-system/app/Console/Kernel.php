@@ -27,10 +27,16 @@ class Kernel extends ConsoleKernel
 
         $schedule->command('schedules:update-expired')->everyMinute();
         $schedule->command('schedules:update-expired-statuses')->everyMinute();
+
+        $schedule->command('payment:check-status')
+                 ->everyMinute()
+                 ->withoutOverlapping()
+                 ->appendOutputTo(storage_path('logs/payment-check.log'));
     }
 
     protected function commands()
     {
         $this->load(__DIR__ . '/Commands');
+        require base_path('routes/console.php');
     }
 }

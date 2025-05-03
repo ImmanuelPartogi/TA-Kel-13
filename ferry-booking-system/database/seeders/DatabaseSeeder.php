@@ -14,12 +14,12 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             AdminSeeder::class,
-            // OperatorSeeder::class,
+            OperatorSeeder::class,
             RouteSeeder::class,
             FerrySeeder::class,
             // ScheduleSeeder::class,
-            // UserSeeder::class,
-            // ChatbotSeeder::class
+            UserSeeder::class,
+            ChatbotSeeder::class
         ]);
     }
 }

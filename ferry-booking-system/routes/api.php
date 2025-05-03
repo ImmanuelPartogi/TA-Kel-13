@@ -99,3 +99,23 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/refunds/booking/{bookingId}', [RefundController::class, 'getRefundDetails']);
     Route::post('/refunds/{refundId}/cancel', [RefundController::class, 'cancelRefund']);
 });
+
+
+
+// Tambahkan routes baru untuk fitur notifikasi yang ditingkatkan
+Route::middleware('auth:sanctum')->group(function () {
+    // Notifikasi
+    Route::prefix('notifications')->group(function () {
+        Route::get('/', [NotificationController::class, 'index']);
+        Route::get('/types', [NotificationController::class, 'getTypes']);
+        Route::get('/unread-count', [NotificationController::class, 'getUnreadCount']);
+        Route::get('/stats', [NotificationController::class, 'getStats']);
+        Route::get('/grouped', [NotificationController::class, 'getGroupedByDate']);
+        Route::get('/type/{type}', [NotificationController::class, 'getByType']);
+        Route::get('/{id}', [NotificationController::class, 'show']);
+        Route::post('/{id}/read', [NotificationController::class, 'markAsRead']);
+        Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+        Route::delete('/{id}', [NotificationController::class, 'delete']);
+        Route::delete('/read/all', [NotificationController::class, 'deleteRead']);
+    });
+});

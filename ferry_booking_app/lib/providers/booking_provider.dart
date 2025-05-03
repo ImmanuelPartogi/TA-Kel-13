@@ -8,6 +8,7 @@ import '../models/route.dart';
 import '../models/schedule.dart';
 import '../models/vehicle.dart';
 import '../models/payment.dart';
+import 'dart:developer' as developer;
 
 class BookingProvider extends ChangeNotifier {
   final BookingApi _bookingApi = BookingApi();
@@ -24,6 +25,8 @@ class BookingProvider extends ChangeNotifier {
   List<Map<String, dynamic>> _passengers = [];
   List<Vehicle> _vehicles = [];
   Map<String, int> _passengerCounts = {'adult': 1, 'child': 0, 'infant': 0};
+  Map<String, dynamic>? _pendingBookingData;
+  Map<String, dynamic>? get pendingBookingData => _pendingBookingData;
 
   // Booking results
   List<Booking>? _bookings;
@@ -338,7 +341,8 @@ class BookingProvider extends ChangeNotifier {
     }
   }
 
-  // Create booking
+  // DIUBAH: Create booking tidak digunakan lagi dari BookingSummaryScreen
+  // tetapi tetap tersedia untuk backward compatibility
   Future<bool> createBooking() async {
     if (_selectedSchedule == null ||
         _selectedDate == null ||
@@ -378,6 +382,7 @@ class BookingProvider extends ChangeNotifier {
         'vehicles': vehiclesMap,
       };
 
+      developer.log('Memanggil createBooking API');
       final result = await _bookingApi.createBooking(bookingData);
 
       // Set current booking
@@ -394,6 +399,124 @@ class BookingProvider extends ChangeNotifier {
         return false;
       }
     } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // TAMBAHAN: Metode untuk menyiapkan data booking tanpa mengirim ke API
+  Future<bool> prepareBooking() async {
+    if (_selectedSchedule == null ||
+        _selectedDate == null ||
+        totalPassengers == 0) {
+      _errorMessage = 'Silakan lengkapi data pemesanan';
+      notifyListeners();
+      return false;
+    }
+
+    try {
+      // Konversi vehicles ke Map
+      final List<Map<String, dynamic>> vehiclesMap =
+          _vehicles
+              .map(
+                (vehicle) => {
+                  'type': vehicle.type,
+                  'license_plate': vehicle.licensePlate,
+                  'brand': vehicle.brand,
+                  'model': vehicle.model,
+                  'weight': vehicle.weight,
+                },
+              )
+              .toList();
+
+      // Simpan data booking sementara tanpa kirim ke API
+      _pendingBookingData = {
+        'schedule_id': _selectedSchedule!.id,
+        'departure_date': _selectedDate!.toIso8601String().split('T')[0],
+        'passenger_count': totalPassengers,
+        'vehicle_count': _vehicles.length,
+        'passengers': _passengers,
+        'passenger_categories': _passengerCounts,
+        'vehicles': vehiclesMap,
+      };
+
+      developer.log('Data booking sementara disiapkan: $_pendingBookingData');
+
+      // Buat objek booking sementara untuk UI
+      _currentBooking = Booking(
+        id: -1, // ID sementara
+        bookingCode: 'TEMP-${DateTime.now().millisecondsSinceEpoch}',
+        userId: -1,
+        scheduleId: _selectedSchedule!.id,
+        departureDate: _selectedDate!.toIso8601String().split('T')[0],
+        passengerCount: totalPassengers,
+        vehicleCount: _vehicles.length,
+        totalAmount: totalCost,
+        status: 'DRAFT',
+        bookedBy: 'MOBILE',
+        createdAt: DateTime.now().toIso8601String(),
+        schedule: _selectedSchedule,
+      );
+
+      notifyListeners();
+      return true;
+    } catch (e) {
+      developer.log('Error dalam prepareBooking: $e');
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // TAMBAHAN: Metode untuk membuat booking dengan metode pembayaran
+  Future<bool> submitBookingWithPayment(
+    String paymentMethod,
+    String paymentType,
+  ) async {
+    if (_pendingBookingData == null) {
+      _errorMessage = 'Data pemesanan tidak ditemukan';
+      notifyListeners();
+      return false;
+    }
+
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      developer.log('Mengirim booking dengan metode pembayaran: $paymentMethod, $paymentType');
+      
+      // Tambahkan info metode pembayaran ke data booking
+      final Map<String, dynamic> completeBookingData = {
+        ..._pendingBookingData!,
+        'payment_method': paymentMethod,
+        'payment_type': paymentType,
+      };
+
+      // Kirim ke API sekarang
+      final result = await _bookingApi.createBooking(completeBookingData);
+
+      // Set current booking
+      if (result != null && result['booking'] != null) {
+        _currentBooking = result['booking'];
+        developer.log('Booking sukses dibuat: ${_currentBooking!.bookingCode}');
+
+        // Clear pending data karena sudah disubmit
+        _pendingBookingData = null;
+
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage = 'Respons booking tidak valid';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      developer.log('Error dalam submitBookingWithPayment: $e');
       _isLoading = false;
       _errorMessage = e.toString();
       notifyListeners();
@@ -480,19 +603,19 @@ class BookingProvider extends ChangeNotifier {
   // Simpan metode pembayaran yang dipilih ke dalam objek booking
   void updatePaymentMethod(String paymentMethod, String paymentType) {
     try {
-      print('Updating payment method to: $paymentMethod, $paymentType');
+      developer.log('Updating payment method to: $paymentMethod, $paymentType');
 
       if (_currentBooking != null) {
-        print('Current booking before update: ${_currentBooking!.bookingCode}');
+        developer.log('Current booking before update: ${_currentBooking!.bookingCode}');
 
         // Set nilai dengan null safety
         _currentBooking!.paymentMethod = paymentMethod;
         _currentBooking!.paymentType = paymentType;
 
-        print('Payment method updated successfully');
+        developer.log('Payment method updated successfully');
         notifyListeners();
       } else {
-        print(
+        developer.log(
           'Warning: currentBooking is null when trying to update payment method',
         );
 
@@ -503,10 +626,10 @@ class BookingProvider extends ChangeNotifier {
         if (_currentBooking != null) {
           _currentBooking!.paymentMethod = paymentMethod;
           _currentBooking!.paymentType = paymentType;
-          print('Payment method updated after creating temporary booking');
+          developer.log('Payment method updated after creating temporary booking');
           notifyListeners();
         } else {
-          print(
+          developer.log(
             'Failed to create temporary booking, cannot update payment method',
           );
           _errorMessage =
@@ -514,7 +637,7 @@ class BookingProvider extends ChangeNotifier {
         }
       }
     } catch (e) {
-      print('Error in updatePaymentMethod: $e');
+      developer.log('Error in updatePaymentMethod: $e');
       _errorMessage = 'Error saat mengupdate metode pembayaran: $e';
     }
   }
@@ -536,8 +659,8 @@ class BookingProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      print('Memproses pembayaran untuk booking: $bookingCode');
-      print('Metode pembayaran: $paymentMethod, Tipe: $paymentType');
+      developer.log('Memproses pembayaran untuk booking: $bookingCode');
+      developer.log('Metode pembayaran: $paymentMethod, Tipe: $paymentType');
 
       // Simpan metode pembayaran yang dipilih
       updatePaymentMethod(paymentMethod, paymentType);
@@ -553,17 +676,17 @@ class BookingProvider extends ChangeNotifier {
       if (result.containsKey('virtual_account_number')) {
         _currentBooking!.latestPayment?.virtualAccountNumber =
             result['virtual_account_number'];
-        print('VA number: ${result['virtual_account_number']}');
+        developer.log('VA number: ${result['virtual_account_number']}');
       }
 
       if (result.containsKey('qr_code_url')) {
         _currentBooking!.latestPayment?.qrCodeUrl = result['qr_code_url'];
-        print('QR Code URL: ${result['qr_code_url']}');
+        developer.log('QR Code URL: ${result['qr_code_url']}');
       }
 
       if (result.containsKey('deep_link_url')) {
         _currentBooking!.latestPayment?.deepLinkUrl = result['deep_link_url'];
-        print('Deep Link URL: ${result['deep_link_url']}');
+        developer.log('Deep Link URL: ${result['deep_link_url']}');
       }
 
       // Refresh booking data
@@ -573,7 +696,7 @@ class BookingProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      print('Error dalam processPayment: $e');
+      developer.log('Error dalam processPayment: $e');
       _isLoading = false;
       _errorMessage = e.toString();
       notifyListeners();
@@ -680,7 +803,7 @@ class BookingProvider extends ChangeNotifier {
 
       return !update.isError;
     } catch (e) {
-      print('Error refreshing payment status: $e');
+      developer.log('Error refreshing payment status: $e');
       return false;
     }
   }

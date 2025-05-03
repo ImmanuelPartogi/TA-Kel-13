@@ -524,14 +524,14 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
   Widget _buildActionButtons(BuildContext context) {
     return Column(
       children: [
-        // Pesan Tiket
+        // Pesan Tiket - DIUBAH: Sekarang hanya menyiapkan data booking sementara
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
             onPressed:
                 _isLoading || _isSuccessful
                     ? null
-                    : () => _createBooking(context),
+                    : () => _prepareBookingAndNavigate(context),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 12),
               backgroundColor: Theme.of(context).primaryColor,
@@ -540,7 +540,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
               ),
             ),
             child: Text(
-              _isSuccessful ? 'Pemesanan Berhasil' : 'Pesan Tiket',
+              _isSuccessful ? 'Pemesanan Berhasil' : 'Lanjutkan ke Pembayaran',
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
@@ -587,8 +587,8 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
     }
   }
 
-  // Proses pembuatan booking
-  Future<void> _createBooking(BuildContext context) async {
+  // PERUBAHAN: Metode untuk menyiapkan booking tanpa memanggil API create langsung
+  Future<void> _prepareBookingAndNavigate(BuildContext context) async {
     final bookingProvider = Provider.of<BookingProvider>(
       context,
       listen: false,
@@ -599,8 +599,8 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
     });
 
     try {
-      // Create booking di API
-      final success = await bookingProvider.createBooking();
+      // Persiapkan data booking tanpa mengirim ke API
+      final success = await bookingProvider.prepareBooking();
 
       setState(() {
         _isLoading = false;
@@ -608,36 +608,8 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
       });
 
       if (success && mounted) {
-        try {
-          // Tambahkan delay kecil untuk memastikan data booking sudah terupdate
-          await Future.delayed(const Duration(milliseconds: 500));
-
-          // Pastikan currentBooking tidak null dan dapat diakses dengan aman
-          if (bookingProvider.currentBooking != null) {
-            Navigator.pushNamed(context, '/booking/payment-method');
-          } else {
-            // Jika tidak ada booking, tampilkan pesan alternatif
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Pemesanan berhasil! Silakan cek di riwayat pemesanan Anda.',
-                ),
-                backgroundColor: Colors.green,
-              ),
-            );
-
-            // Navigasi ke halaman booking history
-            Future.delayed(const Duration(seconds: 2), () {
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                '/bookings',
-                (route) => route.settings.name == '/home',
-              );
-            });
-          }
-        } catch (e) {
-          _handleNavigationError(context, e.toString());
-        }
+        // Langsung navigasi ke halaman pemilihan metode pembayaran
+        Navigator.pushNamed(context, '/booking/payment-method');
       } else if (mounted) {
         _showErrorMessage(context, bookingProvider.errorMessage);
       }

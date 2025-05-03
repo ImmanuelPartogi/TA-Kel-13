@@ -205,7 +205,7 @@ class BookingController extends Controller
         }
 
         // Jika status jadwal bukan AVAILABLE, tolak booking
-        if ($scheduleDate->status !== 'AVAILABLE') {
+        if ($scheduleDate->status !== 'ACTIVE') {
             Log::warning('Schedule date found but not available', [
                 'schedule_id' => $schedule->id,
                 'date' => $formattedDate,
@@ -227,7 +227,7 @@ class BookingController extends Controller
             'is_new_record' => $scheduleDate->wasRecentlyCreated
         ]);
 
-        if ($scheduleDate->status !== 'AVAILABLE') {
+        if ($scheduleDate->status !== 'ACTIVE') {
             Log::warning('Schedule date not available', [
                 'schedule_date_id' => $scheduleDate->id,
                 'status' => $scheduleDate->status,

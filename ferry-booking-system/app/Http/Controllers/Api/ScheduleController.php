@@ -166,7 +166,7 @@ class ScheduleController extends Controller
                     $schedule->available_car = 0;
                     $schedule->available_bus = 0;
                     $schedule->available_truck = 0;
-                    $schedule->schedule_date_status = 'NOT_AVAILABLE';
+                    $schedule->schedule_date_status = 'INACTIVE';
 
                     return $schedule;
                 }
@@ -192,7 +192,7 @@ class ScheduleController extends Controller
             $availableSchedules = $result->filter(function ($schedule) use ($currentTime, $date) {
                 // Periksa status jadwal
                 $status = $schedule->schedule_date_status;
-                $isAvailable = $status === 'AVAILABLE';
+                $isAvailable = $status === 'ACTIVE';
 
                 if (!$isAvailable) {
                     return false;

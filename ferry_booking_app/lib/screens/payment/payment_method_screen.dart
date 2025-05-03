@@ -555,11 +555,11 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            // Tombol lanjutkan
+            // PERUBAHAN: Tombol "Lanjutkan ke Pembayaran" memanggil createBooking
             ElevatedButton(
               onPressed:
                   _selectedPaymentMethod != null
-                      ? () => _processPayment(context, bookingProvider)
+                      ? () => _createBookingAndProceed(context, bookingProvider)
                       : null,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
@@ -582,18 +582,11 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
     );
   }
 
-  void _processPayment(BuildContext context, BookingProvider bookingProvider) {
+  // PERUBAHAN: Metode baru untuk membuat booking setelah memilih metode pembayaran
+  Future<void> _createBookingAndProceed(BuildContext context, BookingProvider bookingProvider) async {
     if (_selectedPaymentMethod == null || _selectedPaymentType == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Silakan pilih metode pembayaran')),
-      );
-      return;
-    }
-
-    // Validasi booking
-    if (!bookingProvider.hasActiveBooking) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Data pemesanan tidak ditemukan')),
       );
       return;
     }
@@ -603,61 +596,64 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
     });
 
     try {
-      final bookingCode = bookingProvider.currentBooking!.bookingCode;
-      print('Memulai proses pembayaran untuk booking: $bookingCode');
-
-      // Simpan metode pembayaran
-      bookingProvider.updatePaymentMethod(
+      developer.log('Memanggil submitBookingWithPayment');
+      
+      // Kirim data booking dengan metode pembayaran yang dipilih ke server
+      final success = await bookingProvider.submitBookingWithPayment(
         _selectedPaymentMethod!,
         _selectedPaymentType!,
       );
 
-      // Proses pembayaran
-      bookingProvider
-          .processPayment(
-            bookingCode,
-            _selectedPaymentMethod!,
-            _selectedPaymentType!,
-          )
-          .then((success) {
-            setState(() {
-              _isLoading = false;
-            });
+      if (success) {
+        developer.log('Submit booking berhasil');
+        
+        // Jika sukses, dapatkan booking code untuk diproses
+        final bookingCode = bookingProvider.currentBooking!.bookingCode;
+        
+        // Proses pembayaran dengan metode yang dipilih
+        final paymentSuccess = await bookingProvider.processPayment(
+          bookingCode,
+          _selectedPaymentMethod!,
+          _selectedPaymentType!,
+        );
 
-            if (success) {
-              // PERBAIKAN: Navigasi ke halaman instruksi pembayaran
-              Navigator.pushNamed(
-                context,
-                '/booking/payment',
-                arguments: {
-                  'bookingCode': bookingCode,
-                  'paymentMethod': _selectedPaymentMethod,
-                  'paymentType': _selectedPaymentType,
-                },
-              );
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    bookingProvider.errorMessage ??
-                        'Gagal memproses pembayaran',
-                  ),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            }
-          });
+        setState(() {
+          _isLoading = false;
+        });
+
+        if (paymentSuccess) {
+          // Navigasi ke halaman instruksi pembayaran
+          Navigator.pushNamed(
+            context,
+            '/booking/payment',
+            arguments: {
+              'bookingCode': bookingCode,
+              'paymentMethod': _selectedPaymentMethod,
+              'paymentType': _selectedPaymentType,
+            },
+          );
+        } else {
+          _showErrorMessage(
+            bookingProvider.errorMessage ?? 'Gagal memproses pembayaran'
+          );
+        }
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
+        _showErrorMessage(
+          bookingProvider.errorMessage ?? 'Gagal membuat pemesanan'
+        );
+      }
     } catch (e) {
+      developer.log('Error dalam _createBookingAndProceed: $e');
       setState(() {
         _isLoading = false;
       });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Terjadi kesalahan: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      _showErrorMessage('Terjadi kesalahan: $e');
     }
   }
+
+  // PERUBAHAN: Metode lama ditinggalkan karena tidak membuat booking
+  // void _processPayment(BuildContext context, BookingProvider bookingProvider) { ... }
 }

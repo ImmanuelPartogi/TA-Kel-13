@@ -45,7 +45,6 @@ Schedule::command('schedules:update-expired')->everyMinute();
 Schedule::command('schedules:update-expired-statuses')->everyMinute();
 
 Schedule::command('payment:check-status')
-     ->everyMinute()
-     ->withoutOverlapping()
-     ->appendOutputTo(storage_path('logs/payment-check.log'));
-
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/payment-check.log'));

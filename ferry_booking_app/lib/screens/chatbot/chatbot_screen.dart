@@ -23,7 +23,8 @@ class ChatbotScreen extends StatefulWidget {
   _ChatbotScreenState createState() => _ChatbotScreenState();
 }
 
-class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProviderStateMixin {
+class _ChatbotScreenState extends State<ChatbotScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   late ChatbotProvider _chatbotProvider;
@@ -33,7 +34,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
   bool _isTyping = false;
   late AnimationController _animationController;
   late Animation<double> _animation;
-  
+
   // Theme config
   late Color _primaryColor;
   late Color _secondaryColor;
@@ -41,37 +42,37 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
   late Color _userBubbleColor;
   late Color _botBubbleColor;
   bool _isDarkMode = false;
-  
+
   @override
   void initState() {
     super.initState();
     _chatbotProvider = Provider.of<ChatbotProvider>(context, listen: false);
     _authProvider = Provider.of<AuthProvider>(context, listen: false);
-    
+
     // Inisialisasi controller animasi
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-    
+
     _animation = CurvedAnimation(
       parent: _animationController,
       curve: Curves.easeInOut,
     );
-    
+
     // Set token dari auth provider
     if (_authProvider.isLoggedIn) {
       _chatbotProvider.setToken(_authProvider.token);
     }
-    
+
     // Setup scroll listener
     _scrollController.addListener(_scrollListener);
-    
+
     // Load conversation setelah build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeChat();
       _initializeTheme();
-      
+
       // Listen to theme changes
       ThemeHelper.addListener(() {
         if (mounted) {
@@ -80,7 +81,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
       });
     });
   }
-  
+
   void _initializeTheme() {
     _isDarkMode = ThemeHelper.isDarkMode(context);
     _primaryColor = Theme.of(context).primaryColor;
@@ -90,13 +91,13 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
     _botBubbleColor = _isDarkMode ? Colors.grey[700]! : Colors.grey[200]!;
     setState(() {});
   }
-  
+
   // Listener untuk scroll position
   void _scrollListener() {
     if (_scrollController.hasClients) {
       final maxScroll = _scrollController.position.maxScrollExtent;
       final currentScroll = _scrollController.position.pixels;
-      
+
       // Tampilkan tombol scroll jika tidak di bawah
       if (currentScroll < maxScroll - 50 && !_showScrollButton) {
         setState(() {
@@ -119,7 +120,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
       _scrollToBottom();
     }
   }
-  
+
   // Scroll ke pesan terbaru
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
@@ -132,125 +133,144 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
       });
     }
   }
-  
+
   // Mengirim pesan dengan haptic feedback
   Future<void> _sendMessage() async {
     final message = _messageController.text.trim();
     if (message.isEmpty) return;
-    
+
     // Haptic feedback saat kirim pesan
     HapticFeedback.lightImpact();
-    
+
     _messageController.clear();
-    
+
     // Tambahkan efek typing sebelum respon dari server
     setState(() {
       _isTyping = true;
     });
-    
+
     await _chatbotProvider.sendMessage(message);
-    
+
     setState(() {
       _isTyping = false;
     });
-    
+
     _scrollToBottom();
   }
-  
+
   // Dialog feedback dengan animasi
   void _showFeedbackDialog(int messageId, bool isHelpful) {
     final feedbackController = TextEditingController();
-    
+
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(
-              isHelpful ? Icons.sentiment_satisfied_alt : Icons.sentiment_dissatisfied,
-              color: isHelpful ? Colors.green : Colors.orange,
+      builder:
+          (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-            const SizedBox(width: 10),
-            Text(isHelpful ? 'Terima kasih!' : 'Maaf kamu tidak terbantu'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              isHelpful
-                  ? 'Kami senang dapat membantu Anda.'
-                  : 'Mohon bantu kami meningkatkan layanan chatbot.',
-              style: TextStyle(color: _isDarkMode ? Colors.grey[300] : Colors.grey[700]),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: feedbackController,
-              decoration: InputDecoration(
-                hintText: isHelpful
-                    ? 'Berikan saran tambahan (opsional)'
-                    : 'Mohon beri tahu kami bagaimana kami dapat membantu',
-                border: const OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(12)),
+            title: Row(
+              children: [
+                Icon(
+                  isHelpful
+                      ? Icons.sentiment_satisfied_alt
+                      : Icons.sentiment_dissatisfied,
+                  color: isHelpful ? Colors.green : Colors.orange,
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: const BorderRadius.all(Radius.circular(12)),
-                  borderSide: BorderSide(color: _primaryColor, width: 2),
+                const SizedBox(width: 10),
+                Text(isHelpful ? 'Terima kasih!' : 'Maaf kamu tidak terbantu'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  isHelpful
+                      ? 'Kami senang dapat membantu Anda.'
+                      : 'Mohon bantu kami meningkatkan layanan chatbot.',
+                  style: TextStyle(
+                    color: _isDarkMode ? Colors.grey[300] : Colors.grey[700],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: feedbackController,
+                  decoration: InputDecoration(
+                    hintText:
+                        isHelpful
+                            ? 'Berikan saran tambahan (opsional)'
+                            : 'Mohon beri tahu kami bagaimana kami dapat membantu',
+                    border: const OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: const BorderRadius.all(Radius.circular(12)),
+                      borderSide: BorderSide(color: _primaryColor, width: 2),
+                    ),
+                  ),
+                  maxLines: 3,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'Batal',
+                  style: TextStyle(
+                    color: _isDarkMode ? Colors.grey[400] : Colors.grey[700],
+                  ),
                 ),
               ),
-              maxLines: 3,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Batal', style: TextStyle(color: _isDarkMode ? Colors.grey[400] : Colors.grey[700])),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: isHelpful ? Colors.green : _primaryColor,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              elevation: 2,
-            ),
-            onPressed: () {
-              _chatbotProvider.sendFeedback(
-                messageId,
-                isHelpful,
-                feedbackText: feedbackController.text.trim().isNotEmpty
-                    ? feedbackController.text.trim()
-                    : null,
-              );
-              Navigator.pop(context);
-              
-              // Animasi feedback berhasil dikirim
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Row(
-                    children: [
-                      Icon(Icons.check_circle, color: Colors.white),
-                      const SizedBox(width: 10),
-                      const Text('Terima kasih atas feedback Anda!'),
-                    ],
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isHelpful ? Colors.green : _primaryColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  behavior: SnackBarBehavior.floating,
-                  backgroundColor: isHelpful ? Colors.green[600] : _primaryColor,
-                  duration: const Duration(seconds: 2),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  margin: const EdgeInsets.all(8),
+                  elevation: 2,
                 ),
-              );
-            },
-            child: const Text('Kirim'),
+                onPressed: () {
+                  _chatbotProvider.sendFeedback(
+                    messageId,
+                    isHelpful,
+                    feedbackText:
+                        feedbackController.text.trim().isNotEmpty
+                            ? feedbackController.text.trim()
+                            : null,
+                  );
+                  Navigator.pop(context);
+
+                  // Animasi feedback berhasil dikirim
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Row(
+                        children: [
+                          Icon(Icons.check_circle, color: Colors.white),
+                          const SizedBox(width: 10),
+                          const Text('Terima kasih atas feedback Anda!'),
+                        ],
+                      ),
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor:
+                          isHelpful ? Colors.green[600] : _primaryColor,
+                      duration: const Duration(seconds: 2),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      margin: const EdgeInsets.all(8),
+                    ),
+                  );
+                },
+                child: const Text('Kirim'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
-  
+
   // Menu opsi dengan animasi
   void _showOptionsMenu() {
     showModalBottomSheet(
@@ -342,61 +362,64 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
       },
     );
   }
-  
+
   // Tampilkan dialog tema
   void _showThemeSelector() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Pilih Tema'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildThemeOption(
-              title: 'Light Mode',
-              icon: Icons.light_mode,
-              isSelected: !_isDarkMode,
-              onTap: () {
-                Navigator.pop(context);
-                ThemeHelper.setLightMode(context);
-                _initializeTheme();
-              },
+      builder:
+          (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-            const SizedBox(height: 8),
-            _buildThemeOption(
-              title: 'Dark Mode',
-              icon: Icons.dark_mode,
-              isSelected: _isDarkMode,
-              onTap: () {
-                Navigator.pop(context);
-                ThemeHelper.setDarkMode(context);
-                _initializeTheme();
-              },
+            title: const Text('Pilih Tema'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildThemeOption(
+                  title: 'Light Mode',
+                  icon: Icons.light_mode,
+                  isSelected: !_isDarkMode,
+                  onTap: () {
+                    Navigator.pop(context);
+                    ThemeHelper.setLightMode(context);
+                    _initializeTheme();
+                  },
+                ),
+                const SizedBox(height: 8),
+                _buildThemeOption(
+                  title: 'Dark Mode',
+                  icon: Icons.dark_mode,
+                  isSelected: _isDarkMode,
+                  onTap: () {
+                    Navigator.pop(context);
+                    ThemeHelper.setDarkMode(context);
+                    _initializeTheme();
+                  },
+                ),
+                const SizedBox(height: 8),
+                _buildThemeOption(
+                  title: 'Sistem (Auto)',
+                  icon: Icons.settings_suggest,
+                  isSelected: false,
+                  onTap: () {
+                    Navigator.pop(context);
+                    ThemeHelper.setSystemMode(context);
+                    _initializeTheme();
+                  },
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            _buildThemeOption(
-              title: 'Sistem (Auto)',
-              icon: Icons.settings_suggest,
-              isSelected: false,
-              onTap: () {
-                Navigator.pop(context);
-                ThemeHelper.setSystemMode(context);
-                _initializeTheme();
-              },
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Batal'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
-  
+
   // Option tema
   Widget _buildThemeOption({
     required String title,
@@ -410,7 +433,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
-          color: isSelected ? _primaryColor.withOpacity(0.1) : Colors.transparent,
+          color:
+              isSelected ? _primaryColor.withOpacity(0.1) : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: isSelected ? _primaryColor : Colors.grey.withOpacity(0.3),
@@ -419,10 +443,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
         ),
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: isSelected ? _primaryColor : null,
-            ),
+            Icon(icon, color: isSelected ? _primaryColor : null),
             const SizedBox(width: 16),
             Text(
               title,
@@ -432,17 +453,13 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
               ),
             ),
             const Spacer(),
-            if (isSelected)
-              Icon(
-                Icons.check_circle,
-                color: _primaryColor,
-              ),
+            if (isSelected) Icon(Icons.check_circle, color: _primaryColor),
           ],
         ),
       ),
     );
   }
-  
+
   // Tampilkan pertanyaan populer
   void _showPopularQuestions() {
     final popularQuestions = [
@@ -455,7 +472,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
       'Bagaimana kebijakan refund?',
       'Apa saja fasilitas di kapal?',
     ];
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -466,7 +483,10 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
       builder: (context) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 12.0),
+            padding: const EdgeInsets.symmetric(
+              vertical: 16.0,
+              horizontal: 12.0,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -481,10 +501,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Icon(
-                      Icons.trending_up,
-                      color: _primaryColor,
-                    ),
+                    Icon(Icons.trending_up, color: _primaryColor),
                     const SizedBox(width: 8),
                     Text(
                       'Pertanyaan Populer',
@@ -521,7 +538,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
       },
     );
   }
-  
+
   // Item pertanyaan populer
   Widget _buildPopularQuestionItem({
     required String question,
@@ -534,19 +551,14 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
       builder: (context, double value, child) {
         return Transform.translate(
           offset: Offset(0, 20 * (1 - value)),
-          child: Opacity(
-            opacity: value,
-            child: child,
-          ),
+          child: Opacity(opacity: value, child: child),
         );
       },
       child: Card(
         color: _isDarkMode ? Colors.grey[800] : Colors.white,
         elevation: 2,
         margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(12),
@@ -569,11 +581,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
                     ),
                   ),
                 ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: Colors.grey,
-                  size: 14,
-                ),
+                Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 14),
               ],
             ),
           ),
@@ -581,7 +589,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
       ),
     );
   }
-  
+
   // Tampilkan riwayat percakapan
   void _showConversationHistory() {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -601,48 +609,53 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
       ),
     );
   }
-  
+
   // Konfirmasi reset percakapan dengan animasi
   void _showResetConfirmation() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.orange),
-            const SizedBox(width: 10),
-            const Text('Mulai Percakapan Baru?'),
-          ],
-        ),
-        content: const Text(
-          'Semua pesan di percakapan ini akan dihapus dan tidak dapat dipulihkan. Lanjutkan?'
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              elevation: 2,
+      builder:
+          (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-            onPressed: () {
-              Navigator.pop(context);
-              // Haptic feedback saat reset
-              HapticFeedback.mediumImpact();
-              _chatbotProvider.clearConversation();
-            },
-            child: const Text('Hapus'),
+            title: Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                const SizedBox(width: 10),
+                const Text('Mulai Percakapan Baru?'),
+              ],
+            ),
+            content: const Text(
+              'Semua pesan di percakapan ini akan dihapus dan tidak dapat dipulihkan. Lanjutkan?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Batal'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  elevation: 2,
+                ),
+                onPressed: () {
+                  Navigator.pop(context);
+                  // Haptic feedback saat reset
+                  HapticFeedback.mediumImpact();
+                  _chatbotProvider.clearConversation();
+                },
+                child: const Text('Hapus'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
-  
+
   // Widget untuk item opsi dengan animasi
   Widget _buildAnimatedOptionItem({
     required BuildContext context,
@@ -658,19 +671,14 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
       builder: (context, double value, child) {
         return Transform.translate(
           offset: Offset(20 * (1 - value), 0),
-          child: Opacity(
-            opacity: value,
-            child: child,
-          ),
+          child: Opacity(opacity: value, child: child),
         );
       },
       child: ListTile(
         leading: Icon(icon, color: _primaryColor),
         title: Text(
           title,
-          style: TextStyle(
-            color: _isDarkMode ? Colors.white : Colors.black87,
-          ),
+          style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black87),
         ),
         subtitle: Text(
           subtitle,
@@ -679,9 +687,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
           ),
         ),
         onTap: onTap,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -701,11 +707,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
                 color: _primaryColor.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                Icons.support_agent,
-                color: _primaryColor,
-                size: 24,
-              ),
+              child: Icon(Icons.support_agent, color: _primaryColor, size: 24),
             ),
             const SizedBox(width: 10),
             Column(
@@ -735,7 +737,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.normal,
-                        color: _isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                        color:
+                            _isDarkMode ? Colors.grey[400] : Colors.grey[600],
                       ),
                     ),
                   ],
@@ -760,72 +763,84 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
           if (provider.isLoading && provider.messages.isEmpty) {
             return _buildLoadingState();
           }
-          
+
           // Scroll setelah build jika ada pesan
           if (provider.messages.isNotEmpty) {
-            WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+            WidgetsBinding.instance.addPostFrameCallback(
+              (_) => _scrollToBottom(),
+            );
           }
-          
+
           return Column(
             children: [
               // Status koneksi
               if (provider.isOffline)
                 ConnectionStatusBanner(
                   isDarkMode: _isDarkMode,
-                  message: 'Anda sedang offline. Pesan akan dikirim saat koneksi tersedia.',
+                  message:
+                      'Anda sedang offline. Pesan akan dikirim saat koneksi tersedia.',
                 ),
-                
+
               // Daftar pesan
               Expanded(
-                child: provider.messages.isEmpty
-                    ? _buildEmptyState()
-                    : Stack(
-                        children: [
-                          GestureDetector(
-                            onTap: () => FocusScope.of(context).unfocus(),
-                            child: ListView.builder(
-                              controller: _scrollController,
-                              padding: const EdgeInsets.all(16),
-                              itemCount: provider.messages.length + (_isTyping ? 1 : 0),
-                              itemBuilder: (context, index) {
-                                if (index < provider.messages.length) {
-                                  return _buildMessageItem(provider.messages[index]);
-                                } else {
-                                  // Efek mengetik
-                                  return const TypingIndicator();
-                                }
+                child:
+                    provider.messages.isEmpty
+                        ? _buildEmptyState()
+                        : Stack(
+                          children: [
+                            GestureDetector(
+                              onTap: () => FocusScope.of(context).unfocus(),
+                              child: ListView.builder(
+                                controller: _scrollController,
+                                padding: const EdgeInsets.all(16),
+                                itemCount:
+                                    provider.messages.length +
+                                    (_isTyping ? 1 : 0),
+                                itemBuilder: (context, index) {
+                                  if (index < provider.messages.length) {
+                                    return _buildMessageItem(
+                                      provider.messages[index],
+                                    );
+                                  } else {
+                                    // Efek mengetik
+                                    return const TypingIndicator();
+                                  }
+                                },
+                              ),
+                            ),
+
+                            // Tombol scroll ke bawah dengan animasi
+                            AnimatedBuilder(
+                              animation: _animation,
+                              builder: (context, child) {
+                                return Positioned(
+                                  right: 16,
+                                  bottom: 16,
+                                  child: ScaleTransition(
+                                    scale: _animation,
+                                    child: FloatingActionButton(
+                                      heroTag: 'chatbotScreenFab',
+                                      mini: true,
+                                      backgroundColor: _primaryColor
+                                          .withOpacity(0.9),
+                                      foregroundColor: Colors.white,
+                                      elevation: 4,
+                                      child: const Icon(
+                                        Icons.keyboard_arrow_down,
+                                      ),
+                                      onPressed: () {
+                                        HapticFeedback.selectionClick();
+                                        _scrollToBottom();
+                                      },
+                                    ),
+                                  ),
+                                );
                               },
                             ),
-                          ),
-                          
-                          // Tombol scroll ke bawah dengan animasi
-                          AnimatedBuilder(
-                            animation: _animation,
-                            builder: (context, child) {
-                              return Positioned(
-                                right: 16,
-                                bottom: 16,
-                                child: ScaleTransition(
-                                  scale: _animation,
-                                  child: FloatingActionButton(
-                                    mini: true,
-                                    backgroundColor: _primaryColor.withOpacity(0.9),
-                                    foregroundColor: Colors.white,
-                                    elevation: 4,
-                                    child: const Icon(Icons.keyboard_arrow_down),
-                                    onPressed: () {
-                                      HapticFeedback.selectionClick();
-                                      _scrollToBottom();
-                                    },
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
               ),
-              
+
               // Saran pertanyaan
               if (provider.suggestedQuestions.isNotEmpty)
                 SuggestedQuestions(
@@ -837,7 +852,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
                   // isDarkMode: _isDarkMode,
                   // primaryColor: _primaryColor,
                 ),
-              
+
               // Input pesan
               Container(
                 padding: const EdgeInsets.all(8.0),
@@ -864,28 +879,42 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
                         child: IconButton(
                           icon: Icon(
                             Icons.mic,
-                            color: _primaryColor.withOpacity(provider.isSending || provider.isOffline ? 0.4 : 0.8),
+                            color: _primaryColor.withOpacity(
+                              provider.isSending || provider.isOffline
+                                  ? 0.4
+                                  : 0.8,
+                            ),
                           ),
-                          onPressed: provider.isSending || provider.isOffline 
-                            ? null
-                            : () {
-                                HapticFeedback.selectionClick();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Row(
-                                      children: [
-                                        Icon(Icons.info_outline, color: Colors.white),
-                                        const SizedBox(width: 10),
-                                        const Text('Input suara akan segera tersedia!'),
-                                      ],
-                                    ),
-                                    behavior: SnackBarBehavior.floating,
-                                    backgroundColor: _primaryColor,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                    margin: const EdgeInsets.all(8),
-                                  ),
-                                );
-                              },
+                          onPressed:
+                              provider.isSending || provider.isOffline
+                                  ? null
+                                  : () {
+                                    HapticFeedback.selectionClick();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.info_outline,
+                                              color: Colors.white,
+                                            ),
+                                            const SizedBox(width: 10),
+                                            const Text(
+                                              'Input suara akan segera tersedia!',
+                                            ),
+                                          ],
+                                        ),
+                                        behavior: SnackBarBehavior.floating,
+                                        backgroundColor: _primaryColor,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        margin: const EdgeInsets.all(8),
+                                      ),
+                                    );
+                                  },
                         ),
                       ),
                       // Text field
@@ -893,7 +922,10 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
                       Expanded(
                         child: Container(
                           decoration: BoxDecoration(
-                            color: _isDarkMode ? Colors.grey[800] : Colors.grey[100],
+                            color:
+                                _isDarkMode
+                                    ? Colors.grey[800]
+                                    : Colors.grey[100],
                             borderRadius: BorderRadius.circular(24),
                           ),
                           child: Row(
@@ -902,12 +934,18 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
                                 child: TextField(
                                   controller: _messageController,
                                   style: TextStyle(
-                                    color: _isDarkMode ? Colors.white : Colors.black87,
+                                    color:
+                                        _isDarkMode
+                                            ? Colors.white
+                                            : Colors.black87,
                                   ),
                                   decoration: InputDecoration(
                                     hintText: 'Tulis pesan Anda...',
                                     hintStyle: TextStyle(
-                                      color: _isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                                      color:
+                                          _isDarkMode
+                                              ? Colors.grey[400]
+                                              : Colors.grey[600],
                                     ),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(24),
@@ -923,7 +961,9 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
                                   maxLines: null,
                                   textInputAction: TextInputAction.send,
                                   onSubmitted: (_) => _sendMessage(),
-                                  enabled: !provider.isSending && !provider.isOffline,
+                                  enabled:
+                                      !provider.isSending &&
+                                      !provider.isOffline,
                                 ),
                               ),
                               if (_messageController.text.isNotEmpty)
@@ -935,7 +975,10 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
                                     });
                                   },
                                   splashRadius: 20,
-                                  color: _isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                                  color:
+                                      _isDarkMode
+                                          ? Colors.grey[400]
+                                          : Colors.grey[600],
                                 ),
                             ],
                           ),
@@ -945,33 +988,39 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
                       // Tombol kirim
                       Container(
                         decoration: BoxDecoration(
-                          color: provider.isSending || provider.isOffline
-                              ? Colors.grey
-                              : _primaryColor,
+                          color:
+                              provider.isSending || provider.isOffline
+                                  ? Colors.grey
+                                  : _primaryColor,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: _primaryColor.withOpacity(provider.isSending || provider.isOffline ? 0 : 0.3),
+                              color: _primaryColor.withOpacity(
+                                provider.isSending || provider.isOffline
+                                    ? 0
+                                    : 0.3,
+                              ),
                               spreadRadius: 1,
                               blurRadius: 3,
                             ),
                           ],
                         ),
                         child: IconButton(
-                          onPressed: provider.isSending || provider.isOffline ? null : _sendMessage,
-                          icon: provider.isSending
-                              ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(
-                                  Icons.send,
-                                  color: Colors.white,
-                                ),
+                          onPressed:
+                              provider.isSending || provider.isOffline
+                                  ? null
+                                  : _sendMessage,
+                          icon:
+                              provider.isSending
+                                  ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                  : const Icon(Icons.send, color: Colors.white),
                         ),
                       ),
                     ],
@@ -984,7 +1033,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
       ),
     );
   }
-  
+
   // Loading state dengan shimmer effect
   Widget _buildLoadingState() {
     return Shimmer.fromColors(
@@ -993,24 +1042,26 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: 5,
-        itemBuilder: (_, __) => Align(
-          alignment: __ % 2 == 0 ? Alignment.centerRight : Alignment.centerLeft,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            child: Container(
-              width: 250,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+        itemBuilder:
+            (_, __) => Align(
+              alignment:
+                  __ % 2 == 0 ? Alignment.centerRight : Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Container(
+                  width: 250,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
       ),
     );
   }
-  
+
   // Empty state dengan animasi dan ilustrasi
   Widget _buildEmptyState() {
     return Column(
@@ -1022,10 +1073,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
           builder: (context, double value, child) {
             return Transform.scale(
               scale: 0.8 + (value * 0.2),
-              child: Opacity(
-                opacity: value,
-                child: child,
-              ),
+              child: Opacity(opacity: value, child: child),
             );
           },
           child: Container(
@@ -1117,12 +1165,12 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
       ],
     );
   }
-  
+
   // Item pesan dengan berbagai status dan format
   Widget _buildMessageItem(ChatMessage message) {
     final isFailedMessage = message.messageStatus == 'failed';
     final isPendingMessage = message.messageStatus == 'pending';
-    
+
     // Tambahkan jarak yang lebih besar jika pesan dari pengirim berbeda
     // (untuk memisahkan 'grup' pesan)
     bool showGroupSeparator = false;
@@ -1131,21 +1179,26 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
       final prevMessage = _chatbotProvider.messages[prevIndex];
       showGroupSeparator = prevMessage.isFromUser != message.isFromUser;
     }
-    
+
     return Padding(
       padding: EdgeInsets.only(
         top: showGroupSeparator ? 16.0 : 4.0,
         bottom: 4.0,
       ),
       child: Column(
-        crossAxisAlignment: message.isFromUser
-            ? CrossAxisAlignment.end
-            : CrossAxisAlignment.start,
+        crossAxisAlignment:
+            message.isFromUser
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
         children: [
           // Header untuk grup pesan baru
           if (showGroupSeparator)
             Padding(
-              padding: const EdgeInsets.only(bottom: 4.0, left: 8.0, right: 8.0),
+              padding: const EdgeInsets.only(
+                bottom: 4.0,
+                left: 8.0,
+                right: 8.0,
+              ),
               child: Text(
                 message.isFromUser ? 'Anda' : 'Chatbot',
                 style: TextStyle(
@@ -1155,16 +1208,21 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
                 ),
               ),
             ),
-            
+
           // Jika ada indikator status untuk pesan yang gagal atau pending
           if (isFailedMessage || isPendingMessage)
             Padding(
-              padding: const EdgeInsets.only(bottom: 4.0, left: 8.0, right: 8.0),
+              padding: const EdgeInsets.only(
+                bottom: 4.0,
+                left: 8.0,
+                right: 8.0,
+              ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: message.isFromUser 
-                    ? MainAxisAlignment.end 
-                    : MainAxisAlignment.start,
+                mainAxisAlignment:
+                    message.isFromUser
+                        ? MainAxisAlignment.end
+                        : MainAxisAlignment.start,
                 children: [
                   Icon(
                     isFailedMessage ? Icons.error_outline : Icons.access_time,
@@ -1182,7 +1240,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
                 ],
               ),
             ),
-          
+
           // Bubble chat dengan efek animasi saat muncul
           TweenAnimationBuilder(
             tween: Tween<double>(begin: 0.8, end: 1.0),
@@ -1190,31 +1248,32 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
             builder: (context, double value, child) {
               return Transform.scale(
                 scale: value,
-                alignment: message.isFromUser ? Alignment.centerRight : Alignment.centerLeft,
-                child: Opacity(
-                  opacity: value,
-                  child: child,
-                ),
+                alignment:
+                    message.isFromUser
+                        ? Alignment.centerRight
+                        : Alignment.centerLeft,
+                child: Opacity(opacity: value, child: child),
               );
             },
             child: ChatBubble(
               clipper: ChatBubbleClipper6(
-                type: message.isFromUser 
-                  ? BubbleType.sendBubble
-                  : BubbleType.receiverBubble,
+                type:
+                    message.isFromUser
+                        ? BubbleType.sendBubble
+                        : BubbleType.receiverBubble,
                 radius: 16,
               ),
-              alignment: message.isFromUser 
-                  ? Alignment.topRight
-                  : Alignment.topLeft,
+              alignment:
+                  message.isFromUser ? Alignment.topRight : Alignment.topLeft,
               margin: const EdgeInsets.only(top: 6),
-              backGroundColor: isFailedMessage
-                  ? Colors.red[100]
-                  : isPendingMessage
+              backGroundColor:
+                  isFailedMessage
+                      ? Colors.red[100]
+                      : isPendingMessage
                       ? Colors.orange[100]
                       : message.isFromUser
-                          ? _userBubbleColor
-                          : _botBubbleColor,
+                      ? _userBubbleColor
+                      : _botBubbleColor,
               child: Container(
                 constraints: BoxConstraints(
                   maxWidth: MediaQuery.of(context).size.width * 0.7,
@@ -1223,15 +1282,16 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
               ),
             ),
           ),
-          
+
           // Info waktu dan status pengiriman
           Padding(
             padding: const EdgeInsets.only(top: 2.0, left: 8.0, right: 8.0),
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: message.isFromUser 
-                  ? MainAxisAlignment.end 
-                  : MainAxisAlignment.start,
+              mainAxisAlignment:
+                  message.isFromUser
+                      ? MainAxisAlignment.end
+                      : MainAxisAlignment.start,
               children: [
                 Text(
                   _formatTime(message.createdAt),
@@ -1241,7 +1301,9 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
                   ),
                 ),
                 // Status pesan berupa icon centang
-                if (message.isFromUser && !isFailedMessage && !isPendingMessage) ...[
+                if (message.isFromUser &&
+                    !isFailedMessage &&
+                    !isPendingMessage) ...[
                   const SizedBox(width: 4),
                   Icon(
                     Icons.check,
@@ -1252,7 +1314,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
               ],
             ),
           ),
-          
+
           // Tombol retry untuk pesan yang gagal
           if (isFailedMessage)
             Padding(
@@ -1263,7 +1325,10 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
                   _chatbotProvider.resendMessage(message.message);
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: _primaryColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
@@ -1272,25 +1337,18 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
                     mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      Icon(
-                        Icons.refresh,
-                        size: 14,
-                        color: _primaryColor,
-                      ),
+                      Icon(Icons.refresh, size: 14, color: _primaryColor),
                       const SizedBox(width: 4),
                       Text(
                         'Coba lagi',
-                        style: TextStyle(
-                          color: _primaryColor,
-                          fontSize: 12,
-                        ),
+                        style: TextStyle(color: _primaryColor, fontSize: 12),
                       ),
                     ],
                   ),
                 ),
               ),
             ),
-          
+
           // Tombol feedback jika pesan dari chatbot
           if (!message.isFromUser && message.id > 0)
             Padding(
@@ -1305,30 +1363,23 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
                     },
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: _isDarkMode ? Colors.grey[800] : Colors.white,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.green,
-                          width: 1,
-                        ),
+                        border: Border.all(color: Colors.green, width: 1),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            Icons.thumb_up,
-                            size: 14,
-                            color: Colors.green,
-                          ),
+                          Icon(Icons.thumb_up, size: 14, color: Colors.green),
                           const SizedBox(width: 4),
                           Text(
                             'Membantu',
-                            style: TextStyle(
-                              color: Colors.green,
-                              fontSize: 12,
-                            ),
+                            style: TextStyle(color: Colors.green, fontSize: 12),
                           ),
                         ],
                       ),
@@ -1342,14 +1393,14 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
                     },
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: _isDarkMode ? Colors.grey[800] : Colors.white,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.red,
-                          width: 1,
-                        ),
+                        border: Border.all(color: Colors.red, width: 1),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -1362,10 +1413,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
                           const SizedBox(width: 4),
                           const Text(
                             'Tidak Membantu',
-                            style: TextStyle(
-                              color: Colors.red,
-                              fontSize: 12,
-                            ),
+                            style: TextStyle(color: Colors.red, fontSize: 12),
                           ),
                         ],
                       ),
@@ -1378,28 +1426,32 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
       ),
     );
   }
-  
+
   // Konten pesan dengan dukungan markdown
   Widget _buildMessageContent(ChatMessage message) {
     // Cek apakah pesan berisi markdown
-    final hasMarkdown = message.message.contains('**') || 
-                        message.message.contains('*') ||
-                        message.message.contains('__') ||
-                        message.message.contains('_') ||
-                        message.message.contains('#') ||
-                        message.message.contains('[') ||
-                        message.message.contains('](') ||
-                        message.message.contains('```') ||
-                        message.message.contains('`') ||
-                        message.message.contains('- ') ||
-                        message.message.contains('1. ');
-    
+    final hasMarkdown =
+        message.message.contains('**') ||
+        message.message.contains('*') ||
+        message.message.contains('__') ||
+        message.message.contains('_') ||
+        message.message.contains('#') ||
+        message.message.contains('[') ||
+        message.message.contains('](') ||
+        message.message.contains('```') ||
+        message.message.contains('`') ||
+        message.message.contains('- ') ||
+        message.message.contains('1. ');
+
     if (hasMarkdown && !message.isFromUser) {
       return MarkdownBody(
         data: message.message,
         styleSheet: MarkdownStyleSheet(
           p: TextStyle(
-            color: message.isFromUser ? Colors.white : (_isDarkMode ? Colors.white : Colors.black),
+            color:
+                message.isFromUser
+                    ? Colors.white
+                    : (_isDarkMode ? Colors.white : Colors.black),
           ),
           a: TextStyle(
             color: message.isFromUser ? Colors.white70 : _primaryColor,
@@ -1421,23 +1473,26 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
         },
       );
     }
-    
+
     // Default text rendering
     return SelectableText(
       message.message,
       style: TextStyle(
-        color: message.isFromUser ? Colors.white : (_isDarkMode ? Colors.white : Colors.black),
+        color:
+            message.isFromUser
+                ? Colors.white
+                : (_isDarkMode ? Colors.white : Colors.black),
       ),
     );
   }
-  
+
   // Format waktu pesan
   String _formatTime(DateTime time) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
     final messageDate = DateTime(time.year, time.month, time.day);
-    
+
     if (messageDate == today) {
       // Format jam:menit untuk hari ini
       return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
@@ -1449,7 +1504,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> with SingleTickerProvider
       return '${time.day}/${time.month}/${time.year}, ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
     }
   }
-  
+
   @override
   void dispose() {
     _scrollController.removeListener(_scrollListener);

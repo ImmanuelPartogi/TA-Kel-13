@@ -110,9 +110,9 @@
                     <div class="flex justify-between">
                         <span class="text-sm text-gray-500">Status saat ini:</span>
                         <span class="text-sm font-medium">
-                            @if ($scheduleDate->status == 'AVAILABLE')
+                            @if ($scheduleDate->status == 'ACTIVE')
                                 <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">Tersedia</span>
-                            @elseif($scheduleDate->status == 'UNAVAILABLE')
+                            @elseif($scheduleDate->status == 'INACTIVE')
                                 <span class="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-medium">Tidak Tersedia</span>
                             @elseif($scheduleDate->status == 'FULL')
                                 <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-medium">Penuh</span>
@@ -147,8 +147,8 @@
                         <select id="status" name="status"
                             class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-150 @error('status') border-red-500 @enderror"
                             required>
-                            <option value="active" {{ $scheduleDate->status == 'AVAILABLE' ? 'selected' : '' }}>Tersedia</option>
-                            <option value="inactive" {{ $scheduleDate->status == 'UNAVAILABLE' ? 'selected' : '' }}>Tidak Tersedia</option>
+                            <option value="active" {{ $scheduleDate->status == 'ACTIVE' ? 'selected' : '' }}>Tersedia</option>
+                            <option value="inactive" {{ $scheduleDate->status == 'INACTIVE' ? 'selected' : '' }}>Tidak Tersedia</option>
                             <option value="suspended" {{ $scheduleDate->status == 'CANCELLED' ? 'selected' : '' }}>Dibatalkan</option>
                             <option value="full" {{ $scheduleDate->status == 'FULL' ? 'selected' : '' }}>Penuh</option>
                             <option value="weather_issue" {{ $scheduleDate->status == 'WEATHER_ISSUE' ? 'selected' : '' }}>Masalah Cuaca</option>

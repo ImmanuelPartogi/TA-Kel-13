@@ -6,6 +6,7 @@ use App\Models\Notification;
 use App\Models\User;
 use App\Services\NotificationService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class NotificationHelper
 {
@@ -51,37 +52,65 @@ class NotificationHelper
     {
         $count = 0;
         $notificationService = app(NotificationService::class);
-        $today = Carbon::today()->format('Y-m-d');
-        $now = Carbon::now();
 
-        // Ambil semua booking yang akan berangkat hari ini
-        $bookings = \App\Models\Booking::with(['user', 'schedule.route'])
-            ->where('departure_date', $today)
-            ->where('status', 'CONFIRMED')
-            ->get();
+        // Gunakan zona waktu yang benar
+        $now = Carbon::now('Asia/Jakarta');
+        $today = $now->format('Y-m-d');
 
-        foreach ($bookings as $booking) {
-            // Hitung waktu keberangkatan
-            $departureTime = $booking->schedule->departure_time;
-            $departureDateTime = Carbon::parse($today . ' ' . $departureTime);
+        // Tambahkan log untuk debugging
+        Log::info("Running boarding reminders at {$now}");
 
-            // Jika waktu keberangkatan dalam X jam
-            $hoursDiff = $now->diffInHours($departureDateTime, false);
-            if ($hoursDiff <= $hours && $hoursDiff > 0) {
-                // Kirim notifikasi ke pengguna
-                $notificationService->sendBoardingReminderNotification(
-                    $booking->user,
-                    $booking->booking_code,
-                    $booking->schedule->route->name,
-                    $departureTime,
-                    $hoursDiff
-                );
+        try {
+            // Ambil semua booking yang akan berangkat hari ini
+            $bookings = \App\Models\Booking::with(['user', 'schedule.route'])
+                ->where('departure_date', $today)
+                ->where('status', 'CONFIRMED')
+                ->get();
 
-                $count++;
+            Log::info("Found {$bookings->count()} bookings for today");
+
+            foreach ($bookings as $booking) {
+                try {
+                    // Hitung waktu keberangkatan yang benar
+                    $departureTime = $booking->schedule->departure_time;
+                    $departureDateTime = Carbon::createFromFormat(
+                        'Y-m-d H:i:s',
+                        $booking->departure_date . ' ' . $departureTime
+                    );
+
+                    // Debug waktu keberangkatan
+                    Log::info("Booking {$booking->booking_code}: Departure at {$departureDateTime}, Now {$now}");
+
+                    // Hitung selisih dalam jam
+                    $hoursDiff = $now->diffInHours($departureDateTime, false);
+
+                    if ($hoursDiff <= $hours && $hoursDiff > 0) {
+                        Log::info("Sending boarding notification for booking {$booking->booking_code}, {$hoursDiff} hours remaining");
+
+                        // Kirim notifikasi ke pengguna
+                        $notificationService->sendBoardingReminderNotification(
+                            $booking->user,
+                            $booking->booking_code,
+                            $booking->schedule->route->name ?? 'Unknown Route',
+                            $departureTime,
+                            $hoursDiff
+                        );
+
+                        $count++;
+                    }
+                } catch (\Exception $e) {
+                    Log::error("Error processing boarding reminder for booking {$booking->id}: " . $e->getMessage());
+                    // Lanjutkan ke booking berikutnya
+                    continue;
+                }
             }
-        }
 
-        return $count;
+            Log::info("Sent {$count} boarding notifications");
+            return $count;
+        } catch (\Exception $e) {
+            Log::error("Error in sendBoardingReminders: " . $e->getMessage());
+            throw $e;
+        }
     }
 
     /**

@@ -326,11 +326,11 @@
                                 <div class="text-xs text-gray-500">{{ \Carbon\Carbon::parse($date->date)->format('l') }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                @if ($date->status == 'AVAILABLE')
+                                @if ($date->status == 'ACTIVE')
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                         Tersedia
                                     </span>
-                                @elseif($date->status == 'UNAVAILABLE')
+                                @elseif($date->status == 'INACTIVE')
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                                         Tidak Tersedia
                                     </span>
@@ -352,10 +352,6 @@
                                 <div class="text-sm text-gray-900 font-medium">{{ $date->booking_count }} booking</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <a href="{{ route('operator.schedules.edit-date', ['id' => $schedule->id, 'dateId' => $date->id]) }}"
-                                   class="text-indigo-600 hover:text-indigo-900 mr-3">
-                                    Edit
-                                </a>
                                 <a href="{{ route('operator.bookings.index', ['schedule_id' => $schedule->id, 'date' => $date->date]) }}"
                                    class="text-blue-600 hover:text-blue-900">
                                     Lihat Booking

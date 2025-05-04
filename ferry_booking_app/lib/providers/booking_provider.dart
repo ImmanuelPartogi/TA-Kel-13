@@ -326,18 +326,28 @@ class BookingProvider extends ChangeNotifier {
 
   // Get booking details
   Future<void> getBookingDetails(int bookingId) async {
+    if (_isLoading) return;
+
     _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
+    // Jangan panggil notifyListeners() di sini
 
     try {
       _currentBooking = await _bookingApi.getBookingDetails(bookingId);
       _isLoading = false;
-      notifyListeners();
+      _errorMessage = null;
+
+      // Gunakan microtask agar notifyListeners() dipanggil setelah build selesai
+      Future.microtask(() {
+        notifyListeners();
+      });
     } catch (e) {
       _isLoading = false;
       _errorMessage = e.toString();
-      notifyListeners();
+
+      // Gunakan microtask agar notifyListeners() dipanggil setelah build selesai
+      Future.microtask(() {
+        notifyListeners();
+      });
     }
   }
 
@@ -486,8 +496,10 @@ class BookingProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      developer.log('Mengirim booking dengan metode pembayaran: $paymentMethod, $paymentType');
-      
+      developer.log(
+        'Mengirim booking dengan metode pembayaran: $paymentMethod, $paymentType',
+      );
+
       // Tambahkan info metode pembayaran ke data booking
       final Map<String, dynamic> completeBookingData = {
         ..._pendingBookingData!,
@@ -606,7 +618,9 @@ class BookingProvider extends ChangeNotifier {
       developer.log('Updating payment method to: $paymentMethod, $paymentType');
 
       if (_currentBooking != null) {
-        developer.log('Current booking before update: ${_currentBooking!.bookingCode}');
+        developer.log(
+          'Current booking before update: ${_currentBooking!.bookingCode}',
+        );
 
         // Set nilai dengan null safety
         _currentBooking!.paymentMethod = paymentMethod;
@@ -626,7 +640,9 @@ class BookingProvider extends ChangeNotifier {
         if (_currentBooking != null) {
           _currentBooking!.paymentMethod = paymentMethod;
           _currentBooking!.paymentType = paymentType;
-          developer.log('Payment method updated after creating temporary booking');
+          developer.log(
+            'Payment method updated after creating temporary booking',
+          );
           notifyListeners();
         } else {
           developer.log(

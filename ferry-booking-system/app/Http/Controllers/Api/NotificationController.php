@@ -200,7 +200,6 @@ class NotificationController extends Controller
             'SCHEDULE_CHANGE' => 'Perubahan Jadwal',
             'BOARDING' => 'Boarding',
             'SYSTEM' => 'Notifikasi Sistem',
-            'PROMO' => 'Promosi'
         ];
 
         return response()->json([

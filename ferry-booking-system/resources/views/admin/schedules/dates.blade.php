@@ -703,7 +703,7 @@
             const addExpiryDateContainer = document.getElementById('addExpiryDateContainer');
 
             function updateAddContainers() {
-                if (addStatus.value === 'AVAILABLE') {
+                if (addStatus.value === 'ACTIVE') {
                     addReasonContainer.classList.add('hidden');
                     addExpiryDateContainer.classList.add('hidden');
                 } else {
@@ -730,7 +730,7 @@
             const editExpiryDateContainer = document.getElementById('editExpiryDateContainer');
 
             function updateEditContainers() {
-                if (editStatus.value === 'AVAILABLE') {
+                if (editStatus.value === 'ACTIVE') {
                     editReasonContainer.classList.add('hidden');
                     editExpiryDateContainer.classList.add('hidden');
                 } else {

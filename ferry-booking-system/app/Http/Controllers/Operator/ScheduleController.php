@@ -38,14 +38,14 @@ class ScheduleController extends Controller
     private function mapStatusFromRequest($requestStatus)
     {
         $statusMap = [
-            'active' => 'AVAILABLE',
-            'inactive' => 'UNAVAILABLE',
+            'active' => 'ACTIVE',
+            'inactive' => 'INACTIVE',
             'suspended' => 'CANCELLED',
             'full' => 'FULL',
             'weather_issue' => 'WEATHER_ISSUE'
         ];
 
-        return $statusMap[$requestStatus] ?? 'UNAVAILABLE';
+        return $statusMap[$requestStatus] ?? 'INACTIVE';
     }
 
     /**
@@ -58,7 +58,7 @@ class ScheduleController extends Controller
     {
         switch ($status) {
             case 'inactive':
-            case 'UNAVAILABLE':
+            case 'INACTIVE':
                 return 'tidak aktif';
             case 'suspended':
             case 'CANCELLED':
@@ -81,6 +81,8 @@ class ScheduleController extends Controller
      */
     public function index(Request $request)
     {
+        $this->checkExpiredStatuses();
+
         $operator = Auth::guard('operator')->user();
         $operatorId = $operator->id;
         $assignedRoutes = $operator->assigned_routes ?? [];
@@ -113,7 +115,7 @@ class ScheduleController extends Controller
                 // Also check if there's a schedule date for this specific date
                 $query->whereHas('scheduleDates', function ($q) use ($date) {
                     $q->where('date', $date->format('Y-m-d'))
-                        ->where('status', 'AVAILABLE');
+                        ->where('status', 'ACTIVE');
                 });
             }
 
@@ -150,6 +152,8 @@ class ScheduleController extends Controller
      */
     public function show($id)
     {
+        $this->checkExpiredStatuses();
+
         $cacheKey = "schedule_show_{$id}";
 
         // Cache hanya data yang bisa di-serialize
@@ -162,7 +166,7 @@ class ScheduleController extends Controller
             // Get upcoming dates with booking counts
             $upcomingDates = $schedule->scheduleDates()
                 ->where('date', '>=', Carbon::today())
-                ->where('status', 'AVAILABLE')
+                ->where('status', 'ACTIVE')
                 ->orderBy('date')
                 ->take(14)
                 ->get();
@@ -200,6 +204,8 @@ class ScheduleController extends Controller
      */
     public function dates($id)
     {
+        $this->checkExpiredStatuses();
+
         // Tidak menggunakan cache untuk halaman paginasi
         $schedule = Schedule::with([
             'route:id,origin,destination',
@@ -227,6 +233,75 @@ class ScheduleController extends Controller
         }
 
         return view('operator.schedules.dates', compact('schedule', 'dates'));
+    }
+
+    /**
+     * Periksa dan perbarui status jadwal dan tanggal jadwal yang kedaluwarsa
+     * Metode ini dipanggil saat mengakses halaman yang menampilkan jadwal
+     */
+    private function checkExpiredStatuses()
+    {
+        $now = Carbon::now();
+
+        // Update jadwal INACTIVE yang sudah melewati tanggal kedaluwarsa
+        $expiredSchedules = Schedule::whereIn('route_id', Auth::guard('operator')->user()->assigned_routes ?? [])
+            ->where('status', 'INACTIVE')
+            ->whereNotNull('status_expiry_date')
+            ->where('status_expiry_date', '<', $now)
+            ->get();
+
+        foreach ($expiredSchedules as $schedule) {
+            $schedule->status = 'ACTIVE';
+            $schedule->status_reason = 'Otomatis diaktifkan setelah masa tidak aktif berakhir';
+            $schedule->status_updated_at = $now;
+            $schedule->status_expiry_date = null;
+            $schedule->save();
+
+            // Update juga status tanggal jadwal terkait
+            ScheduleDate::where('schedule_id', $schedule->id)
+                ->where('date', '>=', Carbon::today())
+                ->where('modified_by_schedule', true)
+                ->where('status', 'INACTIVE')
+                ->update([
+                    'status' => 'ACTIVE',
+                    'status_reason' => 'Otomatis diaktifkan karena jadwal telah aktif kembali',
+                ]);
+
+            // Log perubahan status jadwal
+            Log::info('Jadwal diaktifkan otomatis setelah kedaluwarsa', [
+                'schedule_id' => $schedule->id,
+                'old_status' => 'INACTIVE',
+                'new_status' => 'ACTIVE'
+            ]);
+        }
+
+        // Update jadwal dengan status WEATHER_ISSUE yang sudah kedaluwarsa
+        $expiredWeatherIssues = ScheduleDate::whereIn('schedule_id', Schedule::whereIn('route_id', Auth::guard('operator')->user()->assigned_routes ?? [])
+            ->pluck('id'))
+            ->where('status', 'WEATHER_ISSUE')
+            ->whereNotNull('status_expiry_date')
+            ->where('status_expiry_date', '<', $now)
+            ->get();
+
+        foreach ($expiredWeatherIssues as $scheduleDate) {
+            $oldStatus = $scheduleDate->status;
+            $scheduleDate->status = 'ACTIVE';
+            $scheduleDate->status_reason = 'Otomatis diaktifkan setelah masa masalah cuaca berakhir';
+            $scheduleDate->status_expiry_date = null;
+            $scheduleDate->save();
+
+            // Log perubahan status tanggal jadwal
+            Log::info('Tanggal jadwal diaktifkan otomatis setelah masa masalah cuaca berakhir', [
+                'schedule_id' => $scheduleDate->schedule_id,
+                'date_id' => $scheduleDate->id,
+                'date' => $scheduleDate->date,
+                'old_status' => $oldStatus,
+                'new_status' => 'ACTIVE'
+            ]);
+
+            // Hapus cache terkait
+            $this->clearScheduleCache($scheduleDate->schedule_id);
+        }
     }
 
     /**
@@ -284,7 +359,7 @@ class ScheduleController extends Controller
             ]);
         }
 
-        if ($scheduleDate->status != 'AVAILABLE') {
+        if ($scheduleDate->status != 'ACTIVE') {
             return response()->json([
                 'success' => false,
                 'message' => 'Jadwal pada tanggal ini ' . $this->getStatusDescription($scheduleDate->status) . '.'
@@ -349,31 +424,31 @@ class ScheduleController extends Controller
                 'passengers' => [
                     'capacity' => $passengerCapacity,
                     'booked' => $currentPassengers,
-                    'available' => $passengerCapacity - $currentPassengers,
+                    'active' => $passengerCapacity - $currentPassengers,
                     'percentage' => $passengerCapacity > 0 ? round(($currentPassengers / $passengerCapacity) * 100) : 0
                 ],
                 'motorcycles' => [
                     'capacity' => $motorcycleCapacity,
                     'booked' => $currentMotorcycles,
-                    'available' => $motorcycleCapacity - $currentMotorcycles,
+                    'active' => $motorcycleCapacity - $currentMotorcycles,
                     'percentage' => $motorcycleCapacity > 0 ? round(($currentMotorcycles / $motorcycleCapacity) * 100) : 0
                 ],
                 'cars' => [
                     'capacity' => $carCapacity,
                     'booked' => $currentCars,
-                    'available' => $carCapacity - $currentCars,
+                    'active' => $carCapacity - $currentCars,
                     'percentage' => $carCapacity > 0 ? round(($currentCars / $carCapacity) * 100) : 0
                 ],
                 'buses' => [
                     'capacity' => $busCapacity,
                     'booked' => $currentBuses,
-                    'available' => $busCapacity - $currentBuses,
+                    'active' => $busCapacity - $currentBuses,
                     'percentage' => $busCapacity > 0 ? round(($currentBuses / $busCapacity) * 100) : 0
                 ],
                 'trucks' => [
                     'capacity' => $truckCapacity,
                     'booked' => $currentTrucks,
-                    'available' => $truckCapacity - $currentTrucks,
+                    'active' => $truckCapacity - $currentTrucks,
                     'percentage' => $truckCapacity > 0 ? round(($currentTrucks / $truckCapacity) * 100) : 0
                 ]
             ]
@@ -661,6 +736,9 @@ class ScheduleController extends Controller
             ->with('success', 'Tanggal jadwal berhasil diperbarui.');
     }
 
+    /**
+     * Update status tanggal jadwal
+     */
     public function updateDateStatus(Request $request, $id, $dateId)
     {
         $operator = Auth::guard('operator')->user();
@@ -679,10 +757,13 @@ class ScheduleController extends Controller
             ->firstOrFail();
 
         $request->validate([
-            'status' => 'required|in:AVAILABLE,UNAVAILABLE,FULL,CANCELLED,WEATHER_ISSUE',
+            'status' => 'required|in:ACTIVE,INACTIVE,FULL,CANCELLED,WEATHER_ISSUE',
             'status_reason' => 'nullable|string|max:255',
-            'status_expiry_date' => 'nullable|date|after:today',
+            'status_expiry_date' => 'nullable|string',
         ]);
+
+        // Log data yang diterima untuk debugging
+        Log::info('Data request update status:', $request->all());
 
         // Simpan status lama untuk log
         $oldStatus = $scheduleDate->status;
@@ -694,21 +775,39 @@ class ScheduleController extends Controller
         $scheduleDate->modified_by_schedule = false;
 
         // Update tanggal kedaluwarsa status jika diperlukan
-        if (in_array($request->status, ['UNAVAILABLE', 'WEATHER_ISSUE']) && $request->has('status_expiry_date')) {
-            $scheduleDate->status_expiry_date = Carbon::parse($request->status_expiry_date);
+        if ($request->status === 'WEATHER_ISSUE') {
+            if ($request->has('status_expiry_date') && !empty($request->status_expiry_date)) {
+                try {
+                    $scheduleDate->status_expiry_date = Carbon::parse($request->status_expiry_date);
+                    Log::info('Expiry date parsed successfully', [
+                        'input' => $request->status_expiry_date,
+                        'parsed' => $scheduleDate->status_expiry_date
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Gagal memparsing tanggal expiry: ' . $e->getMessage(), [
+                        'input' => $request->status_expiry_date,
+                        'schedule_id' => $id,
+                        'date_id' => $dateId
+                    ]);
+                    $scheduleDate->status_expiry_date = null;
+                }
+            } else {
+                Log::warning('No expiry date provided for WEATHER_ISSUE status');
+                $scheduleDate->status_expiry_date = null;
+            }
         } else {
             $scheduleDate->status_expiry_date = null;
         }
 
-        $scheduleDate->save();
+        $success = $scheduleDate->save();
 
-        // Logging untuk audit
-        Log::info('Schedule date status updated', [
-            'schedule_id' => $id,
-            'date_id' => $dateId,
+        // Log hasil save untuk debugging
+        Log::info('Schedule date status update result:', [
+            'success' => $success,
             'old_status' => $oldStatus,
             'new_status' => $scheduleDate->status,
-            'operator_id' => $operator->id
+            'date_id' => $dateId,
+            'expiry_date' => $scheduleDate->status_expiry_date
         ]);
 
         // Hapus cache terkait

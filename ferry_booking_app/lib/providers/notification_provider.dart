@@ -82,6 +82,7 @@ class NotificationProvider extends ChangeNotifier {
             isRead: true,
             createdAt: notification.createdAt,
             updatedAt: DateTime.now().toIso8601String(),
+            data: notification.data, // Tambahkan properti data yang hilang
           );
 
           _notifications[index] = updatedNotification;
@@ -108,19 +109,23 @@ class NotificationProvider extends ChangeNotifier {
       if (success) {
         // Update all local notifications
         _notifications =
-            _notifications.map((notification) {
-              return UserNotification(
-                id: notification.id,
-                title: notification.title,
-                message: notification.message,
-                type: notification.type,
-                userId: notification.userId,
-                bookingId: notification.bookingId,
-                isRead: true,
-                createdAt: notification.createdAt,
-                updatedAt: DateTime.now().toIso8601String(),
-              );
-            }).toList();
+            _notifications =
+                _notifications.map((notification) {
+                  return UserNotification(
+                    id: notification.id,
+                    title: notification.title,
+                    message: notification.message,
+                    type: notification.type,
+                    userId: notification.userId,
+                    bookingId: notification.bookingId,
+                    isRead: true,
+                    createdAt: notification.createdAt,
+                    updatedAt: DateTime.now().toIso8601String(),
+                    data:
+                        notification
+                            .data, // Tambahkan properti data yang hilang
+                  );
+                }).toList();
       }
 
       _isLoading = false;

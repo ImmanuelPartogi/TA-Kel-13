@@ -235,8 +235,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
       }
 
       // Format date
-      final dateFormat = DateFormat('EEEE, d MMMM yyyy', 'id_ID');
-      final bookingDate = DateTime.parse(booking.bookingDate);
+   final locale = Localizations.localeOf(context).toString();
+final dateFormat = DateFormat('EEEE, d MMM yyyy', locale);
+final bookingDate = DateTime.parse(booking.departureDate).toLocal();
 
       // Create PDF-like HTML page
       if (kIsWeb) {
@@ -548,8 +549,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
     }
 
     // Format date
-    final dateFormat = DateFormat('EEEE, d MMMM yyyy', 'id_ID');
-    final bookingDate = DateTime.parse(booking.departureDate);
+  final locale = Localizations.localeOf(context).toString();
+final dateFormat = DateFormat('EEEE, d MMM yyyy', locale);
+final bookingDate = DateTime.parse(booking.departureDate).toLocal();
 
     // Check if can be cancelled
     final now = DateTime.now();

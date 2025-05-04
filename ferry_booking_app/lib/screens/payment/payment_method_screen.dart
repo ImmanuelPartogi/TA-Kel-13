@@ -67,20 +67,20 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
         'iconAsset': 'assets/images/payment_methods/shopeepay.png',
         'description': 'Bayar menggunakan aplikasi e-wallet',
       },
-      {
-        'id': 'dana',
-        'name': 'DANA',
-        'type': 'e_wallet',
-        'iconAsset': 'assets/images/payment_methods/dana.png',
-        'description': 'Bayar menggunakan aplikasi e-wallet',
-      },
-      {
-        'id': 'ovo',
-        'name': 'OVO',
-        'type': 'e_wallet',
-        'iconAsset': 'assets/images/payment_methods/ovo.png',
-        'description': 'Bayar menggunakan aplikasi e-wallet',
-      },
+      // {
+      //   'id': 'dana',
+      //   'name': 'DANA',
+      //   'type': 'e_wallet',
+      //   'iconAsset': 'assets/images/payment_methods/dana.png',
+      //   'description': 'Bayar menggunakan aplikasi e-wallet',
+      // },
+      // {
+      //   'id': 'ovo',
+      //   'name': 'OVO',
+      //   'type': 'e_wallet',
+      //   'iconAsset': 'assets/images/payment_methods/ovo.png',
+      //   'description': 'Bayar menggunakan aplikasi e-wallet',
+      // },
     ],
   };
 
@@ -653,7 +653,4 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
       _showErrorMessage('Terjadi kesalahan: $e');
     }
   }
-
-  // PERUBAHAN: Metode lama ditinggalkan karena tidak membuat booking
-  // void _processPayment(BuildContext context, BookingProvider bookingProvider) { ... }
 }

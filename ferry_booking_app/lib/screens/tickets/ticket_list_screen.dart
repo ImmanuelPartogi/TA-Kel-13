@@ -53,7 +53,10 @@ class _TicketListScreenState extends State<TicketListScreen>
         bookings
             ?.where(
               (booking) =>
-                  booking.status == 'CONFIRMED' || booking.status == 'PENDING',
+                  // Filter berdasarkan status DAN belum expired
+                  (booking.status == 'CONFIRMED' ||
+                      booking.status == 'PENDING') &&
+                  !booking.isExpired, // Tambahkan kondisi !booking.isExpired
             )
             .toList() ??
         [];

@@ -54,3 +54,5 @@ Schedule::command('notifications:resend-failed')
     ->everyThirtyMinutes()
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/notification-retry.log'));
+
+Schedule::command('bookings:sync-status')->everyMinute();

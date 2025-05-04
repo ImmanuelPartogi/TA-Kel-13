@@ -38,6 +38,8 @@ class Kernel extends ConsoleKernel
             ->everyThirtyMinutes()
             ->withoutOverlapping()
             ->appendOutputTo(storage_path('logs/notification-retry.log'));
+
+        $schedule->command('bookings:sync-status')->everyMinute();
     }
 
     protected function commands()

@@ -257,20 +257,31 @@ class BookingController extends Controller
         $operator = Auth::guard('operator')->user();
         $assignedRouteIds = $operator->assigned_routes ?? [];
 
-        // Tambahkan logging untuk debug
         Log::info("Operator ID: " . $operator->id . " assigned routes: " . json_encode($assignedRouteIds));
 
         $ticket = null;
+        $inputCode = $request->ticket_code;
 
         if ($request->has('ticket_code')) {
-            // Cek apakah tiket ada tanpa filter dulu
-            $rawTicket = Ticket::where('ticket_code', $request->ticket_code)->first();
+            // Cek apakah input adalah kode tiket
+            $ticketByCode = Ticket::where('ticket_code', $inputCode)->first();
 
-            if ($rawTicket) {
-                Log::info("Tiket ditemukan: " . $rawTicket->ticket_code . ", Booking ID: " . $rawTicket->booking_id);
+            // Jika tidak ditemukan, coba cari dengan kode booking
+            if (!$ticketByCode) {
+                $bookingByCode = Booking::where('booking_code', $inputCode)->first();
 
-                // Baru terapkan filter assigned routes jika ada
-                $ticketQuery = Ticket::where('ticket_code', $request->ticket_code);
+                if ($bookingByCode) {
+                    Log::info("Booking ditemukan: " . $bookingByCode->booking_code . ", mencari tiket terkait");
+                    // Ambil tiket pertama dari booking tersebut
+                    $ticketByCode = Ticket::where('booking_id', $bookingByCode->id)->first();
+                }
+            }
+
+            if ($ticketByCode) {
+                Log::info("Tiket ditemukan: " . $ticketByCode->ticket_code . ", Booking ID: " . $ticketByCode->booking_id);
+
+                // Terapkan filter assigned routes jika perlu
+                $ticketQuery = Ticket::where('id', $ticketByCode->id);
 
                 if (!empty($assignedRouteIds)) {
                     $ticketQuery->whereHas('booking', function ($q) use ($assignedRouteIds) {
@@ -278,14 +289,16 @@ class BookingController extends Controller
                             $sq->whereIn('route_id', $assignedRouteIds);
                         });
                     });
-                } else {
-                    // Jika assigned routes kosong, tampilkan semua tiket
-                    Log::warning("Operator tidak memiliki rute yang ditugaskan, semua tiket akan ditampilkan");
                 }
 
                 $ticket = $ticketQuery->with(['booking.user', 'booking.schedule.route', 'vehicle'])->first();
+
+                if (!$ticket && Booking::where('booking_code', $inputCode)->exists()) {
+                    // Jika tiket tidak ditemukan karena masalah assigned routes
+                    Log::warning("Operator tidak memiliki akses ke rute tiket dengan kode booking: " . $inputCode);
+                }
             } else {
-                Log::warning("Tiket tidak ditemukan: " . $request->ticket_code);
+                Log::warning("Tidak ditemukan tiket atau booking dengan kode: " . $inputCode);
             }
         }
 
@@ -364,16 +377,18 @@ class BookingController extends Controller
                 ->withErrors(['ticket_code' => 'Booking belum dikonfirmasi']);
         }
 
-        // Verify date matches
+        // Verify date matches - PERBAIKAN DI SINI
         $today = Carbon::today()->format('Y-m-d');
-        $bookingDate = $ticket->booking->departure_date;
+        $bookingDate = Carbon::parse($ticket->booking->departure_date)->format('Y-m-d');
+
+        Log::info("Comparing dates - Today: " . $today . " vs Booking Date: " . $bookingDate);
 
         if ($today !== $bookingDate) {
             return redirect()->route('operator.bookings.check-in')
                 ->withInput()
                 ->withErrors(['ticket_code' => 'Tiket tidak untuk hari ini. Tanggal tiket: ' . $bookingDate]);
         }
-
+        
         // Process check-in
         $ticket->checked_in = true;
         $ticket->boarding_status = 'BOARDED';
@@ -405,5 +420,122 @@ class BookingController extends Controller
 
         return redirect()->route('operator.bookings.check-in')
             ->with('success', 'Check-in berhasil untuk tiket ' . $ticket->ticket_code);
+    }
+
+    /**
+     * Sinkronisasi status booking berdasarkan status tiket dan tanggal keberangkatan
+     */
+    public function syncBookingStatus($id = null)
+    {
+        try {
+            $query = Booking::query();
+
+            // Jika ID diberikan, hanya sync booking tersebut
+            if ($id) {
+                $query->where('id', $id);
+            } else {
+                // Hanya sync booking dengan status CONFIRMED
+                $query->where('status', 'CONFIRMED');
+            }
+
+            $bookings = $query->with('tickets')->get();
+            $count = 0;
+
+            foreach ($bookings as $booking) {
+                $allTicketsExpired = $booking->tickets->isNotEmpty() &&
+                    $booking->tickets->every(function ($ticket) {
+                        return $ticket->status === 'EXPIRED';
+                    });
+
+                $departureDate = Carbon::parse($booking->departure_date);
+                $isDatePassed = $departureDate->endOfDay()->isPast();
+
+                // Jika semua tiket expired atau tanggal keberangkatan sudah lewat
+                if ($allTicketsExpired || $isDatePassed) {
+                    // Update status booking jika masih CONFIRMED
+                    if ($booking->status === 'CONFIRMED') {
+                        $booking->status = 'EXPIRED';
+                        $booking->save();
+                        $count++;
+
+                        // Log perubahan
+                        Log::info('Booking status updated to EXPIRED', [
+                            'booking_id' => $booking->id,
+                            'booking_code' => $booking->booking_code,
+                            'reason' => $allTicketsExpired ? 'All tickets expired' : 'Departure date passed'
+                        ]);
+                    }
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Sinkronisasi status booking berhasil. $count booking diperbarui.",
+                'updated_count' => $count
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error syncing booking status', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menyinkronkan status booking',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update status tiket menjadi EXPIRED saat tanggal keberangkatan lewat
+     */
+    public function expireTickets()
+    {
+        try {
+            // Cari booking dengan tanggal keberangkatan lewat dan status CONFIRMED
+            $bookings = Booking::where('status', 'CONFIRMED')
+                ->whereDate('departure_date', '<', Carbon::today())
+                ->with('tickets')
+                ->get();
+
+            $ticketCount = 0;
+            $bookingCount = 0;
+
+            foreach ($bookings as $booking) {
+                // Update semua tiket menjadi EXPIRED
+                $updated = Ticket::where('booking_id', $booking->id)
+                    ->where('status', '!=', 'EXPIRED')
+                    ->update(['status' => 'EXPIRED']);
+
+                if ($updated > 0) {
+                    $ticketCount += $updated;
+                    $bookingCount++;
+
+                    Log::info('Tickets expired automatically', [
+                        'booking_id' => $booking->id,
+                        'ticket_count' => $updated
+                    ]);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "$ticketCount tiket dari $bookingCount booking diupdate menjadi EXPIRED",
+                'expired_tickets' => $ticketCount,
+                'affected_bookings' => $bookingCount
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error expiring tickets', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengupdate status tiket',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

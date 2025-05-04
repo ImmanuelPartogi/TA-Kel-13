@@ -20,18 +20,24 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->appendOutputTo(storage_path('logs/payment-polling.log'));
 
-        $schedule->command('notifications:send-boarding-reminders')
-            ->everyMinute()
-            ->withoutOverlapping()
-            ->appendOutputTo(storage_path('logs/payment-polling.log'));
-
         $schedule->command('schedules:update-expired')->everyMinute();
         $schedule->command('schedules:update-expired-statuses')->everyMinute();
 
         $schedule->command('payment:check-status')
-                 ->everyMinute()
-                 ->withoutOverlapping()
-                 ->appendOutputTo(storage_path('logs/payment-check.log'));
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->appendOutputTo(storage_path('logs/payment-check.log'));
+
+        $schedule->command('notifications:send-boarding-reminders')
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->appendOutputTo(storage_path('logs/notification-boarding.log'));
+
+        // Tambahkan jadwal untuk pengiriman ulang notifikasi gagal
+        $schedule->command('notifications:resend-failed')
+            ->everyThirtyMinutes()
+            ->withoutOverlapping()
+            ->appendOutputTo(storage_path('logs/notification-retry.log'));
     }
 
     protected function commands()

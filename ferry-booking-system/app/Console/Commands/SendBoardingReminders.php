@@ -13,24 +13,21 @@ class SendBoardingReminders extends Command
 
     public function handle()
     {
-        $this->info('Mulai mengirim notifikasi pengingat boarding...');
-        Log::info('Starting boarding reminder notifications');
-
         try {
-            // Panggil helper untuk mengirim notifikasi boarding (1 jam)
-            $count = NotificationHelper::sendBoardingReminders(1);
+            Log::info('Memulai proses pengiriman notifikasi boarding...');
 
-            $this->info("Berhasil mengirim {$count} notifikasi pengingat boarding.");
-            Log::info("Successfully sent {$count} boarding reminders");
+            // Panggil helper dengan parameter default (1 jam)
+            $count = NotificationHelper::sendBoardingReminders();
 
+            $this->info("Berhasil mengirim {$count} notifikasi pengingat boarding");
+            Log::info("Berhasil mengirim {$count} notifikasi pengingat boarding");
             return 0;
         } catch (\Exception $e) {
             $this->error("Error: " . $e->getMessage());
-            Log::error('Error sending boarding reminder notifications', [
-                'error' => $e->getMessage(),
+            Log::error('Error mengirim notifikasi boarding', [
+                'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-
             return 1;
         }
     }

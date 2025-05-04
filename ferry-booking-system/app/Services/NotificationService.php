@@ -199,7 +199,19 @@ class NotificationService
             'hours_remaining' => $hoursRemaining
         ];
 
-        return $this->sendNotification($user, $title, $message, 'BOARDING', 'HIGH', $data);
+        $notification = $this->sendNotification($user, $title, $message, 'BOARDING', 'HIGH', $data);
+
+        // Ambil booking ID dari kode booking
+        try {
+            $booking = \App\Models\Booking::where('booking_code', $bookingCode)->first();
+            if ($booking) {
+                $this->logNotification($notification, 'BOARDING', $booking->id);
+            }
+        } catch (\Exception $e) {
+            Log::error("Gagal mencatat log notifikasi boarding: " . $e->getMessage());
+        }
+
+        return $notification;
     }
 
     /**
@@ -413,5 +425,35 @@ class NotificationService
         ]);
 
         return $count;
+    }
+
+    /**
+     * Menambahkan log notifikasi
+     *
+     * @param Notification $notification
+     * @param string $type
+     * @param int $bookingId
+     * @return NotificationLog
+     */
+    private function logNotification(Notification $notification, string $type, int $bookingId)
+    {
+        try {
+            return \App\Models\NotificationLog::create([
+                'booking_id' => $bookingId,
+                'notification_id' => $notification->id,
+                'type' => $type,
+                'scheduled_at' => now(),
+                'sent_at' => now(),
+                'is_sent' => true,
+                'status' => 'SENT'
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Gagal mencatat log notifikasi: " . $e->getMessage(), [
+                'notification_id' => $notification->id,
+                'booking_id' => $bookingId,
+                'type' => $type
+            ]);
+            return null;
+        }
     }
 }

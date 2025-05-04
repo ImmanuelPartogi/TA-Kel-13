@@ -36,11 +36,6 @@ Schedule::command('payments:check-pending')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/payment-polling.log'));
 
-Schedule::command('notifications:send-boarding-reminders')
-    ->everyMinute()
-    ->withoutOverlapping()
-    ->appendOutputTo(storage_path('logs/payment-polling.log'));
-
 Schedule::command('schedules:update-expired')->everyMinute();
 Schedule::command('schedules:update-expired-statuses')->everyMinute();
 
@@ -48,3 +43,14 @@ Schedule::command('payment:check-status')
     ->everyMinute()
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/payment-check.log'));
+
+Schedule::command('notifications:send-boarding-reminders')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/notification-boarding.log'));
+
+// Tambahkan jadwal untuk pengiriman ulang notifikasi gagal
+Schedule::command('notifications:resend-failed')
+    ->everyThirtyMinutes()
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/notification-retry.log'));

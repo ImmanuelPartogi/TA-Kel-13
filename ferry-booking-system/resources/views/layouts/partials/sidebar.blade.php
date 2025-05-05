@@ -54,7 +54,7 @@
         <div class="content-wrapper">
             <div class="flex-shrink-0 flex items-center px-4 py-5">
                 <img class="h-10 w-auto" src="{{ asset('images/logo.png') }}" alt="Ferry Ticket">
-                <span class="ml-3 text-xl font-semibold text-white">Ferry Admin</span>
+                <span class="ml-3 text-xl font-semibold text-white">FerryLink</span>
             </div>
             <div class="mt-2 flex-1 px-2">
                 <!-- Navigation menu -->
@@ -72,7 +72,7 @@
                             <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
                                 <i class="fas fa-tachometer-alt"></i>
                             </div>
-                            <span>Dashboard</span>
+                            <span>Beranda</span>
                         </a>
 
                         <!-- Routes -->
@@ -81,7 +81,7 @@
                             <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
                                 <i class="fas fa-route"></i>
                             </div>
-                            <span>Routes</span>
+                            <span>Daftar Rute</span>
                         </a>
 
                         <!-- Vessels -->
@@ -90,7 +90,7 @@
                             <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
                                 <i class="fas fa-ship"></i>
                             </div>
-                            <span>Vessels</span>
+                            <span>Data Kapal</span>
                         </a>
 
                         <!-- Schedules -->
@@ -99,7 +99,7 @@
                             <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
                                 <i class="fas fa-calendar-alt"></i>
                             </div>
-                            <span>Schedules</span>
+                            <span>Jadwal Keberangkatan</span>
                         </a>
 
                         <!-- Bookings -->
@@ -108,7 +108,7 @@
                             <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
                                 <i class="fas fa-ticket-alt"></i>
                             </div>
-                            <span>Bookings</span>
+                            <span>Data Pemesanan</span>
                         </a>
 
                         <!-- Refunds -->
@@ -117,7 +117,7 @@
                             <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
                                 <i class="fas fa-money-bill-wave"></i>
                             </div>
-                            <span>Refund</span>
+                            <span>Pengembalian Dana</span>
                         </a>
 
                         <!-- Passengers -->
@@ -126,7 +126,7 @@
                             <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
                                 <i class="fas fa-users"></i>
                             </div>
-                            <span>Passengers</span>
+                            <span>Data Penumpang</span>
                         </a>
 
                         <!-- Reports -->
@@ -135,7 +135,7 @@
                             <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
                                 <i class="fas fa-chart-line"></i>
                             </div>
-                            <span>Reports</span>
+                            <span>Laporan</span>
                         </a>
 
                         <!-- System Operators -->
@@ -144,7 +144,7 @@
                             <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
                                 <i class="fas fa-user-shield"></i>
                             </div>
-                            <span>Operators</span>
+                            <span>Data Operator</span>
                         </a>
                     @endif
 
@@ -155,7 +155,7 @@
                             <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
                                 <i class="fas fa-tachometer-alt"></i>
                             </div>
-                            <span>Dashboard</span>
+                            <span>Beranda</span>
                         </a>
 
                         <!-- Bookings (for operator) -->
@@ -164,7 +164,7 @@
                             <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
                                 <i class="fas fa-ticket-alt"></i>
                             </div>
-                            <span>Bookings</span>
+                            <span>Data Pemesanan</span>
                         </a>
 
                         <!-- Schedules (for operator) -->
@@ -173,7 +173,7 @@
                             <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
                                 <i class="fas fa-calendar-alt"></i>
                             </div>
-                            <span>Schedules</span>
+                            <span>Jadwal Keberangkatan</span>
                         </a>
 
                         <!-- Reports (for operator) -->
@@ -182,7 +182,7 @@
                             <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
                                 <i class="fas fa-chart-line"></i>
                             </div>
-                            <span>Reports</span>
+                            <span>Laporan</span>
                         </a>
                     @endif
                 </nav>
@@ -195,7 +195,7 @@
                         </div>
                     </div>
                     <div class="ml-3">
-                        <p class="text-sm font-medium text-white">{{ Auth::user()->name ?? 'Guest' }}</p>
+                        <p class="text-sm font-medium text-white">{{ Auth::user()->name ?? 'Operator' }}</p>
                         @if (Auth::guard('admin')->check() || Auth::guard('operator')->check())
                             <form method="POST"
                                 action="{{ route(Auth::guard('admin')->check() ? 'admin.logout' : 'operator.logout') }}"
@@ -203,7 +203,7 @@
                                 @csrf
                                 <button type="submit"
                                     class="text-xs text-primary-200 hover:text-white flex items-center">
-                                    <i class="fas fa-sign-out-alt mr-1"></i> Logout
+                                    <i class="fas fa-sign-out-alt mr-1"></i> Keluar dari Sistem
                                 </button>
                             </form>
                         @endif
@@ -243,7 +243,7 @@
             <div class="content-wrapper">
                 <div class="flex-shrink-0 flex items-center px-4 py-5">
                     <img class="h-10 w-auto" src="{{ asset('images/logo.png') }}" alt="Ferry Ticket">
-                    <span class="ml-3 text-xl font-semibold text-white">Ferry Admin</span>
+                    <span class="ml-3 text-xl font-semibold text-white">FerryLink</span>
                 </div>
                 <div class="mt-2 flex-1 flex flex-col overflow-y-auto px-2">
                     <!-- Navigation menu -->
@@ -260,7 +260,7 @@
                                 <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
                                     <i class="fas fa-tachometer-alt"></i>
                                 </div>
-                                <span>Dashboard</span>
+                                <span>Beranda</span>
                             </a>
 
                             <!-- Routes -->
@@ -269,7 +269,7 @@
                                 <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
                                     <i class="fas fa-route"></i>
                                 </div>
-                                <span>Routes</span>
+                                <span>Daftar Rute</span>
                             </a>
 
                             <!-- Vessels -->
@@ -278,7 +278,7 @@
                                 <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
                                     <i class="fas fa-ship"></i>
                                 </div>
-                                <span>Vessels</span>
+                                <span>Data Kapal</span>
                             </a>
 
                             <!-- Schedules -->
@@ -287,7 +287,7 @@
                                 <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
                                     <i class="fas fa-calendar-alt"></i>
                                 </div>
-                                <span>Schedules</span>
+                                <span>Jadwal Keberangkatan</span>
                             </a>
 
                             <!-- Bookings -->
@@ -296,7 +296,7 @@
                                 <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
                                     <i class="fas fa-ticket-alt"></i>
                                 </div>
-                                <span>Bookings</span>
+                                <span>Data Pemesanan</span>
                             </a>
 
                             <!-- Refunds -->
@@ -305,7 +305,7 @@
                                 <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
                                     <i class="fas fa-money-bill-wave"></i>
                                 </div>
-                                <span>Refund</span>
+                                <span>Pengembalian Dana</span>
                             </a>
 
                             <!-- Passengers -->
@@ -314,7 +314,7 @@
                                 <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
                                     <i class="fas fa-users"></i>
                                 </div>
-                                <span>Passengers</span>
+                                <span>Data Penumpang</span>
                             </a>
 
                             <!-- Reports -->
@@ -323,7 +323,7 @@
                                 <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
                                     <i class="fas fa-chart-line"></i>
                                 </div>
-                                <span>Reports</span>
+                                <span>Laporan</span>
                             </a>
 
                             <!-- System Operators -->
@@ -332,7 +332,7 @@
                                 <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
                                     <i class="fas fa-user-shield"></i>
                                 </div>
-                                <span>Operators</span>
+                                <span>Data Operator</span>
                             </a>
                         @endif
 
@@ -343,7 +343,7 @@
                                 <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
                                     <i class="fas fa-tachometer-alt"></i>
                                 </div>
-                                <span>Dashboard</span>
+                                <span>Beranda</span>
                             </a>
 
                             <!-- Bookings -->
@@ -352,7 +352,7 @@
                                 <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
                                     <i class="fas fa-ticket-alt"></i>
                                 </div>
-                                <span>Bookings</span>
+                                <span>Data Pemesanan</span>
                             </a>
 
                             <!-- Schedules -->
@@ -361,7 +361,7 @@
                                 <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
                                     <i class="fas fa-calendar-alt"></i>
                                 </div>
-                                <span>Schedules</span>
+                                <span>Jadwal Keberangkatan</span>
                             </a>
 
                             <!-- Reports -->
@@ -370,7 +370,7 @@
                                 <div class="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
                                     <i class="fas fa-chart-line"></i>
                                 </div>
-                                <span>Reports</span>
+                                <span>Laporan</span>
                             </a>
                         @endif
                     </nav>
@@ -384,7 +384,7 @@
                             </div>
                         </div>
                         <div class="ml-3">
-                            <p class="text-sm font-medium text-white">{{ Auth::user()->name ?? 'Guest' }}</p>
+                            <p class="text-sm font-medium text-white">{{ Auth::user()->name ?? 'Operator' }}</p>
                             @if (Auth::guard('admin')->check() || Auth::guard('operator')->check())
                                 <form method="POST"
                                     action="{{ route(Auth::guard('admin')->check() ? 'admin.logout' : 'operator.logout') }}"
@@ -392,7 +392,7 @@
                                     @csrf
                                     <button type="submit"
                                         class="text-xs text-primary-200 hover:text-white flex items-center">
-                                        <i class="fas fa-sign-out-alt mr-1"></i> Logout
+                                        <i class="fas fa-sign-out-alt mr-1"></i> Keluar dari Sistem
                                     </button>
                                 </form>
                             @endif

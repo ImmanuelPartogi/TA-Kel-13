@@ -17,7 +17,7 @@ return [
     // Metode pembayaran yang didukung
     'supported_payment_methods' => [
         'virtual_account' => ['bca', 'bni', 'bri', 'mandiri', 'permata'],
-        'e_wallet' => ['gopay', 'shopeepay'], // Dana dan OVO tidak didukung di Sandbox
+        'e_wallet' => ['gopay', 'shopeepay'],
         'credit_card' => ['visa', 'mastercard', 'jcb', 'amex'],
         'qris' => ['qris'],
     ],

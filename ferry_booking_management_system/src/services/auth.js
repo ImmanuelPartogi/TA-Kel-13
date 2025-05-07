@@ -1,30 +1,35 @@
-import api from './services/api/config';
+// src/services/auth.js
+import api from './api';
 
-// Authentication untuk Admin Panel
-export const adminLogin = (credentials) => 
-  api.post('/admin-panel/login', credentials);
-
-export const adminLogout = () => 
-  api.post('/admin-panel/logout');
-
-// Authentication untuk Operator Panel
-export const operatorLogin = (credentials) => 
-  api.post('/operator-panel/login', credentials);
-
-export const operatorLogout = () => 
-  api.post('/operator-panel/logout');
-
-// Set token setelah login
-export const setToken = (token) => {
-  localStorage.setItem('token', token);
+export const login = async (credentials) => {
+  try {
+    const response = await api.post('/operator-panel/login', credentials);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
 };
 
-// Hapus token saat logout
-export const removeToken = () => {
-  localStorage.removeItem('token');
+export const logout = async () => {
+  try {
+    await api.post('/operator-panel/logout');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    return true;
+  } catch (error) {
+    console.error('Logout error:', error);
+    // Force logout even if API fails
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    return false;
+  }
 };
 
-// Cek apakah user sudah login
+export const getCurrentUser = () => {
+  const userStr = localStorage.getItem('user');
+  return userStr ? JSON.parse(userStr) : null;
+};
+
 export const isAuthenticated = () => {
   return !!localStorage.getItem('token');
 };

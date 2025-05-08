@@ -346,7 +346,7 @@ Route::prefix('operator-panel')->middleware(['auth:sanctum', 'role:operator'])->
 Route::post('/admin-panel/login', [BackendLoginController::class, 'adminApiLogin']);
 
 // Login Operator
-Route::post('/operator-panel/login', [BackendLoginController::class, 'operatorApiLogin']);
+Route::post('/operator-panel/login', [BackendLoginController::class, 'operatorLogin']);
 
 // Logout (Protected)
 Route::middleware('auth:sanctum')->group(function () {

@@ -1,4 +1,3 @@
-// src/pages/operator/bookings/BookingList.jsx
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchBookings } from '../../../services/booking';

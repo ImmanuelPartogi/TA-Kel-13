@@ -1,4 +1,3 @@
-// src/router.jsx
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { isAuthenticated } from './services/auth';
 
@@ -11,10 +10,17 @@ import WelcomePage from './pages/welcome/WelcomePage';
 import Login from './pages/auth/Login';
 import Dashboard from './pages/operator/Dashboard';
 import BookingList from './pages/operator/bookings/BookingList';
-import BookingDetail from './pages/operator/bookings/BookingDetail';
-import CheckIn from './pages/operator/bookings/CheckIn';
-import ScheduleList from './pages/operator/schedules/ScheduleList';
-import ReportList from './pages/operator/reports/ReportList';
+import BookingShow from './pages/operator/bookings/BookingShow';
+import BookingCheckIn from './pages/operator/bookings/BookingCheckIn';
+import SchedulesList from './pages/operator/schedules/SchedulesList';
+import ScheduleShow from './pages/operator/schedules/ScheduleShow';
+import ScheduleCreateDate from './pages/operator/schedules/ScheduleCreateDate';
+import ScheduleEditDate from './pages/operator/schedules/ScheduleEditDate';
+
+// Report Pages
+import ReportIndex from './pages/operator/reports/ReportIndex';
+import DailyReport from './pages/operator/reports/DailyReport';
+import MonthlyReport from './pages/operator/reports/MonthlyReport';
 
 // Protected Route wrapper
 const ProtectedRoute = ({ element }) => {
@@ -48,25 +54,52 @@ const router = createBrowserRouter([
         path: 'dashboard',
         element: <Dashboard />
       },
+      // Bookings Routes
       {
         path: 'bookings',
         element: <BookingList />
       },
       {
         path: 'bookings/:id',
-        element: <BookingDetail />
+        element: <BookingShow />
       },
       {
         path: 'bookings/check-in',
-        element: <CheckIn />
+        element: <BookingCheckIn />
       },
+      // Schedules Routes
       {
         path: 'schedules',
-        element: <ScheduleList />
+        element: <SchedulesList />
       },
       {
+        path: 'schedules/:id',
+        element: <ScheduleShow />
+      },
+      {
+        path: 'schedules/:id/dates',
+        element: <ScheduleDatesList />
+      },
+      {
+        path: 'schedules/:id/dates/create',
+        element: <ScheduleCreateDate />
+      },
+      {
+        path: 'schedules/:scheduleId/dates/:dateId/edit',
+        element: <ScheduleEditDate />
+      },
+      // Reports Routes
+      {
         path: 'reports',
-        element: <ReportList />
+        element: <ReportIndex />
+      },
+      {
+        path: 'reports/daily',
+        element: <DailyReport />
+      },
+      {
+        path: 'reports/monthly',
+        element: <MonthlyReport />
       }
     ]
   },

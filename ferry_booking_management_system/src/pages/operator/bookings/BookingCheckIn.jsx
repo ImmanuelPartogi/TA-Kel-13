@@ -1,6 +1,6 @@
 // src/pages/operator/bookings/CheckIn.jsx
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { checkIn } from '../../../services/booking';
 import Alert from '../../../components/ui/Alert';
 import Card from '../../../components/ui/Card';
@@ -15,7 +15,6 @@ const CheckIn = () => {
     const [success, setSuccess] = useState('');
 
     const location = useLocation();
-    const navigate = useNavigate();
 
     // Get ticket_code from URL if exists
     useEffect(() => {

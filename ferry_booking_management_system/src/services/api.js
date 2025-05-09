@@ -39,7 +39,7 @@ api.interceptors.response.use(
 );
 
 // API services for reports
-export const reportService = {
+export const operatorReportService = {
   // Get report index data
   getReportIndex: () => {
     return api.get('/operator-panel/reports');
@@ -99,8 +99,7 @@ export const bookingService = {
 };
 
 // API services for schedules
-// API services for schedules
-export const scheduleService = {
+export const operatorScheduleService = {
   // Get all schedules
   getAllSchedules: (params) => {
     return api.get('/operator-panel/schedules', { params });
@@ -115,12 +114,12 @@ export const scheduleService = {
   getScheduleDates: (id, params) => {
     return api.get(`/operator-panel/schedules/${id}/dates`, { params });
   },
-  
+
   // Get upcoming dates
   getUpcomingDates: (id) => {
     return api.get(`/operator-panel/schedules/${id}/upcoming-dates`);
   },
-  
+
   // Get specific schedule date
   getDate: (scheduleId, dateId) => {
     return api.get(`/operator-panel/schedules/${scheduleId}/dates/${dateId}`);
@@ -157,5 +156,288 @@ export const scheduleService = {
   }
 };
 
+export const ferryService = {
+  // Get all ferries with optional filters
+  getAllFerries: (params) => {
+    return api.get('/admin-panel/ferries', { params });
+  },
+
+  // Get ferry details
+  getFerry: (id) => {
+    return api.get(`/admin-panel/ferries/${id}`);
+  },
+
+  // Create new ferry
+  createFerry: (data) => {
+    return api.post('/admin-panel/ferries', data, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  },
+
+  // Update ferry
+  updateFerry: (id, data) => {
+    data.append('_method', 'PUT');
+    return api.post(`/admin-panel/ferries/${id}`, data, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  },
+
+  // Delete ferry
+  deleteFerry: (id) => {
+    return api.delete(`/admin-panel/ferries/${id}`);
+  }
+};
+
+export const refundService = {
+  // Get all refunds with optional filters
+  getAllRefunds: (params) => {
+    return api.get('/admin-panel/refunds', { params });
+  },
+
+  // Get refund details
+  getRefund: (id) => {
+    return api.get(`/admin-panel/refunds/${id}`);
+  },
+
+  // Create new refund
+  createRefund: (bookingId, data) => {
+    return api.post(`/admin-panel/refunds/store/${bookingId}`, data);
+  },
+
+  // Approve refund
+  approveRefund: (id) => {
+    return api.post(`/admin-panel/refunds/${id}/approve`);
+  },
+
+  // Reject refund
+  rejectRefund: (id, data) => {
+    return api.post(`/admin-panel/refunds/${id}/reject`, data);
+  },
+
+  // Complete refund
+  completeRefund: (id, data) => {
+    return api.post(`/admin-panel/refunds/${id}/complete`, data);
+  },
+
+  // Get refund form data for booking
+  getRefundForm: (bookingId) => {
+    return api.get(`/admin-panel/refunds/create/${bookingId}`);
+  }
+};
+
+export const adminReportService = {
+  // Get report index data
+  getReportIndex: () => {
+    return api.get('/admin-panel/reports');
+  },
+
+  // Get booking report data
+  getBookingReport: (params) => {
+    return api.get('/admin-panel/reports/booking', { params });
+  },
+
+  // Export booking report as CSV
+  exportBookingReport: (params) => {
+    return api.get('/admin-panel/reports/booking/export', {
+      params,
+      responseType: 'blob'
+    });
+  },
+
+  // Get revenue report data
+  getRevenueReport: (params) => {
+    return api.get('/admin-panel/reports/revenue', { params });
+  },
+
+  // Export revenue report as CSV
+  exportRevenueReport: (params) => {
+    return api.get('/admin-panel/reports/revenue/export', {
+      params,
+      responseType: 'blob'
+    });
+  },
+
+  // Get schedule report data
+  getScheduleReport: (params) => {
+    return api.get('/admin-panel/reports/schedule', { params });
+  },
+
+  // Export schedule report as CSV
+  exportScheduleReport: (params) => {
+    return api.get('/admin-panel/reports/schedule/export', {
+      params,
+      responseType: 'blob'
+    });
+  }
+};
+
+export const operatorService = {
+  // Get all operators with optional filters
+  getAllOperators: (params) => {
+    return api.get('/admin-panel/operators', { params });
+  },
+
+  // Get operator details
+  getOperator: (id) => {
+    return api.get(`/admin-panel/operators/${id}`);
+  },
+
+  // Create new operator
+  createOperator: (data) => {
+    return api.post('/admin-panel/operators', data);
+  },
+
+  // Update operator
+  updateOperator: (id, data) => {
+    return api.put(`/admin-panel/operators/${id}`, data);
+  },
+
+  // Delete operator
+  deleteOperator: (id) => {
+    return api.delete(`/admin-panel/operators/${id}`);
+  },
+
+  // Check email availability
+  checkEmailAvailability: (email) => {
+    return api.post('/admin-panel/operators/check-email', { email });
+  },
+
+  // Get routes for operators
+  getRoutes: () => {
+    return api.get('/admin-panel/routes');
+  }
+};
+
+export const routeService = {
+  // Mendapatkan daftar rute dengan filter opsional
+  getAllRoutes: (params) => {
+    return api.get('/admin-panel/routes', { params });
+  },
+
+  // Mendapatkan detail rute
+  getRoute: (id) => {
+    return api.get(`/admin-panel/routes/${id}`);
+  },
+
+  // Membuat rute baru
+  createRoute: (data) => {
+    return api.post('/admin-panel/routes', data);
+  },
+
+  // Mengupdate rute
+  updateRoute: (id, data) => {
+    return api.put(`/admin-panel/routes/${id}`, data);
+  },
+
+  // Menghapus rute
+  deleteRoute: (id) => {
+    return api.delete(`/admin-panel/routes/${id}`);
+  },
+
+  // Mengupdate status rute
+  updateRouteStatus: (id, status, reason = null, expiryDate = null) => {
+    return api.put(`/admin-panel/routes/${id}/status`, {
+      status,
+      status_reason: reason,
+      status_expiry_date: expiryDate
+    });
+  }
+};
+
+export const adminScheduleService = {
+  // Mendapatkan daftar jadwal dengan filter opsional
+  getAllSchedules: (params) => {
+    return api.get('/admin-panel/schedules', { params });
+  },
+
+  // Mendapatkan detail jadwal
+  getSchedule: (id) => {
+    return api.get(`/admin-panel/schedules/${id}`);
+  },
+
+  // Membuat jadwal baru
+  createSchedule: (data) => {
+    return api.post('/admin-panel/schedules', data);
+  },
+
+  // Mengupdate jadwal
+  updateSchedule: (id, data) => {
+    return api.put(`/admin-panel/schedules/${id}`, data);
+  },
+
+  // Menghapus jadwal
+  deleteSchedule: (id) => {
+    return api.delete(`/admin-panel/schedules/${id}`);
+  },
+
+  // Mendapatkan daftar rute aktif (untuk dropdown)
+  getRoutes: () => {
+    return api.get('/admin-panel/routes', { params: { status: 'ACTIVE' } });
+  },
+
+  // Mendapatkan daftar kapal aktif (untuk dropdown)
+  getFerries: () => {
+    return api.get('/admin-panel/ferries');
+  },
+
+  // Mendapatkan tanggal-tanggal jadwal
+  getScheduleDates: (scheduleId, params) => {
+    return api.get(`/admin-panel/schedules/${scheduleId}/dates`, { params });
+  },
+
+  // Menambah tanggal jadwal
+  addScheduleDate: (scheduleId, data) => {
+    return api.post(`/admin-panel/schedules/${scheduleId}/dates`, data);
+  },
+
+  // Menambah tanggal jadwal dalam rentang
+  addScheduleDateRange: (scheduleId, data) => {
+    return api.post(`/admin-panel/schedules/${scheduleId}/dates/add`, data);
+  },
+
+  // Mengupdate tanggal jadwal
+  updateScheduleDate: (scheduleId, dateId, data) => {
+    return api.put(`/admin-panel/schedules/${scheduleId}/dates/${dateId}`, data);
+  },
+
+  // Menghapus tanggal jadwal
+  deleteScheduleDate: (scheduleId, dateId) => {
+    return api.delete(`/admin-panel/schedules/${scheduleId}/dates/${dateId}`);
+  },
+
+  // Mendapatkan detail tanggal jadwal
+  getScheduleDate: (scheduleId, dateId) => {
+    return api.get(`/admin-panel/schedules/${scheduleId}/dates/${dateId}`);
+  }
+};
+
+export const fetchBookings = async (params = {}) => {
+  const response = await api.get('/operator-panel/bookings', { params });
+  return response.data;
+};
+
+export const fetchBookingDetails = async (id) => {
+  const response = await api.get(`/operator-panel/bookings/${id}`);
+  return response.data;
+};
+
+export const checkIn = async (ticketCode) => {
+  const response = await api.post('/operator-panel/bookings/check-in', { ticket_code: ticketCode });
+  return response.data;
+};
+
+export const validateBooking = async (bookingCode) => {
+  const response = await api.post('/operator-panel/bookings/validate', { booking_code: bookingCode });
+  return response.data;
+};
+
+export const updateBookingStatus = async (id, status, notes) => {
+  const response = await api.put(`/operator-panel/bookings/${id}/status`, { status, notes });
+  return response.data;
+};
 
 export default api;

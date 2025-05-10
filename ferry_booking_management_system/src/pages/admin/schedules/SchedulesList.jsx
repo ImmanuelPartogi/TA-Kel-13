@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { scheduleService } from '../../../services/scheduleService';
+import { adminScheduleService as scheduleService } from '../../../services/api'; 
 import { toast } from 'react-toastify';
 
 const ScheduleList = () => {
@@ -14,7 +14,7 @@ const ScheduleList = () => {
     perPage: 10,
     lastPage: 1
   });
-  
+
   // Filter states
   const [filters, setFilters] = useState({
     route_id: '',
@@ -102,7 +102,7 @@ const ScheduleList = () => {
 
   const formatDays = (daysString) => {
     if (!daysString) return '';
-    
+
     const days = daysString.split(',');
     return days.map(day => dayNames[day] || '').join(', ');
   };
@@ -127,11 +127,10 @@ const ScheduleList = () => {
         <button
           key={i}
           onClick={() => handlePageChange(i)}
-          className={`px-3 py-1 mx-1 rounded ${
-            pagination.currentPage === i
+          className={`px-3 py-1 mx-1 rounded ${pagination.currentPage === i
               ? 'bg-blue-600 text-white'
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
+            }`}
         >
           {i}
         </button>

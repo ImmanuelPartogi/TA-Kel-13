@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { refundService } from '../../services/api';
-import Loading from '../../components/Loading';
-import Alert from '../../components/Alert';
+import { refundService } from '../../../services/api';
+import Loading from '../../../components/ui/LoadingSpinner';
+import Alert from '../../../components/ui/Alert';
 
 const RefundShow = () => {
   const { id } = useParams();

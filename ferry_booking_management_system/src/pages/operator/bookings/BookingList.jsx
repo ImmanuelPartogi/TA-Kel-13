@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchBookings } from '../../../services/booking';
+import { fetchBookings } from '../../../services/api';
 import Card from '../../../components/ui/Card';
 import Button from '../../../components/ui/Button';
 import Alert from '../../../components/ui/Alert';

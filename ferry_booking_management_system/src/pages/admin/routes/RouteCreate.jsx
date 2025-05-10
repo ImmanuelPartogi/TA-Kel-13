@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { routeService } from '../../../services/routeService';
+import { routeService } from '../../../services/api';
 import { toast } from 'react-toastify';
 
 const RouteCreate = () => {

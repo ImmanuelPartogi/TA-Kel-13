@@ -1,5 +1,5 @@
-// src/services/api.js
 import axios from 'axios';
+
 console.log("API URL:", import.meta.env.VITE_API_URL);
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
@@ -12,7 +12,7 @@ const api = axios.create({
 // Tambahkan interceptor untuk otentikasi
 api.interceptors.request.use(
   config => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token'); // Menggunakan 'token' sebagai key
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -23,20 +23,22 @@ api.interceptors.request.use(
   }
 );
 
-// Tambahkan interceptor untuk menangani error
+// Interceptor untuk menangani error tetap sama
 api.interceptors.response.use(
   response => {
     return response;
   },
   error => {
-    // Jika response adalah 401 (Unauthorized), logout user
     if (error.response && error.response.status === 401) {
       localStorage.removeItem('token');
+      localStorage.removeItem('user_data');
       window.location.href = '/login';
     }
     return Promise.reject(error);
   }
 );
+
+// Layanan API lainnya tetap sama...
 
 // API services for reports
 export const operatorReportService = {
@@ -438,6 +440,53 @@ export const validateBooking = async (bookingCode) => {
 export const updateBookingStatus = async (id, status, notes) => {
   const response = await api.put(`/operator-panel/bookings/${id}/status`, { status, notes });
   return response.data;
+};
+
+export const adminBookingService = {
+  // Mendapatkan daftar booking dengan filter opsional
+  getAllBookings: (params) => {
+    return api.get('/admin-panel/bookings', { params });
+  },
+
+  // Mendapatkan detail booking
+  getBooking: (id) => {
+    return api.get(`/admin-panel/bookings/${id}`);
+  },
+
+  // Membuat booking baru
+  createBooking: (data) => {
+    return api.post('/admin-panel/bookings', data);
+  },
+
+  // Mengupdate status booking
+  updateBookingStatus: (id, data) => {
+    return api.put(`/admin-panel/bookings/${id}/status`, data);
+  },
+
+  // Mencari jadwal berdasarkan rute dan tanggal
+  getSchedules: (routeId, date) => {
+    return api.get(`/admin-panel/bookings/get-schedules?route_id=${routeId}&date=${date}`);
+  },
+
+  // Mencari pengguna berdasarkan kata kunci
+  searchUsers: (query) => {
+    return api.get(`/admin-panel/bookings/search-users?query=${query}`);
+  },
+
+  // Mendapatkan form reschedule
+  getRescheduleForm: (id) => {
+    return api.get(`/admin-panel/bookings/${id}/reschedule`);
+  },
+
+  // Mendapatkan jadwal yang tersedia untuk reschedule
+  getAvailableSchedules: (data) => {
+    return api.post('/admin-panel/bookings/get-available-schedules', data);
+  },
+
+  // Proses reschedule booking
+  processReschedule: (id, data) => {
+    return api.post(`/admin-panel/bookings/${id}/process-reschedule`, data);
+  }
 };
 
 export default api;

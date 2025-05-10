@@ -1,91 +1,139 @@
-import axios from 'axios';
+import api from './api';
 
-// Define constants for the authentication
-const TOKEN_KEY = 'operator_token';
-const USER_KEY = 'operator_user';
+// Konstanta untuk autentikasi
+const TOKEN_KEY = 'token';
+const USER_KEY = 'user_data';
 
-// Login function for operator users
-export const login = async (email, password) => {
+// Fungsi login untuk admin
+export const adminLogin = async (credentials) => {
   try {
-    const response = await axios.post('/api/operator-panel/login', {
-      email,
-      password
-    });
+    const response = await api.post('/admin-panel/login', credentials);
     
-    // If login is successful, store the token and user info
     if (response.data.token) {
       localStorage.setItem(TOKEN_KEY, response.data.token);
-      localStorage.setItem(USER_KEY, JSON.stringify(response.data.user));
+      localStorage.setItem(USER_KEY, JSON.stringify(response.data.user || {}));
       return response.data;
     }
     
     throw new Error('Login gagal, respons server tidak memiliki token');
   } catch (error) {
-    // Handle error responses
-    if (error.response) {
-      throw new Error(error.response.data.message || 'Login gagal, coba lagi');
-    }
+    console.error('Admin login error:', error.response?.data);
     throw error;
   }
 };
 
-// Logout function to clear the stored authentication data
-export const logout = async () => {
+// Fungsi login untuk operator
+export const operatorLogin = async (credentials) => {
   try {
-    // Call the logout API endpoint if the user is authenticated
-    if (isAuthenticated()) {
-      await axios.post('/api/operator-panel/logout', {}, {
-        headers: {
-          'Authorization': `Bearer ${getToken()}`
-        }
-      });
-    }
-  } catch (error) {
-    console.error('Logout error:', error);
-  } finally {
-    // Clear the localStorage regardless of API success/failure
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+    const response = await api.post('/operator-panel/login', credentials);
     
-    // Redirect to login page after logout
-    window.location.href = '/login';
+    if (response.data.token) {
+      localStorage.setItem(TOKEN_KEY, response.data.token);
+      localStorage.setItem(USER_KEY, JSON.stringify(response.data.user || {}));
+      return response.data;
+    }
+    
+    throw new Error('Login gagal, respons server tidak memiliki token');
+  } catch (error) {
+    console.error('Operator login error:', error.response?.data);
+    throw error;
   }
 };
 
-// Check if the user is authenticated
+// Fungsi logout untuk admin
+export const adminLogout = async () => {
+  try {
+    if (isAuthenticated()) {
+      await api.post('/admin-panel/logout');
+    }
+  } catch (error) {
+    console.error('Admin logout error:', error);
+  } finally {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    window.location.href = '/admin/login';
+  }
+};
+
+// Fungsi logout untuk operator
+export const operatorLogout = async () => {
+  try {
+    if (isAuthenticated()) {
+      await api.post('/operator-panel/logout');
+    }
+  } catch (error) {
+    console.error('Operator logout error:', error);
+  } finally {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    window.location.href = '/operator/login';
+  }
+};
+
+// Cek apakah user terautentikasi
 export const isAuthenticated = () => {
   const token = localStorage.getItem(TOKEN_KEY);
   return !!token;
 };
 
-// Get the authentication token
+// Dapatkan token autentikasi
 export const getToken = () => {
   return localStorage.getItem(TOKEN_KEY);
 };
 
-// Get the current user information
+// Dapatkan informasi user saat ini
 export const getCurrentUser = () => {
   const userString = localStorage.getItem(USER_KEY);
   return userString ? JSON.parse(userString) : null;
 };
 
-// Check if the current user has a specific role
+// Cek apakah user saat ini memiliki role tertentu
 export const hasRole = (role) => {
   const user = getCurrentUser();
   return user && user.role === role;
 };
 
-// Update the current user information
+// Cek apakah user adalah admin
+export const isAdmin = () => {
+  return hasRole('admin');
+};
+
+// Cek apakah user adalah operator
+export const isOperator = () => {
+  return hasRole('operator');
+};
+
+// Update informasi user saat ini
 export const updateCurrentUser = (userData) => {
   localStorage.setItem(USER_KEY, JSON.stringify(userData));
 };
 
+// Fungsi umum untuk logout, akan memanggil adminLogout atau operatorLogout sesuai role
+export const logout = async () => {
+  const user = getCurrentUser();
+  if (user && user.role === 'admin') {
+    return adminLogout();
+  } else if (user && user.role === 'operator') {
+    return operatorLogout();
+  } else {
+    // Fallback jika tidak ada role yang jelas
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    window.location.href = '/login';
+  }
+};
+
 export default {
-  login,
+  adminLogin,
+  operatorLogin,
+  adminLogout,
+  operatorLogout,
   logout,
   isAuthenticated,
   getToken,
   getCurrentUser,
   hasRole,
+  isAdmin,
+  isOperator,
   updateCurrentUser
 };

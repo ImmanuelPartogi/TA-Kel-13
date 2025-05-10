@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBars, faBell, faUser, faSignOutAlt } from '@fortawesome/free-solid-svg-icons';
-import { logout, getUser } from '../../services/auth';
+import { logout, getCurrentUser as getUser } from '../../services/auth';
 
 const Navbar = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);

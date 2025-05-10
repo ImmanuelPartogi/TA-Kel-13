@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { scheduleService } from '../../services/api';
+import { operatorScheduleService as scheduleService } from '../../../services/api';
 import { toast } from 'react-toastify';
 
 const ScheduleDatesList = () => {

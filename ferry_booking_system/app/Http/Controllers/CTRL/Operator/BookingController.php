@@ -388,7 +388,7 @@ class BookingController extends Controller
                 ->withInput()
                 ->withErrors(['ticket_code' => 'Tiket tidak untuk hari ini. Tanggal tiket: ' . $bookingDate]);
         }
-        
+
         // Process check-in
         $ticket->checked_in = true;
         $ticket->boarding_status = 'BOARDED';

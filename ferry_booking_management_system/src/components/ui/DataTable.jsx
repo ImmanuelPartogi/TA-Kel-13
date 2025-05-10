@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
 import $ from 'jquery';
-import 'datatables.net-dt/css/jquery.dataTables.min.css';
 import 'datatables.net';
 
 const DataTable = ({ id, children }) => {

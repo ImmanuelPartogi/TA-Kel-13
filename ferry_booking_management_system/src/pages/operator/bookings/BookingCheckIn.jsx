@@ -1,7 +1,7 @@
 // src/pages/operator/bookings/CheckIn.jsx
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { checkIn } from '../../../services/booking';
+import { checkIn } from '../../../services/api';
 import Alert from '../../../components/ui/Alert';
 import Card from '../../../components/ui/Card';
 import Button from '../../../components/ui/Button';

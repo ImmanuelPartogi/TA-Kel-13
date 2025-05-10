@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { reportService } from '../../services/api';
-import Loading from '../../components/Loading';
+import { operatorReportService as reportService } from '../../../services/api';
+import Loading from '../../../components/ui/LoadingSpinner';
 
 const ReportIndex = () => {
   const [loading, setLoading] = useState(true);

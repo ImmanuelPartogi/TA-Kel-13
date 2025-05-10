@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { scheduleService } from '../../../services/scheduleService';
+import { adminScheduleService as scheduleService } from '../../../services/api'; 
 import { toast } from 'react-toastify';
 
 const ScheduleEdit = () => {

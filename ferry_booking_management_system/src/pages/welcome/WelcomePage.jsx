@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import './welcome.css'; // Akan dibuat terpisah
+import 'datatables.net';
 
 const WelcomePage = () => {
   const [isScrolled, setIsScrolled] = useState(false);

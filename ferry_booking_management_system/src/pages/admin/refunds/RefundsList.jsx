@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { refundService } from '../../services/api';
-import Loading from '../../components/Loading';
-import Pagination from '../../components/Pagination';
+import { refundService } from '../../../services/api';
+import Loading from '../../../components/ui/LoadingSpinner';
+import Pagination from '../../../components/ui/Pagination';
 
 const RefundsList = () => {
   const [refunds, setRefunds] = useState([]);

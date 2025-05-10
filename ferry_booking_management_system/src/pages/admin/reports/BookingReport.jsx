@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { reportService } from '../../services/api';
+import { operatorReportService as reportService } from '../../../services/api';
 import { Chart } from 'chart.js/auto';
-import Loading from '../../components/Loading';
-import PrintButton from '../../components/PrintButton';
-import ExportButton from '../../components/ExportButton';
-import DataTable from '../../components/DataTable';
-import StatusBadge from '../../components/StatusBadge';
+import Loading from '../../../components/ui/LoadingSpinner';
+import PrintButton from '../../../components/ui/PrintButton';
+import ExportButton from '../../../components/ui/ExportButton';
+import DataTable from '../../../components/ui/DataTable';
+import StatusBadge from '../../../components/ui/StatusBadge';
 
 const BookingReport = () => {
   const location = useLocation();

@@ -6,8 +6,12 @@ import MainLayout from './layouts/MainLayout';
 import AuthLayout from './layouts/AuthLayout';
 import AdminLayout from './layouts/AdminLayout';
 
-// Pages
+// Auth Pages
+import AdminLogin from './pages/auth/AdminLogin';
+import OperatorLogin from './pages/auth/OperatorLogin';
 import WelcomePage from './pages/welcome/WelcomePage';
+
+// Operator Pages
 import Login from './pages/auth/Login';
 import Dashboard from './pages/operator/Dashboard';
 import BookingList from './pages/operator/bookings/BookingList';
@@ -18,6 +22,7 @@ import ScheduleShow from './pages/operator/schedules/ScheduleShow';
 import ScheduleCreateDate from './pages/operator/schedules/ScheduleCreateDate';
 import ScheduleEditDate from './pages/operator/schedules/ScheduleEditDate';
 import ScheduleDatesList from './pages/operator/schedules/ScheduleDatesList';
+import OperatorDashboard from './pages/operator/Dashboard';
 
 
 // Report Pages
@@ -31,6 +36,7 @@ import FerryList from './pages/admin/ferries/FerryList';
 import FerryCreate from './pages/admin/ferries/FerryCreate';
 import FerryEdit from './pages/admin/ferries/FerryEdit';
 import FerryShow from './pages/admin/ferries/FerryShow';
+import AdminDashboard from './pages/admin/Dashboard';
 
 // Routes Pages
 import RouteList from './pages/admin/routes/RouteList';
@@ -49,6 +55,8 @@ import OperatorCreate from './pages/admin/operators/OperatorCreate';
 import OperatorEdit from './pages/admin/operators/OperatorEdit';
 import OperatorShow from './pages/admin/operators/OperatorShow';
 
+import DailyReport from './pages/operator/reports/DailyReport';
+import MonthlyReport from './pages/operator/reports/MonthlyReport';
 // Protected Route wrapper
 const ProtectedRoute = ({ element }) => {
   return isAuthenticated() ? element : <Navigate to="/login" replace />;
@@ -64,8 +72,12 @@ const router = createBrowserRouter([
     element: <AuthLayout />,
     children: [
       {
-        path: 'login',
-        element: <Login />
+        path: 'admin/login',
+        element: <AdminLogin />
+      },
+      {
+        path: 'operator/login',
+        element: <OperatorLogin />
       }
     ]
   },

@@ -1,19 +1,19 @@
+// src/router.jsx
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import { isAuthenticated } from './services/auth';
+import { isAuthenticated, isAdmin, isOperator } from './services/auth';
 
 // Layouts
-import MainLayout from './layouts/MainLayout';
 import AuthLayout from './layouts/AuthLayout';
 import AdminLayout from './layouts/AdminLayout';
+import OperatorLayout from './layouts/OperatorLayout';
 
 // Auth Pages
-import AdminLogin from './pages/auth/AdminLogin';
-import OperatorLogin from './pages/auth/OperatorLogin';
+import AdminLogin from './pages/admin/auth/Login';
+import OperatorLogin from './pages/operator/auth/Login';
 import WelcomePage from './pages/welcome/WelcomePage';
 
 // Operator Pages
-import Login from './pages/auth/Login';
-import Dashboard from './pages/operator/Dashboard';
+import OperatorDashboard from './pages/operator/Dashboard';
 import BookingList from './pages/operator/bookings/BookingList';
 import BookingShow from './pages/operator/bookings/BookingShow';
 import BookingCheckIn from './pages/operator/bookings/BookingCheckIn';
@@ -22,51 +22,81 @@ import ScheduleShow from './pages/operator/schedules/ScheduleShow';
 import ScheduleCreateDate from './pages/operator/schedules/ScheduleCreateDate';
 import ScheduleEditDate from './pages/operator/schedules/ScheduleEditDate';
 import ScheduleDatesList from './pages/operator/schedules/ScheduleDatesList';
-import OperatorDashboard from './pages/operator/Dashboard';
-
-
-// Report Pages
-import ReportIndex from './pages/admin/reports/ReportIndex';
-import BookingReport from './pages/admin/reports/BookingReport';
-import RevenueReport from './pages/admin/reports/RevenueReport';
-import ScheduleReport from './pages/admin/reports/ScheduleReport';
-
-// Admin Pages
-import FerryList from './pages/admin/ferries/FerryList';
-import FerryCreate from './pages/admin/ferries/FerryCreate';
-import FerryEdit from './pages/admin/ferries/FerryEdit';
-import FerryShow from './pages/admin/ferries/FerryShow';
-import AdminDashboard from './pages/admin/Dashboard';
-
-// Routes Pages
-import RouteList from './pages/admin/routes/RouteList';
-import RouteCreate from './pages/admin/routes/RouteCreate';
-import RouteEdit from './pages/admin/routes/RouteEdit';
-import RouteShow from './pages/admin/routes/RouteShow';
-
-// Refund Pages
-import RefundsList from './pages/admin/refunds/RefundsList';
-import RefundCreate from './pages/admin/refunds/RefundCreate';
-import RefundShow from './pages/admin/refunds/RefundShow';
-
-// Admin Operators Pages
-import OperatorList from './pages/admin/operators/OperatorList';
-import OperatorCreate from './pages/admin/operators/OperatorCreate';
-import OperatorEdit from './pages/admin/operators/OperatorEdit';
-import OperatorShow from './pages/admin/operators/OperatorShow';
-
 import DailyReport from './pages/operator/reports/DailyReport';
 import MonthlyReport from './pages/operator/reports/MonthlyReport';
-// Protected Route wrapper
-const ProtectedRoute = ({ element }) => {
-  return isAuthenticated() ? element : <Navigate to="/login" replace />;
+import ReportIndex from './pages/operator/reports/ReportIndex';
+
+// Admin Pages - Components might need to be created
+// Dummy imports for now - replace with actual components
+const AdminDashboard = () => <div>Admin Dashboard</div>;
+const AdminsList = () => <div>Admins List</div>;
+const AdminCreate = () => <div>Admin Create</div>;
+const AdminEdit = () => <div>Admin Edit</div>;
+const AdminShow = () => <div>Admin Show</div>;
+const AdminBookingList = () => <div>Admin Booking List</div>;
+const AdminBookingShow = () => <div>Admin Booking Show</div>;
+const AdminReportIndex = () => <div>Admin Report Index</div>;
+const BookingReport = () => <div>Booking Report</div>;
+const RevenueReport = () => <div>Revenue Report</div>;
+const ScheduleReport = () => <div>Schedule Report</div>;
+const FerryList = () => <div>Ferry List</div>;
+const FerryCreate = () => <div>Ferry Create</div>;
+const FerryEdit = () => <div>Ferry Edit</div>;
+const FerryShow = () => <div>Ferry Show</div>;
+const RouteList = () => <div>Route List</div>;
+const RouteCreate = () => <div>Route Create</div>;
+const RouteEdit = () => <div>Route Edit</div>;
+const RouteShow = () => <div>Route Show</div>;
+const AdminScheduleList = () => <div>Admin Schedule List</div>;
+const ScheduleCreate = () => <div>Schedule Create</div>;
+const ScheduleEdit = () => <div>Schedule Edit</div>;
+const AdminScheduleShow = () => <div>Admin Schedule Show</div>;
+const AdminScheduleDatesList = () => <div>Admin Schedule Dates List</div>;
+const AdminScheduleCreateDate = () => <div>Admin Schedule Create Date</div>;
+const RefundsList = () => <div>Refunds List</div>;
+const RefundCreate = () => <div>Refund Create</div>;
+const RefundShow = () => <div>Refund Show</div>;
+const OperatorList = () => <div>Operator List</div>;
+const OperatorCreate = () => <div>Operator Create</div>;
+const OperatorEdit = () => <div>Operator Edit</div>;
+const OperatorShow = () => <div>Operator Show</div>;
+const UserList = () => <div>User List</div>;
+const UserShow = () => <div>User Show</div>;
+const UserEdit = () => <div>User Edit</div>;
+
+// Protected Route Components
+const AdminProtectedRoute = ({ element }) => {
+  if (!isAuthenticated()) {
+    return <Navigate to="/admin/login" replace />;
+  }
+
+  if (!isAdmin()) {
+    return <Navigate to="/admin/login" replace />;
+  }
+
+  return element;
+};
+
+const OperatorProtectedRoute = ({ element }) => {
+  if (!isAuthenticated()) {
+    return <Navigate to="/operator/login" replace />;
+  }
+
+  if (!isOperator()) {
+    return <Navigate to="/operator/login" replace />;
+  }
+
+  return element;
 };
 
 const router = createBrowserRouter([
+  // Public Routes
   {
     path: '/',
     element: <WelcomePage />
   },
+  
+  // Auth Routes
   {
     path: '/',
     element: <AuthLayout />,
@@ -81,9 +111,11 @@ const router = createBrowserRouter([
       }
     ]
   },
+  
+  // Operator Routes (Protected)
   {
     path: '/operator',
-    element: <ProtectedRoute element={<MainLayout />} />,
+    element: <OperatorProtectedRoute element={<OperatorLayout />} />,
     children: [
       {
         path: '',
@@ -91,9 +123,10 @@ const router = createBrowserRouter([
       },
       {
         path: 'dashboard',
-        element: <Dashboard />
+        element: <OperatorDashboard />
       },
-      // Bookings Routes
+      
+      // Bookings
       {
         path: 'bookings',
         element: <BookingList />
@@ -106,7 +139,8 @@ const router = createBrowserRouter([
         path: 'bookings/check-in',
         element: <BookingCheckIn />
       },
-      // Schedules Routes
+      
+      // Schedules
       {
         path: 'schedules',
         element: <SchedulesList />
@@ -127,7 +161,8 @@ const router = createBrowserRouter([
         path: 'schedules/:scheduleId/dates/:dateId/edit',
         element: <ScheduleEditDate />
       },
-      // Reports Routes
+      
+      // Reports
       {
         path: 'reports',
         element: <ReportIndex />
@@ -142,14 +177,71 @@ const router = createBrowserRouter([
       }
     ]
   },
+  
+  // Admin Routes (Protected)
   {
     path: '/admin',
-    element: <ProtectedRoute element={<AdminLayout />} />,
+    element: <AdminProtectedRoute element={<AdminLayout />} />,
     children: [
       {
         path: '',
         element: <Navigate to="/admin/dashboard" replace />
       },
+      {
+        path: 'dashboard',
+        element: <AdminDashboard />
+      },
+      
+      // Admin Management
+      {
+        path: 'admins',
+        element: <AdminsList />
+      },
+      {
+        path: 'admins/create',
+        element: <AdminCreate />
+      },
+      {
+        path: 'admins/:id',
+        element: <AdminShow />
+      },
+      {
+        path: 'admins/:id/edit',
+        element: <AdminEdit />
+      },
+      
+      // User Management
+      {
+        path: 'users',
+        element: <UserList />
+      },
+      {
+        path: 'users/:id',
+        element: <UserShow />
+      },
+      {
+        path: 'users/:id/edit',
+        element: <UserEdit />
+      },
+      
+      // Operator Management
+      {
+        path: 'operators',
+        element: <OperatorList />
+      },
+      {
+        path: 'operators/create',
+        element: <OperatorCreate />
+      },
+      {
+        path: 'operators/:id',
+        element: <OperatorShow />
+      },
+      {
+        path: 'operators/:id/edit',
+        element: <OperatorEdit />
+      },
+      
       // Routes Management
       {
         path: 'routes',
@@ -167,6 +259,7 @@ const router = createBrowserRouter([
         path: 'routes/:id/edit',
         element: <RouteEdit />
       },
+      
       // Ferries Management
       {
         path: 'ferries',
@@ -184,40 +277,51 @@ const router = createBrowserRouter([
         path: 'ferries/:id/edit',
         element: <FerryEdit />
       },
-      // Refunds Management
+      
+      // Schedules Management
       {
-        path: 'refunds',
-        element: <RefundsList />
+        path: 'schedules',
+        element: <AdminScheduleList />
       },
       {
-        path: 'refunds/:id',
-        element: <RefundShow />
+        path: 'schedules/create',
+        element: <ScheduleCreate />
       },
       {
-        path: 'bookings/:bookingId/refund/create',
-        element: <RefundCreate />
-      },
-      // Operators Management
-      {
-        path: 'operators',
-        element: <OperatorList />
+        path: 'schedules/:id',
+        element: <AdminScheduleShow />
       },
       {
-        path: 'operators/create',
-        element: <OperatorCreate />
+        path: 'schedules/:id/edit',
+        element: <ScheduleEdit />
       },
       {
-        path: 'operators/:id',
-        element: <OperatorShow />
+        path: 'schedules/:id/dates',
+        element: <AdminScheduleDatesList />
       },
       {
-        path: 'operators/:id/edit',
-        element: <OperatorEdit />
+        path: 'schedules/:id/dates/create',
+        element: <AdminScheduleCreateDate />
       },
-      // Report Routes
+      
+      // Bookings Management
+      {
+        path: 'bookings',
+        element: <AdminBookingList />
+      },
+      {
+        path: 'bookings/:id',
+        element: <AdminBookingShow />
+      },
+      {
+        path: 'bookings/:id/reschedule',
+        element: <Navigate to="/admin/bookings/:id" replace />
+      },
+      
+      // Reports
       {
         path: 'reports',
-        element: <ReportIndex />
+        element: <AdminReportIndex />
       },
       {
         path: 'reports/booking',
@@ -230,9 +334,25 @@ const router = createBrowserRouter([
       {
         path: 'reports/schedule',
         element: <ScheduleReport />
+      },
+      
+      // Refunds Management
+      {
+        path: 'refunds',
+        element: <RefundsList />
+      },
+      {
+        path: 'refunds/:id',
+        element: <RefundShow />
+      },
+      {
+        path: 'bookings/:bookingId/refund/create',
+        element: <RefundCreate />
       }
     ]
   },
+  
+  // Fallback Route
   {
     path: '*',
     element: <Navigate to="/" replace />

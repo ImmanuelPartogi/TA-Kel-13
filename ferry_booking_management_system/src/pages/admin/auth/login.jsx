@@ -1,218 +1,212 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+// src/layouts/AdminLayout.jsx
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEnvelope, faLock, faSignInAlt, faUserShield } from '@fortawesome/free-solid-svg-icons';
-import api from '../../services/api';
+import { 
+  faHome, faUsers, faShip, faRoute, faCalendarAlt, 
+  faChartBar, faSignOutAlt, faBars, faTimes,
+  faTicketAlt, faUserShield, faMoneyBillWave, faUndo
+} from '@fortawesome/free-solid-svg-icons';
+import { getCurrentUser, adminLogout } from '/src/services/auth.js';
 
-const AdminLogin = () => {
+const AdminLayout = () => {
+  const location = useLocation();
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    remember: false
-  });
-  const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [expandedMenus, setExpandedMenus] = useState({});
   
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === 'checkbox' ? checked : value
-    });
+  useEffect(() => {
+    const currentUser = getCurrentUser();
+    if (currentUser) {
+      setUser(currentUser);
+    }
+  }, []);
+  
+  const handleLogout = async () => {
+    await adminLogout();
   };
   
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setErrors({});
-    
-    try {
-      // Menggunakan endpoint yang benar untuk login admin
-      const response = await api.post('/admin-panel/login', formData);
-      
-      // Menyimpan token
-      localStorage.setItem('token', response.data.token);
-      
-      // Menyimpan data user jika tersedia
-      if (response.data.user) {
-        localStorage.setItem('user_data', JSON.stringify(response.data.user));
-      }
-      
-      // Navigasi ke dashboard admin
-      setTimeout(() => {
-        navigate('/admin/dashboard');
-      }, 100);
-    } catch (error) {
-      console.error('Login error:', error);
-      if (error.response && error.response.data.errors) {
-        setErrors(error.response.data.errors);
-      } else if (error.response && error.response.data.message) {
-        setErrors({ general: error.response.data.message });
-      } else {
-        setErrors({ general: 'Terjadi kesalahan. Silakan coba lagi.' });
-      }
-    } finally {
-      setIsLoading(false);
+  const toggleSubmenu = (key) => {
+    setExpandedMenus(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+  
+  const menuItems = [
+    { 
+      path: '/admin/dashboard', 
+      icon: faHome, 
+      text: 'Dashboard',
+      exact: true 
+    },
+    {
+      icon: faUsers,
+      text: 'Manajemen User',
+      key: 'users',
+      submenu: [
+        { path: '/admin/admins', text: 'Admin' },
+        { path: '/admin/operators', text: 'Operator' },
+        { path: '/admin/users', text: 'Pengguna' },
+      ]
+    },
+    {
+      icon: faShip,
+      text: 'Manajemen Ferry',
+      key: 'ferry',
+      submenu: [
+        { path: '/admin/ferries', text: 'Data Ferry' },
+        { path: '/admin/routes', text: 'Rute' },
+        { path: '/admin/schedules', text: 'Jadwal' },
+      ]
+    },
+    {
+      icon: faTicketAlt,
+      text: 'Manajemen Booking',
+      key: 'booking',
+      submenu: [
+        { path: '/admin/bookings', text: 'Daftar Booking' },
+        { path: '/admin/refunds', text: 'Refund' },
+      ]
+    },
+    { 
+      path: '/admin/reports', 
+      icon: faChartBar, 
+      text: 'Laporan' 
+    },
+  ];
+  
+  const isActive = (path, exact = false) => {
+    if (exact) {
+      return location.pathname === path;
     }
+    return location.pathname.startsWith(path);
   };
   
   return (
-    <div className="w-full">
-      <div className="bg-white shadow-xl rounded-2xl overflow-hidden">
-        {/* Login header */}
-        <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-indigo-800 opacity-90"></div>
-          <div className="relative py-8 px-6 md:px-10">
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 mb-6 rounded-full bg-white shadow-md">
-                <FontAwesomeIcon icon={faUserShield} className="text-indigo-600 text-2xl" />
-              </div>
-              <h2 className="text-2xl font-bold text-white">Login Admin</h2>
-              <p className="text-indigo-200 mt-2">Masukkan kredensial untuk akses dashboard admin</p>
-            </div>
-          </div>
-
-          {/* Decorative Wave */}
-          <svg className="absolute bottom-0 w-full text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 100">
-            <path fill="currentColor" fillOpacity="1" d="M0,64L80,58.7C160,53,320,43,480,48C640,53,800,75,960,75C1120,75,1280,53,1360,42.7L1440,32L1440,100L1360,100C1280,100,1120,100,960,100C800,100,640,100,480,100C320,100,160,100,80,100L0,100Z"></path>
-          </svg>
-        </div>
-
-        {/* Login form */}
-        <div className="py-8 px-6 md:px-10">
-          <form onSubmit={handleSubmit}>
-            {errors.general && (
-              <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded">
-                <p className="text-sm text-red-700">
-                  <FontAwesomeIcon icon="exclamation-circle" className="mr-1" />
-                  {errors.general}
-                </p>
-              </div>
-            )}
-
-            <div className="mb-6">
-              <label htmlFor="email" className="block text-gray-700 text-sm font-medium mb-2">Email</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <FontAwesomeIcon icon={faEnvelope} className="text-gray-400" />
-                </div>
-                <input 
-                  id="email" 
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className={`pl-12 block w-full rounded-lg border ${errors.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-indigo-500'} px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:border-transparent transition-shadow`}
-                  required
-                  autoComplete="email"
-                  autoFocus
-                  placeholder="email@example.com"
-                />
-              </div>
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600">
-                  <FontAwesomeIcon icon="exclamation-circle" className="mr-1" />
-                  {errors.email}
-                </p>
-              )}
-            </div>
-
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-2">
-                <label htmlFor="password" className="block text-gray-700 text-sm font-medium">Password</label>
-                <a className="text-xs text-indigo-600 hover:text-indigo-800 transition-colors" href="#">
-                  Lupa Password?
-                </a>
-              </div>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <FontAwesomeIcon icon={faLock} className="text-gray-400" />
-                </div>
-                <input 
-                  id="password"
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className={`pl-12 block w-full rounded-lg border ${errors.password ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-indigo-500'} px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:border-transparent transition-shadow`}
-                  required
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                />
-              </div>
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-600">
-                  <FontAwesomeIcon icon="exclamation-circle" className="mr-1" />
-                  {errors.password}
-                </p>
-              )}
-            </div>
-
-            <div className="flex items-center mb-6">
-              <input 
-                id="remember"
-                type="checkbox"
-                name="remember"
-                checked={formData.remember}
-                onChange={handleChange}
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-              />
-              <label htmlFor="remember" className="ml-2 block text-sm text-gray-700">
-                Ingat Saya
-              </label>
-            </div>
-
-            <div className="mb-6">
-              <button 
-                type="submit"
-                disabled={isLoading}
-                className="w-full flex items-center justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+    <div className="min-h-screen bg-gray-100 flex flex-col">
+      {/* Header */}
+      <header className="bg-indigo-600 shadow-lg">
+        <div className="px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center">
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="lg:hidden mr-3 text-white hover:text-gray-200 focus:outline-none"
               >
-                {isLoading ? (
-                  <span className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Memproses...
-                  </span>
-                ) : (
-                  <>
-                    <FontAwesomeIcon icon={faSignInAlt} className="mr-2" />
-                    Masuk
-                  </>
-                )}
+                <FontAwesomeIcon icon={sidebarOpen ? faTimes : faBars} className="h-6 w-6" />
+              </button>
+              <div className="flex items-center">
+                <div className="h-10 w-10 bg-white rounded-full flex items-center justify-center mr-3">
+                  <FontAwesomeIcon icon={faUserShield} className="text-indigo-600" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-white">Admin Panel</h1>
+                  <p className="text-indigo-200 text-sm">Ferry Booking System</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center">
+              <div className="hidden sm:block mr-4">
+                <p className="text-sm text-indigo-200">
+                  Selamat datang,
+                </p>
+                <p className="text-sm font-medium text-white">
+                  {user?.name || 'Administrator'}
+                </p>
+              </div>
+              <button 
+                onClick={handleLogout}
+                className="inline-flex items-center px-3 py-2 border border-transparent text-sm rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                <FontAwesomeIcon icon={faSignOutAlt} className="mr-2" />
+                <span className="hidden sm:inline">Logout</span>
               </button>
             </div>
-          </form>
+          </div>
         </div>
-
-        {/* Login footer */}
-        <div className="py-4 px-6 md:px-10 bg-gray-50 border-t border-gray-100 text-center">
-          <p className="text-sm text-gray-600">
-            Masuk sebagai operator?
-            <a href="/operator/login" className="font-medium text-indigo-600 hover:text-indigo-800 transition-colors ml-1">
-              <FontAwesomeIcon icon={faUserShield} className="mr-1" />
-              Login Operator
-            </a>
-          </p>
-        </div>
-      </div>
-
-      {/* Help & Security */}
-      <div className="mt-8 flex flex-col space-y-3 md:flex-row md:space-y-0 md:space-x-6 md:justify-between">
-        <div className="flex items-center justify-center md:justify-start text-sm text-gray-600">
-          <FontAwesomeIcon icon="headset" className="text-gray-400 mr-2" />
-          <span>Butuh bantuan? <a href="#" className="text-indigo-600 hover:text-indigo-800 transition-colors font-medium">Hubungi Tim Support</a></span>
-        </div>
-        <div className="flex items-center justify-center md:justify-end text-sm text-gray-600">
-          <FontAwesomeIcon icon="shield-alt" className="text-gray-400 mr-2" />
-          <span>Koneksi aman terenkripsi</span>
-        </div>
+      </header>
+      
+      <div className="flex-1 flex">
+        {/* Sidebar */}
+        <aside className={`w-64 bg-white shadow-md transition-all duration-300 transform ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        } fixed lg:static inset-y-0 left-0 z-50 lg:z-0 top-16 lg:top-0`}>
+          <nav className="px-3 py-4 h-full overflow-y-auto">
+            <div className="space-y-1">
+              {menuItems.map((item) => (
+                <div key={item.path || item.key}>
+                  {item.submenu ? (
+                    <>
+                      <button
+                        onClick={() => toggleSubmenu(item.key)}
+                        className="group flex items-center justify-between w-full px-3 py-2.5 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50"
+                      >
+                        <div className="flex items-center">
+                          <FontAwesomeIcon icon={item.icon} className="mr-3 h-4 w-4" />
+                          {item.text}
+                        </div>
+                        <FontAwesomeIcon 
+                          icon={expandedMenus[item.key] ? faTimes : faBars} 
+                          className="h-3 w-3"
+                        />
+                      </button>
+                      {expandedMenus[item.key] && (
+                        <div className="ml-8 mt-1 space-y-1">
+                          {item.submenu.map((subItem) => (
+                            <Link
+                              key={subItem.path}
+                              to={subItem.path}
+                              onClick={() => setSidebarOpen(false)}
+                              className={`block px-3 py-2 text-sm rounded-md transition-colors ${
+                                isActive(subItem.path)
+                                  ? 'bg-indigo-100 text-indigo-700 font-medium' 
+                                  : 'text-gray-600 hover:bg-gray-50'
+                              }`}
+                            >
+                              {subItem.text}
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <Link 
+                      to={item.path}
+                      onClick={() => setSidebarOpen(false)}
+                      className={`group flex items-center px-3 py-2.5 text-sm font-medium rounded-md transition-colors ${
+                        isActive(item.path, item.exact)
+                          ? 'bg-indigo-100 text-indigo-700' 
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <FontAwesomeIcon icon={item.icon} className="mr-3 h-4 w-4" />
+                      {item.text}
+                    </Link>
+                  )}
+                </div>
+              ))}
+            </div>
+          </nav>
+        </aside>
+        
+        {/* Overlay for mobile */}
+        {sidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+        
+        {/* Main content */}
+        <main className="flex-1 p-4 lg:p-8 overflow-y-auto">
+          <Outlet />
+        </main>
       </div>
     </div>
   );
 };
 
-export default AdminLogin;
+export default AdminLayout;

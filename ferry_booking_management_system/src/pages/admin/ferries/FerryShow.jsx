@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import api from '../../../services/api';
+import axios from 'axios';
 
 const FerryShow = () => {
   const { id } = useParams();
   const [ferry, setFerry] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchFerry();
@@ -14,15 +13,26 @@ const FerryShow = () => {
 
   const fetchFerry = async () => {
     try {
-      const response = await api.get(`/admin-panel/ferries/${id}`);
+      const response = await axios.get(`/admin-panel/ferries/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
       setFerry(response.data);
-      setLoading(false);
     } catch (error) {
-      console.error('Error fetching ferry details:', error);
-      setError('Gagal memuat data kapal');
+      console.error('Error fetching ferry:', error);
+    } finally {
       setLoading(false);
     }
   };
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!ferry) {
+    return <div>Ferry not found</div>;
+  }
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -30,60 +40,28 @@ const FerryShow = () => {
     return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
-  if (loading) {
-    return (
-      <div className="container px-4 py-6 mx-auto">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-center">
-            <svg className="animate-spin h-10 w-10 text-blue-600 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <p className="text-gray-700">Memuat detail kapal...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="container px-4 py-6 mx-auto">
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded shadow-md">
-          <p className="font-bold">Error</p>
-          <p>{error}</p>
-        </div>
-        <Link
-          to="/admin/ferries"
-          className="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-all shadow-md"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Kembali ke Daftar Kapal
-        </Link>
-      </div>
-    );
-  }
+  const dayNames = {
+    1: 'Senin',
+    2: 'Selasa',
+    3: 'Rabu',
+    4: 'Kamis',
+    5: 'Jumat',
+    6: 'Sabtu',
+    7: 'Minggu'
+  };
 
   return (
     <div className="container px-4 py-6 mx-auto">
       <div className="flex flex-col md:flex-row items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Detail Kapal</h1>
         <div className="mt-3 md:mt-0 flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-3">
-          <Link
-            to={`/admin/ferries/${ferry.id}/edit`}
-            className="flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-md"
-          >
+          <Link to={`/admin/ferries/${ferry.id}/edit`} className="flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-md">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
             Edit
           </Link>
-          <Link
-            to="/admin/ferries"
-            className="flex items-center justify-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-all shadow-md"
-          >
+          <Link to="/admin/ferries" className="flex items-center justify-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-all shadow-md">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
@@ -100,7 +78,7 @@ const FerryShow = () => {
           </div>
           <div className="p-6 text-center">
             {ferry.image ? (
-              <img src={ferry.image} alt={ferry.name} className="max-h-64 mx-auto rounded-lg shadow" />
+              <img src={`/${ferry.image}`} alt={ferry.name} className="max-h-64 mx-auto rounded-lg shadow" />
             ) : (
               <div className="flex flex-col items-center justify-center py-12 bg-gray-50 rounded-lg">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -131,13 +109,15 @@ const FerryShow = () => {
                 <div className="col-span-1">
                   <dt className="text-sm font-medium text-gray-500">Status</dt>
                   <dd className="mt-1">
-                    {ferry.status === 'ACTIVE' ? (
+                    {ferry.status === 'ACTIVE' && (
                       <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Aktif</span>
-                    ) : ferry.status === 'MAINTENANCE' ? (
+                    )}
+                    {ferry.status === 'MAINTENANCE' && (
                       <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">Perawatan</span>
-                    ) : ferry.status === 'INACTIVE' ? (
+                    )}
+                    {ferry.status === 'INACTIVE' && (
                       <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">Tidak Aktif</span>
-                    ) : null}
+                    )}
                   </dd>
                 </div>
                 <div className="col-span-1">
@@ -255,7 +235,7 @@ const FerryShow = () => {
           <h2 className="text-lg font-semibold text-blue-600">Jadwal Aktif</h2>
         </div>
         <div className="p-6">
-          {ferry.schedules && ferry.schedules.length === 0 ? (
+          {!ferry.schedules || ferry.schedules.length === 0 ? (
             <div className="text-center py-8">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -275,19 +255,18 @@ const FerryShow = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {ferry.schedules && ferry.schedules.map((schedule) => (
+                  {ferry.schedules.map((schedule) => (
                     <tr key={schedule.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{schedule.route.origin} - {schedule.route.destination}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {schedule.route.origin} - {schedule.route.destination}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{schedule.departure_time}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{schedule.arrival_time}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {schedule.days_formatted}
+                        {schedule.days.split(',').map(day => dayNames[parseInt(day)]).join(', ')}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <Link
-                          to={`/admin/schedules/${schedule.id}`}
-                          className="inline-flex items-center px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-md shadow-sm transition-colors"
-                        >
+                        <Link to={`/admin/schedules/${schedule.id}`} className="inline-flex items-center px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-md shadow-sm transition-colors">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />

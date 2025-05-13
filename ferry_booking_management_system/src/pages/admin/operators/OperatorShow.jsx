@@ -1,116 +1,82 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import api from '../../../services/api';
-import Swal from 'sweetalert2';
+import axios from 'axios';
 
 const OperatorShow = () => {
   const { id } = useParams();
-
   const [operator, setOperator] = useState(null);
   const [routes, setRoutes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch operator details
-        const operatorResponse = await api.get(`/admin-panel/operators/${id}`);
-        setOperator(operatorResponse.data);
-
-        // Fetch routes to display assigned routes
-        const routesResponse = await api.get('/admin-panel/routes');
-        setRoutes(routesResponse.data || []);
-
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        setError('Gagal memuat data operator');
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+    fetchOperator();
+    fetchRoutes();
   }, [id]);
 
-  // Mengubah format tanggal
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const fetchOperator = async () => {
+    try {
+      const response = await axios.get(`/admin-panel/operators/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      setOperator(response.data);
+    } catch (error) {
+      console.error('Error fetching operator:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchRoutes = async () => {
+    try {
+      const response = await axios.get('/admin-panel/routes', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      setRoutes(response.data);
+    } catch (error) {
+      console.error('Error fetching routes:', error);
+    }
   };
 
   if (loading) {
-    return (
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 flex justify-center items-center">
-        <div className="text-center">
-          <svg className="animate-spin h-12 w-12 text-blue-600 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          <p className="text-lg text-gray-700">Memuat data operator...</p>
-        </div>
-      </div>
-    );
+    return <div>Loading...</div>;
   }
 
-  if (error) {
-    return (
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded shadow-md">
-          <p className="font-bold">Error</p>
-          <p>{error}</p>
-        </div>
-        <Link
-          to="/admin/operators"
-          className="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-all shadow-md"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Kembali ke Daftar Operator
-        </Link>
-      </div>
-    );
+  if (!operator) {
+    return <div>Operator not found</div>;
   }
 
-  const getAssignedRoutes = () => {
-    if (!operator || !operator.assigned_routes || !routes.length) {
-      return [];
-    }
-
-    return routes.filter(route => operator.assigned_routes.includes(route.id));
-  };
-
-  const assignedRoutes = getAssignedRoutes();
+  const assignedRoutes = routes.filter(route =>
+    operator.assigned_routes && operator.assigned_routes.includes(route.id)
+  );
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header dengan gradient background */}
+      {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl shadow-lg mb-8 p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between">
           <div className="flex items-center space-x-4">
             <div className="p-3 bg-white bg-opacity-30 rounded-lg">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">Detail Operator</h1>
-              <p className="text-blue-100 mt-1">ID: {operator?.id} | Terdaftar: {formatDate(operator?.created_at)}</p>
+              <p className="text-blue-100 mt-1">ID: {operator.id} | Terdaftar: {new Date(operator.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
             </div>
           </div>
           <div className="mt-4 md:mt-0 flex space-x-3">
-            <Link to={`/admin/operators/${id}/edit`}
-              className="inline-flex items-center px-4 py-2 bg-white text-blue-700 text-sm font-medium rounded-lg shadow-sm hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-200 transition-colors duration-150">
+            <Link to={`/admin/operators/${operator.id}/edit`} className="inline-flex items-center px-4 py-2 bg-white text-blue-700 text-sm font-medium rounded-lg shadow-sm hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-200 transition-colors duration-150">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
               Edit
             </Link>
-            <Link to="/admin/operators"
-              className="inline-flex items-center px-4 py-2 bg-blue-800 bg-opacity-50 text-white text-sm font-medium rounded-lg shadow-sm hover:bg-opacity-70 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150">
+            <Link to="/admin/operators" className="inline-flex items-center px-4 py-2 bg-blue-800 bg-opacity-50 text-white text-sm font-medium rounded-lg shadow-sm hover:bg-opacity-70 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
@@ -134,48 +100,48 @@ const OperatorShow = () => {
             <div className="divide-y divide-gray-100">
               <div className="flex flex-col md:flex-row">
                 <div className="md:w-1/3 px-6 py-4 bg-gray-50 font-medium text-sm text-gray-600">Nama Perusahaan</div>
-                <div className="md:w-2/3 px-6 py-4 text-gray-800">{operator?.company_name}</div>
+                <div className="md:w-2/3 px-6 py-4 text-gray-800">{operator.company_name}</div>
               </div>
 
               <div className="flex flex-col md:flex-row">
                 <div className="md:w-1/3 px-6 py-4 bg-gray-50 font-medium text-sm text-gray-600">Email</div>
                 <div className="md:w-2/3 px-6 py-4 text-gray-800">
-                  <a href={`mailto:${operator?.email}`} className="text-blue-600 hover:underline">{operator?.email}</a>
+                  <a href={`mailto:${operator.email}`} className="text-blue-600 hover:underline">{operator.email}</a>
                 </div>
               </div>
 
               <div className="flex flex-col md:flex-row">
                 <div className="md:w-1/3 px-6 py-4 bg-gray-50 font-medium text-sm text-gray-600">Nomor Telepon</div>
                 <div className="md:w-2/3 px-6 py-4 text-gray-800">
-                  <a href={`tel:${operator?.phone_number}`} className="text-blue-600 hover:underline">{operator?.phone_number}</a>
+                  <a href={`tel:${operator.phone_number}`} className="text-blue-600 hover:underline">{operator.phone_number}</a>
                 </div>
               </div>
 
               <div className="flex flex-col md:flex-row">
                 <div className="md:w-1/3 px-6 py-4 bg-gray-50 font-medium text-sm text-gray-600">Nomor Lisensi</div>
-                <div className="md:w-2/3 px-6 py-4 text-gray-800">{operator?.license_number}</div>
+                <div className="md:w-2/3 px-6 py-4 text-gray-800">{operator.license_number}</div>
               </div>
 
               <div className="flex flex-col md:flex-row">
                 <div className="md:w-1/3 px-6 py-4 bg-gray-50 font-medium text-sm text-gray-600">Jumlah Armada</div>
                 <div className="md:w-2/3 px-6 py-4 text-gray-800">
                   <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                    {operator?.fleet_size} Unit
+                    {operator.fleet_size} Unit
                   </span>
                 </div>
               </div>
 
               <div className="flex flex-col md:flex-row">
                 <div className="md:w-1/3 px-6 py-4 bg-gray-50 font-medium text-sm text-gray-600">Alamat Perusahaan</div>
-                <div className="md:w-2/3 px-6 py-4 text-gray-800">{operator?.company_address}</div>
+                <div className="md:w-2/3 px-6 py-4 text-gray-800">{operator.company_address}</div>
               </div>
 
               <div className="flex flex-col md:flex-row">
                 <div className="md:w-1/3 px-6 py-4 bg-gray-50 font-medium text-sm text-gray-600">Login Terakhir</div>
                 <div className="md:w-2/3 px-6 py-4 text-gray-800">
-                  {operator?.last_login ? (
+                  {operator.last_login ? (
                     <span className="text-sm px-2 py-1 bg-green-100 text-green-800 rounded">
-                      {formatDate(operator.last_login)}
+                      {new Date(operator.last_login).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </span>
                   ) : (
                     <span className="text-sm px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
@@ -187,12 +153,12 @@ const OperatorShow = () => {
 
               <div className="flex flex-col md:flex-row">
                 <div className="md:w-1/3 px-6 py-4 bg-gray-50 font-medium text-sm text-gray-600">Tanggal Registrasi</div>
-                <div className="md:w-2/3 px-6 py-4 text-gray-800">{formatDate(operator?.created_at)}</div>
+                <div className="md:w-2/3 px-6 py-4 text-gray-800">{new Date(operator.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
               </div>
 
               <div className="flex flex-col md:flex-row">
                 <div className="md:w-1/3 px-6 py-4 bg-gray-50 font-medium text-sm text-gray-600">Terakhir Diperbarui</div>
-                <div className="md:w-2/3 px-6 py-4 text-gray-800">{formatDate(operator?.updated_at)}</div>
+                <div className="md:w-2/3 px-6 py-4 text-gray-800">{new Date(operator.updated_at).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
               </div>
             </div>
           </div>
@@ -211,7 +177,7 @@ const OperatorShow = () => {
             <div className="p-6">
               {assignedRoutes.length > 0 ? (
                 <div className="space-y-3">
-                  {assignedRoutes.map(route => (
+                  {assignedRoutes.map((route) => (
                     <div key={route.id} className="p-4 border border-gray-100 rounded-lg hover:bg-blue-50 transition-colors duration-150">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center">
@@ -239,9 +205,7 @@ const OperatorShow = () => {
                   </svg>
                   <p className="text-sm text-gray-500">Operator ini belum memiliki rute yang dikelola</p>
                 </div>
-              )}
-
-              <div className="mt-4 text-center">
+              )}<div className="mt-4 text-center">
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                   Total: {assignedRoutes.length} Rute
                 </span>
@@ -255,7 +219,7 @@ const OperatorShow = () => {
       <div className="mt-8 flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
         <button
           type="button"
-          onClick={() => Swal.fire('Info', 'Fitur ini akan datang segera!', 'info')}
+          onClick={() => alert('Fitur ini akan datang segera!')}
           className="bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center justify-center transition-colors duration-150"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -266,7 +230,7 @@ const OperatorShow = () => {
 
         <button
           type="button"
-          onClick={() => Swal.fire('Info', 'Fitur ini akan datang segera!', 'info')}
+          onClick={() => alert('Fitur ini akan datang segera!')}
           className="bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center justify-center transition-colors duration-150"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">

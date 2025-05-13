@@ -22,6 +22,7 @@ export const AuthProvider = ({ children }) => {
         const response = await api.get('/auth/profile');
         setUser(response.data.data);
       } catch (error) {
+        console.error('Authentication check failed:', error);
         localStorage.removeItem('token');
       }
     }

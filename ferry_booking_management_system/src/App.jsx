@@ -5,6 +5,8 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 // Public pages
 import Welcome from './pages/Welcome';
 import Login from './pages/auth/Login';
+import AdminLogin from './pages/admin/auth/Login';
+import OperatorLogin from './pages/operator/auth/Login';
 
 // Admin layouts
 import AdminLayout from './layouts/AdminLayout';
@@ -22,20 +24,20 @@ import AdminFerryEdit from './pages/admin/ferries/FerryEdit';
 import AdminFerryShow from './pages/admin/ferries/FerryShow';
 
 // Admin pages - Schedules
-// import AdminScheduleList from './pages/admin/schedules/ScheduleList';
+import AdminScheduleList from './pages/admin/schedules/SchedulesList';
 import AdminScheduleCreate from './pages/admin/schedules/ScheduleCreate';
 import AdminScheduleEdit from './pages/admin/schedules/ScheduleEdit';
 import AdminScheduleShow from './pages/admin/schedules/ScheduleShow';
 import AdminScheduleDates from './pages/admin/schedules/ScheduleDates';
 
 // Admin pages - Bookings
-// import AdminBookingList from './pages/admin/bookings/BookingList';
+import AdminBookingList from './pages/admin/bookings/BookingsList';
 import AdminBookingCreate from './pages/admin/bookings/BookingCreate';
 import AdminBookingReschedule from './pages/admin/bookings/BookingReschedule';
 import AdminBookingShow from './pages/admin/bookings/BookingShow';
 
 // Admin pages - Refunds
-// import AdminRefundList from './pages/admin/refunds/RefundList';
+import AdminRefundList from './pages/admin/refunds/RefundsList';
 import AdminRefundCreate from './pages/admin/refunds/RefundCreate';
 import AdminRefundShow from './pages/admin/refunds/RefundShow';
 
@@ -52,10 +54,9 @@ import AdminOperatorEdit from './pages/admin/operators/OperatorEdit';
 import AdminOperatorShow from './pages/admin/operators/OperatorShow';
 
 // Admin pages - Other
-// import AdminDashboard from './pages/admin/schedules/Dashboard';
+import AdminDashboard from './pages/admin/Dashboard';
 
 // Operator pages
-import OperatorLogin from './pages/operator/auth/Login';
 import OperatorDashboard from './pages/operator/Dashboard';
 
 // Operator pages - Bookings
@@ -69,9 +70,9 @@ import OperatorDailyReport from './pages/operator/reports/DailyReport';
 import OperatorMonthlyReport from './pages/operator/reports/MonthlyReport';
 
 // Operator pages - Schedules
-// import OperatorScheduleList from './pages/operator/schedules/ScheduleList';
+import OperatorScheduleList from './pages/operator/schedules/SchedulesList';
 import OperatorScheduleCreateDate from './pages/operator/schedules/ScheduleCreateDate';
-// import OperatorScheduleDates from './pages/operator/schedules/ScheduleDates';
+import OperatorScheduleDates from './pages/operator/schedules/ScheduleDatesList';
 import OperatorScheduleEditDate from './pages/operator/schedules/ScheduleEditDate';
 import OperatorScheduleShow from './pages/operator/schedules/ScheduleShow';
 
@@ -105,6 +106,8 @@ function App() {
         {/* Public routes */}
         <Route path="/" element={<Welcome />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/operator/login" element={<OperatorLogin />} />
 
         {/* Admin routes */}
         <Route
@@ -162,8 +165,6 @@ function App() {
         </Route>
 
         {/* Operator routes */}
-        <Route path="/operator/login" element={<OperatorLogin />} />
-        
         <Route
           path="/operator"
           element={

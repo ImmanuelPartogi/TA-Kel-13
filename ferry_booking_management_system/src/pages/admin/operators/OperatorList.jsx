@@ -1,111 +1,64 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../../../services/api';
-import Swal from 'sweetalert2';
+import axios from 'axios';
 
 const OperatorList = () => {
   const [operators, setOperators] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [pagination, setPagination] = useState({
-    current_page: 1,
-    last_page: 1,
-    total: 0
-  });
-  
-  // State untuk filter dan pencarian
-  const [searchValue, setSearchValue] = useState('');
+  const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [sortOption, setSortOption] = useState('id_asc');
-  const [showNoResults, setShowNoResults] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
+  const [deleteName, setDeleteName] = useState('');
+  const [noResults, setNoResults] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     fetchOperators();
   }, []);
 
-  const fetchOperators = async (page = 1) => {
+  useEffect(() => {
+    filterAndSortOperators();
+  }, [searchText, statusFilter, sortOption]);
+
+  const fetchOperators = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/admin-panel/operators', { 
-        params: { page } 
+      const response = await axios.get('/admin-panel/operators', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
       });
-      setOperators(response.data.data);
-      setPagination({
-        current_page: response.data.current_page,
-        last_page: response.data.last_page,
-        total: response.data.total
-      });
-      setLoading(false);
+      setOperators(response.data.data || response.data);
     } catch (error) {
       console.error('Error fetching operators:', error);
+      setErrorMessage('Gagal memuat data operator');
+    } finally {
       setLoading(false);
     }
   };
 
-  const handlePageChange = (page) => {
-    fetchOperators(page);
-  };
+  const filterAndSortOperators = () => {
+    let filtered = [...operators];
 
-  const handleDelete = (id, companyName) => {
-    Swal.fire({
-      title: 'Konfirmasi Hapus',
-      text: `Apakah Anda yakin ingin menghapus operator "${companyName}"?`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Ya, Hapus',
-      cancelButtonText: 'Batal'
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        try {
-          await api.delete(`/admin-panel/operators/${id}`);
-          Swal.fire(
-            'Berhasil Dihapus!',
-            `Operator ${companyName} telah dihapus.`,
-            'success'
-          );
-          fetchOperators(pagination.current_page);
-        } catch (error) {
-          console.error('Error deleting operator:', error);
-          Swal.fire(
-            'Error',
-            'Gagal menghapus operator.',
-            'error'
-          );
-        }
-      }
-    });
-  };
+    // Apply search filter
+    if (searchText) {
+      filtered = filtered.filter(operator => 
+        operator.company_name.toLowerCase().includes(searchText.toLowerCase()) ||
+        operator.email.toLowerCase().includes(searchText.toLowerCase()) ||
+        operator.phone_number.toLowerCase().includes(searchText.toLowerCase())
+      );
+    }
 
-  const handleSearch = (e) => {
-    setSearchValue(e.target.value);
-    filterOperators();
-  };
+    // Apply status filter
+    if (statusFilter) {
+      filtered = filtered.filter(operator => operator.status === statusFilter);
+    }
 
-  const handleStatusFilter = (e) => {
-    setStatusFilter(e.target.value);
-    filterOperators();
-  };
-
-  const handleSort = (e) => {
-    setSortOption(e.target.value);
-    filterOperators();
-  };
-
-  const filterOperators = () => {
-    const filteredOperators = operators.filter(operator => {
-      const matchesSearch = 
-        operator.company_name.toLowerCase().includes(searchValue.toLowerCase()) ||
-        operator.email.toLowerCase().includes(searchValue.toLowerCase()) ||
-        operator.phone_number.toLowerCase().includes(searchValue.toLowerCase());
-      
-      const matchesStatus = statusFilter === '' || operator.status === statusFilter;
-      
-      return matchesSearch && matchesStatus;
-    });
-
-    // Sort the filtered operators
-    const sortedOperators = [...filteredOperators].sort((a, b) => {
+    // Apply sorting
+    filtered.sort((a, b) => {
       switch(sortOption) {
         case 'id_asc':
           return a.id - b.id;
@@ -116,29 +69,62 @@ const OperatorList = () => {
         case 'company_desc':
           return b.company_name.localeCompare(a.company_name);
         case 'last_login_desc': {
-          const aTimestamp = a.last_login ? new Date(a.last_login).getTime() : 0;
-          const bTimestamp = b.last_login ? new Date(b.last_login).getTime() : 0;
-          return bTimestamp - aTimestamp;
+          const aLogin = a.last_login ? new Date(a.last_login).getTime() : 0;
+          const bLogin = b.last_login ? new Date(b.last_login).getTime() : 0;
+          return bLogin - aLogin;
         }
         default:
           return 0;
       }
     });
 
-    setShowNoResults(sortedOperators.length === 0);
-    return sortedOperators;
+    setOperators(filtered);
+    setNoResults(filtered.length === 0);
   };
 
-  const filteredAndSortedOperators = operators.length > 0 ? filterOperators() : [];
+  const confirmDelete = (id, name) => {
+    setDeleteId(id);
+    setDeleteName(name);
+    setShowDeleteModal(true);
+  };
+
+  const handleDelete = async () => {
+    try {
+      await axios.delete(`/admin-panel/operators/${deleteId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      setSuccessMessage('Operator berhasil dihapus');
+      fetchOperators();
+    } catch (error) {
+      console.error('Error deleting operator:', error);
+      setErrorMessage('Gagal menghapus operator');
+    } finally {
+      setShowDeleteModal(false);
+    }
+  };
+
+  // Auto-dismiss alerts
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(''), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
+
+  useEffect(() => {
+    if (errorMessage) {
+      const timer = setTimeout(() => setErrorMessage(''), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [errorMessage]);
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <h1 className="text-2xl font-semibold text-gray-800 mb-2 md:mb-0">Manajemen Operator</h1>
-        <Link 
-          to="/admin/operators/create" 
-          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-        >
+        <Link to="/admin/operators/create" className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
           </svg>
@@ -146,7 +132,50 @@ const OperatorList = () => {
         </Link>
       </div>
 
-      {/* Filter dan Pencarian */}
+      {successMessage && (
+        <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded-md shadow-sm" role="alert">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm">{successMessage}</p>
+            </div>
+            <div className="ml-auto pl-3">
+              <button type="button" onClick={() => setSuccessMessage('')} className="inline-flex bg-green-100 text-green-500 rounded-md p-1.5">
+                <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-md shadow-sm" role="alert">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm">{errorMessage}</p>
+            </div>
+            <div className="ml-auto pl-3">
+              <button type="button" onClick={() => setErrorMessage('')} className="inline-flex bg-red-100 text-red-500 rounded-md p-1.5">
+                <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
         <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-medium text-blue-600">Filter dan Pencarian</h2>
@@ -160,8 +189,8 @@ const OperatorList = () => {
                 id="searchInput" 
                 placeholder="Cari nama perusahaan, email, atau telepon" 
                 className="w-full px-4 py-2 border rounded-md"
-                value={searchValue}
-                onChange={handleSearch}
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
               />
             </div>
             <div>
@@ -170,7 +199,7 @@ const OperatorList = () => {
                 id="statusFilter" 
                 className="w-full px-4 py-2 border rounded-md"
                 value={statusFilter}
-                onChange={handleStatusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
               >
                 <option value="">Semua Status</option>
                 <option value="active">Aktif</option>
@@ -183,7 +212,7 @@ const OperatorList = () => {
                 id="sortOptions" 
                 className="w-full px-4 py-2 border rounded-md"
                 value={sortOption}
-                onChange={handleSort}
+                onChange={(e) => setSortOption(e.target.value)}
               >
                 <option value="id_asc">ID (Asc)</option>
                 <option value="id_desc">ID (Desc)</option>
@@ -196,25 +225,6 @@ const OperatorList = () => {
         </div>
       </div>
 
-      {/* No Results Message */}
-      {showNoResults && (
-        <div className="mt-4 bg-yellow-50 border-l-4 border-yellow-400 p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-yellow-700">
-                Tidak ada operator yang sesuai dengan kriteria pencarian Anda.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Daftar Operator */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-medium text-blue-600">Daftar Operator</h2>
@@ -236,18 +246,14 @@ const OperatorList = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan="8" className="px-6 py-4 text-center text-gray-500">
-                    Memuat data...
-                  </td>
+                  <td colSpan="8" className="px-6 py-10 text-center text-gray-500">Loading...</td>
                 </tr>
-              ) : filteredAndSortedOperators.length === 0 ? (
+              ) : operators.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="px-6 py-4 text-center text-gray-500">
-                    Tidak ada data operator
-                  </td>
+                  <td colSpan="8" className="px-6 py-10 text-center text-gray-500">Tidak ada data operator</td>
                 </tr>
               ) : (
-                filteredAndSortedOperators.map((operator) => (
+                operators.map((operator) => (
                   <tr key={operator.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{operator.id}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{operator.company_name}</td>
@@ -256,34 +262,29 @@ const OperatorList = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{operator.license_number}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{operator.fleet_size}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {operator.last_login 
-                        ? new Date(operator.last_login).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-                        : 'Belum pernah login'
+                      {operator.last_login ? 
+                        new Date(operator.last_login).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 
+                        'Belum pernah login'
                       }
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                       <div className="flex space-x-2">
-                        <Link 
-                          to={`/admin/operators/${operator.id}`}
-                          className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                        >
+                        <Link to={`/admin/operators/${operator.id}`} className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                           </svg>
                           Detail
                         </Link>
-                        <Link 
-                          to={`/admin/operators/${operator.id}/edit`}
-                          className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                        >
+                        <Link to={`/admin/operators/${operator.id}/edit`} className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                           </svg>
                           Edit
                         </Link>
                         <button 
-                          onClick={() => handleDelete(operator.id, operator.company_name)}
+                          type="button" 
+                          onClick={() => confirmDelete(operator.id, operator.company_name)} 
                           className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -299,29 +300,51 @@ const OperatorList = () => {
             </tbody>
           </table>
         </div>
-        <div className="bg-white px-6 py-4 border-t border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-700">
-              Menampilkan {(pagination.current_page - 1) * (pagination.per_page || 10) + 1} - {Math.min(pagination.current_page * (pagination.per_page || 10), pagination.total)} dari {pagination.total} data
+      </div>
+
+      {/* No Results Message */}
+      {noResults && (
+        <div className="mt-4 bg-yellow-50 border-l-4 border-yellow-400 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
             </div>
-            <div className="flex space-x-1">
-              {Array.from({ length: pagination.last_page }, (_, i) => (
-                <button
-                  key={i}
-                  onClick={() => handlePageChange(i + 1)}
-                  className={`px-3 py-1 rounded-md ${
-                    pagination.current_page === i + 1
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  {i + 1}
-                </button>
-              ))}
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                Tidak ada operator yang sesuai dengan kriteria pencarian Anda.
+              </p>
             </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg max-w-md w-full mx-4">
+            <div className="p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Konfirmasi Hapus</h3>
+              <p className="text-gray-700 mb-4">Apakah Anda yakin ingin menghapus operator "{deleteName}"?</p>
+              <div className="flex justify-end space-x-3">
+                <button 
+                  onClick={() => setShowDeleteModal(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 focus:outline-none"
+                >
+                  Batal
+                </button>
+                <button 
+                  onClick={handleDelete}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none"
+                >
+                  Ya, Hapus
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

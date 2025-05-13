@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import api from '../../../services/api';
-import Swal from 'sweetalert2';
+import axios from 'axios';
 
 const FerryCreate = () => {
   const navigate = useNavigate();
-  const currentYear = new Date().getFullYear();
-  
-  const [ferry, setFerry] = useState({
+  const [errors, setErrors] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
     name: '',
     registration_number: '',
     year_built: '',
@@ -18,68 +17,45 @@ const FerryCreate = () => {
     capacity_vehicle_car: 0,
     capacity_vehicle_bus: 0,
     capacity_vehicle_truck: 0,
-    description: ''
+    description: '',
+    image: null
   });
-  
-  const [image, setImage] = useState(null);
-  const [errors, setErrors] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFerry(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleImageChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setImage(e.target.files[0]);
+    const { name, value, type, files } = e.target;
+    if (type === 'file') {
+      setFormData({ ...formData, [name]: files[0] });
+    } else {
+      setFormData({ ...formData, [name]: value });
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    
-    const formData = new FormData();
-    
-    // Append ferry data to FormData
-    Object.keys(ferry).forEach(key => {
-      formData.append(key, ferry[key]);
+    setLoading(true);
+    setErrors([]);
+
+    const data = new FormData();
+    Object.keys(formData).forEach(key => {
+      if (formData[key] !== null) {
+        data.append(key, formData[key]);
+      }
     });
-    
-    // Append image if exists
-    if (image) {
-      formData.append('image', image);
-    }
-    
+
     try {
-      await api.post('/admin-panel/ferries', formData, {
+      await axios.post('/admin-panel/ferries', data, {
         headers: {
-          'Content-Type': 'multipart/form-data'
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
-      
-      Swal.fire({
-        icon: 'success',
-        title: 'Berhasil!',
-        text: 'Kapal baru berhasil ditambahkan.'
-      }).then(() => {
-        navigate('/admin/ferries');
-      });
+      navigate('/admin/ferries');
     } catch (error) {
-      console.error('Error adding ferry:', error);
-      
-      if (error.response && error.response.data && error.response.data.errors) {
-        setErrors(error.response.data.errors);
-      } else {
-        Swal.fire({
-          icon: 'error',
-          title: 'Error!',
-          text: 'Terjadi kesalahan saat menambahkan kapal baru.'
-        });
+      if (error.response?.data?.errors) {
+        setErrors(Object.values(error.response.data.errors).flat());
       }
-      
-      setIsSubmitting(false);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -95,11 +71,11 @@ const FerryCreate = () => {
         </Link>
       </div>
 
-      {Object.keys(errors).length > 0 && (
+      {errors.length > 0 && (
         <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded shadow-md" role="alert">
           <div className="font-bold">Terjadi kesalahan:</div>
           <ul className="list-disc ml-6">
-            {Object.values(errors).map((error, index) => (
+            {errors.map((error, index) => (
               <li key={index}>{error}</li>
             ))}
           </ul>
@@ -116,12 +92,14 @@ const FerryCreate = () => {
               {/* Kolom Kiri */}
               <div className="space-y-6">
                 <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Nama Kapal <span className="text-red-500">*</span></label>
-                  <input
-                    type="text"
-                    id="name"
-                    name="name"
-                    value={ferry.name}
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                    Nama Kapal <span className="text-red-500">*</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    id="name" 
+                    name="name" 
+                    value={formData.name}
                     onChange={handleChange}
                     required
                     className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -129,12 +107,14 @@ const FerryCreate = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="registration_number" className="block text-sm font-medium text-gray-700 mb-1">Nomor Registrasi <span className="text-red-500">*</span></label>
-                  <input
-                    type="text"
-                    id="registration_number"
-                    name="registration_number"
-                    value={ferry.registration_number}
+                  <label htmlFor="registration_number" className="block text-sm font-medium text-gray-700 mb-1">
+                    Nomor Registrasi <span className="text-red-500">*</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    id="registration_number" 
+                    name="registration_number" 
+                    value={formData.registration_number}
                     onChange={handleChange}
                     required
                     className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -142,37 +122,43 @@ const FerryCreate = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="year_built" className="block text-sm font-medium text-gray-700 mb-1">Tahun Pembuatan</label>
-                  <input
-                    type="number"
-                    id="year_built"
-                    name="year_built"
-                    value={ferry.year_built}
+                  <label htmlFor="year_built" className="block text-sm font-medium text-gray-700 mb-1">
+                    Tahun Pembuatan
+                  </label>
+                  <input 
+                    type="number" 
+                    id="year_built" 
+                    name="year_built" 
+                    value={formData.year_built}
                     onChange={handleChange}
-                    min="1900"
-                    max={currentYear}
+                    min="1900" 
+                    max={new Date().getFullYear()}
                     className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="last_maintenance_date" className="block text-sm font-medium text-gray-700 mb-1">Tanggal Perawatan Terakhir</label>
-                  <input
-                    type="date"
-                    id="last_maintenance_date"
-                    name="last_maintenance_date"
-                    value={ferry.last_maintenance_date}
+                  <label htmlFor="last_maintenance_date" className="block text-sm font-medium text-gray-700 mb-1">
+                    Tanggal Perawatan Terakhir
+                  </label>
+                  <input 
+                    type="date" 
+                    id="last_maintenance_date" 
+                    name="last_maintenance_date" 
+                    value={formData.last_maintenance_date}
                     onChange={handleChange}
                     className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">Status <span className="text-red-500">*</span></label>
-                  <select
-                    id="status"
-                    name="status"
-                    value={ferry.status}
+                  <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+                    Status <span className="text-red-500">*</span>
+                  </label>
+                  <select 
+                    id="status" 
+                    name="status" 
+                    value={formData.status}
                     onChange={handleChange}
                     required
                     className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -187,70 +173,80 @@ const FerryCreate = () => {
               {/* Kolom Kanan */}
               <div className="space-y-6">
                 <div>
-                  <label htmlFor="capacity_passenger" className="block text-sm font-medium text-gray-700 mb-1">Kapasitas Penumpang <span className="text-red-500">*</span></label>
-                  <input
-                    type="number"
-                    id="capacity_passenger"
-                    name="capacity_passenger"
-                    value={ferry.capacity_passenger}
+                  <label htmlFor="capacity_passenger" className="block text-sm font-medium text-gray-700 mb-1">
+                    Kapasitas Penumpang <span className="text-red-500">*</span>
+                  </label>
+                  <input 
+                    type="number" 
+                    id="capacity_passenger" 
+                    name="capacity_passenger" 
+                    value={formData.capacity_passenger}
                     onChange={handleChange}
-                    min="1"
+                    min="1" 
                     required
                     className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="capacity_vehicle_motorcycle" className="block text-sm font-medium text-gray-700 mb-1">Kapasitas Motor <span className="text-red-500">*</span></label>
-                  <input
-                    type="number"
-                    id="capacity_vehicle_motorcycle"
-                    name="capacity_vehicle_motorcycle"
-                    value={ferry.capacity_vehicle_motorcycle}
+                  <label htmlFor="capacity_vehicle_motorcycle" className="block text-sm font-medium text-gray-700 mb-1">
+                    Kapasitas Motor <span className="text-red-500">*</span>
+                  </label>
+                  <input 
+                    type="number" 
+                    id="capacity_vehicle_motorcycle" 
+                    name="capacity_vehicle_motorcycle" 
+                    value={formData.capacity_vehicle_motorcycle}
                     onChange={handleChange}
-                    min="0"
+                    min="0" 
                     required
                     className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="capacity_vehicle_car" className="block text-sm font-medium text-gray-700 mb-1">Kapasitas Mobil <span className="text-red-500">*</span></label>
-                  <input
-                    type="number"
-                    id="capacity_vehicle_car"
-                    name="capacity_vehicle_car"
-                    value={ferry.capacity_vehicle_car}
+                  <label htmlFor="capacity_vehicle_car" className="block text-sm font-medium text-gray-700 mb-1">
+                    Kapasitas Mobil <span className="text-red-500">*</span>
+                  </label>
+                  <input 
+                    type="number" 
+                    id="capacity_vehicle_car" 
+                    name="capacity_vehicle_car" 
+                    value={formData.capacity_vehicle_car}
                     onChange={handleChange}
-                    min="0"
+                    min="0" 
                     required
                     className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="capacity_vehicle_bus" className="block text-sm font-medium text-gray-700 mb-1">Kapasitas Bus <span className="text-red-500">*</span></label>
-                  <input
-                    type="number"
-                    id="capacity_vehicle_bus"
-                    name="capacity_vehicle_bus"
-                    value={ferry.capacity_vehicle_bus}
+                  <label htmlFor="capacity_vehicle_bus" className="block text-sm font-medium text-gray-700 mb-1">
+                    Kapasitas Bus <span className="text-red-500">*</span>
+                  </label>
+                  <input 
+                    type="number" 
+                    id="capacity_vehicle_bus" 
+                    name="capacity_vehicle_bus" 
+                    value={formData.capacity_vehicle_bus}
                     onChange={handleChange}
-                    min="0"
+                    min="0" 
                     required
                     className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="capacity_vehicle_truck" className="block text-sm font-medium text-gray-700 mb-1">Kapasitas Truk <span className="text-red-500">*</span></label>
-                  <input
-                    type="number"
-                    id="capacity_vehicle_truck"
-                    name="capacity_vehicle_truck"
-                    value={ferry.capacity_vehicle_truck}
+                  <label htmlFor="capacity_vehicle_truck" className="block text-sm font-medium text-gray-700 mb-1">
+                    Kapasitas Truk <span className="text-red-500">*</span>
+                  </label>
+                  <input 
+                    type="number" 
+                    id="capacity_vehicle_truck" 
+                    name="capacity_vehicle_truck" 
+                    value={formData.capacity_vehicle_truck}
                     onChange={handleChange}
-                    min="0"
+                    min="0" 
                     required
                     className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
@@ -260,12 +256,12 @@ const FerryCreate = () => {
 
             <div className="mt-6">
               <label htmlFor="image" className="block text-sm font-medium text-gray-700 mb-1">Foto Kapal</label>
-              <input
-                type="file"
-                id="image"
-                name="image"
+              <input 
+                type="file" 
+                id="image" 
+                name="image" 
+                onChange={handleChange}
                 accept="image/*"
-                onChange={handleImageChange}
                 className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100"
               />
               <p className="mt-1 text-xs text-gray-500">Unggah foto kapal (opsional). Ukuran maksimum 2MB. Format: JPG, PNG.</p>
@@ -273,25 +269,23 @@ const FerryCreate = () => {
 
             <div className="mt-6">
               <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
-              <textarea
-                id="description"
-                name="description"
+              <textarea 
+                id="description" 
+                name="description" 
                 rows="4"
-                value={ferry.description}
+                value={formData.description}
                 onChange={handleChange}
                 className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              ></textarea>
+              />
             </div>
 
             <div className="mt-8">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className={`inline-flex justify-center py-2 px-6 border border-transparent shadow-md text-base font-medium rounded-md text-white ${
-                  isSubmitting ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
-                } transition-colors duration-200`}
+              <button 
+                type="submit" 
+                disabled={loading}
+                className="inline-flex justify-center py-2 px-6 border border-transparent shadow-md text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 disabled:opacity-50"
               >
-                {isSubmitting ? 'Menyimpan...' : 'Simpan Kapal'}
+                {loading ? 'Menyimpan...' : 'Simpan Kapal'}
               </button>
             </div>
           </form>

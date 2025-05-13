@@ -27,6 +27,7 @@ import MonthlyReport from './pages/operator/reports/MonthlyReport';
 import ReportIndex from './pages/operator/reports/ReportIndex';
 
 // Admin Pages - Components might need to be created
+
 // Dummy imports for now - replace with actual components
 const AdminDashboard = () => <div>Admin Dashboard</div>;
 const AdminsList = () => <div>Admins List</div>;

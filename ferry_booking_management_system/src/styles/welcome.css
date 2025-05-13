@@ -1,0 +1,256 @@
+/* Base Styles */
+body {
+    font-family: 'Nunito', sans-serif;
+    overflow-x: hidden;
+  }
+  
+  /* Smooth Scrolling */
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 80px;
+  }
+  
+  /* Wave Animation */
+  .wave-animation {
+    animation: wave 8s ease-in-out infinite;
+  }
+  
+  @keyframes wave {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-15px);
+    }
+  }
+  
+  /* Boat Animation */
+  .boat-animation {
+    animation: boat 6s ease-in-out infinite;
+  }
+  
+  @keyframes boat {
+    0%, 100% {
+      transform: translateY(0) rotate(-2deg);
+    }
+    50% {
+      transform: translateY(-10px) rotate(2deg);
+    }
+  }
+  
+  /* Blob Animation */
+  .blob-animation {
+    animation: blob 10s ease-in-out infinite alternate;
+  }
+  
+  @keyframes blob {
+    0% {
+      transform: translateY(0) scale(1);
+    }
+    50% {
+      transform: translateY(-5px) scale(1.05);
+    }
+    100% {
+      transform: translateY(5px) scale(0.95);
+    }
+  }
+  
+  /* Rotating Blob Animation */
+  .rotating-blob {
+    animation: rotating 30s linear infinite;
+    transform-origin: center center;
+  }
+  
+  @keyframes rotating {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+  
+  /* Pulsing Blob Animation */
+  .pulsing-blob {
+    animation: pulsing 8s ease-in-out infinite;
+    transform-origin: center center;
+  }
+  
+  @keyframes pulsing {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 0.7;
+    }
+    50% {
+      transform: scale(1.05);
+      opacity: 0.9;
+    }
+  }
+  
+  /* Bounce Animation for QR */
+  .bounce-animation {
+    animation: bounce 2s ease-in-out infinite;
+  }
+  
+  @keyframes bounce {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+  
+  /* Fade-in Animation for Modal */
+  .modal-fade-in {
+    animation: fadeIn 0.3s ease-out forwards;
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* Phone frame animation */
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-5px);
+    }
+  }
+  
+  .phone-float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  /* Section blob helpers */
+  .section-blob {
+    position: absolute;
+    pointer-events: none;
+    z-index: 0;
+  }
+  
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #f1f5f9;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: #0ea5e9;
+    border-radius: 5px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: #0284c7;
+  }
+  
+  /* Touch optimization for mobile */
+  @media (max-width: 640px) {
+    .touch-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  
+    .section-blob {
+      transform: scale(0.7);
+      opacity: 0.5;
+    }
+  }
+  
+  /* Fix for mobile hover effects */
+  @media (hover: hover) {
+    .hover\:scale-105:hover {
+      transform: scale(1.05);
+    }
+  }
+  
+  /* Tailwind color customizations */
+  .text-primary-50 { color: #f0f9ff; }
+  .text-primary-100 { color: #e0f2fe; }
+  .text-primary-200 { color: #bae6fd; }
+  .text-primary-300 { color: #7dd3fc; }
+  .text-primary-400 { color: #38bdf8; }
+  .text-primary-500 { color: #0ea5e9; }
+  .text-primary-600 { color: #0284c7; }
+  .text-primary-700 { color: #0369a1; }
+  .text-primary-800 { color: #075985; }
+  .text-primary-900 { color: #0c4a6e; }
+  
+  .bg-primary-50 { background-color: #f0f9ff; }
+  .bg-primary-100 { background-color: #e0f2fe; }
+  .bg-primary-200 { background-color: #bae6fd; }
+  .bg-primary-300 { background-color: #7dd3fc; }
+  .bg-primary-400 { background-color: #38bdf8; }
+  .bg-primary-500 { background-color: #0ea5e9; }
+  .bg-primary-600 { background-color: #0284c7; }
+  .bg-primary-700 { background-color: #0369a1; }
+  .bg-primary-800 { background-color: #075985; }
+  .bg-primary-900 { background-color: #0c4a6e; }
+  
+  .border-primary-500 { border-color: #0ea5e9; }
+  .border-primary-600 { border-color: #0284c7; }
+  
+  .text-secondary-100 { color: #d1fae5; }
+  .bg-secondary-100 { background-color: #d1fae5; }
+  
+  /* Wave SVG Animation */
+  .waves {
+    position: relative;
+    width: 100%;
+    height: 15vh;
+    margin-bottom: -7px;
+    min-height: 100px;
+    max-height: 150px;
+  }
+  
+  .parallax > use {
+    animation: move-forever 25s cubic-bezier(.55,.5,.45,.5) infinite;
+  }
+  
+  .parallax > use:nth-child(1) {
+    animation-delay: -2s;
+    animation-duration: 7s;
+  }
+  
+  .parallax > use:nth-child(2) {
+    animation-delay: -3s;
+    animation-duration: 10s;
+  }
+  
+  .parallax > use:nth-child(3) {
+    animation-delay: -4s;
+    animation-duration: 13s;
+  }
+  
+  .parallax > use:nth-child(4) {
+    animation-delay: -5s;
+    animation-duration: 20s;
+  }
+  
+  @keyframes move-forever {
+    0% {
+      transform: translate3d(-90px,0,0);
+    }
+    100% {
+      transform: translate3d(85px,0,0);
+    }
+  }
+  
+  /* Responsive breakpoints */
+  @media (min-width: 480px) {
+    .xs\:flex-row { flex-direction: row; }
+    .xs\:space-x-4 > :not([hidden]) ~ :not([hidden]) { margin-left: 1rem; }
+    .xs\:space-y-0 > :not([hidden]) ~ :not([hidden]) { margin-top: 0; }
+  }

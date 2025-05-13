@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { api } from '../../../../services/api';
+import { api } from '../../../services/api';
 
 const RefundShow = () => {
   const { id } = useParams();

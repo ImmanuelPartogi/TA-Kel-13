@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { api } from '../../../../services/api';
+import { api } from '../../../services/api';
 import Chart from 'chart.js/auto';
 import $ from 'jquery';
 import 'datatables.net';

@@ -53,6 +53,7 @@ use App\Http\Controllers\AdminApi\UserController;
 | Import Controller - Operator Panel
 |--------------------------------------------------------------------------
 */
+use App\Http\Controllers\WelcomeController;
 use App\Http\Controllers\OperatorApi\DashboardController as OperatorDashboardController;
 use App\Http\Controllers\OperatorApi\ScheduleController as OperatorScheduleController;
 use App\Http\Controllers\OperatorApi\BookingController as OperatorBookingController;
@@ -67,6 +68,11 @@ use App\Http\Controllers\AuthApi\BackendLoginController;
 | Rute API yang dapat diakses tanpa autentikasi
 |
 */
+
+// Landing page routes
+Route::get('/', [WelcomeController::class, 'index'])->name('home');
+Route::get('/search', [WelcomeController::class, 'searchSchedule'])->name('search.schedule');
+Route::get('/booking/{route_id}', [WelcomeController::class, 'bookingForm'])->name('booking.form');
 
 // Authentication Routes
 Route::post('/auth/register', [AuthController::class, 'register']);

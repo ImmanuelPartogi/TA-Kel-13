@@ -36,17 +36,43 @@ const ReportIndex = () => {
 
   const fetchData = async () => {
     try {
-      const [routesRes, statsRes, popularRes] = await Promise.all([
-        api.get('/admin-panel/routes'),
-        api.get('/admin-panel/reports/stats'),
-        api.get('/admin-panel/reports/popular-routes')
-      ]);
-      
-      setRoutes(routesRes.data.data);
-      setStats(statsRes.data);
-      setPopularRoutes(popularRes.data);
+      // Fetch routes separately
+      const routesRes = await api.get('/admin-panel/routes');
+      const routesData = routesRes.data.data || routesRes.data;
+      setRoutes(Array.isArray(routesData) ? routesData : []);
+
+      // Fetch dashboard stats
+      try {
+        const dashboardRes = await api.get('/admin-panel/dashboard/stats');
+        if (dashboardRes.data) {
+          setStats(dashboardRes.data.stats || dashboardRes.data);
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard stats:', error);
+      }
+
+      // Fetch reports data (which includes stats and popular routes)
+      try {
+        const reportsRes = await api.get('/admin-panel/reports');
+        if (reportsRes.data && reportsRes.data.data) {
+          const reportData = reportsRes.data.data;
+          setStats(reportData.stats || stats);
+          setPopularRoutes(reportData.popularRoutes || []);
+        }
+      } catch (error) {
+        console.error('Error fetching reports:', error);
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
+      // Set default values on error
+      setStats({
+        bookings_this_month: 0,
+        revenue_this_month: 0,
+        bookings_this_week: 0,
+        bookings_today: 0
+      });
+      setPopularRoutes([]);
+      setRoutes([]);
     }
   };
 
@@ -352,7 +378,7 @@ const ReportIndex = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-semibold text-blue-600 uppercase">Booking Bulan Ini</p>
-                      <p className="mt-2 text-2xl font-bold text-gray-800">{stats.bookings_this_month}</p>
+                      <p className="mt-2 text-2xl font-bold text-gray-800">{stats.bookings_this_month || 0}</p>
                     </div>
                     <div className="rounded-full bg-blue-100 p-3">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -370,7 +396,7 @@ const ReportIndex = () => {
                     <div>
                       <p className="text-xs font-semibold text-green-600 uppercase">Pendapatan Bulan Ini</p>
                       <p className="mt-2 text-2xl font-bold text-gray-800">
-                        Rp {new Intl.NumberFormat('id-ID').format(stats.revenue_this_month)}
+                        Rp {new Intl.NumberFormat('id-ID').format(stats.revenue_this_month || 0)}
                       </p>
                     </div>
                     <div className="rounded-full bg-green-100 p-3">
@@ -388,7 +414,7 @@ const ReportIndex = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-semibold text-indigo-600 uppercase">Booking Minggu Ini</p>
-                      <p className="mt-2 text-2xl font-bold text-gray-800">{stats.bookings_this_week}</p>
+                      <p className="mt-2 text-2xl font-bold text-gray-800">{stats.bookings_this_week || 0}</p>
                     </div>
                     <div className="rounded-full bg-indigo-100 p-3">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -405,7 +431,7 @@ const ReportIndex = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-semibold text-yellow-600 uppercase">Booking Hari Ini</p>
-                      <p className="mt-2 text-2xl font-bold text-gray-800">{stats.bookings_today}</p>
+                      <p className="mt-2 text-2xl font-bold text-gray-800">{stats.bookings_today || 0}</p>
                     </div>
                     <div className="rounded-full bg-yellow-100 p-3">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -440,9 +466,9 @@ const ReportIndex = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {route.origin} - {route.destination}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{route.booking_count}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{route.booking_count || 0}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        Rp {new Intl.NumberFormat('id-ID').format(route.total_revenue)}
+                        Rp {new Intl.NumberFormat('id-ID').format(route.total_revenue || 0)}
                       </td>
                     </tr>
                   ))

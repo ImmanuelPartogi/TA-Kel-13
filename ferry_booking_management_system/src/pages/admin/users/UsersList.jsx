@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import { api } from '../../../services/api'; // Use configured API service
 
 const UserList = () => {
   const [users, setUsers] = useState([]);
@@ -24,35 +24,50 @@ const UserList = () => {
 
   useEffect(() => {
     fetchUsers();
-    fetchStats();
-  }, [filters, pagination.currentPage]);
+  }, [pagination.currentPage, filters]);
 
   const fetchUsers = async () => {
+    setLoading(true);
     try {
-      const params = new URLSearchParams({
+      const params = {
         page: pagination.currentPage,
         ...filters
-      });
-      const response = await axios.get(`/api/admin-panel/users?${params}`);
-      setUsers(response.data.data);
-      setPagination({
-        currentPage: response.data.current_page,
-        lastPage: response.data.last_page,
-        total: response.data.total
-      });
+      };
+      
+      const response = await api.get('/admin-panel/users', { params });
+      console.log('Users response:', response.data);
+      
+      // Handle response structure from Laravel
+      if (response.data.status === 'success' && response.data.data) {
+        const data = response.data.data;
+        
+        // Set users array from paginated data
+        setUsers(data.users.data || []);
+        
+        // Set pagination info
+        setPagination({
+          currentPage: data.users.current_page || 1,
+          lastPage: data.users.last_page || 1,
+          total: data.users.total || 0
+        });
+        
+        // Set stats
+        setStats({
+          totalUsers: data.stats.total_users || 0,
+          newUsersThisMonth: data.stats.new_users_this_month || 0,
+          activeUsers: data.stats.active_users || 0,
+          avgBookingsPerUser: data.stats.avg_bookings_per_user || 0
+        });
+      } else {
+        // Handle error case
+        setUsers([]);
+        console.error('API returned error status');
+      }
     } catch (error) {
       console.error('Error fetching users:', error);
+      setUsers([]); // Set empty array on error
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchStats = async () => {
-    try {
-      const response = await axios.get('/api/admin-panel/users/stats');
-      setStats(response.data);
-    } catch (error) {
-      console.error('Error fetching stats:', error);
     }
   };
 
@@ -67,7 +82,6 @@ const UserList = () => {
   const handleSearch = (e) => {
     e.preventDefault();
     setPagination(prev => ({ ...prev, currentPage: 1 }));
-    fetchUsers();
   };
 
   const handleReset = () => {
@@ -82,16 +96,24 @@ const UserList = () => {
   const handleDelete = async (userId) => {
     if (window.confirm('Apakah Anda yakin ingin menghapus pengguna ini?')) {
       try {
-        await axios.delete(`/api/admin-panel/users/${userId}`);
-        fetchUsers();
-        fetchStats();
+        const response = await api.delete(`/admin-panel/users/${userId}`);
+        
+        if (response.data.status === 'success') {
+          // Refresh data after successful delete
+          fetchUsers();
+          alert('Pengguna berhasil dihapus');
+        } else {
+          alert(response.data.message || 'Gagal menghapus pengguna');
+        }
       } catch (error) {
         console.error('Error deleting user:', error);
+        alert(error.response?.data?.message || 'Terjadi kesalahan saat menghapus pengguna');
       }
     }
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('id-ID', {
       day: 'numeric',
       month: 'short',
@@ -100,7 +122,14 @@ const UserList = () => {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Memuat data pengguna...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -126,6 +155,7 @@ const UserList = () => {
                   value={filters.name}
                   onChange={handleFilterChange}
                   className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Cari nama..."
                 />
               </div>
               <div>
@@ -137,6 +167,7 @@ const UserList = () => {
                   value={filters.email}
                   onChange={handleFilterChange}
                   className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Cari email..."
                 />
               </div>
               <div>
@@ -148,6 +179,7 @@ const UserList = () => {
                   value={filters.phone}
                   onChange={handleFilterChange}
                   className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Cari nomor telepon..."
                 />
               </div>
             </div>
@@ -212,8 +244,13 @@ const UserList = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {users.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="px-6 py-4 text-center text-sm text-gray-500">
-                      Tidak ada data pengguna
+                    <td colSpan="7" className="px-6 py-10 text-center text-sm text-gray-500">
+                      <div className="flex flex-col items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <p>Tidak ada data pengguna</p>
+                      </div>
                     </td>
                   </tr>
                 ) : (
@@ -275,30 +312,99 @@ const UserList = () => {
           </div>
 
           {/* Pagination */}
-          <div className="mt-6">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-700">
-                Showing {(pagination.currentPage - 1) * 10 + 1} to{' '}
-                {Math.min(pagination.currentPage * 10, pagination.total)} of {pagination.total} results
-              </p>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
-                  disabled={pagination.currentPage === 1}
-                  className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md disabled:opacity-50"
-                >
-                  Previous
-                </button>
-                <button
-                  onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
-                  disabled={pagination.currentPage === pagination.lastPage}
-                  className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md disabled:opacity-50"
-                >
-                  Next
-                </button>
+          {pagination.lastPage > 1 && (
+            <div className="mt-6">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-700">
+                  Menampilkan {(pagination.currentPage - 1) * 10 + 1} sampai{' '}
+                  {Math.min(pagination.currentPage * 10, pagination.total)} dari {pagination.total} hasil
+                </p>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
+                    disabled={pagination.currentPage === 1}
+                    className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
+                  >
+                    Previous
+                  </button>
+                  
+                  {/* Page numbers */}
+                  {pagination.lastPage <= 7 ? (
+                    [...Array(pagination.lastPage)].map((_, i) => (
+                      <button
+                        key={i + 1}
+                        onClick={() => setPagination(prev => ({ ...prev, currentPage: i + 1 }))}
+                        className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                          pagination.currentPage === i + 1
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {i + 1}
+                      </button>
+                    ))
+                  ) : (
+                    <>
+                      {/* Smart pagination */}
+                      <button
+                        onClick={() => setPagination(prev => ({ ...prev, currentPage: 1 }))}
+                        className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                          pagination.currentPage === 1
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        1
+                      </button>
+                      
+                      {pagination.currentPage > 3 && <span className="px-2">...</span>}
+                      
+                      {[...Array(3)].map((_, i) => {
+                        const page = pagination.currentPage - 1 + i;
+                        if (page > 1 && page < pagination.lastPage) {
+                          return (
+                            <button
+                              key={page}
+                              onClick={() => setPagination(prev => ({ ...prev, currentPage: page }))}
+                              className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                                pagination.currentPage === page
+                                  ? 'bg-blue-600 text-white'
+                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          );
+                        }
+                        return null;
+                      })}
+                      
+                      {pagination.currentPage < pagination.lastPage - 2 && <span className="px-2">...</span>}
+                      
+                      <button
+                        onClick={() => setPagination(prev => ({ ...prev, currentPage: pagination.lastPage }))}
+                        className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                          pagination.currentPage === pagination.lastPage
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {pagination.lastPage}
+                      </button>
+                    </>
+                  )}
+                  
+                  <button
+                    onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
+                    disabled={pagination.currentPage === pagination.lastPage}
+                    className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 

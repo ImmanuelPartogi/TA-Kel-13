@@ -9,6 +9,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use App\Models\Booking;
+use Illuminate\Support\Carbon;
+use App\Models\Payment;
 
 class OperatorController extends Controller
 {
@@ -19,14 +22,20 @@ class OperatorController extends Controller
         // Implementasi filter
         if ($request->has('search') && $request->search) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('company_name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone_number', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone_number', 'like', "%{$search}%");
             });
         }
 
-        $operators = $query->paginate($request->input('per_page', 10));
+        // Check if pagination is requested
+        if ($request->has('per_page')) {
+            $operators = $query->paginate($request->input('per_page', 10));
+        } else {
+            // Return all operators without pagination for backward compatibility
+            $operators = $query->get();
+        }
 
         return response()->json($operators);
     }
@@ -150,5 +159,24 @@ class OperatorController extends Controller
         $routes = Route::where('status', 'ACTIVE')->get();
 
         return response()->json($routes);
+    }
+
+    public function getStats()
+    {
+        $startOfMonth = Carbon::now()->startOfMonth();
+        $endOfMonth = Carbon::now()->endOfMonth();
+        $startOfWeek = Carbon::now()->startOfWeek();
+        $today = Carbon::today();
+
+        $stats = [
+            'bookings_this_month' => Booking::whereBetween('created_at', [$startOfMonth, $endOfMonth])->count(),
+            'revenue_this_month' => Payment::where('status', 'SUCCESS')
+                ->whereBetween('payment_date', [$startOfMonth, $endOfMonth])
+                ->sum('amount'),
+            'bookings_this_week' => Booking::whereBetween('created_at', [$startOfWeek, Carbon::now()])->count(),
+            'bookings_today' => Booking::whereDate('created_at', $today)->count(),
+        ];
+
+        return response()->json(['stats' => $stats]);
     }
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import { api } from '../../../services/api'; // Gunakan configured API service
 
 const FerryList = () => {
   const [ferries, setFerries] = useState([]);
@@ -29,17 +29,33 @@ const FerryList = () => {
         page: pagination.current_page
       };
       
-      const response = await axios.get('/admin-panel/ferries', {
-        params,
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      // Gunakan configured API service
+      const response = await api.get('/admin-panel/ferries', { params });
       
-      setFerries(response.data.data);
-      setPagination(response.data.meta || response.data);
+      console.log('Ferries response:', response.data);
+      
+      // Handle response structure dari Laravel
+      if (response.data.success) {
+        const paginatedData = response.data.data;
+        
+        // Set ferries data (array of ferries)
+        setFerries(paginatedData.data || []);
+        
+        // Set pagination info
+        setPagination({
+          current_page: paginatedData.current_page || 1,
+          last_page: paginatedData.last_page || 1,
+          per_page: paginatedData.per_page || 10,
+          total: paginatedData.total || 0
+        });
+      } else {
+        // Handle error case
+        setFerries([]);
+        console.error('API returned success: false');
+      }
     } catch (error) {
       console.error('Error fetching ferries:', error);
+      setFerries([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -68,20 +84,34 @@ const FerryList = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Apakah Anda yakin ingin menghapus kapal ini?')) {
       try {
-        await axios.delete(`/admin-panel/ferries/${id}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-        fetchFerries();
+        const response = await api.delete(`/admin-panel/ferries/${id}`);
+        
+        if (response.data.success) {
+          // Refresh list after successful delete
+          fetchFerries();
+          alert('Kapal berhasil dihapus');
+        } else {
+          alert(response.data.message || 'Gagal menghapus kapal');
+        }
       } catch (error) {
         console.error('Error deleting ferry:', error);
+        alert(error.response?.data?.message || 'Terjadi kesalahan saat menghapus kapal');
       }
     }
   };
 
   const handlePageChange = (page) => {
     setPagination({ ...pagination, current_page: page });
+  };
+
+  // Helper function untuk mendapatkan URL gambar
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+    // Jika path adalah URL lengkap, return as is
+    if (imagePath.startsWith('http')) return imagePath;
+    // Jika tidak, gabungkan dengan backend URL
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+    return `${backendUrl}/${imagePath}`;
   };
 
   return (
@@ -182,18 +212,38 @@ const FerryList = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan="8" className="px-6 py-10 text-center text-gray-500">Loading...</td>
+                  <td colSpan="8" className="px-6 py-10 text-center text-gray-500">
+                    <div className="flex justify-center items-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                      <span className="ml-2">Loading...</span>
+                    </div>
+                  </td>
                 </tr>
               ) : ferries.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="px-6 py-10 text-center text-gray-500">Tidak ada data kapal</td>
+                  <td colSpan="8" className="px-6 py-10 text-center text-gray-500">
+                    <div className="flex flex-col items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                      </svg>
+                      <p>Tidak ada data kapal</p>
+                    </div>
+                  </td>
                 </tr>
               ) : (
                 ferries.map((ferry) => (
                   <tr key={ferry.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       {ferry.image ? (
-                        <img src={`/${ferry.image}`} alt={ferry.name} className="h-10 w-10 rounded-full object-cover mx-auto" />
+                        <img 
+                          src={getImageUrl(ferry.image)} 
+                          alt={ferry.name} 
+                          className="h-10 w-10 rounded-full object-cover mx-auto" 
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = '/default-ferry-image.png'; // Fallback image
+                          }}
+                        />
                       ) : (
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-300 mx-auto" viewBox="0 0 20 20" fill="currentColor">
                           <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
@@ -266,23 +316,87 @@ const FerryList = () => {
               <button 
                 onClick={() => handlePageChange(pagination.current_page - 1)}
                 disabled={pagination.current_page === 1}
-                className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Previous
               </button>
-              {[...Array(pagination.last_page)].map((_, i) => (
-                <button
-                  key={i + 1}
-                  onClick={() => handlePageChange(i + 1)}
-                  className={`px-3 py-1 rounded ${pagination.current_page === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
-                >
-                  {i + 1}
-                </button>
-              ))}
+              
+              {/* Pagination numbers - simplified for better UX */}
+              {pagination.last_page <= 7 ? (
+                // Show all pages if 7 or less
+                [...Array(pagination.last_page)].map((_, i) => (
+                  <button
+                    key={i + 1}
+                    onClick={() => handlePageChange(i + 1)}
+                    className={`px-3 py-1 rounded transition-colors ${
+                      pagination.current_page === i + 1 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-gray-200 hover:bg-gray-300'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))
+              ) : (
+                // Show smart pagination for many pages
+                <>
+                  {/* Always show first page */}
+                  <button
+                    onClick={() => handlePageChange(1)}
+                    className={`px-3 py-1 rounded transition-colors ${
+                      pagination.current_page === 1 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-gray-200 hover:bg-gray-300'
+                    }`}
+                  >
+                    1
+                  </button>
+
+                  {/* Show dots if current page is far from start */}
+                  {pagination.current_page > 3 && <span className="px-2">...</span>}
+
+                  {/* Show pages around current page */}
+                  {[...Array(3)].map((_, i) => {
+                    const page = pagination.current_page - 1 + i;
+                    if (page > 1 && page < pagination.last_page) {
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => handlePageChange(page)}
+                          className={`px-3 py-1 rounded transition-colors ${
+                            pagination.current_page === page 
+                              ? 'bg-blue-600 text-white' 
+                              : 'bg-gray-200 hover:bg-gray-300'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    }
+                    return null;
+                  })}
+
+                  {/* Show dots if current page is far from end */}
+                  {pagination.current_page < pagination.last_page - 2 && <span className="px-2">...</span>}
+
+                  {/* Always show last page */}
+                  <button
+                    onClick={() => handlePageChange(pagination.last_page)}
+                    className={`px-3 py-1 rounded transition-colors ${
+                      pagination.current_page === pagination.last_page 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-gray-200 hover:bg-gray-300'
+                    }`}
+                  >
+                    {pagination.last_page}
+                  </button>
+                </>
+              )}
+              
               <button 
                 onClick={() => handlePageChange(pagination.current_page + 1)}
                 disabled={pagination.current_page === pagination.last_page}
-                className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Next
               </button>

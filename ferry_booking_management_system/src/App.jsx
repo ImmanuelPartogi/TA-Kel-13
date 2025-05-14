@@ -54,6 +54,11 @@ import AdminOperatorCreate from './pages/admin/operators/OperatorCreate';
 import AdminOperatorEdit from './pages/admin/operators/OperatorEdit';
 import AdminOperatorShow from './pages/admin/operators/OperatorShow';
 
+// Admin pages - Users
+import AdminUsersList from './pages/admin/users/UsersList';
+import AdminUsersEdit from './pages/admin/users/UserEdit';
+import AdminUsersShow from './pages/admin/users/UserShow';
+
 // Admin pages - Other
 import AdminDashboard from './pages/admin/Dashboard';
 
@@ -178,6 +183,11 @@ function App() {
           <Route path="operators/create" element={<AdminOperatorCreate />} />
           <Route path="operators/:id/edit" element={<AdminOperatorEdit />} />
           <Route path="operators/:id" element={<AdminOperatorShow />} />
+
+          {/* Users management */}
+          <Route path="users" element={<AdminUsersList />} />
+          <Route path="users/:id/edit" element={<AdminUsersEdit />} />
+          <Route path="users/:id" element={<AdminUsersShow />} />
         </Route>
 
         {/* Operator routes - Fixed to use OperatorLayout */}

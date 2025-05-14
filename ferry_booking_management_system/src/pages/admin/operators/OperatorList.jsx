@@ -31,21 +31,36 @@ const OperatorList = () => {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
-      setOperators(response.data.data || response.data);
+
+      // Handle response - could be paginated or direct array
+      let operatorData = [];
+
+      if (response.data) {
+        if (response.data.data) {
+          // Handle paginated response
+          operatorData = Array.isArray(response.data.data) ? response.data.data : [];
+        } else if (Array.isArray(response.data)) {
+          // Handle direct array response
+          operatorData = response.data;
+        }
+      }
+
+      setOperators(operatorData);
     } catch (error) {
       console.error('Error fetching operators:', error);
       setErrorMessage('Gagal memuat data operator');
+      setOperators([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
   };
-
+  
   const filterAndSortOperators = () => {
     let filtered = [...operators];
 
     // Apply search filter
     if (searchText) {
-      filtered = filtered.filter(operator => 
+      filtered = filtered.filter(operator =>
         operator.company_name.toLowerCase().includes(searchText.toLowerCase()) ||
         operator.email.toLowerCase().includes(searchText.toLowerCase()) ||
         operator.phone_number.toLowerCase().includes(searchText.toLowerCase())
@@ -59,7 +74,7 @@ const OperatorList = () => {
 
     // Apply sorting
     filtered.sort((a, b) => {
-      switch(sortOption) {
+      switch (sortOption) {
         case 'id_asc':
           return a.id - b.id;
         case 'id_desc':
@@ -184,10 +199,10 @@ const OperatorList = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label htmlFor="searchInput" className="block text-sm font-medium text-gray-700 mb-1">Cari</label>
-              <input 
-                type="text" 
-                id="searchInput" 
-                placeholder="Cari nama perusahaan, email, atau telepon" 
+              <input
+                type="text"
+                id="searchInput"
+                placeholder="Cari nama perusahaan, email, atau telepon"
                 className="w-full px-4 py-2 border rounded-md"
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
@@ -195,8 +210,8 @@ const OperatorList = () => {
             </div>
             <div>
               <label htmlFor="statusFilter" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-              <select 
-                id="statusFilter" 
+              <select
+                id="statusFilter"
                 className="w-full px-4 py-2 border rounded-md"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
@@ -208,8 +223,8 @@ const OperatorList = () => {
             </div>
             <div>
               <label htmlFor="sortOptions" className="block text-sm font-medium text-gray-700 mb-1">Urutkan</label>
-              <select 
-                id="sortOptions" 
+              <select
+                id="sortOptions"
                 className="w-full px-4 py-2 border rounded-md"
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value)}
@@ -262,8 +277,8 @@ const OperatorList = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{operator.license_number}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{operator.fleet_size}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {operator.last_login ? 
-                        new Date(operator.last_login).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 
+                      {operator.last_login ?
+                        new Date(operator.last_login).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) :
                         'Belum pernah login'
                       }
                     </td>
@@ -282,9 +297,9 @@ const OperatorList = () => {
                           </svg>
                           Edit
                         </Link>
-                        <button 
-                          type="button" 
-                          onClick={() => confirmDelete(operator.id, operator.company_name)} 
+                        <button
+                          type="button"
+                          onClick={() => confirmDelete(operator.id, operator.company_name)}
                           className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -328,13 +343,13 @@ const OperatorList = () => {
               <h3 className="text-lg font-medium text-gray-900 mb-4">Konfirmasi Hapus</h3>
               <p className="text-gray-700 mb-4">Apakah Anda yakin ingin menghapus operator "{deleteName}"?</p>
               <div className="flex justify-end space-x-3">
-                <button 
+                <button
                   onClick={() => setShowDeleteModal(false)}
                   className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 focus:outline-none"
                 >
                   Batal
                 </button>
-                <button 
+                <button
                   onClick={handleDelete}
                   className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none"
                 >

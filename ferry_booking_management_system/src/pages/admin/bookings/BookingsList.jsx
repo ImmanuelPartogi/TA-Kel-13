@@ -25,7 +25,6 @@ const BookingsList = () => {
 
   useEffect(() => {
     fetchBookings();
-    fetchRoutes();
   }, []);
 
   const fetchBookings = async (page = 1) => {
@@ -37,26 +36,40 @@ const BookingsList = () => {
       };
       
       const response = await api.get('/admin-panel/bookings', { params });
-      setBookings(response.data.data);
-      setPagination({
-        current_page: response.data.current_page,
-        last_page: response.data.last_page,
-        total: response.data.total
-      });
+      console.log('Bookings response:', response.data);
+      
+      // Handle response structure from Laravel
+      if (response.data.success) {
+        const data = response.data.data;
+        
+        // Set bookings array from paginated data
+        setBookings(data.bookings.data || []);
+        
+        // Set pagination info
+        setPagination({
+          current_page: data.bookings.current_page || 1,
+          last_page: data.bookings.last_page || 1,
+          total: data.bookings.total || 0
+        });
+        
+        // Set routes
+        setRoutes(data.routes || []);
+      } else {
+        // Handle error case
+        setBookings([]);
+        console.error('API returned success: false');
+      }
     } catch (error) {
       console.error('Error fetching bookings:', error);
+      setBookings([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchRoutes = async () => {
-    try {
-      const response = await api.get('/admin-panel/routes');
-      setRoutes(response.data.data);
-    } catch (error) {
-      console.error('Error fetching routes:', error);
-    }
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters({ ...filters, [name]: value });
   };
 
   const handleSearch = (e) => {
@@ -73,7 +86,8 @@ const BookingsList = () => {
       booking_date_from: '',
       booking_date_to: ''
     });
-    fetchBookings(1);
+    // Fetch bookings with reset filters
+    setTimeout(() => fetchBookings(1), 0);
   };
 
   const getStatusBadge = (status) => {
@@ -82,7 +96,8 @@ const BookingsList = () => {
       'CONFIRMED': 'bg-green-100 text-green-800',
       'CANCELLED': 'bg-red-100 text-red-800',
       'COMPLETED': 'bg-blue-100 text-blue-800',
-      'REFUNDED': 'bg-gray-100 text-gray-800'
+      'REFUNDED': 'bg-gray-100 text-gray-800',
+      'RESCHEDULED': 'bg-purple-100 text-purple-800'
     };
 
     const labels = {
@@ -90,14 +105,40 @@ const BookingsList = () => {
       'CONFIRMED': 'Confirmed',
       'CANCELLED': 'Cancelled',
       'COMPLETED': 'Completed',
-      'REFUNDED': 'Refunded'
+      'REFUNDED': 'Refunded',
+      'RESCHEDULED': 'Rescheduled'
     };
 
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badges[status]}`}>
-        {labels[status]}
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badges[status] || 'bg-gray-100 text-gray-800'}`}>
+        {labels[status] || status}
       </span>
     );
+  };
+
+  // Helper function to format currency
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0
+    }).format(amount);
+  };
+
+  // Helper function to format date
+  const formatDate = (dateString, includeTime = false) => {
+    const options = {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    };
+    
+    if (includeTime) {
+      options.hour = '2-digit';
+      options.minute = '2-digit';
+    }
+    
+    return new Date(dateString).toLocaleDateString('id-ID', options);
   };
 
   return (
@@ -124,9 +165,10 @@ const BookingsList = () => {
                 <input
                   type="text"
                   id="booking_code"
+                  name="booking_code"
                   value={filters.booking_code}
-                  onChange={(e) => setFilters({ ...filters, booking_code: e.target.value })}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                  onChange={handleFilterChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                 />
               </div>
 
@@ -137,9 +179,10 @@ const BookingsList = () => {
                 <input
                   type="text"
                   id="user_name"
+                  name="user_name"
                   value={filters.user_name}
-                  onChange={(e) => setFilters({ ...filters, user_name: e.target.value })}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                  onChange={handleFilterChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                 />
               </div>
 
@@ -149,9 +192,10 @@ const BookingsList = () => {
                 </label>
                 <select
                   id="route_id"
+                  name="route_id"
                   value={filters.route_id}
-                  onChange={(e) => setFilters({ ...filters, route_id: e.target.value })}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                  onChange={handleFilterChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                 >
                   <option value="">Semua Rute</option>
                   {routes.map(route => (
@@ -168,9 +212,10 @@ const BookingsList = () => {
                 </label>
                 <select
                   id="status"
+                  name="status"
                   value={filters.status}
-                  onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                  onChange={handleFilterChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                 >
                   <option value="">Semua Status</option>
                   <option value="PENDING">Pending</option>
@@ -178,6 +223,7 @@ const BookingsList = () => {
                   <option value="CANCELLED">Cancelled</option>
                   <option value="COMPLETED">Completed</option>
                   <option value="REFUNDED">Refunded</option>
+                  <option value="RESCHEDULED">Rescheduled</option>
                 </select>
               </div>
             </div>
@@ -190,9 +236,10 @@ const BookingsList = () => {
                 <input
                   type="date"
                   id="booking_date_from"
+                  name="booking_date_from"
                   value={filters.booking_date_from}
-                  onChange={(e) => setFilters({ ...filters, booking_date_from: e.target.value })}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                  onChange={handleFilterChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                 />
               </div>
 
@@ -203,23 +250,24 @@ const BookingsList = () => {
                 <input
                   type="date"
                   id="booking_date_to"
+                  name="booking_date_to"
                   value={filters.booking_date_to}
-                  onChange={(e) => setFilters({ ...filters, booking_date_to: e.target.value })}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                  onChange={handleFilterChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                 />
               </div>
 
               <div className="lg:col-span-2 flex items-end space-x-2">
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md shadow-sm"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md shadow-sm transition-colors"
                 >
                   <i className="fas fa-search mr-2"></i> Cari
                 </button>
                 <button
                   type="button"
                   onClick={handleReset}
-                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md shadow-sm"
+                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md shadow-sm transition-colors"
                 >
                   <i className="fas fa-sync-alt mr-2"></i> Reset
                 </button>
@@ -276,7 +324,8 @@ const BookingsList = () => {
                   <tr>
                     <td colSpan="10" className="px-6 py-10 text-center">
                       <div className="flex justify-center items-center">
-                        <i className="fas fa-spinner fa-spin text-gray-400 text-2xl"></i>
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        <span className="ml-2 text-gray-600">Loading...</span>
                       </div>
                     </td>
                   </tr>
@@ -288,50 +337,48 @@ const BookingsList = () => {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                         <p className="text-lg">Tidak ada data booking</p>
-                        <p className="text-sm text-gray-400 mt-1">Buat booking baru dengan mengklik tombol "Tambah Booking"</p>
+                        <p className="text-sm text-gray-400 mt-1">Coba sesuaikan filter pencarian Anda</p>
                       </div>
                     </td>
                   </tr>
                 ) : (
                   bookings.map(booking => (
-                    <tr key={booking.id} className="hover:bg-gray-50">
+                    <tr key={booking.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
                         {booking.booking_code}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
-                        {booking.user.name}
+                        {booking.user?.name || 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {booking.schedule.route.origin} - {booking.schedule.route.destination}
+                        {booking.schedule?.route ? 
+                          `${booking.schedule.route.origin} - ${booking.schedule.route.destination}` : 
+                          'N/A'
+                        }
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {new Date(booking.booking_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {booking.departure_date ? formatDate(booking.departure_date) : 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {booking.passenger_count}
+                        {booking.passenger_count || 0}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {booking.vehicle_count}
+                        {booking.vehicle_count || 0}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800">
-                        Rp {booking.total_amount.toLocaleString('id-ID')}
+                        {formatCurrency(booking.total_amount || 0)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(booking.status)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {new Date(booking.created_at).toLocaleDateString('id-ID', { 
-                          day: 'numeric', 
-                          month: 'short', 
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                        {booking.created_at ? formatDate(booking.created_at, true) : 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <button
                           onClick={() => navigate(`/admin/bookings/${booking.id}`)}
-                          className="text-blue-600 hover:text-blue-900 bg-blue-100 hover:bg-blue-200 p-2 rounded-lg"
+                          className="text-blue-600 hover:text-blue-900 bg-blue-100 hover:bg-blue-200 p-2 rounded-lg transition-colors"
+                          title="Lihat Detail"
                         >
                           <i className="fas fa-eye"></i>
                         </button>
@@ -344,35 +391,101 @@ const BookingsList = () => {
           </div>
 
           {/* Pagination */}
-          {pagination.last_page > 1 && (
+          {!loading && pagination.last_page > 1 && (
             <div className="mt-6 flex justify-center">
               <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
                 <button
                   onClick={() => fetchBookings(pagination.current_page - 1)}
                   disabled={pagination.current_page === 1}
-                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100"
+                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
                 >
                   <i className="fas fa-chevron-left"></i>
                 </button>
                 
-                {[...Array(pagination.last_page)].map((_, index) => (
-                  <button
-                    key={index + 1}
-                    onClick={() => fetchBookings(index + 1)}
-                    className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                      pagination.current_page === index + 1
-                        ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                        : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                    }`}
-                  >
-                    {index + 1}
-                  </button>
-                ))}
+                {/* Smart pagination */}
+                {pagination.last_page <= 7 ? (
+                  // Show all pages if 7 or less
+                  [...Array(pagination.last_page)].map((_, index) => (
+                    <button
+                      key={index + 1}
+                      onClick={() => fetchBookings(index + 1)}
+                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors ${
+                        pagination.current_page === index + 1
+                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                      }`}
+                    >
+                      {index + 1}
+                    </button>
+                  ))
+                ) : (
+                  // Smart pagination for many pages
+                  <>
+                    {/* Always show first page */}
+                    <button
+                      onClick={() => fetchBookings(1)}
+                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors ${
+                        pagination.current_page === 1
+                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                      }`}
+                    >
+                      1
+                    </button>
+
+                    {/* Show dots if needed */}
+                    {pagination.current_page > 3 && (
+                      <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                        ...
+                      </span>
+                    )}
+
+                    {/* Show pages around current page */}
+                    {[...Array(5)].map((_, i) => {
+                      const page = pagination.current_page - 2 + i;
+                      if (page > 1 && page < pagination.last_page) {
+                        return (
+                          <button
+                            key={page}
+                            onClick={() => fetchBookings(page)}
+                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors ${
+                              pagination.current_page === page
+                                ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        );
+                      }
+                      return null;
+                    })}
+
+                    {/* Show dots if needed */}
+                    {pagination.current_page < pagination.last_page - 2 && (
+                      <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                        ...
+                      </span>
+                    )}
+
+                    {/* Always show last page */}
+                    <button
+                      onClick={() => fetchBookings(pagination.last_page)}
+                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors ${
+                        pagination.current_page === pagination.last_page
+                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pagination.last_page}
+                    </button>
+                  </>
+                )}
                 
                 <button
                   onClick={() => fetchBookings(pagination.current_page + 1)}
                   disabled={pagination.current_page === pagination.last_page}
-                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100"
+                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
                 >
                   <i className="fas fa-chevron-right"></i>
                 </button>

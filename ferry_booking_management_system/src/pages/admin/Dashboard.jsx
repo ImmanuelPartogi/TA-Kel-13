@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import { api } from '../../services/api'; // Import existing API service
 import Chart from 'chart.js/auto';
 
 const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [dashboardData, setDashboardData] = useState({
     users_count: 0,
     ferries_count: 0,
@@ -31,6 +32,8 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
+    
+    // Cleanup function
     return () => {
       if (bookingChartRef.current) {
         bookingChartRef.current.destroy();
@@ -39,17 +42,120 @@ const AdminDashboard = () => {
   }, []);
 
   useEffect(() => {
-    if (!loading && chartRef.current) {
+    if (!loading && chartRef.current && dashboardData.weekly_booking_data.length > 0) {
       initializeChart();
     }
-  }, [loading, chartView]);
+  }, [loading, chartView, dashboardData.weekly_booking_data, dashboardData.monthly_booking_data]);
 
   const fetchDashboardData = async () => {
     try {
-      const response = await axios.get('/api/admin-panel/dashboard/stats');
-      setDashboardData(response.data);
+      setError(null);
+      // console.log('Fetching dashboard data...');
+      
+      // Fetch both endpoints with error handling
+      let statsResponse, summaryResponse;
+      
+      try {
+        statsResponse = await api.get('/admin-panel/dashboard/stats');
+        // console.log('Stats response:', statsResponse.data);
+      } catch (statsError) {
+        console.error('Stats fetch error:', statsError.response || statsError);
+        throw new Error(`Stats endpoint error: ${statsError.response?.status || statsError.message}`);
+      }
+      
+      try {
+        summaryResponse = await api.get('/admin-panel/dashboard/summary');
+        // console.log('Summary response:', summaryResponse.data);
+      } catch (summaryError) {
+        console.error('Summary fetch error:', summaryError.response || summaryError);
+        // Don't fail completely if summary fails, use stats data only
+        summaryResponse = { data: { success: true, data: {} } };
+      }
+
+      // Check response format
+      if (!statsResponse.data) {
+        throw new Error('Invalid stats response format');
+      }
+
+      // Handle different response formats (wrapped vs unwrapped)
+      let statsData, summaryData;
+      
+      // Check if data is wrapped with success flag
+      if (statsResponse.data.success !== undefined) {
+        if (!statsResponse.data.success) {
+          throw new Error('Stats API returned success: false');
+        }
+        statsData = statsResponse.data.data;
+      } else {
+        // Data might be directly in response.data
+        statsData = statsResponse.data;
+      }
+      
+      // Same for summary data
+      if (summaryResponse.data.success !== undefined) {
+        summaryData = summaryResponse.data.data || {};
+      } else {
+        summaryData = summaryResponse.data || {};
+      }
+
+      // console.log('Parsed stats data:', statsData);
+      // console.log('Parsed summary data:', summaryData);
+
+      // Map the data based on actual structure
+      const mappedData = {
+        // Direct mapping if flat structure
+        users_count: statsData.users_count || statsData.stats?.users_count || 0,
+        ferries_count: statsData.ferries_count || statsData.stats?.ferries_count || 0,
+        routes_count: statsData.routes_count || statsData.stats?.routes_count || 0,
+        active_schedules: statsData.active_schedules || statsData.stats?.active_schedules || 0,
+        monthly_bookings: statsData.monthly_bookings || statsData.stats?.monthly_bookings || 0,
+        monthly_income: statsData.monthly_income || statsData.stats?.monthly_income || 0,
+        bookingGrowth: statsData.bookingGrowth ?? statsData.booking_growth ?? statsData.stats?.booking_growth ?? 0,
+        incomeGrowth: statsData.incomeGrowth ?? statsData.income_growth ?? statsData.stats?.income_growth ?? 0,
+        
+        // Booking status
+        pending_payment_count: statsData.pending_payment_count || statsData.booking_status?.pending_payment || 0,
+        not_checked_in_count: statsData.not_checked_in_count || statsData.booking_status?.not_checked_in || 0,
+        checked_in_count: statsData.checked_in_count || statsData.booking_status?.checked_in || 0,
+        cancelled_count: statsData.cancelled_count || statsData.booking_status?.cancelled || 0,
+        
+        // Charts
+        weekly_booking_labels: statsData.weekly_booking_labels || statsData.charts?.weekly?.labels || ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'],
+        weekly_booking_data: statsData.weekly_booking_data || statsData.charts?.weekly?.data || [0, 0, 0, 0, 0, 0, 0],
+        
+        // From summary endpoint
+        latest_bookings: summaryData.latest_bookings || [],
+        monthly_booking_labels: summaryData.monthly_booking_labels || summaryData.charts?.monthly?.labels || [],
+        monthly_booking_data: summaryData.monthly_booking_data || summaryData.charts?.monthly?.data || [],
+        userGrowth: summaryData.userGrowth ?? summaryData.user_growth ?? 0
+      };
+
+      // console.log('Mapped data:', mappedData);
+      setDashboardData(mappedData);
+
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      
+      // Set more specific error message based on error type
+      let errorMessage = 'Gagal memuat data dashboard. ';
+      
+      if (error.response) {
+        // HTTP error response
+        errorMessage += `Error ${error.response.status}: ${error.response.statusText}`;
+        if (error.response.status === 401) {
+          errorMessage = 'Sesi Anda telah berakhir. Silakan login kembali.';
+        } else if (error.response.status === 404) {
+          errorMessage = 'API endpoint tidak ditemukan. Periksa konfigurasi server.';
+        }
+      } else if (error.request) {
+        // Network error
+        errorMessage += 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+      } else {
+        // Other errors
+        errorMessage += error.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -58,6 +164,7 @@ const AdminDashboard = () => {
   const initializeChart = () => {
     const ctx = chartRef.current.getContext('2d');
 
+    // Destroy existing chart if exists
     if (bookingChartRef.current) {
       bookingChartRef.current.destroy();
     }
@@ -137,21 +244,22 @@ const AdminDashboard = () => {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const date = new Date(dateString);
+    return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
   };
 
   const getCurrentDayDate = () => {
     const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
+                   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    
     const now = new Date();
     const dayName = days[now.getDay()];
     const day = now.getDate();
     const month = months[now.getMonth()];
     const year = now.getFullYear();
+    
     return `${dayName}, ${day} ${month} ${year}`;
   };
 
@@ -165,8 +273,37 @@ const AdminDashboard = () => {
     return statusMap[status] || 'bg-gray-100 text-gray-800';
   };
 
+  const handleRetry = () => {
+    setLoading(true);
+    fetchDashboardData();
+  };
+
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Memuat dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <i className="fas fa-exclamation-circle text-5xl text-red-500 mb-4"></i>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={handleRetry}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+          >
+            Coba Lagi
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -319,13 +456,21 @@ const AdminDashboard = () => {
             <div className="flex space-x-2">
               <button
                 onClick={() => setChartView('weekly')}
-                className={`px-3 py-1 text-xs font-medium rounded-md ${chartView === 'weekly' ? 'bg-indigo-50 text-indigo-600' : 'text-gray-500 hover:bg-gray-100'}`}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  chartView === 'weekly' 
+                    ? 'bg-indigo-50 text-indigo-600' 
+                    : 'text-gray-500 hover:bg-gray-100'
+                }`}
               >
                 Minggu Ini
               </button>
               <button
                 onClick={() => setChartView('monthly')}
-                className={`px-3 py-1 text-xs font-medium rounded-md ${chartView === 'monthly' ? 'bg-indigo-50 text-indigo-600' : 'text-gray-500 hover:bg-gray-100'}`}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  chartView === 'monthly' 
+                    ? 'bg-indigo-50 text-indigo-600' 
+                    : 'text-gray-500 hover:bg-gray-100'
+                }`}
               >
                 Bulan Ini
               </button>
@@ -425,7 +570,7 @@ const AdminDashboard = () => {
                 <tbody className="divide-y divide-gray-100">
                   {dashboardData.latest_bookings.length > 0 ? (
                     dashboardData.latest_bookings.map((booking) => (
-                      <tr key={booking.id} className="hover:bg-gray-50">
+                      <tr key={booking.id} className="hover:bg-gray-50 transition-colors">
                         <td className="py-3 px-4 text-sm font-medium text-indigo-600">
                           {booking.booking_code}
                         </td>
@@ -433,7 +578,7 @@ const AdminDashboard = () => {
                           {booking.user?.name || 'Pengguna'}
                         </td>
                         <td className="py-3 px-4 text-sm text-gray-500">
-                          {formatDate(booking.booking_date)}
+                          {formatDate(booking.created_at || booking.booking_date)}
                         </td>
                         <td className="py-3 px-4 text-sm font-medium text-gray-700">
                           Rp {formatCurrency(booking.total_amount)}

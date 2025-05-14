@@ -31,4 +31,21 @@ class OperatorMiddleware
 
         return $next($request);
     }
+
+    // Di OperatorController atau middleware
+private function getAssignedRoutes($operator)
+{
+    $assignedRoutes = $operator->assigned_routes ?? [];
+
+    // Jika null atau bukan array, return empty array
+    if (!is_array($assignedRoutes)) {
+        try {
+            $assignedRoutes = json_decode($assignedRoutes, true) ?? [];
+        } catch (\Exception $e) {
+            $assignedRoutes = [];
+        }
+    }
+
+    return $assignedRoutes;
+}
 }

@@ -61,7 +61,7 @@ class ScheduleController extends Controller
                     'schedules' => [],
                     'routes' => []
                 ]
-            ], 403);
+            ], 200);
         }
 
         $query = Schedule::with([

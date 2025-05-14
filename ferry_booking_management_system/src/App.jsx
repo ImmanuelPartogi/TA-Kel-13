@@ -8,8 +8,9 @@ import Login from './pages/auth/Login';
 import AdminLogin from './pages/admin/auth/Login';
 import OperatorLogin from './pages/operator/auth/Login';
 
-// Admin layouts
+// Layouts
 import AdminLayout from './layouts/AdminLayout';
+import OperatorLayout from './layouts/OperatorLayout';  // Import OperatorLayout
 
 // Admin pages - Routes
 import AdminRouteList from './pages/admin/routes/RouteList';
@@ -76,8 +77,7 @@ import OperatorScheduleDates from './pages/operator/schedules/ScheduleDatesList'
 import OperatorScheduleEditDate from './pages/operator/schedules/ScheduleEditDate';
 import OperatorScheduleShow from './pages/operator/schedules/ScheduleShow';
 
-// Protected Route Component
-// Protected Route Component yang lebih robust
+// Protected Route Component - Updated
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const { user, loading, isAuthenticated } = useAuth();
   const location = useLocation();
@@ -93,7 +93,11 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
 
   // Redirect ke login jika tidak authenticated
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    // Redirect ke login yang sesuai dengan role
+    const loginPath = location.pathname.startsWith('/operator') 
+      ? '/operator/login' 
+      : '/admin/login';
+    return <Navigate to={loginPath} state={{ from: location }} replace />;
   }
 
   // Cek role jika ada yang specified
@@ -176,12 +180,12 @@ function App() {
           <Route path="operators/:id" element={<AdminOperatorShow />} />
         </Route>
 
-        {/* Operator routes */}
+        {/* Operator routes - Fixed to use OperatorLayout */}
         <Route
           path="/operator"
           element={
             <ProtectedRoute allowedRoles={['operator']}>
-              <AdminLayout />
+              <OperatorLayout />
             </ProtectedRoute>
           }
         >

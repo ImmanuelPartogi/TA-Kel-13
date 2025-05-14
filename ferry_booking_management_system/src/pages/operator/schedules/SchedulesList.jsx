@@ -3,13 +3,13 @@ import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { operatorSchedulesService } from '../../../services/operatorSchedules.service';
 import { operatorRoutesService } from '../../../services/operatorRoutes.service';
+import process from 'process';
 
 const SchedulesList = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [schedules, setSchedules] = useState([]);
   const [routes, setRoutes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [hasNoRoutes, setHasNoRoutes] = useState(false);
   const [filters, setFilters] = useState({
     route_id: searchParams.get('route_id') || '',
     date: searchParams.get('date') || ''
@@ -23,22 +23,31 @@ const SchedulesList = () => {
   const fetchRoutes = async () => {
     try {
       const response = await operatorRoutesService.getRoutes({ status: 'active' });
-      console.log('Routes response:', response.data); // Debug log
-      
-      // Make sure routes is an array
-      if (Array.isArray(response.data)) {
-        setRoutes(response.data);
-      } else if (response.data && Array.isArray(response.data.data)) {
-        setRoutes(response.data.data);
-      } else if (response.data && response.data.routes && Array.isArray(response.data.routes)) {
-        setRoutes(response.data.routes);
-      } else {
-        console.warn('Routes data is not in expected format:', response.data);
-        setRoutes([]);
+
+      // Debug untuk lihat struktur response
+      console.log('Routes API Response:', response);
+
+      // Handle berbagai kemungkinan struktur response
+      let routesData = [];
+
+      if (response.data) {
+        if (Array.isArray(response.data)) {
+          routesData = response.data;
+        } else if (response.data.data) {
+          if (Array.isArray(response.data.data)) {
+            routesData = response.data.data;
+          } else if (response.data.data.routes) {
+            routesData = response.data.data.routes;
+          }
+        } else if (response.data.routes) {
+          routesData = response.data.routes;
+        }
       }
+
+      setRoutes(routesData);
     } catch (error) {
       console.error('Error fetching routes:', error);
-      setRoutes([]);
+      setRoutes([]); // Pastikan selalu array
     }
   };
 
@@ -47,31 +56,20 @@ const SchedulesList = () => {
     try {
       const params = Object.fromEntries(searchParams);
       const response = await operatorSchedulesService.getSchedules(params);
-      console.log('Schedules response:', response.data); // Debug log
-      
+
+      // Check the correct response structure
       if (response.data && response.data.data) {
-        if (Array.isArray(response.data.data.schedules)) {
+        if (response.data.data.schedules) {
           setSchedules(response.data.data.schedules);
-        } else if (Array.isArray(response.data.data)) {
-          setSchedules(response.data.data);
         } else {
-          console.warn('Schedules data is not in expected format:', response.data);
-          setSchedules([]);
+          setSchedules(response.data.data);
         }
-        setHasNoRoutes(false);
       } else {
         setSchedules([]);
       }
     } catch (error) {
       console.error('Error fetching schedules:', error);
-      
-      // Check if it's a 403 error (no routes assigned)
-      if (error.response?.status === 403) {
-        setHasNoRoutes(true);
-        setSchedules([]);
-      } else {
-        setSchedules([]);
-      }
+      setSchedules([]);
     } finally {
       setLoading(false);
     }
@@ -85,11 +83,11 @@ const SchedulesList = () => {
   const handleFilter = (e) => {
     e.preventDefault();
     const queryParams = new URLSearchParams();
-    
+
     Object.entries(filters).forEach(([key, value]) => {
       if (value) queryParams.append(key, value);
     });
-    
+
     setSearchParams(queryParams);
   };
 
@@ -103,7 +101,7 @@ const SchedulesList = () => {
 
   const getDayNames = (daysString) => {
     if (!daysString) return [];
-    
+
     const dayNames = {
       '0': 'Minggu',
       '1': 'Senin',
@@ -122,27 +120,6 @@ const SchedulesList = () => {
     const mins = minutes % 60;
     return `${hours} jam${mins > 0 ? ` ${mins} menit` : ''}`;
   };
-
-  // Show message if no routes assigned
-  if (!loading && hasNoRoutes) {
-    return (
-      <div className="container mx-auto px-4 py-6">
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="p-6">
-            <div className="text-center py-12">
-              <div className="mb-4">
-                <svg className="mx-auto h-16 w-16 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Anda Belum Memiliki Rute</h3>
-              <p className="text-gray-600 mb-4">Anda belum ditugaskan ke rute manapun. Silakan hubungi administrator untuk mendapatkan akses ke rute.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="container mx-auto px-4 py-6">
@@ -168,7 +145,7 @@ const SchedulesList = () => {
                   onChange={handleFilterChange}
                 >
                   <option value="">Semua Rute</option>
-                  {Array.isArray(routes) && routes.map((route) => (
+                  {routes.map((route) => (
                     <option key={route.id} value={route.id}>
                       {route.origin} - {route.destination} ({route.route_code || ''})
                     </option>
@@ -214,14 +191,6 @@ const SchedulesList = () => {
               </div>
             </form>
           </div>
-
-          {/* Debug info for development */}
-          {import.meta.env.MODE === 'development' && (
-            <div className="mb-4 p-4 bg-yellow-100 rounded">
-              <p>Token: {localStorage.getItem('token') ? 'Present' : 'Missing'}</p>
-              <p>Schedules count: {schedules.length}</p>
-            </div>
-          )}
 
           {/* Schedules Grid */}
           {loading ? (

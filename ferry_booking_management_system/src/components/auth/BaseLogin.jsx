@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Shield, User, Mail, Lock, Eye, EyeOff, LogIn, HeadphonesIcon, ShieldCheck } from 'lucide-react';
-import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
-const BaseLogin = ({ 
-  title = "Login", 
+const BaseLogin = ({
+  title = "Login",
   subtitle = "Masukkan kredensial untuk akses dashboard",
   role = "admin",
-  endpoint = "/admin-panel/login",
   redirectPath = "/admin/dashboard",
   alternateLoginLink = null,
   primaryColor = "indigo" // or "cyan" for operator
@@ -19,7 +17,7 @@ const BaseLogin = ({
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  
+
   const navigate = useNavigate();
   const { login } = useAuth();
 
@@ -29,25 +27,24 @@ const BaseLogin = ({
     setLoading(true);
 
     try {
-      const response = await api.post(endpoint, { email, password });
-      
-      if (response.data.status === 'success') {
-        const { token, user } = response.data;
-        
-        // Login menggunakan AuthContext
-        login(user, token);
-        
+      // Gunakan AuthContext login method dengan role yang sesuai
+      const result = await login({ email, password }, role);
+
+      if (result.success) {
         if (remember) {
           localStorage.setItem('remember', 'true');
         }
-        
+
         // Navigate setelah state ter-update
         setTimeout(() => {
           navigate(redirectPath, { replace: true });
         }, 100);
+      } else {
+        setError(result.error || 'Email atau password salah');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Email atau password salah');
+      console.error('Submit error:', err);
+      setError(err.message || 'Terjadi kesalahan saat login');
     } finally {
       setLoading(false);
     }
@@ -123,9 +120,6 @@ const BaseLogin = ({
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-2">
                   <label htmlFor="password" className="block text-gray-700 text-sm font-medium">Password</label>
-                  <a href="#" className={`text-xs ${colors.link} transition-colors`}>
-                    Lupa Password?
-                  </a>
                 </div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -186,11 +180,10 @@ const BaseLogin = ({
                 <button
                   type="submit"
                   disabled={loading}
-                  className={`w-full flex items-center justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-base font-medium text-white transition-all duration-200 ${
-                    loading
+                  className={`w-full cursor-pointer flex items-center justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-base font-medium text-white transition-all duration-200 ${loading
                       ? 'bg-gray-400 cursor-not-allowed'
                       : colors.button
-                  }`}
+                    }`}
                 >
                   {loading ? (
                     <>
@@ -207,6 +200,12 @@ const BaseLogin = ({
                     </>
                   )}
                 </button>
+                <div className="flex items-center justify-between mt-4">
+                  <label htmlFor="password" className="block text-gray-700 text-sm font-medium"></label>
+                  <a href="#" className={`text-xs ${colors.link} transition-colors`}>
+                    Lupa Password?
+                  </a>
+                </div>
               </div>
             </form>
           </div>

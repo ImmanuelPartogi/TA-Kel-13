@@ -1,4 +1,6 @@
+// src/contexts/AuthContext.jsx
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import * as authService from '../services/auth';
 import api from '../services/api';
 
 const AuthContext = createContext();
@@ -14,75 +16,73 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Load user dari localStorage saat pertama kali mount
+  // Initialize auth state from localStorage
   useEffect(() => {
-    const loadUser = async () => {
+    const initAuth = () => {
       try {
-        const token = localStorage.getItem('token');
-        const savedUser = localStorage.getItem('user');
+        const token = authService.getToken();
+        const savedUser = authService.getUser();
         
         if (token && savedUser) {
-          const userData = JSON.parse(savedUser);
-          console.log('Loaded user from localStorage:', userData);
-          
-          // Set default assigned_routes jika null
-          if (userData.role === 'operator' && !userData.assigned_routes) {
-            userData.assigned_routes = [];
-          }
-          
-          setUser(userData);
-          // Set default axios header
+          setUser(savedUser);
+          setIsAuthenticated(true);
           api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         }
       } catch (error) {
-        console.error('Error loading user:', error);
+        console.error('Error initializing auth:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    loadUser();
+    initAuth();
   }, []);
 
-  const login = (userData, token) => {
-    console.log('Login - User data:', userData);
-    console.log('Login - Token:', token);
-    
-    // Set default assigned_routes jika null untuk operator
-    if (userData.role === 'operator' && !userData.assigned_routes) {
-      userData.assigned_routes = [];
+  const login = async (credentials, role = 'admin') => {
+    try {
+      setLoading(true);
+      const result = await authService.login(credentials, role);
+      
+      if (result.success) {
+        setUser(result.user);
+        setIsAuthenticated(true);
+        return { success: true };
+      }
+      
+      return { success: false, error: result.error };
+    } catch (error) {
+      console.error('Login error in context:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Login failed' 
+      };
+    } finally {
+      setLoading(false);
     }
-    
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
-    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    setUser(userData);
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    delete api.defaults.headers.common['Authorization'];
+    authService.logout();
     setUser(null);
+    setIsAuthenticated(false);
   };
 
-  const hasRoutes = () => {
-    if (user?.role === 'operator') {
-      return user.assigned_routes && Array.isArray(user.assigned_routes) && user.assigned_routes.length > 0;
-    }
-    return true;
+  const updateUser = (userData) => {
+    setUser(userData);
+    authService.setUser(userData);
   };
 
   const value = {
     user,
     loading,
+    isAuthenticated,
     login,
     logout,
-    isAuthenticated: !!user,
-    isAdmin: user?.role === 'admin',
-    isOperator: user?.role === 'operator',
-    hasRoutes,
+    updateUser,
+    isAdmin: () => user?.role === 'admin',
+    isOperator: () => user?.role === 'operator'
   };
 
   return (

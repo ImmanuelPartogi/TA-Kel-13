@@ -35,7 +35,7 @@ class BookingController extends Controller
                 'status' => 'error',
                 'message' => 'Operator tidak memiliki rute yang ditugaskan',
                 'data' => []
-            ], 403);
+            ], 200);
         }
 
         $query = Booking::query();

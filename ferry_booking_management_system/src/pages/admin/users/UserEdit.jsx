@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import adminUserService from '../../../services/adminUser.service';
 
 const UserEdit = () => {
   const { id } = useParams();
@@ -26,7 +26,7 @@ const UserEdit = () => {
 
   const fetchUser = async () => {
     try {
-      const response = await axios.get(`/api/admin-panel/users/${id}`);
+      const response = await adminUserService.get(`/api/admin-panel/users/${id}`);
       setFormData({
         ...response.data,
         password: '',
@@ -51,7 +51,7 @@ const UserEdit = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`/api/admin-panel/users/${id}`, formData);
+      await adminUserService.put(`/api/admin-panel/users/${id}`, formData);
       navigate(`/admin/users/${id}`);
     } catch (error) {
       if (error.response?.data?.errors) {
@@ -63,7 +63,7 @@ const UserEdit = () => {
   const handleDelete = async () => {
     if (window.confirm('Apakah Anda yakin ingin menghapus pengguna ini? Tindakan ini tidak dapat dibatalkan.')) {
       try {
-        await axios.delete(`/api/admin-panel/users/${id}`);
+        await adminUserService.delete(`/api/admin-panel/users/${id}`);
         navigate('/admin/users');
       } catch (error) {
         console.error('Error deleting user:', error);

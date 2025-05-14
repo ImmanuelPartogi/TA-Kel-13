@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../../../services/api'; // Use configured API service
+import adminUserService from '../../../services/adminUser.service';
 
 const UserList = () => {
   const [users, setUsers] = useState([]);
@@ -34,12 +34,12 @@ const UserList = () => {
         ...filters
       };
       
-      const response = await api.get('/admin-panel/users', { params });
-      console.log('Users response:', response.data);
+      const response = await adminUserService.getUsers(params);
+      console.log('Users response:', response);
       
       // Handle response structure from Laravel
-      if (response.data.status === 'success' && response.data.data) {
-        const data = response.data.data;
+      if (response.status === 'success' && response.data) {
+        const data = response.data;
         
         // Set users array from paginated data
         setUsers(data.users.data || []);
@@ -96,14 +96,14 @@ const UserList = () => {
   const handleDelete = async (userId) => {
     if (window.confirm('Apakah Anda yakin ingin menghapus pengguna ini?')) {
       try {
-        const response = await api.delete(`/admin-panel/users/${userId}`);
+        const response = await adminUserService.deleteUser(userId);
         
-        if (response.data.status === 'success') {
+        if (response.status === 'success') {
           // Refresh data after successful delete
           fetchUsers();
           alert('Pengguna berhasil dihapus');
         } else {
-          alert(response.data.message || 'Gagal menghapus pengguna');
+          alert(response.message || 'Gagal menghapus pengguna');
         }
       } catch (error) {
         console.error('Error deleting user:', error);

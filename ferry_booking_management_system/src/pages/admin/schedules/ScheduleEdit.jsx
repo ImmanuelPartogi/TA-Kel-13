@@ -35,8 +35,8 @@ const ScheduleEdit = () => {
     try {
       const [scheduleRes, routesRes, ferriesRes] = await Promise.all([
         adminScheduleService.get(`/admin-panel/schedules/${id}`),
-        adminScheduleService.get('/admin-panel/routes'),
-        adminScheduleService.get('/admin-panel/ferries')
+        adminScheduleService.get('/admin-panel/routes?all=true'),
+        adminScheduleService.get('/admin-panel/ferries?all=true')
       ]);
       
       console.log('Schedule Response:', scheduleRes.data);
@@ -123,9 +123,9 @@ const ScheduleEdit = () => {
     
     setSaving(true);
     try {
-      await adminScheduleService.put(`/api/admin-panel/schedules/${id}`, {
+      await adminScheduleService.put(`/admin-panel/schedules/${id}`, {
         ...formData,
-        days: formData.days.join(',')
+        days: formData.days // Kirim sebagai array, tidak perlu join
       });
       navigate('/admin/schedules');
     } catch (error) {

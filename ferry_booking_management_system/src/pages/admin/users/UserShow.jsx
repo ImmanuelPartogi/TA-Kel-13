@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import axios from 'axios';
+import adminUserService from '../../../services/adminUser.service';
 
 const UserShow = () => {
   const { id } = useParams();
@@ -13,7 +13,7 @@ const UserShow = () => {
 
   const fetchUser = async () => {
     try {
-      const response = await axios.get(`/api/admin-panel/users/${id}`);
+      const response = await adminUserService.get(`/api/admin-panel/users/${id}`);
       setUser(response.data);
     } catch (error) {
       console.error('Error fetching user:', error);

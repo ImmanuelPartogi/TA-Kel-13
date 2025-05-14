@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import axios from 'axios';
+import adminRouteService from '../../../services/adminRoute.service';
 
 const RouteEdit = () => {
   const { id } = useParams();
@@ -33,8 +33,8 @@ const RouteEdit = () => {
 
   const fetchRoute = async () => {
     try {
-      const response = await axios.get(`/api/admin-panel/routes/${id}`);
-      const route = response.data.data;
+      const response = await adminRouteService.getRouteDetail(id);
+      const route = response.data;
       setFormData({
         route_code: route.route_code || '',
         origin: route.origin || '',
@@ -75,7 +75,7 @@ const RouteEdit = () => {
     setErrors({});
     
     try {
-      await axios.put(`/api/admin-panel/routes/${id}`, formData);
+      await adminRouteService.updateRoute(id, formData);
       navigate('/admin/routes');
     } catch (error) {
       if (error.response?.data?.errors) {
@@ -196,86 +196,96 @@ const RouteEdit = () => {
             </div>
 
             <h3 className="text-lg font-semibold text-gray-700 mt-8 mb-4">Harga Tiket</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <label htmlFor="base_price" className="block text-sm font-medium text-gray-700 mb-1">
                   Harga Dasar <span className="text-red-500">*</span>
                 </label>
-                <input 
-                  type="number" 
-                  id="base_price" 
-                  name="base_price" 
-                  value={formData.base_price}
-                  onChange={handleInputChange}
-                  step="0.01" 
-                  min="0" 
-                  required
-                  className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                <div className="flex rounded-md shadow-sm">
+                  <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">Rp</span>
+                  <input 
+                    type="number" 
+                    id="base_price" 
+                    name="base_price" 
+                    value={formData.base_price}
+                    onChange={handleInputChange}
+                    min="0" 
+                    required
+                    className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
               </div>
               <div>
                 <label htmlFor="motorcycle_price" className="block text-sm font-medium text-gray-700 mb-1">
                   Harga Motor <span className="text-red-500">*</span>
                 </label>
-                <input 
-                  type="number" 
-                  id="motorcycle_price" 
-                  name="motorcycle_price" 
-                  value={formData.motorcycle_price}
-                  onChange={handleInputChange}
-                  step="0.01" 
-                  min="0" 
-                  required
-                  className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                <div className="flex rounded-md shadow-sm">
+                  <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">Rp</span>
+                  <input 
+                    type="number" 
+                    id="motorcycle_price" 
+                    name="motorcycle_price" 
+                    value={formData.motorcycle_price}
+                    onChange={handleInputChange}
+                    min="0" 
+                    required
+                    className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
               </div>
               <div>
                 <label htmlFor="car_price" className="block text-sm font-medium text-gray-700 mb-1">
                   Harga Mobil <span className="text-red-500">*</span>
                 </label>
-                <input 
-                  type="number" 
-                  id="car_price" 
-                  name="car_price" 
-                  value={formData.car_price}
-                  onChange={handleInputChange}
-                  step="0.01" 
-                  min="0" 
-                  required
-                  className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                <div className="flex rounded-md shadow-sm">
+                  <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">Rp</span>
+                  <input 
+                    type="number" 
+                    id="car_price" 
+                    name="car_price" 
+                    value={formData.car_price}
+                    onChange={handleInputChange}
+                    min="0" 
+                    required
+                    className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
               </div>
               <div>
                 <label htmlFor="bus_price" className="block text-sm font-medium text-gray-700 mb-1">
                   Harga Bus <span className="text-red-500">*</span>
                 </label>
-                <input 
-                  type="number" 
-                  id="bus_price" 
-                  name="bus_price" 
-                  value={formData.bus_price}
-                  onChange={handleInputChange}
-                  step="0.01" 
-                  min="0" 
-                  required
-                  className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                <div className="flex rounded-md shadow-sm">
+                  <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">Rp</span>
+                  <input 
+                    type="number" 
+                    id="bus_price" 
+                    name="bus_price" 
+                    value={formData.bus_price}
+                    onChange={handleInputChange}
+                    min="0" 
+                    required
+                    className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
               </div>
               <div>
                 <label htmlFor="truck_price" className="block text-sm font-medium text-gray-700 mb-1">
                   Harga Truk <span className="text-red-500">*</span>
                 </label>
-                <input 
-                  type="number" 
-                  id="truck_price" 
-                  name="truck_price" 
-                  value={formData.truck_price}
-                  onChange={handleInputChange}
-                  step="0.01" 
-                  min="0" 
-                  required
-                  className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                <div className="flex rounded-md shadow-sm">
+                  <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">Rp</span>
+                  <input 
+                    type="number" 
+                    id="truck_price" 
+                    name="truck_price" 
+                    value={formData.truck_price}
+                    onChange={handleInputChange}
+                    min="0" 
+                    required
+                    className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
               </div>
             </div>
 

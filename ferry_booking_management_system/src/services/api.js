@@ -1,45 +1,33 @@
-// services/api.js
+// src/services/api.js
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
-const BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+// Debug: tampilkan nilai environment variable
+console.log('VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL);
 
-// Create axios instance
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+
+// Debug: tampilkan base URL yang digunakan
+console.log('Using API_BASE_URL:', API_BASE_URL);
+
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
-  withCredentials: true, // Untuk mengirim cookies jika diperlukan
+  withCredentials: true,
 });
-
-// CSRF Token management
-const getCsrfToken = async () => {
-  try {
-    // Coba ambil CSRF token dari Laravel
-    await axios.get(`${BASE_URL}/sanctum/csrf-cookie`, {
-      withCredentials: true
-    });
-  } catch (error) {
-    console.error('CSRF token error:', error);
-  }
-};
 
 // Request interceptor
 api.interceptors.request.use(
-  async (config) => {
-    console.log('Request URL:', config.url);
-    console.log('Request Data:', config.data);
+  (config) => {
+    // Debug: log every request
+    console.log('API Request:', config.method?.toUpperCase(), config.url);
     
-    // Untuk login endpoints, get CSRF token dulu
-    if (config.url.includes('login')) {
-      await getCsrfToken();
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
-    
-    // Add X-Requested-With header (Laravel requirement)
-    config.headers['X-Requested-With'] = 'XMLHttpRequest';
-    
     return config;
   },
   (error) => {
@@ -51,18 +39,20 @@ api.interceptors.request.use(
 // Response interceptor
 api.interceptors.response.use(
   (response) => {
-    console.log('Response:', response);
+    console.log('API Response:', response.config.url, response.status);
     return response;
   },
   (error) => {
-    console.error('Response Error:', error);
-    console.error('Error Response Data:', error.response?.data);
-    console.error('Error Response Status:', error.response?.status);
+    console.error('Response Error:', error.response?.status, error.response?.data);
+    
+    if (error.response?.status === 401) {
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('user');
+      window.location.href = '/admin/login';
+    }
     return Promise.reject(error);
   }
 );
 
-export default api;
-
-// Named export untuk backward compatibility
 export { api };
+export default api;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import adminScheduleService from '../../../services/adminSchedule.service';
 
 const ScheduleCreate = () => {
   const navigate = useNavigate();
@@ -33,23 +33,62 @@ const ScheduleCreate = () => {
   const fetchData = async () => {
     try {
       const [routesRes, ferriesRes] = await Promise.all([
-        axios.get('/api/admin-panel/routes'),
-        axios.get('/api/admin-panel/ferries')
+        adminScheduleService.get('/admin-panel/routes'),
+        adminScheduleService.get('/admin-panel/ferries')
       ]);
-      setRoutes(routesRes.data.data || []);
-      setFerries(ferriesRes.data.data || []);
+      
+      // Debug response struktur
+      console.log('Routes Response:', routesRes.data);
+      console.log('Ferries Response:', ferriesRes.data);
+      
+      // Berbagai kemungkinan struktur response
+      const routesData = routesRes.data.data || routesRes.data;
+      const ferriesData = ferriesRes.data.data || ferriesRes.data;
+      
+      // Extract routes array dengan berbagai kemungkinan struktur
+      if (Array.isArray(routesData)) {
+        setRoutes(routesData);
+      } else if (routesData.routes) {
+        setRoutes(routesData.routes);
+      } else if (routesData.data) {
+        setRoutes(routesData.data);
+      } else {
+        console.error('Unexpected routes data structure:', routesData);
+        setRoutes([]);
+      }
+      
+      // Extract ferries array dengan berbagai kemungkinan struktur
+      if (Array.isArray(ferriesData)) {
+        setFerries(ferriesData);
+      } else if (ferriesData.ferries) {
+        setFerries(ferriesData.ferries);
+      } else if (ferriesData.data) {
+        setFerries(ferriesData.data);
+      } else {
+        console.error('Unexpected ferries data structure:', ferriesData);
+        setFerries([]);
+      }
+      
     } catch (error) {
       console.error('Error fetching data:', error);
+      console.error('Error details:', error.response);
     }
   };
+
+  // Debug state changes
+  useEffect(() => {
+    console.log('Routes state:', routes);
+    console.log('Ferries state:', ferries);
+  }, [routes, ferries]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     
     if (type === 'checkbox') {
+      const numValue = parseInt(value); // Konversi ke number
       const newDays = checked 
-        ? [...formData.days, value]
-        : formData.days.filter(day => day !== value);
+        ? [...formData.days, numValue]
+        : formData.days.filter(day => day !== numValue);
       setFormData({ ...formData, days: newDays });
     } else {
       setFormData({ ...formData, [name]: value });
@@ -118,12 +157,13 @@ const ScheduleCreate = () => {
     
     setLoading(true);
     try {
-      await axios.post('/api/admin-panel/schedules', {
+      await adminScheduleService.post('/admin-panel/schedules', {
         ...formData,
-        days: formData.days.join(',')
+        days: formData.days  // Kirim sebagai array, bukan string
       });
       navigate('/admin/schedules');
     } catch (error) {
+      console.error('Submit error:', error.response?.data);
       if (error.response?.data?.errors) {
         setErrors(error.response.data.errors);
       }
@@ -151,6 +191,7 @@ const ScheduleCreate = () => {
         </div>
 
         <div className="p-6">
+
           {/* Progress Steps */}
           <div className="mb-8">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between">
@@ -214,12 +255,13 @@ const ScheduleCreate = () => {
                         <option value="">-- Pilih Rute --</option>
                         {routes.map(route => (
                           <option key={route.id} value={route.id} data-duration={route.duration}>
-                            {route.origin} - {route.destination} ({route.route_code})
+                            {route.origin} - {route.destination} ({route.route_code || 'N/A'})
                           </option>
                         ))}
                       </select>
                     </div>
                     {errors.route_id && <p className="mt-1 text-sm text-red-600">{errors.route_id}</p>}
+                    {routes.length === 0 && <p className="mt-1 text-sm text-yellow-600">Loading routes...</p>}
                   </div>
 
                   <div>
@@ -241,12 +283,13 @@ const ScheduleCreate = () => {
                         <option value="">-- Pilih Kapal --</option>
                         {ferries.map(ferry => (
                           <option key={ferry.id} value={ferry.id}>
-                            {ferry.name} ({ferry.registration_number})
+                            {ferry.name} ({ferry.registration_number || 'N/A'})
                           </option>
                         ))}
                       </select>
                     </div>
                     {errors.ferry_id && <p className="mt-1 text-sm text-red-600">{errors.ferry_id}</p>}
+                    {ferries.length === 0 && <p className="mt-1 text-sm text-yellow-600">Loading ferries...</p>}
                   </div>
                 </div>
 
@@ -346,22 +389,25 @@ const ScheduleCreate = () => {
                   <div className="md:col-span-2">
                     <p className="mb-3 text-sm text-gray-700">Pilih hari-hari di mana jadwal ini beroperasi:</p>
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-                      {Object.entries(dayNames).map(([value, name]) => (
-                        <div key={value} className="flex items-center p-3 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-blue-50 transition-colors">
-                          <input 
-                            type="checkbox" 
-                            id={`day_${value}`}
-                            name="days"
-                            value={value}
-                            checked={formData.days.includes(value)}
-                            onChange={handleInputChange}
-                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                          />
-                          <label htmlFor={`day_${value}`} className="ml-2 text-sm font-medium text-gray-900 cursor-pointer select-none">
-                            {name}
-                          </label>
-                        </div>
-                      ))}
+                      {Object.entries(dayNames).map(([value, name]) => {
+                        const numValue = parseInt(value);
+                        return (
+                          <div key={value} className="flex items-center p-3 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-blue-50 transition-colors">
+                            <input 
+                              type="checkbox" 
+                              id={`day_${value}`}
+                              name="days"
+                              value={value}
+                              checked={formData.days.includes(numValue)}
+                              onChange={handleInputChange}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <label htmlFor={`day_${value}`} className="ml-2 text-sm font-medium text-gray-900 cursor-pointer select-none">
+                              {name}
+                            </label>
+                          </div>
+                        );
+                      })}
                     </div>
                     {errors.days && <p className="mt-1 text-sm text-red-600">{errors.days}</p>}
                   </div>

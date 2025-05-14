@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import axios from 'axios';
+import adminRouteService from '../../../services/adminRoute.service';
 
 const RouteList = () => {
   const [routes, setRoutes] = useState([]);
@@ -29,13 +29,16 @@ const RouteList = () => {
   const fetchRoutes = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/admin-panel/routes', {
-        params: {
-          search,
-          status,
-          page
-        }
+      const response = await adminRouteService.getRoutes({
+        search,
+        status,
+        page
       });
+      
+      // // Debug: Lihat struktur response
+      // console.log('Response:', response);
+      // console.log('Response data:', response.data);
+      
       setRoutes(response.data.data || []);
       setPagination({
         current_page: response.data.current_page,
@@ -64,9 +67,10 @@ const RouteList = () => {
 
   const handleDelete = async () => {
     if (!selectedRoute) return;
-    
+
     try {
-      await axios.delete(`/api/admin-panel/routes/${selectedRoute.id}`);
+      // Menggunakan deleteRoute dengan hanya ID
+      await adminRouteService.deleteRoute(selectedRoute.id);
       fetchRoutes();
       setShowDeleteModal(false);
       setSelectedRoute(null);
@@ -123,10 +127,10 @@ const RouteList = () => {
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <i className="fas fa-search text-gray-400"></i>
                 </div>
-                <input 
-                  type="text" 
-                  id="search" 
-                  name="search" 
+                <input
+                  type="text"
+                  id="search"
+                  name="search"
                   defaultValue={search}
                   placeholder="Cari asal atau tujuan..."
                   className="search-input pl-10 bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm transition-all duration-200"
@@ -136,8 +140,8 @@ const RouteList = () => {
 
             <div className="w-full md:w-48">
               <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-              <select 
-                id="status" 
+              <select
+                id="status"
                 name="status"
                 defaultValue={status}
                 className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm">
@@ -228,7 +232,7 @@ const RouteList = () => {
                         <i className="fas fa-tag text-gray-400 mr-2"></i>
                         <span className="font-medium">Rp {formatPrice(route.base_price)}</span>
                       </div>
-                      <button 
+                      <button
                         type="button"
                         className="ml-2 price-info-btn px-2 py-1 text-xs rounded-md bg-blue-50 text-blue-600 hover:bg-blue-100 focus:outline-none"
                         onClick={() => showVehiclePriceDetails(route)}
@@ -264,8 +268,8 @@ const RouteList = () => {
                         title="Edit">
                         <i className="fas fa-edit"></i>
                       </Link>
-                      <button 
-                        onClick={() => {setSelectedRoute(route); setShowDeleteModal(true);}}
+                      <button
+                        onClick={() => { setSelectedRoute(route); setShowDeleteModal(true); }}
                         className="action-button text-red-600 hover:text-red-900 bg-red-100 hover:bg-red-200 p-2 rounded-lg transition-colors"
                         title="Hapus"
                       >
@@ -316,12 +320,12 @@ const RouteList = () => {
                 </p>
               </div>
               <div className="mt-6 grid grid-cols-2 gap-3">
-                <button 
+                <button
                   onClick={() => setShowDeleteModal(false)}
                   className="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg bg-white text-gray-700 hover:bg-gray-50">
                   <i className="fas fa-times mr-2"></i> Batal
                 </button>
-                <button 
+                <button
                   onClick={handleDelete}
                   className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700">
                   <i className="fas fa-trash mr-2"></i> Hapus
@@ -341,8 +345,8 @@ const RouteList = () => {
                 <i className="fas fa-tag text-blue-500 mr-2"></i>
                 Detail Harga Kendaraan
               </h3>
-              <button 
-                onClick={() => setShowVehiclePriceModal(false)} 
+              <button
+                onClick={() => setShowVehiclePriceModal(false)}
                 className="text-gray-400 hover:text-gray-500"
               >
                 <i className="fas fa-times"></i>
@@ -388,7 +392,7 @@ const RouteList = () => {
                 </div>
               </div>
               <div className="mt-6 text-center">
-                <button 
+                <button
                   onClick={() => setShowVehiclePriceModal(false)}
                   className="inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg bg-white text-gray-700 hover:bg-gray-50"
                 >

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import axios from 'axios';
+import adminScheduleService from '../../../services/adminSchedule.service';
 
 const ScheduleDates = () => {
   const { id } = useParams();
@@ -32,11 +32,11 @@ const ScheduleDates = () => {
   const fetchScheduleData = async () => {
     try {
       const [scheduleRes, datesRes] = await Promise.all([
-        axios.get(`/api/admin-panel/schedules/${id}`),
-        axios.get(`/api/admin-panel/schedules/${id}/dates`)
+        adminScheduleService.get(`/admin-panel/schedules/${id}`),
+        adminScheduleService.get(`/admin-panel/schedules/${id}/dates`)
       ]);
       setSchedule(scheduleRes.data.data);
-      setScheduleDates(datesRes.data.data || []);
+      setScheduleDates(datesRes.data.data.dates.data || []);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -52,7 +52,7 @@ const ScheduleDates = () => {
   const handleAddDate = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`/api/admin-panel/schedules/${id}/dates`, {
+      await adminScheduleService.post(`/admin-panel/schedules/${id}/dates`, {
         ...formData,
         date_type: dateType
       });
@@ -69,7 +69,7 @@ const ScheduleDates = () => {
     if (!selectedDate) return;
     
     try {
-      await axios.put(`/api/admin-panel/schedules/${id}/dates/${selectedDate.id}`, {
+      await adminScheduleService.put(`/admin-panel/schedules/${id}/dates/${selectedDate.id}`, {
         status: formData.status,
         status_reason: formData.status_reason,
         status_expiry_date: formData.status_expiry_date
@@ -86,7 +86,7 @@ const ScheduleDates = () => {
     if (!window.confirm('Apakah Anda yakin ingin menghapus tanggal jadwal ini?')) return;
     
     try {
-      await axios.delete(`/api/admin-panel/schedules/${id}/dates/${dateId}`);
+      await adminScheduleService.delete(`/admin-panel/schedules/${id}/dates/${dateId}`);
       fetchScheduleData();
     } catch (error) {
       console.error('Error deleting date:', error);

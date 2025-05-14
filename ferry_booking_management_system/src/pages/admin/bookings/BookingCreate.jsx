@@ -14,7 +14,7 @@ const BookingCreate = () => {
   const [carPrice, setCarPrice] = useState(0);
   const [busPrice, setBusPrice] = useState(0);
   const [truckPrice, setTruckPrice] = useState(0);
-  
+
   const [formData, setFormData] = useState({
     route_id: '',
     booking_date: new Date().toISOString().split('T')[0],
@@ -100,8 +100,8 @@ const BookingCreate = () => {
 
   const selectUser = (user) => {
     setSelectedUser(user);
-    setFormData({ 
-      ...formData, 
+    setFormData({
+      ...formData,
       user_id: user.id,
       passengers: [{
         name: user.name,
@@ -110,7 +110,7 @@ const BookingCreate = () => {
       }]
     });
     setShowSearchResults(false);
-    
+
     if (formData.schedule_id) {
       setShowBookingDetails(true);
     }
@@ -119,7 +119,7 @@ const BookingCreate = () => {
   const handleScheduleChange = (e) => {
     const scheduleId = e.target.value;
     setFormData({ ...formData, schedule_id: scheduleId });
-    
+
     if (scheduleId && formData.user_id) {
       setShowBookingDetails(true);
     }
@@ -148,15 +148,15 @@ const BookingCreate = () => {
     const newCount = formData.passenger_count + increment;
     if (newCount >= 1 && newCount <= 10) {
       const newPassengers = [...formData.passengers];
-      
+
       if (increment > 0) {
         newPassengers.push({ name: '', id_number: '', id_type: 'KTP' });
       } else {
         newPassengers.pop();
       }
-      
-      setFormData({ 
-        ...formData, 
+
+      setFormData({
+        ...formData,
         passenger_count: newCount,
         passengers: newPassengers
       });
@@ -167,15 +167,15 @@ const BookingCreate = () => {
     const newCount = formData.vehicle_count + increment;
     if (newCount >= 0 && newCount <= 5) {
       const newVehicles = [...formData.vehicles];
-      
+
       if (increment > 0) {
         newVehicles.push({ type: '', license_plate: '', brand: '', model: '' });
       } else {
         newVehicles.pop();
       }
-      
-      setFormData({ 
-        ...formData, 
+
+      setFormData({
+        ...formData,
         vehicle_count: newCount,
         vehicles: newVehicles
       });
@@ -211,7 +211,7 @@ const BookingCreate = () => {
 
   const calculateTotal = () => {
     let total = formData.passenger_count * basePrice;
-    
+
     formData.vehicles.forEach(vehicle => {
       switch (vehicle.type) {
         case 'MOTORCYCLE': total += motorcyclePrice; break;
@@ -220,18 +220,65 @@ const BookingCreate = () => {
         case 'TRUCK': total += truckPrice; break;
       }
     });
-    
+
     return total;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validasi data sebelum kirim
+    if (!formData.schedule_id) {
+      alert('Silakan pilih jadwal terlebih dahulu');
+      return;
+    }
+
+    if (!formData.user_id) {
+      alert('Silakan pilih pengguna terlebih dahulu');
+      return;
+    }
+
+    if (!formData.payment_method || !formData.payment_channel) {
+      alert('Silakan pilih metode dan channel pembayaran');
+      return;
+    }
+
+    // Validasi passengers
+    const isPassengersValid = formData.passengers.every(p =>
+      p.name && p.id_number && p.id_type
+    );
+
+    if (!isPassengersValid) {
+      alert('Silakan lengkapi data semua penumpang');
+      return;
+    }
+
+    // Validasi vehicles jika ada
+    if (formData.vehicle_count > 0) {
+      const isVehiclesValid = formData.vehicles.every(v =>
+        v.type && v.license_plate
+      );
+
+      if (!isVehiclesValid) {
+        alert('Silakan lengkapi data semua kendaraan');
+        return;
+      }
+    }
+
     setLoading(true);
     setErrors([]);
 
     try {
-      const response = await api.post('/admin-panel/bookings', formData);
-      
+      // Siapkan data untuk dikirim
+      const dataToSend = {
+        ...formData,
+        departure_date: formData.booking_date, // Backend mengharapkan departure_date
+        // Pastikan vehicles kosong jika tidak ada kendaraan
+        vehicles: formData.vehicle_count > 0 ? formData.vehicles : []
+      };
+
+      const response = await api.post('/admin-panel/bookings', dataToSend);
+
       if (response.data.success) {
         navigate('/admin/bookings');
       }
@@ -241,6 +288,7 @@ const BookingCreate = () => {
       } else {
         setErrors(['Terjadi kesalahan saat membuat booking']);
       }
+      console.error('Error creating booking:', error);
     } finally {
       setLoading(false);
     }
@@ -292,7 +340,7 @@ const BookingCreate = () => {
               <div className="space-y-6">
                 <div className="bg-blue-50 rounded-lg border border-blue-100 p-4">
                   <h3 className="text-lg font-semibold text-blue-800 mb-4">Informasi Perjalanan</h3>
-                  
+
                   <div className="space-y-4">
                     <div>
                       <label htmlFor="route_id" className="block text-sm font-medium text-gray-700 mb-1">
@@ -372,7 +420,7 @@ const BookingCreate = () => {
               <div className="space-y-6">
                 <div className="bg-green-50 rounded-lg border border-green-100 p-4">
                   <h3 className="text-lg font-semibold text-green-800 mb-4">Informasi Penumpang Utama</h3>
-                  
+
                   <div className="space-y-4">
                     <div>
                       <label htmlFor="user_search" className="block text-sm font-medium text-gray-700 mb-1">
@@ -460,7 +508,7 @@ const BookingCreate = () => {
                   {/* Passengers & Vehicles */}
                   <div className="bg-gray-50 rounded-lg border border-gray-200 p-4">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4">Penumpang & Kendaraan</h3>
-                    
+
                     <div className="space-y-4">
                       <div>
                         <label htmlFor="passenger_count" className="block text-sm font-medium text-gray-700 mb-1">
@@ -607,7 +655,7 @@ const BookingCreate = () => {
                   {/* Payment Information */}
                   <div className="bg-gray-50 rounded-lg border border-gray-200 p-4">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4">Pembayaran</h3>
-                    
+
                     <div className="space-y-4">
                       <div>
                         <label htmlFor="payment_method" className="block text-sm font-medium text-gray-700 mb-1">
@@ -670,7 +718,7 @@ const BookingCreate = () => {
                 {/* Passenger Data */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-gray-800">Data Penumpang</h3>
-                  
+
                   {formData.passengers.map((passenger, index) => (
                     <div key={index} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                       <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
@@ -794,7 +842,7 @@ const BookingCreate = () => {
                         <div className="flex items-start">
                           <div className="w-28 text-sm font-medium text-gray-500">Pembayaran:</div>
                           <div className="flex-1 text-sm font-medium text-gray-900">
-                            {formData.payment_method && formData.payment_channel ? 
+                            {formData.payment_method && formData.payment_channel ?
                               `${formData.payment_method} - ${formData.payment_channel}` : '-'}
                           </div>
                         </div>

@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import adminFerryService from '../../../services/adminFerry.service';
 
 const FerryCreate = () => {
   const navigate = useNavigate();
-  const [errors, setErrors] = useState([]);
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     registration_number: '',
     year_built: '',
     last_maintenance_date: '',
     status: 'ACTIVE',
-    capacity_passenger: 0,
+    capacity_passenger: 1,
     capacity_vehicle_motorcycle: 0,
     capacity_vehicle_car: 0,
     capacity_vehicle_bus: 0,
@@ -23,8 +24,19 @@ const FerryCreate = () => {
 
   const handleChange = (e) => {
     const { name, value, type, files } = e.target;
+    
     if (type === 'file') {
-      setFormData({ ...formData, [name]: files[0] });
+      const file = files[0];
+      if (file) {
+        setFormData({ ...formData, [name]: file });
+        
+        // Show preview
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPreviewImage(reader.result);
+        };
+        reader.readAsDataURL(file);
+      }
     } else {
       setFormData({ ...formData, [name]: value });
     }
@@ -33,26 +45,40 @@ const FerryCreate = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setErrors([]);
+    setErrors({});
+
+    // Validate form
+    const validation = adminFerryService.validateFerryForm(formData);
+    if (!validation.isValid) {
+      setErrors(validation.errors);
+      setLoading(false);
+      return;
+    }
 
     const data = new FormData();
     Object.keys(formData).forEach(key => {
-      if (formData[key] !== null) {
+      if (formData[key] !== null && formData[key] !== '') {
         data.append(key, formData[key]);
       }
     });
 
     try {
-      await axios.post('/admin-panel/ferries', data, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      navigate('/admin/ferries');
+      const response = await adminFerryService.createFerry(data);
+      
+      if (response.status === 'success' || response.success) {
+        navigate('/admin/ferries');
+      } else {
+        setErrors({ general: response.message || 'Terjadi kesalahan saat menyimpan data' });
+      }
     } catch (error) {
+      console.error('Error creating ferry:', error);
+      
       if (error.response?.data?.errors) {
-        setErrors(Object.values(error.response.data.errors).flat());
+        setErrors(error.response.data.errors);
+      } else if (error.response?.data?.message) {
+        setErrors({ general: error.response.data.message });
+      } else {
+        setErrors({ general: 'Terjadi kesalahan saat menyimpan data' });
       }
     } finally {
       setLoading(false);
@@ -71,14 +97,11 @@ const FerryCreate = () => {
         </Link>
       </div>
 
-      {errors.length > 0 && (
+      {/* General Error */}
+      {errors.general && (
         <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded shadow-md" role="alert">
           <div className="font-bold">Terjadi kesalahan:</div>
-          <ul className="list-disc ml-6">
-            {errors.map((error, index) => (
-              <li key={index}>{error}</li>
-            ))}
-          </ul>
+          <p>{errors.general}</p>
         </div>
       )}
 
@@ -102,8 +125,9 @@ const FerryCreate = () => {
                     value={formData.name}
                     onChange={handleChange}
                     required
-                    className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={`w-full rounded-md border ${errors.name ? 'border-red-300' : 'border-gray-300'} shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                   />
+                  {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
                 </div>
 
                 <div>
@@ -117,8 +141,9 @@ const FerryCreate = () => {
                     value={formData.registration_number}
                     onChange={handleChange}
                     required
-                    className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={`w-full rounded-md border ${errors.registration_number ? 'border-red-300' : 'border-gray-300'} shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                   />
+                  {errors.registration_number && <p className="mt-1 text-sm text-red-600">{errors.registration_number}</p>}
                 </div>
 
                 <div>
@@ -133,8 +158,9 @@ const FerryCreate = () => {
                     onChange={handleChange}
                     min="1900" 
                     max={new Date().getFullYear()}
-                    className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={`w-full rounded-md border ${errors.year_built ? 'border-red-300' : 'border-gray-300'} shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                   />
+                  {errors.year_built && <p className="mt-1 text-sm text-red-600">{errors.year_built}</p>}
                 </div>
 
                 <div>
@@ -184,8 +210,9 @@ const FerryCreate = () => {
                     onChange={handleChange}
                     min="1" 
                     required
-                    className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={`w-full rounded-md border ${errors.capacity_passenger ? 'border-red-300' : 'border-gray-300'} shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                   />
+                  {errors.capacity_passenger && <p className="mt-1 text-sm text-red-600">{errors.capacity_passenger}</p>}
                 </div>
 
                 <div>
@@ -200,8 +227,9 @@ const FerryCreate = () => {
                     onChange={handleChange}
                     min="0" 
                     required
-                    className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={`w-full rounded-md border ${errors.capacity_vehicle_motorcycle ? 'border-red-300' : 'border-gray-300'} shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                   />
+                  {errors.capacity_vehicle_motorcycle && <p className="mt-1 text-sm text-red-600">{errors.capacity_vehicle_motorcycle}</p>}
                 </div>
 
                 <div>
@@ -216,8 +244,9 @@ const FerryCreate = () => {
                     onChange={handleChange}
                     min="0" 
                     required
-                    className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={`w-full rounded-md border ${errors.capacity_vehicle_car ? 'border-red-300' : 'border-gray-300'} shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                   />
+                  {errors.capacity_vehicle_car && <p className="mt-1 text-sm text-red-600">{errors.capacity_vehicle_car}</p>}
                 </div>
 
                 <div>
@@ -232,8 +261,9 @@ const FerryCreate = () => {
                     onChange={handleChange}
                     min="0" 
                     required
-                    className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={`w-full rounded-md border ${errors.capacity_vehicle_bus ? 'border-red-300' : 'border-gray-300'} shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                   />
+                  {errors.capacity_vehicle_bus && <p className="mt-1 text-sm text-red-600">{errors.capacity_vehicle_bus}</p>}
                 </div>
 
                 <div>
@@ -248,14 +278,23 @@ const FerryCreate = () => {
                     onChange={handleChange}
                     min="0" 
                     required
-                    className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={`w-full rounded-md border ${errors.capacity_vehicle_truck ? 'border-red-300' : 'border-gray-300'} shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                   />
+                  {errors.capacity_vehicle_truck && <p className="mt-1 text-sm text-red-600">{errors.capacity_vehicle_truck}</p>}
                 </div>
               </div>
             </div>
 
             <div className="mt-6">
               <label htmlFor="image" className="block text-sm font-medium text-gray-700 mb-1">Foto Kapal</label>
+              
+              {/* Image Preview */}
+              {previewImage && (
+                <div className="mb-3">
+                  <img src={previewImage} alt="Preview" className="h-40 object-cover rounded-md shadow-sm" />
+                </div>
+              )}
+              
               <input 
                 type="file" 
                 id="image" 
@@ -285,7 +324,15 @@ const FerryCreate = () => {
                 disabled={loading}
                 className="inline-flex justify-center py-2 px-6 border border-transparent shadow-md text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 disabled:opacity-50"
               >
-                {loading ? 'Menyimpan...' : 'Simpan Kapal'}
+                {loading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Menyimpan...
+                  </>
+                ) : 'Simpan Kapal'}
               </button>
             </div>
           </form>

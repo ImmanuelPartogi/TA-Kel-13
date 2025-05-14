@@ -6,8 +6,10 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
-        'http://localhost:5173',  // Frontend React URL
-        'http://localhost:3000',  // Jika ada React di port lain
+        'http://localhost:5173', // React Vite dev server
+        'http://localhost:3000', // Alternative React port
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:3000',
     ],
 
     'allowed_origins_patterns' => [],
@@ -18,5 +20,5 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => true,  // PENTING: Set ke true untuk cookies
+    'supports_credentials' => true, // Penting untuk authentication
 ];

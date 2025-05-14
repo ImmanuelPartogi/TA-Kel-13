@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import axios from 'axios';
+import adminScheduleService from '../../../services/adminSchedule.service';
 
 const ScheduleEdit = () => {
   const { id } = useParams();
@@ -34,25 +34,65 @@ const ScheduleEdit = () => {
   const fetchData = async () => {
     try {
       const [scheduleRes, routesRes, ferriesRes] = await Promise.all([
-        axios.get(`/api/admin-panel/schedules/${id}`),
-        axios.get('/api/admin-panel/routes'),
-        axios.get('/api/admin-panel/ferries')
+        adminScheduleService.get(`/admin-panel/schedules/${id}`),
+        adminScheduleService.get('/admin-panel/routes'),
+        adminScheduleService.get('/admin-panel/ferries')
       ]);
       
+      console.log('Schedule Response:', scheduleRes.data);
+      console.log('Routes Response:', routesRes.data);
+      console.log('Ferries Response:', ferriesRes.data);
+      
       const schedule = scheduleRes.data.data;
+      
+      // Format waktu dari UTC ke HH:mm
+      const formatTime = (timeString) => {
+        if (!timeString) return '';
+        // Jika format "HH:mm:ss"
+        if (timeString.includes(':') && timeString.length <= 8) {
+          return timeString.substring(0, 5);
+        }
+        // Jika format ISO date-time
+        const date = new Date(timeString);
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${hours}:${minutes}`;
+      };
+      
       setFormData({
         route_id: schedule.route_id,
         ferry_id: schedule.ferry_id,
-        departure_time: schedule.departure_time,
-        arrival_time: schedule.arrival_time,
+        departure_time: formatTime(schedule.departure_time),
+        arrival_time: formatTime(schedule.arrival_time),
         days: schedule.days.split(','),
         status: schedule.status,
         status_reason: schedule.status_reason || '',
         status_expiry_date: schedule.status_expiry_date || ''
       });
       
-      setRoutes(routesRes.data.data || []);
-      setFerries(ferriesRes.data.data || []);
+      // Handle pagination response
+      let routesData = [];
+      let ferriesData = [];
+      
+      // Extract routes from pagination response
+      if (routesRes.data?.data?.data) {
+        routesData = routesRes.data.data.data;
+      } else if (routesRes.data?.data) {
+        routesData = Array.isArray(routesRes.data.data) ? routesRes.data.data : [];
+      }
+      
+      // Extract ferries from pagination response  
+      if (ferriesRes.data?.data?.data) {
+        ferriesData = ferriesRes.data.data.data;
+      } else if (ferriesRes.data?.data) {
+        ferriesData = Array.isArray(ferriesRes.data.data) ? ferriesRes.data.data : [];
+      }
+      
+      console.log('Routes array:', routesData);
+      console.log('Ferries array:', ferriesData);
+      
+      setRoutes(routesData);
+      setFerries(ferriesData);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -83,7 +123,7 @@ const ScheduleEdit = () => {
     
     setSaving(true);
     try {
-      await axios.put(`/api/admin-panel/schedules/${id}`, {
+      await adminScheduleService.put(`/api/admin-panel/schedules/${id}`, {
         ...formData,
         days: formData.days.join(',')
       });
@@ -143,12 +183,19 @@ const ScheduleEdit = () => {
                   required
                 >
                   <option value="">Pilih Rute</option>
-                  {routes.map(route => (
-                    <option key={route.id} value={route.id}>
-                      {route.origin} - {route.destination} ({route.route_code})
-                    </option>
-                  ))}
+                  {routes.length > 0 ? (
+                    routes.map(route => (
+                      <option key={route.id} value={route.id}>
+                        {route.origin} - {route.destination} ({route.route_code})
+                      </option>
+                    ))
+                  ) : (
+                    <option value="" disabled>Tidak ada rute tersedia</option>
+                  )}
                 </select>
+                {routes.length === 0 && (
+                  <p className="mt-1 text-sm text-red-600">Tidak ada rute yang tersedia</p>
+                )}
               </div>
               <div>
                 <label htmlFor="ferry_id" className="block text-sm font-medium text-gray-700 mb-1">
@@ -163,12 +210,19 @@ const ScheduleEdit = () => {
                   required
                 >
                   <option value="">Pilih Kapal</option>
-                  {ferries.map(ferry => (
-                    <option key={ferry.id} value={ferry.id}>
-                      {ferry.name} ({ferry.registration_number})
-                    </option>
-                  ))}
+                  {ferries.length > 0 ? (
+                    ferries.map(ferry => (
+                      <option key={ferry.id} value={ferry.id}>
+                        {ferry.name} ({ferry.registration_number})
+                      </option>
+                    ))
+                  ) : (
+                    <option value="" disabled>Tidak ada kapal tersedia</option>
+                  )}
                 </select>
+                {ferries.length === 0 && (
+                  <p className="mt-1 text-sm text-red-600">Tidak ada kapal yang tersedia</p>
+                )}
               </div>
             </div>
 

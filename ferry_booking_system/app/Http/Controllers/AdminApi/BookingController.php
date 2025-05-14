@@ -104,7 +104,7 @@ class BookingController extends Controller
                 'payments',
                 'tickets',
                 'vehicles',
-                'bookingLogs' => function($q) {
+                'bookingLogs' => function ($q) {
                     $q->orderBy('created_at', 'desc');
                 },
             ])->findOrFail($id);
@@ -1302,6 +1302,91 @@ class BookingController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal memproses reschedule: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Mengambil jadwal berdasarkan rute dan tanggal untuk endpoint GET
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function getSchedulesForBooking(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'route_id' => 'required|exists:routes,id',
+                'date' => 'required|date|after_or_equal:today',
+            ]);
+
+            $date = Carbon::parse($validated['date']);
+            $dayOfWeek = $date->dayOfWeek + 1; // Konversi ke format 1-7 (Senin-Minggu)
+
+            $schedules = Schedule::where('route_id', $validated['route_id'])
+                ->where('status', 'ACTIVE')
+                ->whereRaw("FIND_IN_SET('$dayOfWeek', days)")
+                ->with([
+                    'ferry:id,name,capacity_passenger,capacity_vehicle_motorcycle,capacity_vehicle_car,capacity_vehicle_bus,capacity_vehicle_truck',
+                    'route:id,origin,destination,base_price,motorcycle_price,car_price,bus_price,truck_price'
+                ])
+                ->get();
+
+            $scheduleIds = $schedules->pluck('id');
+
+            // Ambil ketersediaan untuk tanggal yang dipilih
+            $scheduleDates = ScheduleDate::whereIn('schedule_id', $scheduleIds)
+                ->where('date', $date->format('Y-m-d'))
+                ->get()
+                ->keyBy('schedule_id');
+
+            $result = $schedules->map(function ($schedule) use ($scheduleDates, $date) {
+                $scheduleDate = $scheduleDates->get($schedule->id);
+
+                // Kalau tidak ada data specifik untuk tanggal tersebut,
+                // tambahkan data default
+                if (!$scheduleDate) {
+                    $scheduleDate = new ScheduleDate([
+                        'schedule_id' => $schedule->id,
+                        'date' => $date->format('Y-m-d'),
+                        'passenger_count' => 0,
+                        'motorcycle_count' => 0,
+                        'car_count' => 0,
+                        'bus_count' => 0,
+                        'truck_count' => 0,
+                        'status' => 'AVAILABLE'
+                    ]);
+                }
+
+                // Gabungkan data jadwal dengan ketersediaan
+                $schedule->available_passenger = $schedule->ferry->capacity_passenger - $scheduleDate->passenger_count;
+                $schedule->available_motorcycle = $schedule->ferry->capacity_vehicle_motorcycle - $scheduleDate->motorcycle_count;
+                $schedule->available_car = $schedule->ferry->capacity_vehicle_car - $scheduleDate->car_count;
+                $schedule->available_bus = $schedule->ferry->capacity_vehicle_bus - $scheduleDate->bus_count;
+                $schedule->available_truck = $schedule->ferry->capacity_vehicle_truck - $scheduleDate->truck_count;
+                $schedule->schedule_date_status = $scheduleDate->status;
+
+                return $schedule;
+            })->filter(function ($schedule) {
+                // Filter jadwal yang tidak tersedia
+                return $schedule->schedule_date_status === 'AVAILABLE';
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data jadwal berhasil diambil',
+                'data' => $result
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil jadwal: ' . $e->getMessage()
             ], 500);
         }
     }

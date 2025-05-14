@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import adminRouteService from '../../../services/adminRoute.service';
+import api from '../../../services/api';
 
 const RouteShow = () => {
   const { id } = useParams();
@@ -17,8 +18,11 @@ const RouteShow = () => {
 
   const fetchRoute = async () => {
     try {
-      const response = await axios.get(`/api/admin-panel/routes/${id}`);
-      setRoute(response.data.data);
+      const response = await adminRouteService.getRouteDetail(id);
+      // Perbaiki struktur response
+      if (response.status === 'success' && response.data) {
+        setRoute(response.data);
+      }
     } catch (error) {
       console.error('Error fetching route:', error);
     } finally {
@@ -28,10 +32,15 @@ const RouteShow = () => {
 
   const fetchSchedules = async () => {
     try {
-      const response = await axios.get(`/api/admin-panel/schedules`, {
+      // Gunakan api langsung untuk consistency
+      const response = await api.get('/admin-panel/schedules', {
         params: { route_id: id }
       });
-      setSchedules(response.data.data || []);
+      
+      // Perbaiki struktur response untuk pagination
+      if (response.data.status === 'success') {
+        setSchedules(response.data.data.data || []);
+      }
     } catch (error) {
       console.error('Error fetching schedules:', error);
     }
@@ -39,29 +48,48 @@ const RouteShow = () => {
 
   const handleDelete = async () => {
     try {
-      await axios.delete(`/api/admin-panel/routes/${id}`);
+      await adminRouteService.deleteRoute(id);
       navigate('/admin/routes');
     } catch (error) {
-      console.error('Error deleting route:', error);
+      console.error('Error deleting route:', error.message);
+      alert('Error: Rute tidak dapat dihapus karena digunakan dalam jadwal');
     }
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    if (!dateString) return '-';
+    try {
+      return new Date(dateString).toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return dateString;
+    }
   };
 
   const formatTime = (timeString) => {
     if (!timeString) return '-';
-    return new Date(`2000-01-01T${timeString}`).toLocaleTimeString('id-ID', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    try {
+      // Handle jika timeString sudah termasuk tanggal
+      if (timeString.includes('T')) {
+        return new Date(timeString).toLocaleTimeString('id-ID', {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+      // Handle jika hanya waktu (HH:mm:ss)
+      return new Date(`2000-01-01T${timeString}`).toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('Failed to parse time:', error);
+      return timeString;
+    }    
   };
 
   const formatPrice = (price) => {
@@ -69,6 +97,7 @@ const RouteShow = () => {
   };
 
   const getDayNames = (days) => {
+    if (!days) return [];
     const dayNames = {
       '1': 'Sen',
       '2': 'Sel', 
@@ -78,11 +107,21 @@ const RouteShow = () => {
       '6': 'Sab',
       '7': 'Min'
     };
-    return days.split(',').map(day => dayNames[day] || day);
+    const dayArray = typeof days === 'string' ? days.split(',') : [days];
+    return dayArray.map(day => dayNames[day] || day);
   };
 
-  if (loading) return <div>Loading...</div>;
-  if (!route) return <div>Route not found</div>;
+  if (loading) return (
+    <div className="flex justify-center items-center h-64">
+      <div className="text-lg text-gray-600">Loading...</div>
+    </div>
+  );
+
+  if (!route) return (
+    <div className="flex justify-center items-center h-64">
+      <div className="text-lg text-gray-600">Route not found</div>
+    </div>
+  );
 
   return (
     <div className="bg-white shadow-lg rounded-lg overflow-hidden">

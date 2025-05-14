@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import axios from 'axios';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import adminFerryService from '../../../services/adminFerry.service';
 
 const FerryShow = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [ferry, setFerry] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
     fetchFerry();
@@ -13,31 +15,48 @@ const FerryShow = () => {
 
   const fetchFerry = async () => {
     try {
-      const response = await axios.get(`/admin-panel/ferries/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      setFerry(response.data);
+      const response = await adminFerryService.getFerryDetail(id);
+      
+      if (response.status === 'success' && response.data) {
+        setFerry(response.data);
+      } else {
+        setFerry(null);
+      }
     } catch (error) {
       console.error('Error fetching ferry:', error);
+      setFerry(null);
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  if (!ferry) {
-    return <div>Ferry not found</div>;
-  }
+  const handleDelete = async () => {
+    try {
+      const response = await adminFerryService.deleteFerry(id);
+      
+      if (response.status === 'success' || response.success) {
+        navigate('/admin/ferries');
+      } else {
+        alert(response.message || 'Gagal menghapus kapal');
+      }
+    } catch (error) {
+      console.error('Error deleting ferry:', error);
+      alert(error.response?.data?.message || 'Terjadi kesalahan saat menghapus kapal');
+    }
+  };
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      });
+    } catch {
+      return dateString;
+    }
   };
 
   const dayNames = {
@@ -49,6 +68,34 @@ const FerryShow = () => {
     6: 'Sabtu',
     7: 'Minggu'
   };
+
+  const getDayNames = (days) => {
+    if (!days) return [];
+    const dayArray = typeof days === 'string' ? days.split(',') : [days];
+    return dayArray.map(day => dayNames[day] || day);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-lg text-gray-600">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!ferry) {
+    return (
+      <div className="container px-4 py-6 mx-auto">
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded">
+          <p className="font-bold">Error!</p>
+          <p>Kapal tidak ditemukan.</p>
+          <Link to="/admin/ferries" className="mt-2 inline-block text-red-700 underline">
+            Kembali ke daftar kapal
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container px-4 py-6 mx-auto">
@@ -78,7 +125,15 @@ const FerryShow = () => {
           </div>
           <div className="p-6 text-center">
             {ferry.image ? (
-              <img src={`/${ferry.image}`} alt={ferry.name} className="max-h-64 mx-auto rounded-lg shadow" />
+              <img 
+                src={adminFerryService.getImageUrl(ferry.image)} 
+                alt={ferry.name} 
+                className="max-h-64 mx-auto rounded-lg shadow" 
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = '/default-ferry-image.png';
+                }}
+              />
             ) : (
               <div className="flex flex-col items-center justify-center py-12 bg-gray-50 rounded-lg">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -230,58 +285,119 @@ const FerryShow = () => {
       )}
 
       {/* Jadwal Aktif */}
-      <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-6">
-        <div className="border-b border-gray-200 bg-gray-50 px-6 py-3">
-          <h2 className="text-lg font-semibold text-blue-600">Jadwal Aktif</h2>
-        </div>
-        <div className="p-6">
-          {!ferry.schedules || ferry.schedules.length === 0 ? (
-            <div className="text-center py-8">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <p className="text-gray-500">Tidak ada jadwal aktif untuk kapal ini</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rute</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Waktu Keberangkatan</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Waktu Kedatangan</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hari Operasi</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {ferry.schedules.map((schedule) => (
-                    <tr key={schedule.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {schedule.route.origin} - {schedule.route.destination}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{schedule.departure_time}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{schedule.arrival_time}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {schedule.days.split(',').map(day => dayNames[parseInt(day)]).join(', ')}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <Link to={`/admin/schedules/${schedule.id}`} className="inline-flex items-center px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-md shadow-sm transition-colors">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                          Detail
-                        </Link>
-                      </td>
+      {ferry.schedules && (
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-6">
+          <div className="border-b border-gray-200 bg-gray-50 px-6 py-3">
+            <h2 className="text-lg font-semibold text-blue-600">Jadwal Aktif</h2>
+          </div>
+          <div className="p-6">
+            {ferry.schedules.length === 0 ? (
+              <div className="text-center py-8">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <p className="text-gray-500">Tidak ada jadwal aktif untuk kapal ini</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rute</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Waktu Keberangkatan</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Waktu Kedatangan</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hari Operasi</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {ferry.schedules.map((schedule) => (
+                      <tr key={schedule.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {schedule.route?.origin || 'N/A'} - {schedule.route?.destination || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {schedule.departure_time || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {schedule.arrival_time || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {getDayNames(schedule.days).join(', ')}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <Link to={`/admin/schedules/${schedule.id}`} className="inline-flex items-center px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-md shadow-sm transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            Detail
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
+      )}
+
+      {/* Delete Button */}
+      <div className="mt-8 flex justify-end">
+        <button 
+          onClick={() => setShowDeleteModal(true)}
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 shadow-sm transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          Hapus Kapal
+        </button>
       </div>
+
+      {/* Delete Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="p-6">
+              <div className="text-center">
+                <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-1">Konfirmasi Hapus</h3>
+                <p className="text-gray-500">Apakah Anda yakin ingin menghapus kapal:</p>
+                <p className="font-semibold text-gray-800 mt-2 mb-4">
+                  {ferry.name} ({ferry.registration_number})
+                </p>
+              </div>
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                <button 
+                  onClick={() => setShowDeleteModal(false)}
+                  className="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg bg-white text-gray-700 hover:bg-gray-50"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Batal
+                </button>
+                <button 
+                  onClick={handleDelete}
+                  className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Hapus
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

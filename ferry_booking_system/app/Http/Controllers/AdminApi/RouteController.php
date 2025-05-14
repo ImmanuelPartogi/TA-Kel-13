@@ -14,18 +14,28 @@ class RouteController extends Controller
     {
         $query = Route::query();
 
+        // Filter berdasarkan search (cari di origin atau destination)
+        if ($request->has('search') && $request->search) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('origin', 'like', '%' . $search . '%')
+                    ->orWhere('destination', 'like', '%' . $search . '%')
+                    ->orWhere('route_code', 'like', '%' . $search . '%');
+            });
+        }
+
         // Filter berdasarkan status
-        if ($request->has('status')) {
+        if ($request->has('status') && $request->status) {
             $query->where('status', $request->status);
         }
 
-        // Filter berdasarkan origin
-        if ($request->has('origin')) {
+        // Filter berdasarkan origin (tetap ada jika dibutuhkan)
+        if ($request->has('origin') && $request->origin) {
             $query->where('origin', 'like', '%' . $request->origin . '%');
         }
 
-        // Filter berdasarkan destination
-        if ($request->has('destination')) {
+        // Filter berdasarkan destination (tetap ada jika dibutuhkan)
+        if ($request->has('destination') && $request->destination) {
             $query->where('destination', 'like', '%' . $request->destination . '%');
         }
 

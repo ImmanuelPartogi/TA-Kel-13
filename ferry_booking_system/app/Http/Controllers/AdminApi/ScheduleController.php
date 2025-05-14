@@ -10,43 +10,86 @@ use App\Models\ScheduleDate;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class ScheduleController extends Controller
 {
     public function index(Request $request)
     {
+        // Perform regular maintenance checks
         $this->checkExpiredSchedules();
         $this->checkExpiredStatuses();
 
+        // Start with base query including related models
         $query = Schedule::with(['route', 'ferry']);
 
-        // Filter berdasarkan rute
-        if ($request->has('route_id') && $request->route_id) {
-            $query->where('route_id', $request->route_id);
+        // Advanced filtering with more comprehensive approach
+        $filters = $request->only([
+            'route_id',
+            'ferry_id',
+            'status',
+            'date_from',
+            'date_to',
+            'departure_time_from',
+            'departure_time_to'
+        ]);
+
+        // Apply filters dynamically
+        foreach ($filters as $key => $value) {
+            if ($value === null) continue;
+
+            switch ($key) {
+                case 'route_id':
+                    $query->where('route_id', $value);
+                    break;
+                case 'ferry_id':
+                    $query->where('ferry_id', $value);
+                    break;
+                case 'status':
+                    $query->where('status', $value);
+                    break;
+                case 'date_from':
+                    $query->whereDate('schedule_date', '>=', $value);
+                    break;
+                case 'date_to':
+                    $query->whereDate('schedule_date', '<=', $value);
+                    break;
+                case 'departure_time_from':
+                    $query->whereTime('departure_time', '>=', $value);
+                    break;
+                case 'departure_time_to':
+                    $query->whereTime('departure_time', '<=', $value);
+                    break;
+            }
         }
 
-        // Filter berdasarkan feri
-        if ($request->has('ferry_id') && $request->ferry_id) {
-            $query->where('ferry_id', $request->ferry_id);
-        }
+        // Optional: Add sorting
+        $sortBy = $request->input('sort_by', 'created_at');
+        $sortDirection = $request->input('sort_direction', 'desc');
+        $query->orderBy($sortBy, $sortDirection);
 
-        // Filter berdasarkan status
-        if ($request->has('status')) {
-            $query->where('status', $request->status);
-        }
-
+        // Pagination with configurable per page
         $perPage = $request->input('per_page', 10);
         $schedules = $query->paginate($perPage);
 
+        // Fetch active routes and ferries
         $routes = Route::where('status', 'ACTIVE')->get();
         $ferries = Ferry::where('status', 'ACTIVE')->get();
+
+        // Logging for debugging (consider removing in production)
+        Log::info('Schedules Query', [
+            'total_schedules' => $schedules->total(),
+            'current_page' => $schedules->currentPage(),
+            'filters' => $filters
+        ]);
 
         return response()->json([
             'status' => 'success',
             'data' => [
                 'schedules' => $schedules,
                 'routes' => $routes,
-                'ferries' => $ferries
+                'ferries' => $ferries,
+                'filters' => $filters
             ]
         ]);
     }

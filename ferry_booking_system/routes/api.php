@@ -245,6 +245,10 @@ Route::prefix('admin-panel')->middleware(['auth:sanctum'])->group(function () { 
     // Bookings Management
     Route::prefix('bookings')->group(function () {
         Route::get('/', [AdminBookingController::class, 'index']);
+        Route::get('/create', [AdminBookingController::class, 'create']);
+        Route::post('/', [AdminBookingController::class, 'store']);
+        Route::get('/get-schedules', [AdminBookingController::class, 'getSchedulesForBooking']); // Tambahkan ini
+        Route::get('/search-users', [AdminBookingController::class, 'searchUsers']);
         Route::get('/{id}', [AdminBookingController::class, 'show']);
         Route::put('/{id}/status', [AdminBookingController::class, 'updateStatus']);
 

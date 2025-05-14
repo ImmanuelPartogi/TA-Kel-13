@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import axios from 'axios';
+import adminScheduleService from '../../../services/adminSchedule.service';
 
 const SchedulesList = () => {
   const [schedules, setSchedules] = useState([]);
@@ -30,28 +30,112 @@ const SchedulesList = () => {
     fetchData();
   }, [searchParams]);
 
+  // Debug state changes
+  useEffect(() => {
+    console.log('Current schedules state:', schedules);
+    console.log('Current routes state:', routes);
+    console.log('Current ferries state:', ferries);
+    console.log('Current pagination state:', pagination);
+  }, [schedules, routes, ferries, pagination]);
+
   const fetchData = async () => {
     try {
       setLoading(true);
       const [schedulesRes, routesRes, ferriesRes] = await Promise.all([
-        axios.get('/api/admin-panel/schedules', {
+        adminScheduleService.get('/admin-panel/schedules', {
           params: { route_id, ferry_id, status, page }
         }),
-        axios.get('/api/admin-panel/routes'),
-        axios.get('/api/admin-panel/ferries')
+        adminScheduleService.get('/admin-panel/routes'),
+        adminScheduleService.get('/admin-panel/ferries')
       ]);
       
-      setSchedules(schedulesRes.data.data || []);
-      setPagination({
-        current_page: schedulesRes.data.current_page,
-        total: schedulesRes.data.total,
-        last_page: schedulesRes.data.last_page,
-        per_page: schedulesRes.data.per_page
-      });
-      setRoutes(routesRes.data.data || []);
-      setFerries(ferriesRes.data.data || []);
+      // Debug response dengan lebih detail
+      console.log('Schedules Response:', schedulesRes.data);
+      console.log('Schedules data.data:', schedulesRes.data.data);
+      console.log('Routes Response:', routesRes.data);
+      console.log('Routes data.data:', routesRes.data.data);
+      console.log('Ferries Response:', ferriesRes.data);
+      console.log('Ferries data.data:', ferriesRes.data.data);
+      
+      // Handle schedules response
+      if (schedulesRes.data.data) {
+        // Cek berbagai kemungkinan struktur
+        if (schedulesRes.data.data.schedules) {
+          const schedulesData = schedulesRes.data.data.schedules;
+          console.log('Schedules pagination data:', schedulesData);
+          setSchedules(schedulesData.data || []);
+          
+          if (schedulesData.current_page) {
+            setPagination({
+              current_page: schedulesData.current_page,
+              total: schedulesData.total,
+              last_page: schedulesData.last_page,
+              per_page: schedulesData.per_page
+            });
+          }
+        } else if (Array.isArray(schedulesRes.data.data)) {
+          console.log('Schedules is array:', schedulesRes.data.data);
+          setSchedules(schedulesRes.data.data);
+        } else if (schedulesRes.data.data.data) {
+          console.log('Schedules has data.data.data:', schedulesRes.data.data.data);
+          setSchedules(schedulesRes.data.data.data);
+          
+          if (schedulesRes.data.data.current_page) {
+            setPagination({
+              current_page: schedulesRes.data.data.current_page,
+              total: schedulesRes.data.data.total,
+              last_page: schedulesRes.data.data.last_page,
+              per_page: schedulesRes.data.data.per_page
+            });
+          }
+        } else {
+          console.log('Unknown schedules structure, setting as is');
+          setSchedules([]);
+        }
+      }
+      
+      // Handle routes response
+      if (routesRes.data.data) {
+        if (Array.isArray(routesRes.data.data)) {
+          console.log('Routes is array:', routesRes.data.data);
+          setRoutes(routesRes.data.data);
+        } else if (routesRes.data.data.routes) {
+          console.log('Routes has data.routes:', routesRes.data.data.routes);
+          setRoutes(routesRes.data.data.routes);
+        } else if (routesRes.data.data.data) {
+          console.log('Routes has data.data:', routesRes.data.data.data);
+          setRoutes(routesRes.data.data.data);
+        } else {
+          console.log('Unknown routes structure');
+          setRoutes([]);
+        }
+      }
+      
+      // Handle ferries response
+      if (ferriesRes.data.data) {
+        if (Array.isArray(ferriesRes.data.data)) {
+          console.log('Ferries is array:', ferriesRes.data.data);
+          setFerries(ferriesRes.data.data);
+        } else if (ferriesRes.data.data.ferries) {
+          console.log('Ferries has data.ferries:', ferriesRes.data.data.ferries);
+          setFerries(ferriesRes.data.data.ferries);
+        } else if (ferriesRes.data.data.data) {
+          console.log('Ferries has data.data:', ferriesRes.data.data.data);
+          setFerries(ferriesRes.data.data.data);
+        } else {
+          console.log('Unknown ferries structure');
+          setFerries([]);
+        }
+      }
+      
+      // Debug final state
+      console.log('Final schedules state will be:', schedules);
+      console.log('Final routes state will be:', routes);
+      console.log('Final ferries state will be:', ferries);
+      
     } catch (error) {
       console.error('Error fetching data:', error);
+      console.error('Error response:', error.response);
     } finally {
       setLoading(false);
     }
@@ -78,19 +162,27 @@ const SchedulesList = () => {
     if (!window.confirm('Apakah Anda yakin ingin menghapus jadwal ini?')) return;
     
     try {
-      await axios.delete(`/api/admin-panel/schedules/${id}`);
+      await adminScheduleService.delete(`/admin-panel/schedules/${id}`);
       fetchData();
     } catch (error) {
       console.error('Error deleting schedule:', error);
+      alert('Gagal menghapus jadwal: ' + (error.response?.data?.message || error.message));
     }
   };
 
   const getDaysText = (daysString) => {
-    const days = daysString.split(',');
-    return days.map(day => dayNames[day] || '').join(', ');
+    if (!daysString) return '';
+    const days = daysString.toString().split(',');
+    return days.map(day => dayNames[day] || '').filter(Boolean).join(', ');
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -155,9 +247,9 @@ const SchedulesList = () => {
                 >
                   <option value="">Semua Status</option>
                   <option value="ACTIVE">Aktif</option>
+                  <option value="INACTIVE">Tidak Aktif</option>
                   <option value="CANCELLED">Dibatalkan</option>
-                  <option value="DELAYED">Ditunda</option>
-                  <option value="FULL">Penuh</option>
+                  <option value="WEATHER_ISSUE">Masalah Cuaca</option>
                 </select>
               </div>
             </div>
@@ -188,6 +280,24 @@ const SchedulesList = () => {
         </div>
       </div>
 
+      {/* Debug Info */}
+      {schedules.length === 0 && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                Tidak ada jadwal yang ditampilkan. Silakan periksa console untuk debug info.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Schedule List */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-blue-100 border-b border-gray-200">
@@ -211,16 +321,16 @@ const SchedulesList = () => {
                 {schedules.length > 0 ? schedules.map(schedule => (
                   <tr key={schedule.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {schedule.route.origin} - {schedule.route.destination}
+                      {schedule.route?.origin || 'N/A'} - {schedule.route?.destination || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {schedule.ferry.name}
+                      {schedule.ferry?.name || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {schedule.departure_time}
+                      {schedule.departure_time || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {schedule.arrival_time}
+                      {schedule.arrival_time || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {getDaysText(schedule.days)}
@@ -283,10 +393,67 @@ const SchedulesList = () => {
             </table>
           </div>
 
-          {/* Pagination would go here */}
+          {/* Pagination */}
           {pagination.last_page > 1 && (
-            <div className="mt-6">
-              {/* Add pagination component */}
+            <div className="mt-6 flex items-center justify-between">
+              <div className="flex-1 flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-700">
+                    Menampilkan{' '}
+                    <span className="font-medium">{(pagination.current_page - 1) * pagination.per_page + 1}</span>
+                    {' '}sampai{' '}
+                    <span className="font-medium">
+                      {Math.min(pagination.current_page * pagination.per_page, pagination.total)}
+                    </span>
+                    {' '}dari{' '}
+                    <span className="font-medium">{pagination.total}</span>
+                    {' '}hasil
+                  </p>
+                </div>
+                <div>
+                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                    <button
+                      onClick={() => setSearchParams(prev => ({ ...prev, page: Math.max(1, pagination.current_page - 1) }))}
+                      disabled={pagination.current_page <= 1}
+                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                    >
+                      <span className="sr-only">Previous</span>
+                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                    
+                    {/* Page numbers */}
+                    {[...Array(pagination.last_page)].map((_, index) => {
+                      const pageNumber = index + 1;
+                      return (
+                        <button
+                          key={pageNumber}
+                          onClick={() => setSearchParams(prev => ({ ...prev, page: pageNumber }))}
+                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                            pageNumber === pagination.current_page
+                              ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
+                              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                          }`}
+                        >
+                          {pageNumber}
+                        </button>
+                      );
+                    })}
+                    
+                    <button
+                      onClick={() => setSearchParams(prev => ({ ...prev, page: Math.min(pagination.last_page, pagination.current_page + 1) }))}
+                      disabled={pagination.current_page >= pagination.last_page}
+                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                    >
+                      <span className="sr-only">Next</span>
+                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </nav>
+                </div>
+              </div>
             </div>
           )}
         </div>

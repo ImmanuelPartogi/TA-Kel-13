@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import axios from 'axios';
+import adminScheduleService from '../../../services/adminSchedule.service';
 
 const BookingShow = () => {
   const { id } = useParams();
@@ -19,7 +19,7 @@ const BookingShow = () => {
 
   const fetchBooking = async () => {
     try {
-      const response = await axios.get(`/api/admin-panel/bookings/${id}`);
+      const response = await adminScheduleService.get(`/admin-panel/bookings/${id}`);
       setBooking(response.data.data);
     } catch (error) {
       console.error('Error fetching booking:', error);
@@ -36,7 +36,7 @@ const BookingShow = () => {
   const handleStatusUpdate = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`/api/admin-panel/bookings/${id}/status`, statusForm);
+      await adminScheduleService.put(`/admin-panel/bookings/${id}/status`, statusForm);
       fetchBooking();
       setStatusForm({ status: '', cancellation_reason: '', notes: '' });
     } catch (error) {

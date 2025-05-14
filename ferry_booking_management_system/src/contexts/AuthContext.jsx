@@ -1,73 +1,92 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
 const AuthContext = createContext();
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
 
+  // Load user dari localStorage saat pertama kali mount
   useEffect(() => {
-    checkAuth();
+    const loadUser = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const savedUser = localStorage.getItem('user');
+        
+        if (token && savedUser) {
+          const userData = JSON.parse(savedUser);
+          console.log('Loaded user from localStorage:', userData);
+          
+          // Set default assigned_routes jika null
+          if (userData.role === 'operator' && !userData.assigned_routes) {
+            userData.assigned_routes = [];
+          }
+          
+          setUser(userData);
+          // Set default axios header
+          api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        }
+      } catch (error) {
+        console.error('Error loading user:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUser();
   }, []);
 
-  const checkAuth = async () => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const response = await api.get('/auth/profile');
-        setUser(response.data.data);
-      } catch (error) {
-        console.error('Authentication check failed:', error);
-        localStorage.removeItem('token');
-      }
+  const login = (userData, token) => {
+    console.log('Login - User data:', userData);
+    console.log('Login - Token:', token);
+    
+    // Set default assigned_routes jika null untuk operator
+    if (userData.role === 'operator' && !userData.assigned_routes) {
+      userData.assigned_routes = [];
     }
-    setLoading(false);
+    
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(userData));
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    setUser(userData);
   };
 
-  const login = async (email, password, role = 'admin') => {
-    try {
-      // Determine the login endpoint based on role
-      const endpoint = role === 'admin' ? '/admin-panel/login' : '/operator-panel/login';
-      
-      const response = await api.post(endpoint, { email, password });
-      const { token, user } = response.data.data;
-      
-      localStorage.setItem('token', token);
-      setUser(user);
-      
-      // Redirect based on role
-      navigate(role === 'admin' ? '/admin/dashboard' : '/operator/dashboard');
-      
-      return { success: true };
-    } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Login gagal' 
-      };
-    }
+  const logout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    delete api.defaults.headers.common['Authorization'];
+    setUser(null);
   };
 
-  const logout = async () => {
-    try {
-      // Determine logout endpoint based on user role
-      const endpoint = user?.role === 'admin' ? '/admin-panel/logout' : '/operator-panel/logout';
-      await api.post(endpoint);
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      localStorage.removeItem('token');
-      setUser(null);
-      navigate('/login');
+  const hasRoutes = () => {
+    if (user?.role === 'operator') {
+      return user.assigned_routes && Array.isArray(user.assigned_routes) && user.assigned_routes.length > 0;
     }
+    return true;
+  };
+
+  const value = {
+    user,
+    loading,
+    login,
+    logout,
+    isAuthenticated: !!user,
+    isAdmin: user?.role === 'admin',
+    isOperator: user?.role === 'operator',
+    hasRoutes,
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

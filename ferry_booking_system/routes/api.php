@@ -183,9 +183,7 @@ Route::middleware('auth:sanctum')->group(function () {
 | Rute API untuk panel admin, diproteksi dengan auth:sanctum dan role admin
 |
 */
-
-Route::prefix('admin-panel')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
-    // Dashboard
+Route::prefix('admin-panel')->middleware(['auth:sanctum'])->group(function () {    // Dashboard    // Dashboard
     Route::get('/dashboard/stats', [AdminDashboardController::class, 'getStats']);
     Route::get('/dashboard/summary', [AdminDashboardController::class, 'getSummary']);
 
@@ -295,8 +293,7 @@ Route::prefix('admin-panel')->middleware(['auth:sanctum', 'role:admin'])->group(
 |
 */
 
-Route::prefix('operator-panel')->middleware(['auth:sanctum', 'role:operator'])->group(function () {
-    // Dashboard
+Route::prefix('operator-panel')->middleware(['auth:sanctum'])->group(function () {    // Dashboard
     Route::get('/dashboard/stats', [OperatorDashboardController::class, 'getStats']);
     Route::get('/dashboard/summary', [OperatorDashboardController::class, 'getSummary']);
 

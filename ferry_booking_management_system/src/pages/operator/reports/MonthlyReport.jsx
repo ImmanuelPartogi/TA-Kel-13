@@ -1,7 +1,7 @@
 // src/pages/operator/reports/MonthlyReport.jsx
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { operatorReportService } from '../../../services/operatorReports.service';
+import { operatorReportsService } from '../../../services/operatorReports.service';
 import Swal from 'sweetalert2';
 
 const MonthlyReport = () => {
@@ -23,8 +23,8 @@ const MonthlyReport = () => {
   const fetchMonthlyReport = async () => {
     setLoading(true);
     try {
-      const response = await operatorReportService.getMonthly({ month });
-      const data = response.data.data;
+      const response = await operatorReportsService.getMonthly({ month });
+      const data = response.data?.data || [];
       setRouteData(data);
       
       // Calculate summary
@@ -35,15 +35,24 @@ const MonthlyReport = () => {
         totalRevenue: 0
       };
 
-      data.forEach(route => {
-        summary.totalPassengers += route.total_passengers;
-        summary.totalVehicles += route.total_vehicles;
-        summary.totalRevenue += route.total_amount;
-      });
+      if (Array.isArray(data)) {
+        data.forEach(route => {
+          summary.totalPassengers += route.total_passengers || 0;
+          summary.totalVehicles += route.total_vehicles || 0;
+          summary.totalRevenue += route.total_amount || 0;
+        });
+      }
 
       setSummary(summary);
     } catch (error) {
       console.error('Error fetching monthly report:', error);
+      setRouteData([]);
+      setSummary({
+        totalPassengers: 0,
+        totalVehicles: 0,
+        activeRoutes: 0,
+        totalRevenue: 0
+      });
       Swal.fire({
         icon: 'error',
         title: 'Error',
@@ -55,7 +64,7 @@ const MonthlyReport = () => {
 
   const handleExport = async () => {
     try {
-      const response = await operatorReportService.exportMonthly({ month, export: 'csv' });
+      const response = await operatorReportsService.exportMonthly({ month, export: 'csv' });
       const blob = new Blob([response.data], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -217,7 +226,7 @@ const MonthlyReport = () => {
                   <div key={data.route_id} className="bg-white border border-gray-200 rounded-lg shadow-md mb-6 overflow-hidden">
                     <div className="bg-blue-600 px-6 py-4">
                       <h3 className="text-lg font-semibold text-white">
-                        Rute: {data.route.origin} - {data.route.destination}
+                        Rute: {data.route?.origin || 'Unknown'} - {data.route?.destination || 'Unknown'}
                       </h3>
                     </div>
                     <div className="p-6">
@@ -231,7 +240,7 @@ const MonthlyReport = () => {
                             </div>
                             <div className="ml-4">
                               <div className="text-sm font-medium text-gray-500">Total Penumpang</div>
-                              <div className="text-lg font-semibold text-gray-900">{data.total_passengers.toLocaleString('id-ID')}</div>
+                              <div className="text-lg font-semibold text-gray-900">{(data.total_passengers || 0).toLocaleString('id-ID')}</div>
                             </div>
                           </div>
                         </div>
@@ -245,7 +254,7 @@ const MonthlyReport = () => {
                             </div>
                             <div className="ml-4">
                               <div className="text-sm font-medium text-gray-500">Total Kendaraan</div>
-                              <div className="text-lg font-semibold text-gray-900">{data.total_vehicles.toLocaleString('id-ID')}</div>
+                              <div className="text-lg font-semibold text-gray-900">{(data.total_vehicles || 0).toLocaleString('id-ID')}</div>
                             </div>
                           </div>
                         </div>
@@ -259,7 +268,7 @@ const MonthlyReport = () => {
                             </div>
                             <div className="ml-4">
                               <div className="text-sm font-medium text-gray-500">Total Pendapatan</div>
-                              <div className="text-lg font-semibold text-gray-900">{formatCurrency(data.total_amount)}</div>
+                              <div className="text-lg font-semibold text-gray-900">{formatCurrency(data.total_amount || 0)}</div>
                             </div>
                           </div>
                         </div>
@@ -284,19 +293,19 @@ const MonthlyReport = () => {
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
-                            {Object.entries(data.dates).sort().map(([date, dateData]) => (
+                            {data.dates && Object.entries(data.dates).sort().map(([date, dateData]) => (
                               <tr key={date}>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                   {formatDate(date)}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  {dateData.passengers.toLocaleString('id-ID')}
+                                  {(dateData.passengers || 0).toLocaleString('id-ID')}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  {dateData.vehicles.toLocaleString('id-ID')}
+                                  {(dateData.vehicles || 0).toLocaleString('id-ID')}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  {formatCurrency(dateData.amount)}
+                                  {formatCurrency(dateData.amount || 0)}
                                 </td>
                               </tr>
                             ))}
@@ -305,13 +314,13 @@ const MonthlyReport = () => {
                                 Total
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {data.total_passengers.toLocaleString('id-ID')}
+                                {(data.total_passengers || 0).toLocaleString('id-ID')}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {data.total_vehicles.toLocaleString('id-ID')}
+                                {(data.total_vehicles || 0).toLocaleString('id-ID')}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {formatCurrency(data.total_amount)}
+                                {formatCurrency(data.total_amount || 0)}
                               </td>
                             </tr>
                           </tbody>

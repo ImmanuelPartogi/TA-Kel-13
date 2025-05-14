@@ -1,18 +1,15 @@
-import axios from 'axios';
+import api from './api';
 
 export const operatorDashboardService = {
   // Get dashboard statistics
-  getStats: async () => {
-    const response = await axios.get('/operator-panel/dashboard/stats');
-    return response.data;
+  getStats: () => {
+    return api.get('/operator-panel/dashboard/stats');
   },
 
   // Get dashboard summary (jadwal hari ini, aktivitas terkini, dll)
-  getSummary: async () => {
-    const response = await axios.get('/operator-panel/dashboard/summary');
-    return response.data;
+  getSummary: () => {
+    return api.get('/operator-panel/dashboard/summary');
   }
 };
-
 
 export default operatorDashboardService;

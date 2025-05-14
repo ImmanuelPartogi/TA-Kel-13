@@ -1,7 +1,7 @@
 // src/pages/operator/reports/DailyReport.jsx
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { operatorReportService } from '../../../services/operatorReports.service';
+import { operatorReportsService } from '../../../services/operatorReports.service';
 import Swal from 'sweetalert2';
 
 const DailyReport = () => {
@@ -17,7 +17,7 @@ const DailyReport = () => {
   const fetchDailyReport = async () => {
     setLoading(true);
     try {
-      const response = await operatorReportService.getDaily({ date });
+      const response = await operatorReportsService.getDaily({ date });
       setReportData(response.data.data);
     } catch (error) {
       console.error('Error fetching daily report:', error);
@@ -32,7 +32,7 @@ const DailyReport = () => {
 
   const handleExport = async () => {
     try {
-      const response = await operatorReportService.exportDaily({ date, export: 'csv' });
+      const response = await operatorReportsService.exportDaily({ date, export: 'csv' });
       const blob = new Blob([response.data], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');

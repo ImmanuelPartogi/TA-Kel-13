@@ -1,23 +1,30 @@
-// src/services/bookings.service.js
-import axios from 'axios';
+import api from './api.js';
 
 export const operatorBookingsService = {
-  // Operator Bookings API
-  getAll: (params) => axios.get('/operator-panel/bookings', { params }),
-  getById: (id) => axios.get(`/operator-panel/bookings/${id}`),
-  updateStatus: (id, status) => axios.put(`/operator-panel/bookings/${id}/status`, { status }),
-  
-  // Check-in methods
-  checkIn: {
-    form: () => axios.get('/operator-panel/bookings/check-in'),
-    validate: (data) => axios.post('/operator-panel/bookings/validate', data),
-    process: (data) => axios.post('/operator-panel/bookings/check-in', data),
-    byTicket: (id, data) => axios.post(`/operator-panel/bookings/${id}/check-in`, data),
+  // Get all bookings with filtering
+  getAll: (params = {}) => {
+    return api.get('/operator-panel/bookings', { params });
   },
-  
-  // Additional methods for operator panel
-  getDashboardStats: () => axios.get('/operator-panel/dashboard/stats'),
-  getDashboardSummary: () => axios.get('/operator-panel/dashboard/summary'),
+
+  // Get single booking by ID
+  getById: (id) => {
+    return api.get(`/operator-panel/bookings/${id}`);
+  },
+
+  // Update booking status
+  updateStatus: (id, data) => {
+    return api.put(`/operator-panel/bookings/${id}/status`, data);
+  },
+
+  // Validate booking for check-in
+  validateBooking: (data) => {
+    return api.post('/operator-panel/bookings/validate', data);
+  },
+
+  // Process check-in
+  processCheckIn: (data) => {
+    return api.post('/operator-panel/bookings/check-in', data);
+  }
 };
 
 export default operatorBookingsService;

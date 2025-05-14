@@ -9,6 +9,7 @@ const SchedulesList = () => {
   const [schedules, setSchedules] = useState([]);
   const [routes, setRoutes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [hasNoRoutes, setHasNoRoutes] = useState(false);
   const [filters, setFilters] = useState({
     route_id: searchParams.get('route_id') || '',
     date: searchParams.get('date') || ''
@@ -21,10 +22,23 @@ const SchedulesList = () => {
 
   const fetchRoutes = async () => {
     try {
-      const response = await operatorRoutesService.getActiveRoutes();
-      setRoutes(response.data.data);
+      const response = await operatorRoutesService.getRoutes({ status: 'active' });
+      console.log('Routes response:', response.data); // Debug log
+      
+      // Make sure routes is an array
+      if (Array.isArray(response.data)) {
+        setRoutes(response.data);
+      } else if (response.data && Array.isArray(response.data.data)) {
+        setRoutes(response.data.data);
+      } else if (response.data && response.data.routes && Array.isArray(response.data.routes)) {
+        setRoutes(response.data.routes);
+      } else {
+        console.warn('Routes data is not in expected format:', response.data);
+        setRoutes([]);
+      }
     } catch (error) {
       console.error('Error fetching routes:', error);
+      setRoutes([]);
     }
   };
 
@@ -32,12 +46,35 @@ const SchedulesList = () => {
     setLoading(true);
     try {
       const params = Object.fromEntries(searchParams);
-      const response = await operatorSchedulesService.getAll(params);
-      setSchedules(response.data.data);
+      const response = await operatorSchedulesService.getSchedules(params);
+      console.log('Schedules response:', response.data); // Debug log
+      
+      if (response.data && response.data.data) {
+        if (Array.isArray(response.data.data.schedules)) {
+          setSchedules(response.data.data.schedules);
+        } else if (Array.isArray(response.data.data)) {
+          setSchedules(response.data.data);
+        } else {
+          console.warn('Schedules data is not in expected format:', response.data);
+          setSchedules([]);
+        }
+        setHasNoRoutes(false);
+      } else {
+        setSchedules([]);
+      }
     } catch (error) {
       console.error('Error fetching schedules:', error);
+      
+      // Check if it's a 403 error (no routes assigned)
+      if (error.response?.status === 403) {
+        setHasNoRoutes(true);
+        setSchedules([]);
+      } else {
+        setSchedules([]);
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleFilterChange = (e) => {
@@ -86,6 +123,27 @@ const SchedulesList = () => {
     return `${hours} jam${mins > 0 ? ` ${mins} menit` : ''}`;
   };
 
+  // Show message if no routes assigned
+  if (!loading && hasNoRoutes) {
+    return (
+      <div className="container mx-auto px-4 py-6">
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="p-6">
+            <div className="text-center py-12">
+              <div className="mb-4">
+                <svg className="mx-auto h-16 w-16 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">Anda Belum Memiliki Rute</h3>
+              <p className="text-gray-600 mb-4">Anda belum ditugaskan ke rute manapun. Silakan hubungi administrator untuk mendapatkan akses ke rute.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -105,14 +163,14 @@ const SchedulesList = () => {
                 <select
                   id="route_id"
                   name="route_id"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border"
                   value={filters.route_id}
                   onChange={handleFilterChange}
                 >
                   <option value="">Semua Rute</option>
-                  {routes.map((route) => (
+                  {Array.isArray(routes) && routes.map((route) => (
                     <option key={route.id} value={route.id}>
-                      {route.origin} - {route.destination} ({route.route_code})
+                      {route.origin} - {route.destination} ({route.route_code || ''})
                     </option>
                   ))}
                 </select>
@@ -128,7 +186,7 @@ const SchedulesList = () => {
                   value={filters.date}
                   onChange={handleFilterChange}
                   min={new Date().toISOString().split('T')[0]}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border"
                 />
               </div>
 
@@ -157,6 +215,14 @@ const SchedulesList = () => {
             </form>
           </div>
 
+          {/* Debug info for development */}
+          {import.meta.env.MODE === 'development' && (
+            <div className="mb-4 p-4 bg-yellow-100 rounded">
+              <p>Token: {localStorage.getItem('token') ? 'Present' : 'Missing'}</p>
+              <p>Schedules count: {schedules.length}</p>
+            </div>
+          )}
+
           {/* Schedules Grid */}
           {loading ? (
             <div className="flex items-center justify-center h-64">
@@ -170,8 +236,12 @@ const SchedulesList = () => {
                     {/* Schedule Header */}
                     <div className="bg-blue-600 text-white p-4">
                       <div className="flex justify-between items-center">
-                        <h3 className="text-lg font-semibold">{schedule.route.origin} - {schedule.route.destination}</h3>
-                        <span className="text-sm bg-white text-blue-800 px-2 py-1 rounded-full">{schedule.route.route_code}</span>
+                        <h3 className="text-lg font-semibold">
+                          {schedule.route?.origin || 'Unknown'} - {schedule.route?.destination || 'Unknown'}
+                        </h3>
+                        <span className="text-sm bg-white text-blue-800 px-2 py-1 rounded-full">
+                          {schedule.route?.route_code || 'N/A'}
+                        </span>
                       </div>
                     </div>
 
@@ -181,7 +251,7 @@ const SchedulesList = () => {
                       <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
                         <div className="text-center">
                           <div className="text-xs text-gray-500">Keberangkatan</div>
-                          <div className="text-xl font-bold text-gray-800">{schedule.departure_time}</div>
+                          <div className="text-xl font-bold text-gray-800">{schedule.departure_time || 'N/A'}</div>
                         </div>
 
                         <div className="flex-1 flex justify-center relative">
@@ -193,13 +263,15 @@ const SchedulesList = () => {
                             <div className="h-3 w-3 rounded-full bg-blue-600 border-2 border-white"></div>
                           </div>
                           <div className="absolute inset-0 flex items-center justify-center">
-                            <span className="bg-white px-2 text-xs text-gray-500">{formatDuration(schedule.route.duration)}</span>
+                            <span className="bg-white px-2 text-xs text-gray-500">
+                              {formatDuration(schedule.route?.duration || 0)}
+                            </span>
                           </div>
                         </div>
 
                         <div className="text-center">
                           <div className="text-xs text-gray-500">Kedatangan</div>
-                          <div className="text-xl font-bold text-gray-800">{schedule.arrival_time}</div>
+                          <div className="text-xl font-bold text-gray-800">{schedule.arrival_time || 'N/A'}</div>
                         </div>
                       </div>
 
@@ -209,13 +281,13 @@ const SchedulesList = () => {
                           <svg className="w-5 h-5 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
                           </svg>
-                          <span className="font-medium">{schedule.ferry.name}</span>
+                          <span className="font-medium">{schedule.ferry?.name || 'Ferry Tidak Diketahui'}</span>
                         </div>
                         <div className="flex items-center text-sm text-gray-700">
                           <svg className="w-5 h-5 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
                           </svg>
-                          <span>Kapasitas: {schedule.ferry.capacity_passenger} Penumpang</span>
+                          <span>Kapasitas: {schedule.ferry?.capacity_passenger || 0} Penumpang</span>
                         </div>
                         <div className="flex items-center text-sm text-gray-700">
                           <svg className="w-5 h-5 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
@@ -227,7 +299,7 @@ const SchedulesList = () => {
                           <svg className="w-5 h-5 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M8.433 7.418c.155-.267.287-.538.395-.815.552-1.396.366-2.962-.187-4.314a.639.639 0 00-.549-.364 61.837 61.837 0 00-2.718.002c-.177.005-.354.016-.531.025-.372.021-.75.058-1.124.08C2.618 3.02 2 3.579 2 4.273v4.462c0 .563.466 1.011 1.024 1.019.44.006.882.01 1.329.014.209.002.419.004.626.004.394 0 .791-.006 1.19-.015.436-.01.844-.037 1.237-.08.413-.045.815-.117 1.207-.207.38-.088.761-.2 1.131-.333a60.787 60.787 0 00-.498-1.042zM16 9.837a.638.638 0 00-.49-.588 60.517 60.517 0 00-2.63-.235c-.344-.02-.69-.042-1.034-.07-.805-.065-1.592-.196-2.365-.368a.638.638 0 00-.49.588v4.61c0 .341.311.596.648.536a63.82 63.82 0 002.654-.397c.345-.078.69-.155 1.034-.247.38-.1.758-.208 1.131-.333.208-.077.415-.16.621-.246V9.837z" />
                           </svg>
-                          <span>Harga Dasar: Rp {schedule.route.base_price.toLocaleString('id-ID')}</span>
+                          <span>Harga Dasar: Rp {(schedule.route?.base_price || 0).toLocaleString('id-ID')}</span>
                         </div>
                       </div>
 

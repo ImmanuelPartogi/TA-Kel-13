@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
-import Sidebar from '../components/admin/Sidebar';
-import Header from '../components/admin/Header';
-import Footer from '../components/admin/Footer';
-import BlobBackgrounds from '../components/admin/BlobBackgrounds';
+import Sidebar from '../components/layouts/Sidebar';
+import Header from '../components/layouts/Header';
+import Footer from '../components/layouts/Footer';
+import BlobBackgrounds from '../components/layouts/BlobBackgrounds';
 
 const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);

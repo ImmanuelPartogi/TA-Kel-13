@@ -1,23 +1,32 @@
-// src/services/reports.service.js
-import axios from 'axios';
+// src/services/operatorReports.service.js
+import api from './api';
 
-export const operatorReportService = {
-  // Daily Report
-  getDaily: (params) => axios.get('/operator-panel/reports/daily', { params }),
-  exportDaily: (params) => axios.get('/operator-panel/reports/daily/export', { 
-    params,
-    responseType: 'blob'
-  }),
-  
-  // Monthly Report
-  getMonthly: (params) => axios.get('/operator-panel/reports/monthly', { params }),
-  exportMonthly: (params) => axios.get('/operator-panel/reports/monthly/export', { 
-    params,
-    responseType: 'blob'
-  }),
-  
-  // General reports
-  getIndex: () => axios.get('/operator-panel/reports'),
+export const operatorReportsService = {
+  // Get daily report
+  getDaily: (params = {}) => {
+    return api.get('/operator-panel/reports/daily', { params });
+  },
+
+  // Get monthly report  
+  getMonthly: (params = {}) => {
+    return api.get('/operator-panel/reports/monthly', { params });
+  },
+
+  // Export daily report
+  exportDaily: (params = {}) => {
+    return api.get('/operator-panel/reports/daily/export', { 
+      params,
+      responseType: 'blob' 
+    });
+  },
+
+  // Export monthly report
+  exportMonthly: (params = {}) => {
+    return api.get('/operator-panel/reports/monthly/export', { 
+      params,
+      responseType: 'blob' 
+    });
+  }
 };
 
-export default operatorReportService;
+export default operatorReportsService;

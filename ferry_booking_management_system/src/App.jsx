@@ -1,6 +1,6 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 // Public pages
 import Welcome from './pages/Welcome';
@@ -77,9 +77,12 @@ import OperatorScheduleEditDate from './pages/operator/schedules/ScheduleEditDat
 import OperatorScheduleShow from './pages/operator/schedules/ScheduleShow';
 
 // Protected Route Component
+// Protected Route Component yang lebih robust
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, isAuthenticated } = useAuth();
+  const location = useLocation();
 
+  // Tampilkan loading saat cek authentication
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -88,12 +91,21 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     );
   }
 
-  if (!user) {
-    return <Navigate to="/login" />;
+  // Redirect ke login jika tidak authenticated
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/" />;
+  // Cek role jika ada yang specified
+  if (allowedRoles.length > 0 && !allowedRoles.includes(user?.role)) {
+    // Redirect ke halaman yang sesuai dengan role user
+    if (user?.role === 'admin') {
+      return <Navigate to="/admin/dashboard" replace />;
+    } else if (user?.role === 'operator') {
+      return <Navigate to="/operator/dashboard" replace />;
+    } else {
+      return <Navigate to="/" replace />;
+    }
   }
 
   return children;
@@ -120,43 +132,43 @@ function App() {
         >
           <Route index element={<Navigate to="/admin/dashboard" />} />
           <Route path="dashboard" element={<AdminDashboard />} />
-          
+
           {/* Routes management */}
           <Route path="routes" element={<AdminRouteList />} />
           <Route path="routes/create" element={<AdminRouteCreate />} />
           <Route path="routes/:id/edit" element={<AdminRouteEdit />} />
           <Route path="routes/:id" element={<AdminRouteShow />} />
-          
+
           {/* Ferries management */}
           <Route path="ferries" element={<AdminFerryList />} />
           <Route path="ferries/create" element={<AdminFerryCreate />} />
           <Route path="ferries/:id/edit" element={<AdminFerryEdit />} />
           <Route path="ferries/:id" element={<AdminFerryShow />} />
-          
+
           {/* Schedules management */}
           <Route path="schedules" element={<AdminScheduleList />} />
           <Route path="schedules/create" element={<AdminScheduleCreate />} />
           <Route path="schedules/:id/edit" element={<AdminScheduleEdit />} />
           <Route path="schedules/:id" element={<AdminScheduleShow />} />
           <Route path="schedules/:id/dates" element={<AdminScheduleDates />} />
-          
+
           {/* Bookings management */}
           <Route path="bookings" element={<AdminBookingList />} />
           <Route path="bookings/create" element={<AdminBookingCreate />} />
           <Route path="bookings/:id/reschedule" element={<AdminBookingReschedule />} />
           <Route path="bookings/:id" element={<AdminBookingShow />} />
-          
+
           {/* Refunds management */}
           <Route path="refunds" element={<AdminRefundList />} />
           <Route path="refunds/create/:bookingId" element={<AdminRefundCreate />} />
           <Route path="refunds/:id" element={<AdminRefundShow />} />
-          
+
           {/* Reports */}
           <Route path="reports" element={<AdminReportIndex />} />
           <Route path="reports/booking" element={<AdminBookingReport />} />
           <Route path="reports/revenue" element={<AdminRevenueReport />} />
           <Route path="reports/schedule" element={<AdminScheduleReport />} />
-          
+
           {/* Operators management */}
           <Route path="operators" element={<AdminOperatorList />} />
           <Route path="operators/create" element={<AdminOperatorCreate />} />
@@ -175,19 +187,19 @@ function App() {
         >
           <Route index element={<Navigate to="/operator/dashboard" />} />
           <Route path="dashboard" element={<OperatorDashboard />} />
-          
+
           {/* Bookings */}
           <Route path="bookings" element={<OperatorBookingList />} />
           <Route path="bookings/check-in" element={<OperatorBookingCheckIn />} />
           <Route path="bookings/:id" element={<OperatorBookingShow />} />
-          
+
           {/* Schedules */}
           <Route path="schedules" element={<OperatorScheduleList />} />
           <Route path="schedules/:id" element={<OperatorScheduleShow />} />
           <Route path="schedules/:id/dates" element={<OperatorScheduleDates />} />
           <Route path="schedules/:id/dates/create" element={<OperatorScheduleCreateDate />} />
           <Route path="schedules/:id/dates/:dateId/edit" element={<OperatorScheduleEditDate />} />
-          
+
           {/* Reports */}
           <Route path="reports" element={<OperatorReportIndex />} />
           <Route path="reports/daily" element={<OperatorDailyReport />} />

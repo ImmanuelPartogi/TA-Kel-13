@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
 use Illuminate\Http\Request;
 use App\Models\Route;
@@ -63,7 +63,7 @@ class WelcomeController extends Controller
             'hero_title' => 'Jelajahi Keindahan Danau dengan Layanan Ferry Kami',
             'hero_subtitle' => 'Pesan tiket ferry Anda secara online untuk pengalaman perjalanan yang mulus.',
             'hero_image' => 'https://images.unsplash.com/photo-1523292562811-8fa7962a78c8?q=80&w=2070',
-            
+
         ];
     }
 }

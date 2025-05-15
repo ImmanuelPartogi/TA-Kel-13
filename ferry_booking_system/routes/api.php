@@ -37,28 +37,28 @@ use App\Http\Controllers\Api\RefundController;
 | Import Controller - Admin Panel
 |--------------------------------------------------------------------------
 */
-use App\Http\Controllers\AdminApi\DashboardController as AdminDashboardController;
-use App\Http\Controllers\AdminApi\AdminController;
-use App\Http\Controllers\AdminApi\OperatorController;
-use App\Http\Controllers\AdminApi\RouteController as AdminRouteController;
-use App\Http\Controllers\AdminApi\FerryController;
-use App\Http\Controllers\AdminApi\ScheduleController as AdminScheduleController;
-use App\Http\Controllers\AdminApi\BookingController as AdminBookingController;
-use App\Http\Controllers\AdminApi\ReportController as AdminReportController;
-use App\Http\Controllers\AdminApi\RefundController as AdminRefundController;
-use App\Http\Controllers\AdminApi\UserController;
+use App\Http\Controllers\Api\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Api\Admin\AdminController;
+use App\Http\Controllers\Api\Admin\OperatorController;
+use App\Http\Controllers\Api\Admin\RouteController as AdminRouteController;
+use App\Http\Controllers\Api\Admin\FerryController;
+use App\Http\Controllers\Api\Admin\ScheduleController as AdminScheduleController;
+use App\Http\Controllers\Api\Admin\BookingController as AdminBookingController;
+use App\Http\Controllers\Api\Admin\ReportController as AdminReportController;
+use App\Http\Controllers\Api\Admin\RefundController as AdminRefundController;
+use App\Http\Controllers\Api\Admin\UserController;
 
 /*
 |--------------------------------------------------------------------------
 | Import Controller - Operator Panel
 |--------------------------------------------------------------------------
 */
-use App\Http\Controllers\WelcomeController;
-use App\Http\Controllers\OperatorApi\DashboardController as OperatorDashboardController;
-use App\Http\Controllers\OperatorApi\ScheduleController as OperatorScheduleController;
-use App\Http\Controllers\OperatorApi\BookingController as OperatorBookingController;
-use App\Http\Controllers\OperatorApi\ReportController as OperatorReportController;
-use App\Http\Controllers\AuthApi\BackendLoginController;
+use App\Http\Controllers\Api\WelcomeController;
+use App\Http\Controllers\Api\Operator\DashboardController as OperatorDashboardController;
+use App\Http\Controllers\Api\Operator\ScheduleController as OperatorScheduleController;
+use App\Http\Controllers\Api\Operator\BookingController as OperatorBookingController;
+use App\Http\Controllers\Api\Operator\ReportController as OperatorReportController;
+use App\Http\Controllers\Api\Auth\BackendLoginController;
 
 /*
 |--------------------------------------------------------------------------

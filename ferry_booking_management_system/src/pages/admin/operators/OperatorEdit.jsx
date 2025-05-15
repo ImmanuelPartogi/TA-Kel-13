@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import adminOperatorService from '../../../services/adminOperator.service';
 
 const OperatorEdit = () => {
   const { id } = useParams();
@@ -21,20 +21,66 @@ const OperatorEdit = () => {
     assigned_routes: []
   });
 
+  const [searchTerm, setSearchTerm] = useState('');
+
   useEffect(() => {
-    fetchOperator();
-    fetchRoutes();
+    fetchOperatorAndRoutes();
   }, [id]);
 
-  const fetchOperator = async () => {
+  // Filter routes berdasarkan search term
+  const filteredRoutes = routes.filter(route => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      route.origin.toLowerCase().includes(searchLower) || 
+      route.destination.toLowerCase().includes(searchLower)
+    );
+  });
+
+  const fetchOperatorAndRoutes = async () => {
     try {
-      const response = await axios.get(`/admin-panel/operators/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+      // Fetch operator dan routes yang sudah di-assign
+      const operatorResponse = await adminOperatorService.getOperatorWithRoutes(id);
+      console.log('Operator response:', operatorResponse);
+      
+      const { operator: operatorData, routes: assignedRoutes } = operatorResponse;
+      
+      // Fetch semua routes yang tersedia
+      const allRoutesResponse = await adminOperatorService.getRoutes();
+      console.log('All routes response:', allRoutesResponse);
+      console.log('All routes response type:', typeof allRoutesResponse);
+      console.log('All routes response keys:', Object.keys(allRoutesResponse || {}));
+      
+      // Debug lebih dalam jika response adalah object
+      if (allRoutesResponse && typeof allRoutesResponse === 'object' && !Array.isArray(allRoutesResponse)) {
+        console.log('All routes response is object, checking data property:', allRoutesResponse.data);
+        if (allRoutesResponse.data) {
+          console.log('Data property type:', typeof allRoutesResponse.data);
+          console.log('Data property keys:', Object.keys(allRoutesResponse.data));
         }
-      });
-      const operatorData = response.data;
+      }
+      
+      // Ensure routes is an array
+      let allRoutes = [];
+      if (Array.isArray(allRoutesResponse)) {
+        allRoutes = allRoutesResponse;
+      } else if (allRoutesResponse && Array.isArray(allRoutesResponse.data)) {
+        allRoutes = allRoutesResponse.data;
+      } else if (allRoutesResponse && Array.isArray(allRoutesResponse.routes)) {
+        allRoutes = allRoutesResponse.routes;
+      }
+      
+      console.log('Processed routes:', allRoutes);
+      console.log('Operator assigned routes:', operatorData.assigned_routes);
+      
       setOperator(operatorData);
+      setRoutes(allRoutes);
+      
+      // Ensure assigned_routes is an array
+      const assignedRouteIds = Array.isArray(operatorData.assigned_routes) 
+        ? operatorData.assigned_routes 
+        : [];
+      
+      // Set form data dengan data operator
       setFormData({
         company_name: operatorData.company_name || '',
         email: operatorData.email || '',
@@ -44,23 +90,11 @@ const OperatorEdit = () => {
         company_address: operatorData.company_address || '',
         password: '',
         password_confirmation: '',
-        assigned_routes: operatorData.assigned_routes || []
+        assigned_routes: assignedRouteIds
       });
     } catch (error) {
-      console.error('Error fetching operator:', error);
-    }
-  };
-
-  const fetchRoutes = async () => {
-    try {
-      const response = await axios.get('/admin-panel/routes', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      setRoutes(response.data);
-    } catch (error) {
-      console.error('Error fetching routes:', error);
+      console.error('Error fetching data:', error);
+      setErrors({ general: 'Gagal memuat data operator' });
     }
   };
 
@@ -114,15 +148,14 @@ const OperatorEdit = () => {
     }
 
     try {
-      await axios.put(`/admin-panel/operators/${id}`, dataToSend, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      await adminOperatorService.updateOperator(id, dataToSend);
       navigate('/admin/operators');
     } catch (error) {
       if (error.response?.data?.errors) {
         setErrors(error.response.data.errors);
+      } else {
+        console.error('Error updating operator:', error);
+        setErrors({ general: 'Terjadi kesalahan saat memperbarui data' });
       }
     } finally {
       setLoading(false);
@@ -130,7 +163,11 @@ const OperatorEdit = () => {
   };
 
   if (!operator) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary-600"></div>
+      </div>
+    );
   }
 
   return (
@@ -159,6 +196,24 @@ const OperatorEdit = () => {
           </div>
         </div>
       </div>
+
+      {/* Error notification */}
+      {errors.general && (
+        <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg p-4 mb-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.028 7.795a1.007 1.007 0 00-.067 1.423l1.586 1.586-1.586 1.586a1 1 0 101.414 1.414l1.586-1.586 1.586 1.586a1 1 0 001.414-1.414l-1.586-1.586 1.586-1.586a1.002 1.002 0 00-.094-1.319l-.023-.023a1 1 0 00-1.397.094l-1.586 1.586-1.586-1.586a1.002 1.002 0 00-1.247-.08z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">
+                {errors.general}
+              </h3>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">
         <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center">
@@ -375,6 +430,8 @@ const OperatorEdit = () => {
                     type="text" 
                     id="route-search" 
                     placeholder="Cari rute..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150"
                   />
                 </div>
@@ -398,22 +455,28 @@ const OperatorEdit = () => {
 
               <div className="bg-white border border-gray-200 rounded-lg p-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-60 overflow-y-auto">
-                  {routes.map((route) => (
-                    <div key={route.id} className="flex items-center p-2 rounded-lg hover:bg-gray-50 route-item transition duration-150">
-                      <div className="flex items-center h-5">
-                        <input 
-                          type="checkbox"
-                          className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 route-checkbox transition duration-150"
-                          id={`route_${route.id}`} 
-                          checked={formData.assigned_routes.includes(route.id)}
-                          onChange={() => handleRouteChange(route.id)}
-                        />
+                  {filteredRoutes.length > 0 ? (
+                    filteredRoutes.map((route) => (
+                      <div key={route.id} className="flex items-center p-2 rounded-lg hover:bg-gray-50 route-item transition duration-150">
+                        <div className="flex items-center h-5">
+                          <input 
+                            type="checkbox"
+                            className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 route-checkbox transition duration-150"
+                            id={`route_${route.id}`} 
+                            checked={formData.assigned_routes.includes(route.id)}
+                            onChange={() => handleRouteChange(route.id)}
+                          />
+                        </div>
+                        <label htmlFor={`route_${route.id}`} className="ml-2 block text-sm text-gray-900 route-label cursor-pointer">
+                          <span className="font-medium">{route.origin} - {route.destination}</span>
+                        </label>
                       </div>
-                      <label htmlFor={`route_${route.id}`} className="ml-2 block text-sm text-gray-900 route-label cursor-pointer">
-                        <span className="font-medium">{route.origin} - {route.destination}</span>
-                      </label>
+                    ))
+                  ) : (
+                    <div className="col-span-full text-center py-4 text-gray-500">
+                      <p>{searchTerm ? `Tidak ada rute yang cocok dengan "${searchTerm}"` : 'Tidak ada rute tersedia'}</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
 

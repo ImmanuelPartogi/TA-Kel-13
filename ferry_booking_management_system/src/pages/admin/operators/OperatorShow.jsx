@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import axios from 'axios';
+import adminOperatorService from '../../../services/adminOperator.service';
 
 const OperatorShow = () => {
   const { id } = useParams();
@@ -15,12 +15,13 @@ const OperatorShow = () => {
 
   const fetchOperator = async () => {
     try {
-      const response = await axios.get(`/admin-panel/operators/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      setOperator(response.data);
+      const data = await adminOperatorService.getOperator(id);
+      // Handle direct operator data or operator inside response object
+      if (data.operator) {
+        setOperator(data.operator);
+      } else {
+        setOperator(data);
+      }
     } catch (error) {
       console.error('Error fetching operator:', error);
     } finally {
@@ -30,14 +31,19 @@ const OperatorShow = () => {
 
   const fetchRoutes = async () => {
     try {
-      const response = await axios.get('/admin-panel/routes', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      setRoutes(response.data);
+      const data = await adminOperatorService.getRoutes();
+      // Ensure routes is always an array
+      if (Array.isArray(data)) {
+        setRoutes(data);
+      } else if (data && Array.isArray(data.data)) {
+        setRoutes(data.data);
+      } else {
+        console.error('Invalid routes data format:', data);
+        setRoutes([]);
+      }
     } catch (error) {
       console.error('Error fetching routes:', error);
+      setRoutes([]);
     }
   };
 

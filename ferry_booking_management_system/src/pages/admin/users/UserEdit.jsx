@@ -26,7 +26,7 @@ const UserEdit = () => {
 
   const fetchUser = async () => {
     try {
-      const response = await adminUserService.get(`/api/admin-panel/users/${id}`);
+      const response = await adminUserService.getUserDetail(id);
       setFormData({
         ...response.data,
         password: '',
@@ -51,8 +51,10 @@ const UserEdit = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await adminUserService.put(`/api/admin-panel/users/${id}`, formData);
-      navigate(`/admin/users/${id}`);
+      const response = await adminUserService.updateUser(id, formData);
+      if (response.status === 'success') {
+        navigate(`/admin/users/${id}`);
+      }
     } catch (error) {
       if (error.response?.data?.errors) {
         setErrors(error.response.data.errors);
@@ -63,10 +65,13 @@ const UserEdit = () => {
   const handleDelete = async () => {
     if (window.confirm('Apakah Anda yakin ingin menghapus pengguna ini? Tindakan ini tidak dapat dibatalkan.')) {
       try {
-        await adminUserService.delete(`/api/admin-panel/users/${id}`);
-        navigate('/admin/users');
+        const response = await adminUserService.deleteUser(id);
+        if (response.status === 'success') {
+          navigate('/admin/users');
+        }
       } catch (error) {
         console.error('Error deleting user:', error);
+        alert(error.response?.data?.message || 'Terjadi kesalahan saat menghapus pengguna');
       }
     }
   };
@@ -160,7 +165,7 @@ const UserEdit = () => {
                   className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   id="gender"
                   name="gender"
-                  value={formData.gender}
+                  value={formData.gender || ''}
                   onChange={handleInputChange}
                 >
                   <option value="">-- Pilih Jenis Kelamin --</option>
@@ -180,7 +185,7 @@ const UserEdit = () => {
                   className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   id="date_of_birthday"
                   name="date_of_birthday"
-                  value={formData.date_of_birthday}
+                  value={formData.date_of_birthday || ''}
                   onChange={handleInputChange}
                 />
               </div>
@@ -192,7 +197,7 @@ const UserEdit = () => {
                   className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   id="id_type"
                   name="id_type"
-                  value={formData.id_type}
+                  value={formData.id_type || ''}
                   onChange={handleInputChange}
                 >
                   <option value="">-- Pilih Jenis Identitas --</option>
@@ -212,7 +217,7 @@ const UserEdit = () => {
                 className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 id="id_number"
                 name="id_number"
-                value={formData.id_number}
+                value={formData.id_number || ''}
                 onChange={handleInputChange}
               />
             </div>
@@ -226,7 +231,7 @@ const UserEdit = () => {
                 id="address"
                 name="address"
                 rows="3"
-                value={formData.address}
+                value={formData.address || ''}
                 onChange={handleInputChange}
               />
             </div>

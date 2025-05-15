@@ -13,7 +13,7 @@ const UserShow = () => {
 
   const fetchUser = async () => {
     try {
-      const response = await adminUserService.get(`/api/admin-panel/users/${id}`);
+      const response = await adminUserService.getUserDetail(id);
       setUser(response.data);
     } catch (error) {
       console.error('Error fetching user:', error);

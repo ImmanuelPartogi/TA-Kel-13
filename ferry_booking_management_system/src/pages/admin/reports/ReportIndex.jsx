@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { api } from '../../../services/api';
+import adminReportService from '../../../services/adminReport.service';
 
 const ReportIndex = () => {
   const [routes, setRoutes] = useState([]);
@@ -36,31 +36,19 @@ const ReportIndex = () => {
 
   const fetchData = async () => {
     try {
-      // Fetch routes separately
-      const routesRes = await api.get('/admin-panel/routes');
-      const routesData = routesRes.data.data || routesRes.data;
-      setRoutes(Array.isArray(routesData) ? routesData : []);
-
-      // Fetch dashboard stats
-      try {
-        const dashboardRes = await api.get('/admin-panel/dashboard/stats');
-        if (dashboardRes.data) {
-          setStats(dashboardRes.data.stats || dashboardRes.data);
-        }
-      } catch (error) {
-        console.error('Error fetching dashboard stats:', error);
-      }
-
-      // Fetch reports data (which includes stats and popular routes)
-      try {
-        const reportsRes = await api.get('/admin-panel/reports');
-        if (reportsRes.data && reportsRes.data.data) {
-          const reportData = reportsRes.data.data;
-          setStats(reportData.stats || stats);
-          setPopularRoutes(reportData.popularRoutes || []);
-        }
-      } catch (error) {
-        console.error('Error fetching reports:', error);
+      // Fetch dashboard data which includes routes, stats, and popular routes
+      const dashboardData = await adminReportService.getDashboardData();
+      
+      if (dashboardData && dashboardData.data) {
+        const data = dashboardData.data;
+        setRoutes(data.routes || []);
+        setStats(data.stats || {
+          bookings_this_month: 0,
+          revenue_this_month: 0,
+          bookings_this_week: 0,
+          bookings_today: 0
+        });
+        setPopularRoutes(data.popularRoutes || []);
       }
     } catch (error) {
       console.error('Error fetching data:', error);

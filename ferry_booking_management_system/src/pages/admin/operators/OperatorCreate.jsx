@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import adminOperatorService from '../../../services/adminOperator.service';
 
 const OperatorCreate = () => {
   const navigate = useNavigate();
@@ -28,14 +28,36 @@ const OperatorCreate = () => {
 
   const fetchRoutes = async () => {
     try {
-      const response = await axios.get('/admin-panel/routes', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+      const response = await adminOperatorService.getRoutes();
+      console.log('Routes response:', response); // Debug log
+      
+      // Handle different API response structures
+      let routesData = [];
+      
+      if (response && response.data && Array.isArray(response.data)) {
+        // Laravel paginated response: {current_page: 1, data: [...], ...}
+        routesData = response.data;
+      } else if (response && response.status === 'success' && response.data) {
+        // API response with status: {status: 'success', data: [...]}
+        if (Array.isArray(response.data)) {
+          routesData = response.data;
+        } else if (response.data.routes && Array.isArray(response.data.routes)) {
+          // Or {status: 'success', data: {routes: [...]}}
+          routesData = response.data.routes;
+        } else {
+          console.warn('Unexpected data structure in response.data:', response.data);
         }
-      });
-      setRoutes(response.data);
+      } else if (Array.isArray(response)) {
+        // Direct array response
+        routesData = response;
+      } else {
+        console.error('Invalid routes data format:', response);
+      }
+      
+      setRoutes(routesData);
     } catch (error) {
       console.error('Error fetching routes:', error);
+      setRoutes([]);
     }
   };
 
@@ -108,15 +130,14 @@ const OperatorCreate = () => {
     }
 
     try {
-      await axios.post('/admin-panel/operators', formData, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      await adminOperatorService.createOperator(formData);
       navigate('/admin/operators');
     } catch (error) {
       if (error.response?.data?.errors) {
         setErrors(error.response.data.errors);
+      } else {
+        console.error('Error creating operator:', error);
+        setErrors({ general: 'Terjadi kesalahan saat menyimpan data' });
       }
     } finally {
       setLoading(false);
@@ -414,22 +435,28 @@ const OperatorCreate = () => {
 
               <div className="bg-white border border-gray-200 rounded-lg">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 p-4 max-h-60 overflow-y-auto">
-                  {routes.map((route) => (
-                    <div key={route.id} className="flex items-center p-2 rounded-lg hover:bg-gray-50 route-item transition duration-150">
-                      <div className="flex items-center h-5">
-                        <input 
-                          type="checkbox"
-                          className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 route-checkbox transition duration-150"
-                          id={`route_${route.id}`} 
-                          checked={formData.assigned_routes.includes(route.id)}
-                          onChange={() => handleRouteChange(route.id)}
-                        />
+                  {Array.isArray(routes) && routes.length > 0 ? (
+                    routes.map((route) => (
+                      <div key={route.id} className="flex items-center p-2 rounded-lg hover:bg-gray-50 route-item transition duration-150">
+                        <div className="flex items-center h-5">
+                          <input 
+                            type="checkbox"
+                            className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 route-checkbox transition duration-150"
+                            id={`route_${route.id}`} 
+                            checked={formData.assigned_routes.includes(route.id)}
+                            onChange={() => handleRouteChange(route.id)}
+                          />
+                        </div>
+                        <label htmlFor={`route_${route.id}`} className="ml-2 block text-sm text-gray-900 route-label cursor-pointer">
+                          <span className="font-medium">{route.origin} - {route.destination}</span>
+                        </label>
                       </div>
-                      <label htmlFor={`route_${route.id}`} className="ml-2 block text-sm text-gray-900 route-label cursor-pointer">
-                        <span className="font-medium">{route.origin} - {route.destination}</span>
-                      </label>
+                    ))
+                  ) : (
+                    <div className="col-span-full text-center py-4 text-gray-500">
+                      <p>Tidak ada rute tersedia</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
               {errors.routes && (

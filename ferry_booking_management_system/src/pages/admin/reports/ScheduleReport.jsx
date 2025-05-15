@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { api } from '../../../services/api';
+import adminReportService from '../../../services/adminReport.service';
 import Chart from 'chart.js/auto';
 import $ from 'jquery';
 import 'datatables.net';
@@ -14,10 +14,12 @@ const ScheduleReport = () => {
     totalVehicles: 0,
     overallOccupancyRate: 0,
     scheduleStats: [],
-    motorcyclePercentage: 0,
-    carPercentage: 0,
-    busPercentage: 0,
-    truckPercentage: 0,
+    vehicleDistribution: {
+      motorcycle: { count: 0, percentage: 0 },
+      car: { count: 0, percentage: 0 },
+      bus: { count: 0, percentage: 0 },
+      truck: { count: 0, percentage: 0 }
+    },
     startDate: searchParams.get('start_date') || new Date().toISOString().slice(0, 10),
     endDate: searchParams.get('end_date') || new Date().toISOString().slice(0, 10)
   });
@@ -28,8 +30,11 @@ const ScheduleReport = () => {
   });
 
   const passengerChartRef = useRef(null);
+  const passengerChartInstance = useRef(null);
   const vehicleChartRef = useRef(null);
+  const vehicleChartInstance = useRef(null);
   const occupancyChartRef = useRef(null);
+  const occupancyChartInstance = useRef(null);
   const tableRef = useRef(null);
 
   useEffect(() => {
@@ -39,6 +44,11 @@ const ScheduleReport = () => {
 
   useEffect(() => {
     if (data.scheduleStats.length > 0 && tableRef.current) {
+      // Hancurkan instance DataTable yang ada
+      if ($.fn.DataTable.isDataTable(tableRef.current)) {
+        $(tableRef.current).DataTable().destroy();
+      }
+      
       $(tableRef.current).DataTable({
         responsive: true,
         pageLength: 25,
@@ -58,6 +68,13 @@ const ScheduleReport = () => {
         }
       });
     }
+    
+    // Cleanup saat unmount
+    return () => {
+      if (tableRef.current && $.fn.DataTable.isDataTable(tableRef.current)) {
+        $(tableRef.current).DataTable().destroy();
+      }
+    };
   }, [data.scheduleStats]);
 
   useEffect(() => {
@@ -66,14 +83,25 @@ const ScheduleReport = () => {
       createVehicleChart();
       createOccupancyChart();
     }
+    
+    // Cleanup saat unmount
+    return () => {
+      if (passengerChartInstance.current) {
+        passengerChartInstance.current.destroy();
+      }
+      if (vehicleChartInstance.current) {
+        vehicleChartInstance.current.destroy();
+      }
+      if (occupancyChartInstance.current) {
+        occupancyChartInstance.current.destroy();
+      }
+    };
   }, [data.scheduleStats]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/admin-panel/reports/schedule', {
-        params: Object.fromEntries(searchParams)
-      });
+      const response = await adminReportService.getScheduleReport(Object.fromEntries(searchParams));
       setData(response.data);
     } catch (error) {
       console.error('Error fetching schedule report:', error);
@@ -84,12 +112,16 @@ const ScheduleReport = () => {
 
   const fetchRoutes = async () => {
     try {
-      const response = await api.get('/admin-panel/routes', {
-        params: { status: 'ACTIVE' }
-      });
-      setRoutes(response.data.data);
+      // Use getDashboardData which returns routes
+      const response = await adminReportService.getDashboardData();
+      if (response && response.data && response.data.routes) {
+        setRoutes(response.data.routes);
+      } else {
+        setRoutes([]);
+      }
     } catch (error) {
       console.error('Error fetching routes:', error);
+      setRoutes([]);
     }
   };
 
@@ -97,11 +129,16 @@ const ScheduleReport = () => {
     const ctx = passengerChartRef.current?.getContext('2d');
     if (!ctx) return;
 
+    // Hancurkan chart instance yang ada
+    if (passengerChartInstance.current) {
+      passengerChartInstance.current.destroy();
+    }
+
     const scheduleLabels = data.scheduleStats.map(stat => `${stat.route} (${stat.time})`);
     const passengerCounts = data.scheduleStats.map(stat => stat.passenger_count);
     const capacityPassengers = data.scheduleStats.map(stat => stat.max_passenger_capacity);
 
-    new Chart(ctx, {
+    passengerChartInstance.current = new Chart(ctx, {
       type: 'bar',
       data: {
         labels: scheduleLabels,
@@ -143,7 +180,7 @@ const ScheduleReport = () => {
         plugins: {
           tooltip: {
             callbacks: {
-              title: function(context) {
+              title: function (context) {
                 return scheduleLabels[context[0].dataIndex];
               }
             }
@@ -160,6 +197,11 @@ const ScheduleReport = () => {
     const ctx = vehicleChartRef.current?.getContext('2d');
     if (!ctx) return;
 
+    // Hancurkan chart instance yang ada
+    if (vehicleChartInstance.current) {
+      vehicleChartInstance.current.destroy();
+    }
+
     const vehicleLabels = ['Motor', 'Mobil', 'Bus', 'Truk'];
     const vehicleCounts = [
       data.scheduleStats.reduce((sum, stat) => sum + stat.motorcycle_count, 0),
@@ -169,13 +211,13 @@ const ScheduleReport = () => {
     ];
 
     const percentages = [
-      data.motorcyclePercentage,
-      data.carPercentage,
-      data.busPercentage,
-      data.truckPercentage
+      data.vehicleDistribution?.motorcycle?.percentage || 0,
+      data.vehicleDistribution?.car?.percentage || 0,
+      data.vehicleDistribution?.bus?.percentage || 0,
+      data.vehicleDistribution?.truck?.percentage || 0
     ];
 
-    new Chart(ctx, {
+    vehicleChartInstance.current = new Chart(ctx, {
       type: 'pie',
       data: {
         labels: vehicleLabels,
@@ -205,7 +247,7 @@ const ScheduleReport = () => {
           },
           tooltip: {
             callbacks: {
-              label: function(context) {
+              label: function (context) {
                 const label = context.label || '';
                 const value = context.raw || 0;
                 const percentage = percentages[context.dataIndex];
@@ -221,6 +263,11 @@ const ScheduleReport = () => {
   const createOccupancyChart = () => {
     const ctx = occupancyChartRef.current?.getContext('2d');
     if (!ctx) return;
+
+    // Hancurkan chart instance yang ada
+    if (occupancyChartInstance.current) {
+      occupancyChartInstance.current.destroy();
+    }
 
     const topSchedules = [...data.scheduleStats]
       .sort((a, b) => b.passenger_occupancy_rate - a.passenger_occupancy_rate)
@@ -262,7 +309,7 @@ const ScheduleReport = () => {
       schedule.daily_occupancy.map(day => day.date)
     ))].sort();
 
-    new Chart(ctx, {
+    occupancyChartInstance.current = new Chart(ctx, {
       type: 'line',
       data: {
         labels: allDates,
@@ -287,7 +334,7 @@ const ScheduleReport = () => {
           },
           tooltip: {
             callbacks: {
-              label: function(context) {
+              label: function (context) {
                 const label = context.dataset.label || '';
                 const value = context.raw || 0;
                 return `${label}: ${value.toFixed(1)}%`;
@@ -605,10 +652,9 @@ const ScheduleReport = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{stat.car_count}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{stat.bus_count}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{stat.truck_count}</td>
-                  <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
-                    stat.passenger_occupancy_rate > 80 ? 'text-green-600' :
-                    (stat.passenger_occupancy_rate > 50 ? 'text-blue-600' : 'text-yellow-600')
-                  }`}>
+                  <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${stat.passenger_occupancy_rate > 80 ? 'text-green-600' :
+                      (stat.passenger_occupancy_rate > 50 ? 'text-blue-600' : 'text-yellow-600')
+                    }`}>
                     {stat.passenger_occupancy_rate.toFixed(2)}%
                   </td>
                 </tr>

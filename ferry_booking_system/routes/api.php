@@ -199,6 +199,7 @@ Route::prefix('admin-panel')->middleware(['auth:sanctum'])->group(function () { 
     // Operators Management
     Route::prefix('operators')->group(function () {
         Route::get('/', [OperatorController::class, 'index']);
+        Route::get('/routes', [OperatorController::class, 'getRoutes']); // Tambahkan ini
         Route::get('/{id}', [OperatorController::class, 'show']);
         Route::post('/', [OperatorController::class, 'store']);
         Route::put('/{id}', [OperatorController::class, 'update']);

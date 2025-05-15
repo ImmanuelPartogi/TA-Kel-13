@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\AdminApi;
+namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Operator;
@@ -156,9 +156,17 @@ class OperatorController extends Controller
 
     public function getRoutes()
     {
-        $routes = Route::where('status', 'ACTIVE')->get();
+        try {
+            $routes = Route::where('status', 'ACTIVE')->get();
 
-        return response()->json($routes);
+            // Kembalikan response dalam format array langsung
+            return response()->json($routes);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error fetching routes',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function getStats()

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { api } from '../../../services/api';
+import adminReportService from '../../../services/adminReport.service';
 import Chart from 'chart.js/auto';
 import $ from 'jquery';
 import 'datatables.net';
@@ -66,9 +66,7 @@ const RevenueReport = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/admin-panel/reports/revenue', {
-        params: Object.fromEntries(searchParams)
-      });
+      const response = await adminReportService.getRevenueReport(Object.fromEntries(searchParams));
       setData(response.data);
     } catch (error) {
       console.error('Error fetching revenue report:', error);
@@ -79,12 +77,16 @@ const RevenueReport = () => {
 
   const fetchRoutes = async () => {
     try {
-      const response = await api.get('/admin-panel/routes', {
-        params: { status: 'ACTIVE' }
-      });
-      setRoutes(response.data.data);
+      // Use getDashboardData which returns routes
+      const response = await adminReportService.getDashboardData();
+      if (response && response.data && response.data.routes) {
+        setRoutes(response.data.routes);
+      } else {
+        setRoutes([]);
+      }
     } catch (error) {
       console.error('Error fetching routes:', error);
+      setRoutes([]);
     }
   };
 

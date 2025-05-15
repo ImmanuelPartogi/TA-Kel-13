@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { api } from '../../../services/api';
+import adminReportService from '../../../services/adminReport.service';
 import Chart from 'chart.js/auto';
 import $ from 'jquery';
 import 'datatables.net';
@@ -72,9 +72,7 @@ const BookingReport = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/admin-panel/reports/booking', {
-        params: Object.fromEntries(searchParams)
-      });
+      const response = await adminReportService.getBookingReport(Object.fromEntries(searchParams));
       setData(response.data);
     } catch (error) {
       console.error('Error fetching booking report:', error);
@@ -85,12 +83,16 @@ const BookingReport = () => {
 
   const fetchRoutes = async () => {
     try {
-      const response = await api.get('/admin-panel/routes', {
-        params: { status: 'ACTIVE' }
-      });
-      setRoutes(response.data.data);
+      // Gunakan getDashboardData yang mengembalikan routes tanpa validasi tanggal
+      const response = await adminReportService.getDashboardData();
+      if (response && response.data && response.data.routes) {
+        setRoutes(response.data.routes);
+      } else {
+        setRoutes([]);
+      }
     } catch (error) {
       console.error('Error fetching routes:', error);
+      setRoutes([]);
     }
   };
 

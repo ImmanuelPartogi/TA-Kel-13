@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import adminOperatorService from '../../../services/adminOperator.service';
 
 const OperatorList = () => {
   const [operators, setOperators] = useState([]);
@@ -26,26 +26,26 @@ const OperatorList = () => {
   const fetchOperators = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('/admin-panel/operators', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await adminOperatorService.getOperators();
 
       // Handle response - could be paginated or direct array
       let operatorData = [];
 
-      if (response.data) {
-        if (response.data.data) {
+      if (response) {
+        if (response.data && Array.isArray(response.data)) {
           // Handle paginated response
-          operatorData = Array.isArray(response.data.data) ? response.data.data : [];
-        } else if (Array.isArray(response.data)) {
-          // Handle direct array response
           operatorData = response.data;
+        } else if (Array.isArray(response)) {
+          // Handle direct array response
+          operatorData = response;
+        } else {
+          console.warn('Unexpected response format:', response);
+          operatorData = [];
         }
       }
 
       setOperators(operatorData);
+      setNoResults(operatorData.length === 0);
     } catch (error) {
       console.error('Error fetching operators:', error);
       setErrorMessage('Gagal memuat data operator');
@@ -54,7 +54,7 @@ const OperatorList = () => {
       setLoading(false);
     }
   };
-  
+
   const filterAndSortOperators = () => {
     let filtered = [...operators];
 
@@ -105,7 +105,7 @@ const OperatorList = () => {
 
   const handleDelete = async () => {
     try {
-      await axios.delete(`/admin-panel/operators/${deleteId}`, {
+      await adminOperatorService.delete(`/admin-panel/operators/${deleteId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

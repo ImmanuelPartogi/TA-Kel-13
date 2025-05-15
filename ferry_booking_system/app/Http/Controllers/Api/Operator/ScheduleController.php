@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\OperatorApi;
+namespace App\Http\Controllers\Api\Operator;
 
 use App\Http\Controllers\Controller;
 use App\Models\Schedule;

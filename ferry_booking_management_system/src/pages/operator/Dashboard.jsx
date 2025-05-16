@@ -10,13 +10,16 @@ const OperatorDashboard = () => {
       totalSchedules: 0,
       totalBookings: 0,
       bookingsThisMonth: 0,
-      revenueThisMonth: 0
+      revenueThisMonth: 0,
+      noRoutesAssigned: false
     },
-    noRoutesAssigned: false,
-    routes: [],
-    bookingChartData: [],
-    todaySchedules: [],
-    recentActivities: []
+    summary: {
+      noRoutesAssigned: false,
+      routes: [],
+      bookingChartData: [],
+      todaySchedules: [],
+      recentActivities: []
+    }
   });
   const [loading, setLoading] = useState(true);
   const [chartInstance, setChartInstance] = useState(null);
@@ -26,7 +29,7 @@ const OperatorDashboard = () => {
   }, []);
 
   useEffect(() => {
-    if (dashboardData.bookingChartData.length > 0) {
+    if (dashboardData.summary.bookingChartData && dashboardData.summary.bookingChartData.length > 0) {
       renderChart();
     }
     return () => {
@@ -34,7 +37,7 @@ const OperatorDashboard = () => {
         chartInstance.destroy();
       }
     };
-  }, [dashboardData.bookingChartData]);
+  }, [dashboardData.summary.bookingChartData]);
 
   const loadDashboardData = async () => {
     try {
@@ -44,47 +47,53 @@ const OperatorDashboard = () => {
         operatorDashboardService.getSummary()
       ]);
 
-      // // Tambahkan logging untuk debug
-      // console.log('Stats Response:', statsResponse);
-      // console.log('Summary Response:', summaryResponse);
+      // Debug logging
+      console.log('Stats Response:', statsResponse);
+      console.log('Summary Response:', summaryResponse);
 
-      // Cek struktur response - apakah ada property 'data' atau tidak
-      const statsData = statsResponse.data || statsResponse;
-      const summaryData = summaryResponse.data || summaryResponse;
+      // Handle response structure dengan benar
+      const statsData = statsResponse.data?.data || {};
+      const summaryData = summaryResponse.data?.data || {};
 
-      // console.log('Stats Data:', statsData);
-      // console.log('Summary Data:', summaryData);
-
-      // Cek apakah data undefined sebelum mengakses propertinya
-      if (!statsData || !summaryData) {
-        throw new Error('Invalid response structure');
-      }
+      console.log('Stats Data:', statsData);
+      console.log('Summary Data:', summaryData);
 
       setDashboardData({
-        stats: statsData,
-        noRoutesAssigned: summaryData.noRoutesAssigned || false,
-        routes: summaryData.routes || [],
-        bookingChartData: summaryData.bookingChartData || [],
-        todaySchedules: summaryData.todaySchedules || [],
-        recentActivities: summaryData.recentActivities || []
+        stats: {
+          totalSchedules: statsData.totalSchedules || 0,
+          totalBookings: statsData.totalBookings || 0,
+          bookingsThisMonth: statsData.bookingsThisMonth || 0,
+          revenueThisMonth: statsData.revenueThisMonth || 0,
+          noRoutesAssigned: statsData.noRoutesAssigned || false
+        },
+        summary: {
+          noRoutesAssigned: summaryData.noRoutesAssigned || false,
+          routes: summaryData.routes || [],
+          bookingChartData: summaryData.bookingChartData || [],
+          todaySchedules: summaryData.todaySchedules || [],
+          recentActivities: summaryData.recentActivities || []
+        }
       });
     } catch (error) {
       console.error('Error loading dashboard data:', error);
-      console.error('Error details:', error.response);
+      console.error('Error details:', error.response?.data);
 
-      // Set default values
+      // Set default values on error
       setDashboardData({
         stats: {
           totalSchedules: 0,
           totalBookings: 0,
           bookingsThisMonth: 0,
-          revenueThisMonth: 0
+          revenueThisMonth: 0,
+          noRoutesAssigned: true
         },
-        noRoutesAssigned: true,
-        routes: [],
-        bookingChartData: [],
-        todaySchedules: [],
-        recentActivities: []
+        summary: {
+          noRoutesAssigned: true,
+          routes: [],
+          bookingChartData: [],
+          todaySchedules: [],
+          recentActivities: []
+        }
       });
     } finally {
       setLoading(false);
@@ -99,8 +108,8 @@ const OperatorDashboard = () => {
       chartInstance.destroy();
     }
 
-    const labels = dashboardData.bookingChartData.map(item => item.date);
-    const data = dashboardData.bookingChartData.map(item => item.total);
+    const labels = dashboardData.summary.bookingChartData.map(item => item.date);
+    const data = dashboardData.summary.bookingChartData.map(item => item.total);
     const maxValue = Math.max(...data);
     const yMax = Math.max(5, Math.ceil(maxValue * 1.2));
 
@@ -230,6 +239,8 @@ const OperatorDashboard = () => {
     );
   }
 
+  const { stats, summary } = dashboardData;
+
   return (
     <div className="min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -239,54 +250,12 @@ const OperatorDashboard = () => {
           <p className="mt-1 text-sm text-gray-600">Selamat datang kembali! Berikut adalah ringkasan operasional Anda.</p>
         </div>
 
-        {/* Alert Messages */}
-        {dashboardData.noRoutesAssigned && (
-          <div className="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-amber-400 p-4 rounded-lg shadow-sm">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-amber-800">Perhatian</h3>
-                <div className="mt-2 text-sm text-amber-700">
-                  <p>Anda belum memiliki rute yang ditugaskan. Semua data yang ditampilkan di dashboard akan kosong.
-                    Silakan hubungi administrator untuk mengatur rute yang dapat Anda akses.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {!dashboardData.noRoutesAssigned && dashboardData.routes.length > 0 && (
-          <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-400 p-4 rounded-lg shadow-sm">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-blue-800">Rute Yang Ditugaskan</h3>
-                <div className="mt-2 text-sm text-blue-700">
-                  <ul className="list-disc pl-5 space-y-1">
-                    {dashboardData.routes.map((route) => (
-                      <li key={route.id}>{route.origin} - {route.destination}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
           <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 px-6 py-5 shadow-lg hover:shadow-xl transition-shadow duration-300">
             <div className="relative z-10">
               <p className="text-sm font-medium text-blue-100">Total Jadwal</p>
-              <p className="text-3xl font-bold text-white mt-2">{dashboardData.stats.totalSchedules}</p>
+              <p className="text-3xl font-bold text-white mt-2">{stats.totalSchedules}</p>
               <Link to="/operator/schedules" className="inline-flex items-center mt-3 text-sm text-blue-100 hover:text-white transition-colors">
                 Lihat Detail
                 <svg className="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -303,7 +272,7 @@ const OperatorDashboard = () => {
           <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 px-6 py-5 shadow-lg hover:shadow-xl transition-shadow duration-300">
             <div className="relative z-10">
               <p className="text-sm font-medium text-emerald-100">Total Booking</p>
-              <p className="text-3xl font-bold text-white mt-2">{dashboardData.stats.totalBookings}</p>
+              <p className="text-3xl font-bold text-white mt-2">{stats.totalBookings}</p>
               <Link to="/operator/bookings" className="inline-flex items-center mt-3 text-sm text-emerald-100 hover:text-white transition-colors">
                 Lihat Detail
                 <svg className="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -320,7 +289,7 @@ const OperatorDashboard = () => {
           <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 px-6 py-5 shadow-lg hover:shadow-xl transition-shadow duration-300">
             <div className="relative z-10">
               <p className="text-sm font-medium text-amber-100">Booking Bulan Ini</p>
-              <p className="text-3xl font-bold text-white mt-2">{dashboardData.stats.bookingsThisMonth}</p>
+              <p className="text-3xl font-bold text-white mt-2">{stats.bookingsThisMonth}</p>
               <Link to="/operator/bookings" className="inline-flex items-center mt-3 text-sm text-amber-100 hover:text-white transition-colors">
                 Lihat Detail
                 <svg className="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -337,7 +306,7 @@ const OperatorDashboard = () => {
           <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 px-6 py-5 shadow-lg hover:shadow-xl transition-shadow duration-300">
             <div className="relative z-10">
               <p className="text-sm font-medium text-purple-100">Pendapatan Bulan Ini</p>
-              <p className="text-3xl font-bold text-white mt-2">Rp {formatCurrency(dashboardData.stats.revenueThisMonth)}</p>
+              <p className="text-3xl font-bold text-white mt-2">Rp {formatCurrency(stats.revenueThisMonth)}</p>
               <Link to={`/operator/reports/monthly?month=${new Date().toISOString().slice(0, 7)}`}
                 className="inline-flex items-center mt-3 text-sm text-purple-100 hover:text-white transition-colors">
                 Lihat Detail
@@ -370,71 +339,106 @@ const OperatorDashboard = () => {
             </div>
 
             {/* Today's Schedule */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900">Jadwal Hari Ini</h3>
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl shadow-lg border border-indigo-100">
+              <div className="px-6 py-5 border-b border-indigo-100 bg-white rounded-t-2xl">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-gray-800 flex items-center">
+                    <svg className="h-6 w-6 mr-2 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Jadwal Hari Ini
+                  </h3>
+                  <span className="text-sm text-gray-500 font-medium">
+                    {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                  </span>
+                </div>
               </div>
-              <div className="overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Rute
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Kapal
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Keberangkatan
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Kedatangan
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Aksi
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {dashboardData.todaySchedules.length > 0 ? (
-                      dashboardData.todaySchedules.map((schedule) => (
-                        <tr key={schedule.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {schedule.route.origin} - {schedule.route.destination}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {schedule.ferry.name}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {schedule.departure_time}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {schedule.arrival_time}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <Link
-                              to={`/operator/reports/daily?date=${new Date().toISOString().slice(0, 10)}`}
-                              className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-                            >
-                              <i className="fas fa-eye mr-1"></i> Detail
-                            </Link>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="5" className="px-6 py-8 text-center text-sm text-gray-500">
-                          <div className="text-center">
-                            <svg className="mx-auto h-12 w-12 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                            </svg>
-                            <p className="mt-2">Tidak ada jadwal untuk hari ini</p>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+
+              <div className="p-6">
+                {summary.todaySchedules.length > 0 ? (
+                  <div className="space-y-3">
+                    {summary.todaySchedules.map((schedule) => (
+                      <div key={schedule.id} className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200 hover:border-indigo-300">
+                        <div className="p-4">
+                          <table className="w-full">
+                            <tbody>
+                              <tr>
+                                {/* Ferry Icon Column */}
+                                <td className="w-14 align-top">
+                                  <div className="bg-indigo-100 rounded-lg p-2 w-11 h-11 flex items-center justify-center">
+                                    <svg className="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.553-.894L9 7m0 13l6-3m-6 3V7m6 10l3.447 1.724A1 1 0 0021 16.382V5.618a1 1 0 00-1.553-.894L15 7m0 10V7" />
+                                    </svg>
+                                  </div>
+                                </td>
+
+                                {/* Ferry Name and Route Column */}
+                                <td className="px-3 align-top w-2/5">
+                                  <h4 className="text-base font-semibold text-gray-900">
+                                    {schedule.ferry.name}
+                                  </h4>
+                                  <p className="text-sm text-gray-600 mt-1 flex items-center">
+                                    <span>{schedule.route.origin}</span>
+                                    <svg className="h-3 w-3 mx-1.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                    <span>{schedule.route.destination}</span>
+                                  </p>
+                                </td>
+
+                                {/* Departure Time Column */}
+                                <td className="px-3 align-top w-1/4">
+                                  <div className="flex items-start gap-2">
+                                    <svg className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    <div>
+                                      <span className="text-xs text-gray-500 block">Berangkat</span>
+                                      <span className="text-sm font-semibold text-gray-900">
+                                        {new Date(schedule.departure_time).toLocaleTimeString('id-ID', {
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                          hour12: false
+                                        })}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </td>
+
+                                {/* Arrival Time Column */}
+                                <td className="px-3 align-top w-1/4">
+                                  <div className="flex items-start gap-2">
+                                    <svg className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                    </svg>
+                                    <div>
+                                      <span className="text-xs text-gray-500 block">Tiba</span>
+                                      <span className="text-sm font-semibold text-gray-900">
+                                        {new Date(schedule.arrival_time).toLocaleTimeString('id-ID', {
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                          hour12: false
+                                        })}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-xl p-8 text-center">
+                    <svg className="mx-auto h-16 w-16 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    <p className="text-gray-500 text-lg font-medium">Tidak ada jadwal untuk hari ini</p>
+                    <p className="text-gray-400 text-sm mt-1">Silakan periksa jadwal untuk hari lain</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -486,8 +490,8 @@ const OperatorDashboard = () => {
             <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Aktivitas Terkini</h3>
               <div className="space-y-4">
-                {dashboardData.recentActivities.length > 0 ? (
-                  dashboardData.recentActivities.map((activity, index) => (
+                {summary.recentActivities.length > 0 ? (
+                  summary.recentActivities.map((activity, index) => (
                     <div key={index} className="border-b border-gray-100 pb-4 last:border-0">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">

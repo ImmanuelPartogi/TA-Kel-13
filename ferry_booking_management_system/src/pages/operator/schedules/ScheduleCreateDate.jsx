@@ -26,7 +26,12 @@ const ScheduleCreateDate = () => {
     setLoading(true);
     try {
       const response = await operatorSchedulesService.getById(id);
-      setSchedule(response.data.data);
+      console.log('Schedule response:', response); // Debug log
+      
+      if (response.data && response.data.data) {
+        const scheduleData = response.data.data.schedule || response.data.data;
+        setSchedule(scheduleData);
+      }
     } catch (error) {
       console.error('Error fetching schedule:', error);
       Swal.fire({
@@ -78,7 +83,10 @@ const ScheduleCreateDate = () => {
   };
 
   const getDayNames = () => {
+    if (!schedule || !schedule.days) return [];
+    
     const dayNames = {
+      '0': 'Minggu',
       '1': 'Senin',
       '2': 'Selasa',
       '3': 'Rabu',
@@ -128,7 +136,9 @@ const ScheduleCreateDate = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">Tambah Tanggal Jadwal</h1>
-              <p className="text-blue-100 mt-1">{schedule.route.origin} - {schedule.route.destination}</p>
+              <p className="text-blue-100 mt-1">
+                {schedule?.route?.origin || 'Unknown'} - {schedule?.route?.destination || 'Unknown'}
+              </p>
             </div>
           </div>
           <div className="mt-4 md:mt-0">
@@ -158,15 +168,17 @@ const ScheduleCreateDate = () => {
             <div className="space-y-3">
               <div className="flex justify-between border-b border-gray-100 pb-2">
                 <span className="text-sm text-gray-500">Rute:</span>
-                <span className="text-sm font-medium text-gray-900">{schedule.route.origin} - {schedule.route.destination}</span>
+                <span className="text-sm font-medium text-gray-900">
+                  {schedule?.route?.origin || 'Unknown'} - {schedule?.route?.destination || 'Unknown'}
+                </span>
               </div>
               <div className="flex justify-between border-b border-gray-100 pb-2">
                 <span className="text-sm text-gray-500">Keberangkatan:</span>
-                <span className="text-sm font-medium text-gray-900">{schedule.departure_time}</span>
+                <span className="text-sm font-medium text-gray-900">{schedule?.departure_time || '-'}</span>
               </div>
               <div className="flex justify-between border-b border-gray-100 pb-2">
                 <span className="text-sm text-gray-500">Kedatangan:</span>
-                <span className="text-sm font-medium text-gray-900">{schedule.arrival_time}</span>
+                <span className="text-sm font-medium text-gray-900">{schedule?.arrival_time || '-'}</span>
               </div>
               <div className="border-b border-gray-100 pb-2">
                 <span className="text-sm text-gray-500">Hari Operasi:</span>
@@ -180,7 +192,7 @@ const ScheduleCreateDate = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-500">ID Jadwal:</span>
-                <span className="text-sm font-medium text-gray-900">{schedule.id}</span>
+                <span className="text-sm font-medium text-gray-900">{schedule?.id || '-'}</span>
               </div>
             </div>
           </div>

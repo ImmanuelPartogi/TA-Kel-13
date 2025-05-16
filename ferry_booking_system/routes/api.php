@@ -59,6 +59,7 @@ use App\Http\Controllers\Api\Operator\ScheduleController as OperatorScheduleCont
 use App\Http\Controllers\Api\Operator\BookingController as OperatorBookingController;
 use App\Http\Controllers\Api\Operator\ReportController as OperatorReportController;
 use App\Http\Controllers\Api\Auth\BackendLoginController;
+use App\Http\Controllers\Api\Operator\CheckInController;
 
 /*
 |--------------------------------------------------------------------------
@@ -325,10 +326,12 @@ Route::prefix('operator-panel')->middleware(['auth:sanctum'])->group(function ()
         Route::get('/', [OperatorBookingController::class, 'index']);
         Route::get('/{id}', [OperatorBookingController::class, 'show']);
         Route::put('/{id}/status', [OperatorBookingController::class, 'updateStatus']);
-        Route::post('/{id}/check-in', [OperatorBookingController::class, 'checkIn']);
-        Route::post('/validate', [OperatorBookingController::class, 'validateBooking']);
-        Route::get('/check-in', [OperatorBookingController::class, 'checkInForm']);
-        Route::post('/check-in', [OperatorBookingController::class, 'processCheckIn']);
+
+        // Check-in routes
+        Route::prefix('check-in')->group(function () {
+            Route::post('/validate', [CheckInController::class, 'validate']);
+            Route::post('/process', [CheckInController::class, 'process']);
+        });
     });
 
     // Reports

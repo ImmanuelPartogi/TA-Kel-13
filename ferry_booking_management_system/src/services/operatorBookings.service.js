@@ -1,3 +1,4 @@
+// src/services/operatorBookings.service.js
 import api from './api.js';
 
 export const operatorBookingsService = {
@@ -16,14 +17,17 @@ export const operatorBookingsService = {
     return api.put(`/operator-panel/bookings/${id}/status`, data);
   },
 
-  // Validate booking for check-in
-  validateBooking: (data) => {
-    return api.post('/operator-panel/bookings/validate', data);
-  },
+  // Check-in related services
+  checkIn: {
+    // Validate ticket/booking code
+    validate: (data) => {
+      return api.post('/operator-panel/bookings/check-in/validate', data);
+    },
 
-  // Process check-in
-  processCheckIn: (data) => {
-    return api.post('/operator-panel/bookings/check-in', data);
+    // Process check-in
+    process: (data) => {
+      return api.post('/operator-panel/bookings/check-in/process', data);
+    }
   }
 };
 

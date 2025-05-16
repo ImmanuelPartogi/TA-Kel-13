@@ -32,9 +32,18 @@ class BookingController extends Controller
         // Jika operator tidak memiliki rute yang ditugaskan
         if (empty($assignedRouteIds)) {
             return response()->json([
-                'status' => 'error',
-                'message' => 'Operator tidak memiliki rute yang ditugaskan',
-                'data' => []
+                'status' => 'success',
+                'data' => [
+                    'bookings' => [
+                        'data' => [],
+                        'current_page' => 1,
+                        'last_page' => 1,
+                        'per_page' => 10,
+                        'total' => 0
+                    ],
+                    'routes' => []
+                ],
+                'message' => 'Operator tidak memiliki rute yang ditugaskan'
             ], 200);
         }
 
@@ -46,7 +55,7 @@ class BookingController extends Controller
         });
 
         // Load relasi yang dibutuhkan
-        $query->with(['user', 'schedule.route', 'schedule.ferry', 'payments', 'tickets']);
+        $query->with(['user', 'schedule.route', 'schedule.ferry', 'payments', 'tickets', 'vehicles']);
 
         // Filter berdasarkan kode booking
         if ($request->has('booking_code') && $request->booking_code) {
@@ -72,7 +81,7 @@ class BookingController extends Controller
             $query->where('status', $request->status);
         }
 
-        // Filter berdasarkan tanggal booking
+        // Filter berdasarkan tanggal keberangkatan (bukan booking date)
         if ($request->has('departure_date_from') && $request->departure_date_from) {
             $query->where('departure_date', '>=', $request->departure_date_from);
         }
@@ -87,8 +96,11 @@ class BookingController extends Controller
         // Get data rute untuk filter dropdown
         $routes = [];
         if (!empty($assignedRouteIds)) {
-            $routes = Route::whereIn('id', $assignedRouteIds)->get(['id', 'origin', 'destination'])
-                ->pluck('origin_destination', 'id')
+            $routes = Route::whereIn('id', $assignedRouteIds)
+                ->get(['id', 'origin', 'destination'])
+                ->mapWithKeys(function ($item) {
+                    return [$item->id => $item->origin . ' - ' . $item->destination];
+                })
                 ->toArray();
         }
 
@@ -129,13 +141,15 @@ class BookingController extends Controller
                     'payments',
                     'tickets',
                     'vehicles',
-                    'bookingLogs',
+                    'bookingLogs.changedBy',
                 ])
                 ->firstOrFail();
 
             return response()->json([
                 'status' => 'success',
-                'data' => $booking
+                'data' => [
+                    'data' => $booking
+                ]
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             Log::error("Booking tidak ditemukan atau operator tidak memiliki akses: " . $id);
@@ -292,170 +306,6 @@ class BookingController extends Controller
                 'status' => 'error',
                 'message' => 'Booking tidak ditemukan atau Anda tidak memiliki akses ke booking ini'
             ], 404);
-        }
-    }
-
-    /**
-     * Validasi booking untuk check-in
-     */
-    public function validateBooking(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'booking_code' => 'required|string',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Validasi gagal',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $operator = Auth::user();
-        $assignedRouteIds = $operator->assigned_routes ?? [];
-
-        // Cari booking berdasarkan kode
-        $booking = Booking::where('booking_code', $request->booking_code)
-            ->whereHas('schedule', function ($q) use ($assignedRouteIds) {
-                $q->whereIn('route_id', $assignedRouteIds);
-            })
-            ->with(['user', 'schedule.route', 'tickets', 'vehicles'])
-            ->first();
-
-        if (!$booking) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Booking tidak ditemukan atau Anda tidak memiliki akses'
-            ], 404);
-        }
-
-        // Verify booking is confirmed
-        if ($booking->status !== 'CONFIRMED') {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Booking belum dikonfirmasi',
-                'booking_status' => $booking->status
-            ], 400);
-        }
-
-        // Verify date is today
-        $today = Carbon::today()->format('Y-m-d');
-        $bookingDate = Carbon::parse($booking->departure_date)->format('Y-m-d');
-
-        if ($today !== $bookingDate) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Tiket tidak untuk hari ini. Tanggal tiket: ' . $bookingDate,
-                'booking_date' => $bookingDate,
-                'today' => $today
-            ], 400);
-        }
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Booking valid untuk check-in',
-            'data' => $booking
-        ]);
-    }
-
-    /**
-     * Proses check-in
-     */
-    public function processCheckIn(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'booking_id' => 'required|exists:bookings,id',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Validasi gagal',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $operator = Auth::user();
-        $assignedRouteIds = $operator->assigned_routes ?? [];
-
-        // Cari booking
-        $booking = Booking::whereHas('schedule', function ($q) use ($assignedRouteIds) {
-            $q->whereIn('route_id', $assignedRouteIds);
-        })
-            ->where('id', $request->booking_id)
-            ->with(['tickets'])
-            ->first();
-
-        if (!$booking) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Booking tidak ditemukan atau Anda tidak memiliki akses'
-            ], 404);
-        }
-
-        // Verify booking is confirmed
-        if ($booking->status !== 'CONFIRMED') {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Booking belum dikonfirmasi',
-                'booking_status' => $booking->status
-            ], 400);
-        }
-
-        // Verify date is today
-        $today = Carbon::today()->format('Y-m-d');
-        $bookingDate = Carbon::parse($booking->departure_date)->format('Y-m-d');
-
-        if ($today !== $bookingDate) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Booking tidak untuk hari ini. Tanggal booking: ' . $bookingDate
-            ], 400);
-        }
-
-        try {
-            DB::beginTransaction();
-
-            // Update all tickets
-            foreach ($booking->tickets as $ticket) {
-                $ticket->checked_in = true;
-                $ticket->boarding_status = 'BOARDED';
-                $ticket->boarding_time = now();
-                $ticket->save();
-            }
-
-            // Update booking status
-            $booking->status = 'COMPLETED';
-            $booking->save();
-
-            // Create booking log
-            $bookingLog = new BookingLog([
-                'booking_id' => $booking->id,
-                'previous_status' => 'CONFIRMED',
-                'new_status' => 'COMPLETED',
-                'changed_by_type' => 'OPERATOR',
-                'changed_by_id' => Auth::id(),
-                'notes' => 'Check-in oleh operator',
-                'ip_address' => $request->ip(),
-            ]);
-
-            $bookingLog->save();
-
-            DB::commit();
-
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Check-in berhasil untuk booking ' . $booking->booking_code,
-                'data' => $booking
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Terjadi kesalahan saat melakukan check-in: ' . $e->getMessage()
-            ], 500);
         }
     }
 }

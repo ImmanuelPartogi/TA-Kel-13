@@ -30,11 +30,41 @@ const ScheduleDatesList = () => {
     setLoading(true);
     try {
       const scheduleResponse = await operatorSchedulesService.getById(id);
-      setSchedule(scheduleResponse.data.data);
-
+      console.log('Schedule response:', scheduleResponse);
+      
+      // Handle different response structures
+      if (scheduleResponse.data && scheduleResponse.data.data) {
+        const scheduleData = scheduleResponse.data.data.schedule || scheduleResponse.data.data;
+        setSchedule(scheduleData);
+      }
+  
       const datesResponse = await operatorSchedulesService.getScheduleDates(id);
-      setDates(datesResponse.data.data);
-      setPagination(datesResponse.data.meta);
+      console.log('Dates response:', datesResponse);
+      console.log('Dates response data:', datesResponse.data);
+      
+      // Parse dates from pagination structure
+      if (datesResponse.data && datesResponse.data.data) {
+        const datesData = datesResponse.data.data.dates || datesResponse.data.data;
+        console.log('Dates data structure:', datesData);
+        
+        // Check if it's a pagination object (Laravel structure)
+        if (datesData.data && Array.isArray(datesData.data)) {
+          setDates(datesData.data); // Get the actual array from pagination object
+          
+          // Set pagination info
+          setPagination({
+            current_page: datesData.current_page || 1,
+            last_page: datesData.last_page || 1,
+            per_page: datesData.per_page || 10,
+            total: datesData.total || 0
+          });
+        } else if (Array.isArray(datesData)) {
+          // If it's already an array
+          setDates(datesData);
+        } else {
+          setDates([]);
+        }
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
       Swal.fire({
@@ -47,16 +77,16 @@ const ScheduleDatesList = () => {
   };
 
   const getDayNames = () => {
-    if (!schedule) return [];
+    if (!schedule || !schedule.days) return [];
     
     const dayNames = {
+      '0': 'Minggu',
       '1': 'Senin',
       '2': 'Selasa',
       '3': 'Rabu',
       '4': 'Kamis',
       '5': 'Jumat',
-      '6': 'Sabtu',
-      '7': 'Minggu',
+      '6': 'Sabtu'
     };
 
     return schedule.days.split(',').map(day => dayNames[day] || day);
@@ -170,21 +200,18 @@ const ScheduleDatesList = () => {
     );
   }
 
-  if (!schedule) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-900">Jadwal tidak ditemukan</h2>
-          <Link to="/operator/schedules" className="mt-4 inline-flex items-center text-indigo-600 hover:text-indigo-500">
-            <svg className="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Kembali ke Daftar Jadwal
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  // Debug log untuk melihat data
+  console.log('Current dates state:', dates);
+  console.log('Current schedule state:', schedule);
+
+  // Add null checks for schedule properties
+  const origin = schedule?.route?.origin || 'Unknown';
+  const destination = schedule?.route?.destination || 'Unknown';
+  const departureTime = schedule?.departure_time || '-';
+  const arrivalTime = schedule?.arrival_time || '-';
+  const status = schedule?.status || 'INACTIVE';
+  const scheduleId = schedule?.id || '-';
+  const ferry = schedule?.ferry || {};
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -199,7 +226,7 @@ const ScheduleDatesList = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">Tanggal Jadwal</h1>
-              <p className="text-blue-100 mt-1">{schedule.route.origin} - {schedule.route.destination} • {schedule.departure_time}</p>
+              <p className="text-blue-100 mt-1">{origin} - {destination} • {departureTime}</p>
             </div>
           </div>
           <div className="mt-4 md:mt-0 flex flex-col sm:flex-row gap-3">
@@ -225,56 +252,58 @@ const ScheduleDatesList = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        {/* Jadwal Info Card */}
-        <div className="lg:col-span-3 bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
-          <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <h2 className="text-lg font-semibold text-gray-800">Informasi Jadwal</h2>
-          </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                <p className="text-xs text-gray-500 mb-1">ID Jadwal</p>
-                <p className="text-lg font-semibold text-gray-800">{schedule.id}</p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                <p className="text-xs text-gray-500 mb-1">Status</p>
-                {schedule.status === 'ACTIVE' ? (
-                  <p className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    Aktif
-                  </p>
-                ) : (
-                  <p className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                    Tidak Aktif
-                  </p>
-                )}
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                <p className="text-xs text-gray-500 mb-1">Waktu Keberangkatan</p>
-                <p className="text-lg font-semibold text-gray-800">{schedule.departure_time}</p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                <p className="text-xs text-gray-500 mb-1">Waktu Kedatangan</p>
-                <p className="text-lg font-semibold text-gray-800">{schedule.arrival_time}</p>
-              </div>
+      {schedule && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          {/* Jadwal Info Card */}
+          <div className="lg:col-span-3 bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
+            <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <h2 className="text-lg font-semibold text-gray-800">Informasi Jadwal</h2>
             </div>
+            <div className="p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                  <p className="text-xs text-gray-500 mb-1">ID Jadwal</p>
+                  <p className="text-lg font-semibold text-gray-800">{scheduleId}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                  <p className="text-xs text-gray-500 mb-1">Status</p>
+                  {status === 'ACTIVE' || status === 'active' ? (
+                    <p className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      Aktif
+                    </p>
+                  ) : (
+                    <p className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                      Tidak Aktif
+                    </p>
+                  )}
+                </div>
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                  <p className="text-xs text-gray-500 mb-1">Waktu Keberangkatan</p>
+                  <p className="text-lg font-semibold text-gray-800">{departureTime}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                  <p className="text-xs text-gray-500 mb-1">Waktu Kedatangan</p>
+                  <p className="text-lg font-semibold text-gray-800">{arrivalTime}</p>
+                </div>
+              </div>
 
-            <div className="mt-4 bg-gray-50 rounded-lg p-4 border border-gray-100">
-              <p className="text-xs text-gray-500 mb-1">Hari Operasi</p>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {getDayNames().map((day, index) => (
-                  <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    {day}
-                  </span>
-                ))}
+              <div className="mt-4 bg-gray-50 rounded-lg p-4 border border-gray-100">
+                <p className="text-xs text-gray-500 mb-1">Hari Operasi</p>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {getDayNames().map((day, index) => (
+                    <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {day}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Tanggal Jadwal Table */}
       <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
@@ -286,7 +315,7 @@ const ScheduleDatesList = () => {
             <h2 className="text-lg font-semibold text-gray-800">Tanggal Jadwal yang Tersedia</h2>
           </div>
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-            Total: {pagination.total} tanggal
+            Total: {pagination.total || dates.length} tanggal
           </span>
         </div>
         <div className="overflow-x-auto">
@@ -319,8 +348,9 @@ const ScheduleDatesList = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {dates.length > 0 ? (
                 dates.map((date) => {
-                  const passengerPercentage = schedule.ferry?.capacity_passenger > 0
-                    ? 100 - (date.passenger_count / schedule.ferry.capacity_passenger) * 100
+                  const passengerCapacity = ferry?.capacity_passenger || 0;
+                  const passengerPercentage = passengerCapacity > 0
+                    ? 100 - ((date.passenger_count || 0) / passengerCapacity) * 100
                     : 0;
 
                   return (
@@ -346,31 +376,31 @@ const ScheduleDatesList = () => {
                           ></div>
                         </div>
                         <div className="text-xs text-gray-500">
-                          {schedule.ferry?.capacity_passenger - date.passenger_count} dari {schedule.ferry?.capacity_passenger} kursi tersedia
+                          {passengerCapacity - (date.passenger_count || 0)} dari {passengerCapacity} kursi tersedia
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 text-blue-800 font-semibold">
-                          {date.passenger_count}
+                          {date.passenger_count || 0}
                         </span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-xs text-gray-500 space-y-1">
                           <div className="flex items-center justify-between">
                             <span>Motor:</span>
-                            <span className="font-semibold">{date.motorcycle_count}</span>
+                            <span className="font-semibold">{date.motorcycle_count || 0}</span>
                           </div>
                           <div className="flex items-center justify-between">
                             <span>Mobil:</span>
-                            <span className="font-semibold">{date.car_count}</span>
+                            <span className="font-semibold">{date.car_count || 0}</span>
                           </div>
                           <div className="flex items-center justify-between">
                             <span>Bus:</span>
-                            <span className="font-semibold">{date.bus_count}</span>
+                            <span className="font-semibold">{date.bus_count || 0}</span>
                           </div>
                           <div className="flex items-center justify-between">
                             <span>Truk:</span>
-                            <span className="font-semibold">{date.truck_count}</span>
+                            <span className="font-semibold">{date.truck_count || 0}</span>
                           </div>
                         </div>
                       </td>
@@ -403,14 +433,24 @@ const ScheduleDatesList = () => {
               ) : (
                 <tr>
                   <td colSpan="7" className="px-6 py-4 text-sm text-gray-500 text-center">
-                    Tidak ada data tanggal jadwal
+                    Tidak ada data tanggal jadwal. 
+                    <div className="mt-2">
+                      <Link
+                        to={`/operator/schedules/${id}/dates/create`}
+                        className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Tambah tanggal jadwal sekarang
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-        {/* Pagination would go here */}
       </div>
 
       {/* Modal Update Status */}

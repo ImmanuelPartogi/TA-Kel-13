@@ -1,3 +1,4 @@
+// src/services/operatorSchedules.service.js
 import api from './api';
 
 export const operatorSchedulesService = {
@@ -6,8 +7,8 @@ export const operatorSchedulesService = {
     return api.get('/operator-panel/schedules', { params });
   },
 
-  // Get schedule detail
-  getSchedule: (id) => {
+  // Get schedule detail by ID
+  getById: (id) => {
     return api.get(`/operator-panel/schedules/${id}`);
   },
 
@@ -16,8 +17,13 @@ export const operatorSchedulesService = {
     return api.get(`/operator-panel/schedules/${id}/dates`, { params });
   },
 
+  // Get single schedule date
+  getScheduleDate: (scheduleId, dateId) => {
+    return api.get(`/operator-panel/schedules/${scheduleId}/dates/${dateId}`);
+  },
+
   // Create new schedule date
-  createScheduleDate: (id, data) => {
+  storeDate: (id, data) => {
     return api.post(`/operator-panel/schedules/${id}/dates`, data);
   },
 
@@ -27,7 +33,7 @@ export const operatorSchedulesService = {
   },
 
   // Update schedule date status
-  updateScheduleDateStatus: (scheduleId, dateId, data) => {
+  updateDateStatus: (scheduleId, dateId, data) => {
     return api.put(`/operator-panel/schedules/${scheduleId}/dates/${dateId}/status`, data);
   },
 

@@ -19,11 +19,28 @@ const ScheduleShow = () => {
     try {
       // Fetch schedule details
       const scheduleResponse = await operatorSchedulesService.getById(id);
-      setSchedule(scheduleResponse.data.data);
+      console.log('Schedule response:', scheduleResponse);
 
-      // Fetch upcoming dates
-      const datesResponse = await operatorSchedulesService.getUpcomingDates(id);
-      setUpcomingDates(datesResponse.data.data);
+      if (scheduleResponse.data && scheduleResponse.data.data) {
+        const scheduleData = scheduleResponse.data.data.schedule || scheduleResponse.data.data;
+        setSchedule(scheduleData);
+
+        // Set upcoming dates dari response schedule jika ada
+        if (scheduleData.upcomingDates) {
+          setUpcomingDates(scheduleData.upcomingDates);
+        } else {
+          // Jika tidak ada, ambil dari dates endpoint
+          const datesResponse = await operatorSchedulesService.getScheduleDates(id, {
+            status: 'ACTIVE',
+            start_date: new Date().toISOString().split('T')[0],
+            per_page: 14
+          });
+
+          if (datesResponse.data && datesResponse.data.data) {
+            setUpcomingDates(datesResponse.data.data.dates || datesResponse.data.data || []);
+          }
+        }
+      }
     } catch (error) {
       console.error('Error fetching schedule details:', error);
       Swal.fire({
@@ -34,10 +51,10 @@ const ScheduleShow = () => {
     }
     setLoading(false);
   };
-
+  
   const getDayNames = () => {
     if (!schedule) return [];
-    
+
     const dayNames = {
       '1': 'Senin',
       '2': 'Selasa',

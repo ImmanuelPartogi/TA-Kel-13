@@ -129,32 +129,44 @@ class BookingCard extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
+          // AREA OVERFLOW: Gunakan Flexible untuk mencegah overflow
+          Flexible(
+            flex: 3,
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.confirmation_number_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.confirmation_number_rounded,
-                  color: Colors.white,
-                  size: 20,
+                const SizedBox(width: 12),
+                Flexible(
+                  child: Text(
+                    'Booking #${booking.bookingCode}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                    ),
+                    overflow: TextOverflow.ellipsis, // Tambahkan ini untuk menangani teks panjang
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'Booking #${booking.bookingCode}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Colors.white,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
+          
+          // Beri ruang antara booking code dan status
+          const SizedBox(width: 8),
+          
+          // Status badge
           Container(
             padding: const EdgeInsets.symmetric(
               horizontal: 12,
@@ -225,9 +237,12 @@ class BookingCard extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
+                  overflow: TextOverflow.ellipsis, // Tambahkan handling overflow
                 ),
                 const SizedBox(height: 6),
-                Row(
+                // Row dengan tanggal dan waktu - potensial overflow
+                Flex(
+                  direction: Axis.horizontal,
                   children: [
                     Icon(
                       Icons.calendar_today_rounded,
@@ -235,11 +250,14 @@ class BookingCard extends StatelessWidget {
                       color: Colors.grey[600],
                     ),
                     const SizedBox(width: 6),
-                    Text(
-                      formattedDate,
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 14,
+                    Flexible(
+                      child: Text(
+                        formattedDate,
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 14,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     Container(

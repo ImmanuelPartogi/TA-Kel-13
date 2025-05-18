@@ -21,6 +21,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _currentIndex = 0;
   late List<Widget> _tabs;
   late TabController _tabController;
+  bool _isLoading = true; // Tambahkan state loading untuk menampilkan indikator
 
   @override
   void initState() {
@@ -37,9 +38,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     // Gunakan ini untuk menunda pemanggilan sampai setelah build selesai
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadUserData();
-      _loadNotifications();
+      _loadInitialData();
     });
+  }
+
+  // Metode baru untuk memuat semua data awal sekaligus
+  Future<void> _loadInitialData() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      // Memuat data secara paralel untuk performa lebih baik
+      await Future.wait([
+        _loadUserData(),
+        _loadNotifications(),
+      ]);
+    } catch (e) {
+      // Tangani error dengan lebih baik
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal memuat data: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _loadUserData() async {
@@ -86,7 +112,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
         child: Stack(
           children: [
-            // Background elements - serupa dengan login screen
+            // Background elements
             Positioned(
               top: -50,
               right: -50,
@@ -119,76 +145,87 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   // Custom AppBar
                   _buildAppBar(),
                   
-                  // Tab content
-                  Expanded(
-                    child: TabBarView(
-                      controller: _tabController,
-                      physics: const NeverScrollableScrollPhysics(), // Disable swipe
-                      children: _tabs,
-                    ),
-                  ),
+                  // Tampilkan loading indicator atau konten tab
+                  _isLoading
+                    ? const Expanded(
+                        child: Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                      )
+                    : Expanded(
+                        child: TabBarView(
+                          controller: _tabController,
+                          physics: const NeverScrollableScrollPhysics(), // Disable swipe
+                          children: _tabs,
+                        ),
+                      ),
                 ],
               ),
             ),
           ],
         ),
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              offset: const Offset(0, -5),
-              blurRadius: 10,
+      bottomNavigationBar: _buildBottomNavigationBar(theme),
+      floatingActionButton: const ChatbotFAB(),
+    );
+  }
+
+  // Metode terpisah untuk bottom navigation bar
+  Widget _buildBottomNavigationBar(ThemeData theme) {
+    return Container(
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            offset: const Offset(0, -5),
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(30.0),
+          topRight: Radius.circular(30.0),
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: (index) {
+            setState(() {
+              _currentIndex = index;
+              _tabController.animateTo(index);
+            });
+          },
+          elevation: 0,
+          backgroundColor: Colors.white,
+          selectedItemColor: theme.primaryColor,
+          unselectedItemColor: Colors.grey.shade600,
+          selectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontSize: 12,
+          ),
+          type: BottomNavigationBarType.fixed,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home_outlined),
+              activeIcon: Icon(Icons.home_rounded),
+              label: 'Beranda',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.confirmation_number_outlined),
+              activeIcon: Icon(Icons.confirmation_number_rounded),
+              label: 'Tiket',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline_rounded),
+              activeIcon: Icon(Icons.person_rounded),
+              label: 'Profil',
             ),
           ],
         ),
-        child: ClipRRect(
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(30.0),
-            topRight: Radius.circular(30.0),
-          ),
-          child: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: (index) {
-              setState(() {
-                _currentIndex = index;
-                _tabController.animateTo(index);
-              });
-            },
-            elevation: 0,
-            backgroundColor: Colors.white,
-            selectedItemColor: theme.primaryColor,
-            unselectedItemColor: Colors.grey.shade600,
-            selectedLabelStyle: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-            ),
-            unselectedLabelStyle: const TextStyle(
-              fontSize: 12,
-            ),
-            type: BottomNavigationBarType.fixed,
-            items: [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.home_outlined),
-                activeIcon: Icon(Icons.home_rounded),
-                label: 'Beranda',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.confirmation_number_outlined),
-                activeIcon: Icon(Icons.confirmation_number_rounded),
-                label: 'Tiket',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.person_outline_rounded),
-                activeIcon: Icon(Icons.person_rounded),
-                label: 'Profil',
-              ),
-            ],
-          ),
-        ),
       ),
-      floatingActionButton: const ChatbotFAB(),
     );
   }
 
@@ -197,84 +234,86 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final titles = ['Beranda', 'Tiket Saya', 'Profil'];
     
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), // Gunakan margin bukan padding
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // App Logo and Title
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Theme.of(context).primaryColor.withBlue(245),
-                      Theme.of(context).primaryColor,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Theme.of(context).primaryColor.withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.directions_boat_rounded,
-                  size: 24,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                titles[_currentIndex],
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
-          ),
-          
-          // Action buttons
-          Row(
-            children: [
-              NotificationBadge(
-                child: Container(
+          Flexible(
+            child: Row(
+              children: [
+                Container(
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    gradient: LinearGradient(
+                      colors: [
+                        Theme.of(context).primaryColor.withBlue(245),
+                        Theme.of(context).primaryColor,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.03),
+                        color: Theme.of(context).primaryColor.withOpacity(0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 3),
                       ),
                     ],
                   ),
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.notifications_outlined,
-                      size: 20,
-                    ),
-                    color: Colors.grey.shade700,
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/notifications');
-                    },
+                  child: const Icon(
+                    Icons.directions_boat_rounded,
+                    size: 24,
+                    color: Colors.white,
                   ),
                 ),
+                const SizedBox(width: 12),
+                Flexible(
+                  child: Text(
+                    titles[_currentIndex],
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Notification button
+          NotificationBadge(
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
-              const SizedBox(width: 10),
-            ],
+              child: IconButton(
+                icon: const Icon(
+                  Icons.notifications_outlined,
+                  size: 20,
+                ),
+                color: Colors.grey.shade700,
+                padding: EdgeInsets.zero, // Hilangkan padding pada IconButton
+                constraints: const BoxConstraints(), // Hapus constraints default
+                onPressed: () {
+                  Navigator.pushNamed(context, '/notifications');
+                },
+              ),
+            ),
           ),
         ],
       ),

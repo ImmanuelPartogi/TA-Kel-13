@@ -32,12 +32,18 @@ class ChatMessage {
     }
 
     return ChatMessage(
-      id: json['id'],
+      id: json['id'] ?? -1, // Default -1 untuk pesan lokal
       isFromUser: json['is_from_user'] == 1 || json['is_from_user'] == true,
-      message: json['message'],
+      message: json['message'] ?? 'Pesan tidak tersedia',
       createdAt: parsedDate,
       messageStatus: json['status'], // Ambil status dari respons API jika ada
     );
+  }
+
+  bool isEqual(ChatMessage other) {
+    return id == other.id &&
+        isFromUser == other.isFromUser &&
+        message == other.message;
   }
 
   Map<String, dynamic> toJson() {

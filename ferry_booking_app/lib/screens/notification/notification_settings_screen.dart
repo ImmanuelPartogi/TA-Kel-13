@@ -35,20 +35,7 @@ class _NotificationSettingsScreenState
     
     try {
       // Implementasi sebenarnya akan mengambil pengaturan notifikasi dari API
-      // Untuk sementara, kita akan menggunakan nilai default
       await Future.delayed(const Duration(milliseconds: 500));
-      
-      // Kode untuk mendapatkan pengaturan dari provider:
-      // final user = Provider.of<AuthProvider>(context, listen: false).user;
-      // if (user != null && user.notificationSettings != null) {
-      //   setState(() {
-      //     _bookingUpdates = user.notificationSettings.bookingUpdates;
-      //     _paymentReminders = user.notificationSettings.paymentReminders;
-      //     _travelUpdates = user.notificationSettings.travelUpdates;
-      //     _promotions = user.notificationSettings.promotions;
-      //     _appUpdates = user.notificationSettings.appUpdates;
-      //   });
-      // }
       
     } finally {
       if (mounted) {
@@ -65,8 +52,6 @@ class _NotificationSettingsScreenState
     });
     
     try {
-      // Implementasi sebenarnya akan menyimpan pengaturan notifikasi ke API
-      // Untuk sementara, kita hanya menampilkan snackbar sukses
       await Future.delayed(const Duration(milliseconds: 800));
       
       if (mounted) {
@@ -90,58 +75,82 @@ class _NotificationSettingsScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Pengaturan Notifikasi'),
-      ),
-      body: _isLoading
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Back button
+                  Align(
+                    alignment: Alignment.topLeft,
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 20),
+                  
                   // Header
                   Center(
                     child: Column(
                       children: [
                         Icon(
                           Icons.notifications_active,
-                          size: 64,
+                          size: 80,
                           color: AppTheme.primaryColor,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 24),
                         const Text(
-                          'Kelola Notifikasi',
+                          'Pengaturan Notifikasi',
                           style: TextStyle(
-                            fontSize: 20,
+                            fontSize: 24,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 12),
                         Text(
-                          'Pilih jenis notifikasi yang ingin Anda terima',
+                          'Kelola jenis notifikasi yang ingin Anda terima',
                           style: TextStyle(
                             color: Colors.grey[600],
-                            fontSize: 14,
+                            fontSize: 16,
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 40),
                       ],
                     ),
                   ),
                   
                   // Notification Settings
-                  Card(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          spreadRadius: 1,
+                          blurRadius: 10,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
                     ),
                     child: Column(
                       children: [
                         SwitchListTile(
-                          title: const Text('Update Pemesanan'),
+                          title: const Text(
+                            'Update Pemesanan',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
                           subtitle: const Text(
-                              'Notifikasi tentang perubahan atau konfirmasi pemesanan Anda'),
+                            'Perubahan atau konfirmasi pemesanan Anda',
+                            style: TextStyle(fontSize: 13),
+                          ),
                           value: _bookingUpdates,
                           onChanged: (value) {
                             setState(() {
@@ -153,11 +162,16 @@ class _NotificationSettingsScreenState
                             color: AppTheme.primaryColor,
                           ),
                         ),
-                        const Divider(height: 1),
+                        Divider(height: 1, thickness: 0.5, indent: 70),
                         SwitchListTile(
-                          title: const Text('Pengingat Pembayaran'),
+                          title: const Text(
+                            'Pengingat Pembayaran',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
                           subtitle: const Text(
-                              'Notifikasi tentang pembayaran yang perlu dilakukan atau status pembayaran'),
+                            'Pembayaran yang perlu dilakukan atau status pembayaran',
+                            style: TextStyle(fontSize: 13),
+                          ),
                           value: _paymentReminders,
                           onChanged: (value) {
                             setState(() {
@@ -169,11 +183,16 @@ class _NotificationSettingsScreenState
                             color: AppTheme.primaryColor,
                           ),
                         ),
-                        const Divider(height: 1),
+                        Divider(height: 1, thickness: 0.5, indent: 70),
                         SwitchListTile(
-                          title: const Text('Update Perjalanan'),
+                          title: const Text(
+                            'Update Perjalanan',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
                           subtitle: const Text(
-                              'Notifikasi tentang perubahan jadwal, keterlambatan, atau pembatalan'),
+                            'Perubahan jadwal, keterlambatan, atau pembatalan',
+                            style: TextStyle(fontSize: 13),
+                          ),
                           value: _travelUpdates,
                           onChanged: (value) {
                             setState(() {
@@ -185,11 +204,16 @@ class _NotificationSettingsScreenState
                             color: AppTheme.primaryColor,
                           ),
                         ),
-                        const Divider(height: 1),
+                        Divider(height: 1, thickness: 0.5, indent: 70),
                         SwitchListTile(
-                          title: const Text('Promo & Penawaran'),
+                          title: const Text(
+                            'Promo & Penawaran',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
                           subtitle: const Text(
-                              'Notifikasi tentang diskon, penawaran khusus, dan promosi terbaru'),
+                            'Diskon, penawaran khusus, dan promosi terbaru',
+                            style: TextStyle(fontSize: 13),
+                          ),
                           value: _promotions,
                           onChanged: (value) {
                             setState(() {
@@ -201,11 +225,16 @@ class _NotificationSettingsScreenState
                             color: AppTheme.primaryColor,
                           ),
                         ),
-                        const Divider(height: 1),
+                        Divider(height: 1, thickness: 0.5, indent: 70),
                         SwitchListTile(
-                          title: const Text('Update Aplikasi'),
+                          title: const Text(
+                            'Update Aplikasi',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
                           subtitle: const Text(
-                              'Notifikasi tentang update aplikasi dan fitur baru'),
+                            'Update aplikasi dan fitur baru',
+                            style: TextStyle(fontSize: 13),
+                          ),
                           value: _appUpdates,
                           onChanged: (value) {
                             setState(() {
@@ -233,43 +262,66 @@ class _NotificationSettingsScreenState
                   ),
                   const SizedBox(height: 16),
                   
-                  Card(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          spreadRadius: 1,
+                          blurRadius: 10,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
                     ),
                     child: Column(
                       children: [
                         SwitchListTile(
-                          title: const Text('Notifikasi Aplikasi'),
-                          subtitle: const Text('Notifikasi melalui aplikasi ini'),
-                          value: true, // Always enabled
-                          onChanged: null, // Can't be disabled
+                          title: const Text(
+                            'Notifikasi Aplikasi',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                          subtitle: const Text(
+                            'Notifikasi melalui aplikasi ini',
+                            style: TextStyle(fontSize: 13),
+                          ),
+                          value: true,
+                          onChanged: null,
                           secondary: Icon(
                             Icons.app_registration,
                             color: AppTheme.primaryColor,
                           ),
                         ),
-                        const Divider(height: 1),
+                        Divider(height: 1, thickness: 0.5, indent: 70),
                         SwitchListTile(
-                          title: const Text('Email'),
-                          subtitle: const Text('Notifikasi melalui email terdaftar'),
+                          title: const Text(
+                            'Email',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                          subtitle: const Text(
+                            'Notifikasi melalui email terdaftar',
+                            style: TextStyle(fontSize: 13),
+                          ),
                           value: true,
-                          onChanged: (value) {
-                            // Implementasi sebenarnya akan menyimpan pengaturan ini
-                          },
+                          onChanged: (value) {},
                           secondary: Icon(
                             Icons.email,
                             color: AppTheme.primaryColor,
                           ),
                         ),
-                        const Divider(height: 1),
+                        Divider(height: 1, thickness: 0.5, indent: 70),
                         SwitchListTile(
-                          title: const Text('SMS'),
-                          subtitle: const Text('Notifikasi melalui SMS ke nomor terdaftar'),
+                          title: const Text(
+                            'SMS',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                          subtitle: const Text(
+                            'Notifikasi melalui SMS ke nomor terdaftar',
+                            style: TextStyle(fontSize: 13),
+                          ),
                           value: false,
-                          onChanged: (value) {
-                            // Implementasi sebenarnya akan menyimpan pengaturan ini
-                          },
+                          onChanged: (value) {},
                           secondary: Icon(
                             Icons.sms,
                             color: AppTheme.primaryColor,
@@ -279,33 +331,48 @@ class _NotificationSettingsScreenState
                     ),
                   ),
                   
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 40),
                   
                   // Save Button
-                  SizedBox(
+                  Container(
                     width: double.infinity,
-                    height: 50,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        backgroundColor: AppTheme.primaryColor,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(30),
                         ),
+                        elevation: 2,
                       ),
                       onPressed: _isLoading ? null : _saveSettings,
                       child: _isLoading
-                          ? const CircularProgressIndicator(
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                strokeWidth: 2,
+                              ),
                             )
                           : const Text(
-                              'Simpan Pengaturan',
-                              style: TextStyle(fontSize: 16),
+                              'SIMPAN PENGATURAN',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1,
+                              ),
                             ),
                     ),
                   ),
+                  
+                  const SizedBox(height: 30),
                 ],
               ),
             ),
+      ),
     );
   }
 }

@@ -10,7 +10,6 @@ import 'package:flutter_chat_bubble/clippers/chat_bubble_clipper_6.dart';
 import 'package:ferry_booking_app/widgets/typing_indicator.dart';
 import 'package:flutter/services.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:ferry_booking_app/utils/theme_helper.dart';
 import 'package:ferry_booking_app/widgets/connection_status_banner.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -34,7 +33,8 @@ class _ChatbotScreenState extends State<ChatbotScreen>
   bool _isTyping = false;
   late AnimationController _animationController;
   late Animation<double> _animation;
-
+  bool _shouldScrollToBottom = false; // Flag untuk mengontrol scroll otomatis
+  
   // Theme config
   late Color _primaryColor;
   late Color _secondaryColor;
@@ -49,10 +49,10 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     _chatbotProvider = Provider.of<ChatbotProvider>(context, listen: false);
     _authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-    // Inisialisasi controller animasi
+    // Inisialisasi controller animasi (untuk tombol scroll ke bawah)
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 200), // Durasi animasi dipercepat
     );
 
     _animation = CurvedAnimation(
@@ -72,7 +72,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeChat();
       _initializeTheme();
-
+      
       // Listen to theme changes
       ThemeHelper.addListener(() {
         if (mounted) {
@@ -115,22 +115,45 @@ class _ChatbotScreenState extends State<ChatbotScreen>
 
   Future<void> _initializeChat() async {
     if (!_isInitialized) {
-      await _chatbotProvider.loadConversation();
-      _isInitialized = true;
-      _scrollToBottom();
+      try {
+        await _chatbotProvider.loadConversation();
+        _isInitialized = true;
+        _shouldScrollToBottom = true; // Set flag untuk scroll otomatis pertama kali
+      } catch (e) {
+        print("Error initializing chat: $e");
+        // Tampilkan snackbar error jika gagal memuat percakapan
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.white),
+                  const SizedBox(width: 10),
+                  const Text('Gagal memuat riwayat percakapan'),
+                ],
+              ),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          );
+        }
+      }
     }
   }
 
-  // Scroll ke pesan terbaru
+  // Scroll ke pesan terbaru dengan penanganan error
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
-      Future.delayed(const Duration(milliseconds: 100), () {
+      try {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 200), // Durasi animasi dipercepat
           curve: Curves.easeOut,
         );
-      });
+      } catch (e) {
+        print("Error scrolling to bottom: $e");
+      }
     }
   }
 
@@ -149,213 +172,375 @@ class _ChatbotScreenState extends State<ChatbotScreen>
       _isTyping = true;
     });
 
-    await _chatbotProvider.sendMessage(message);
+    try {
+      await _chatbotProvider.sendMessage(message);
+      _shouldScrollToBottom = true; // Set flag untuk scroll otomatis setelah kirim pesan
+    } catch (e) {
+      print("Error sending message: $e");
+      // Tampilkan snackbar error jika gagal mengirim pesan
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white),
+                const SizedBox(width: 10),
+                const Text('Gagal mengirim pesan'),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    }
 
-    setState(() {
-      _isTyping = false;
-    });
-
-    _scrollToBottom();
+    if (mounted) {
+      setState(() {
+        _isTyping = false;
+      });
+    }
   }
 
-  // Dialog feedback dengan animasi
+  // Dialog feedback dengan animasi minimal
   void _showFeedbackDialog(int messageId, bool isHelpful) {
     final feedbackController = TextEditingController();
+    final theme = Theme.of(context);
 
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder:
-          (context) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: Row(
-              children: [
-                Icon(
-                  isHelpful
-                      ? Icons.sentiment_satisfied_alt
-                      : Icons.sentiment_dissatisfied,
-                  color: isHelpful ? Colors.green : Colors.orange,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: _isDarkMode ? Colors.grey[850] : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10, // Mengurangi blur
+                offset: const Offset(0, 5), // Mengurangi offset
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: (isHelpful ? Colors.green : Colors.orange).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: Icon(
+                      isHelpful
+                        ? Icons.sentiment_satisfied_alt
+                        : Icons.sentiment_dissatisfied,
+                      color: isHelpful ? Colors.green : Colors.orange,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: Text(
+                      isHelpful ? 'Terima kasih!' : 'Maaf kamu tidak terbantu',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: _isDarkMode ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 15),
+              Text(
+                isHelpful
+                  ? 'Kami senang dapat membantu Anda.'
+                  : 'Mohon bantu kami meningkatkan layanan chatbot.',
+                style: TextStyle(
+                  color: _isDarkMode ? Colors.grey[300] : Colors.grey[700],
+                  fontSize: 15,
                 ),
-                const SizedBox(width: 10),
-                Text(isHelpful ? 'Terima kasih!' : 'Maaf kamu tidak terbantu'),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  isHelpful
-                      ? 'Kami senang dapat membantu Anda.'
-                      : 'Mohon bantu kami meningkatkan layanan chatbot.',
-                  style: TextStyle(
-                    color: _isDarkMode ? Colors.grey[300] : Colors.grey[700],
+              ),
+              const SizedBox(height: 20),
+              Container(
+                decoration: BoxDecoration(
+                  color: _isDarkMode ? Colors.grey[800] : Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: _isDarkMode ? Colors.grey[700]! : Colors.grey[200]!,
+                    width: 1,
                   ),
                 ),
-                const SizedBox(height: 12),
-                TextField(
+                child: TextField(
                   controller: feedbackController,
+                  style: TextStyle(
+                    color: _isDarkMode ? Colors.white : Colors.black87,
+                  ),
                   decoration: InputDecoration(
-                    hintText:
-                        isHelpful
-                            ? 'Berikan saran tambahan (opsional)'
-                            : 'Mohon beri tahu kami bagaimana kami dapat membantu',
-                    border: const OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                    hintText: isHelpful
+                      ? 'Berikan saran tambahan (opsional)'
+                      : 'Mohon beri tahu kami bagaimana kami dapat membantu',
+                    hintStyle: TextStyle(
+                      color: _isDarkMode ? Colors.grey[400] : Colors.grey[400],
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: const BorderRadius.all(Radius.circular(12)),
-                      borderSide: BorderSide(color: _primaryColor, width: 2),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
                     ),
                   ),
                   maxLines: 3,
                 ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(
-                  'Batal',
-                  style: TextStyle(
-                    color: _isDarkMode ? Colors.grey[400] : Colors.grey[700],
-                  ),
-                ),
               ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isHelpful ? Colors.green : _primaryColor,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  elevation: 2,
-                ),
-                onPressed: () {
-                  _chatbotProvider.sendFeedback(
-                    messageId,
-                    isHelpful,
-                    feedbackText:
-                        feedbackController.text.trim().isNotEmpty
-                            ? feedbackController.text.trim()
-                            : null,
-                  );
-                  Navigator.pop(context);
-
-                  // Animasi feedback berhasil dikirim
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Row(
-                        children: [
-                          Icon(Icons.check_circle, color: Colors.white),
-                          const SizedBox(width: 10),
-                          const Text('Terima kasih atas feedback Anda!'),
-                        ],
-                      ),
-                      behavior: SnackBarBehavior.floating,
-                      backgroundColor:
-                          isHelpful ? Colors.green[600] : _primaryColor,
-                      duration: const Duration(seconds: 2),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      margin: const EdgeInsets.all(8),
+              const SizedBox(height: 25),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    width: 120,
+                    height: 45,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(15),
                     ),
-                  );
-                },
-                child: const Text('Kirim'),
+                    child: Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(15),
+                      child: InkWell(
+                        onTap: () => Navigator.pop(context),
+                        borderRadius: BorderRadius.circular(15),
+                        child: Ink(
+                          decoration: BoxDecoration(
+                            color: _isDarkMode ? Colors.grey[800] : Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(15),
+                            border: Border.all(
+                              color: _isDarkMode ? Colors.grey[700]! : Colors.grey.shade300,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Container(
+                            alignment: Alignment.center,
+                            child: Text(
+                              'Batal',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: _isDarkMode ? Colors.grey[400] : Colors.grey[700],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: 120,
+                    height: 45,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: [
+                        BoxShadow(
+                          color: (isHelpful ? Colors.green : theme.primaryColor).withOpacity(0.2), // Mengurangi opasitas
+                          blurRadius: 8, // Mengurangi blur
+                          offset: const Offset(0, 4), // Mengurangi offset
+                          spreadRadius: -3, // Mengurangi spread
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(15),
+                      child: InkWell(
+                        onTap: () {
+                          _chatbotProvider.sendFeedback(
+                            messageId,
+                            isHelpful,
+                            feedbackText: feedbackController.text.trim().isNotEmpty
+                              ? feedbackController.text.trim()
+                              : null,
+                          );
+                          Navigator.pop(context);
+
+                          // Notifikasi feedback berhasil dikirim (lebih sederhana)
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Terima kasih atas feedback Anda!'),
+                              backgroundColor: isHelpful ? Colors.green[600] : theme.primaryColor,
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(15),
+                        child: Ink(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: isHelpful 
+                                ? [Colors.green.shade400, Colors.green.shade600]
+                                : [theme.primaryColor.withBlue(255), theme.primaryColor],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: Container(
+                            alignment: Alignment.center,
+                            child: const Text(
+                              'Kirim',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
+        ),
+      ),
     );
   }
 
-  // Menu opsi dengan animasi
+  // Menu opsi dengan animasi minimal
   void _showOptionsMenu() {
+    final theme = Theme.of(context);
+    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: _isDarkMode ? Colors.grey[850] : Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: _isDarkMode ? Colors.grey[700] : Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
+        return Container(
+          decoration: BoxDecoration(
+            color: _isDarkMode ? Colors.grey[850] : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05), // Mengurangi opasitas
+                blurRadius: 10, // Mengurangi blur
+                offset: const Offset(0, -3), // Mengurangi offset
+              ),
+            ],
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: _isDarkMode ? Colors.grey[700] : Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Pengaturan Chatbot',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: _isDarkMode ? Colors.white : Colors.black,
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: theme.primaryColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: Icon(
+                          Icons.settings_rounded,
+                          color: theme.primaryColor,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 15),
+                      Text(
+                        'Pengaturan Chatbot',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: _isDarkMode ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 16),
-                _buildAnimatedOptionItem(
-                  context: context,
-                  icon: Icons.restart_alt,
-                  title: 'Mulai Percakapan Baru',
-                  subtitle: 'Hapus semua pesan dan mulai ulang',
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showResetConfirmation();
-                  },
-                  index: 0,
-                ),
-                const Divider(),
-                _buildAnimatedOptionItem(
-                  context: context,
-                  icon: Icons.lightbulb_outline,
-                  title: 'Pertanyaan Populer',
-                  subtitle: 'Lihat pertanyaan yang sering ditanyakan',
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showPopularQuestions();
-                  },
-                  index: 1,
-                ),
-                const Divider(),
-                _buildAnimatedOptionItem(
-                  context: context,
-                  icon: Icons.color_lens_outlined,
-                  title: 'Tampilan',
-                  subtitle: 'Ubah tema chatbot',
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showThemeSelector();
-                  },
-                  index: 2,
-                ),
-                if (_authProvider.isLoggedIn) ...[
-                  const Divider(),
-                  _buildAnimatedOptionItem(
+                  const SizedBox(height: 20),
+                  _buildOptionItem(
                     context: context,
-                    icon: Icons.history,
-                    title: 'Riwayat Percakapan',
-                    subtitle: 'Lihat percakapan sebelumnya',
+                    icon: Icons.restart_alt_rounded,
+                    title: 'Mulai Percakapan Baru',
+                    subtitle: 'Hapus semua pesan dan mulai ulang',
                     onTap: () {
                       Navigator.pop(context);
-                      _showConversationHistory();
+                      _showResetConfirmation();
                     },
-                    index: 3,
                   ),
+                  const SizedBox(height: 15),
+                  Container(
+                    height: 1,
+                    color: Colors.grey.shade200,
+                  ),
+                  const SizedBox(height: 15),
+                  _buildOptionItem(
+                    context: context,
+                    icon: Icons.lightbulb_outline_rounded,
+                    title: 'Pertanyaan Populer',
+                    subtitle: 'Lihat pertanyaan yang sering ditanyakan',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showPopularQuestions();
+                    },
+                  ),
+                  const SizedBox(height: 15),
+                  Container(
+                    height: 1,
+                    color: Colors.grey.shade200,
+                  ),
+                  const SizedBox(height: 15),
+                  _buildOptionItem(
+                    context: context,
+                    icon: Icons.color_lens_outlined,
+                    title: 'Tampilan',
+                    subtitle: 'Ubah tema chatbot',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showThemeSelector();
+                    },
+                  ),
+                  if (_authProvider.isLoggedIn) ...[
+                    const SizedBox(height: 15),
+                    Container(
+                      height: 1,
+                      color: Colors.grey.shade200,
+                    ),
+                    const SizedBox(height: 15),
+                    _buildOptionItem(
+                      context: context,
+                      icon: Icons.history_rounded,
+                      title: 'Riwayat Percakapan',
+                      subtitle: 'Lihat percakapan sebelumnya',
+                      onTap: () {
+                        Navigator.pop(context);
+                        _showConversationHistory();
+                      },
+                    ),
+                  ],
+                  const SizedBox(height: 16),
                 ],
-                const SizedBox(height: 16),
-              ],
+              ),
             ),
           ),
         );
@@ -365,58 +550,131 @@ class _ChatbotScreenState extends State<ChatbotScreen>
 
   // Tampilkan dialog tema
   void _showThemeSelector() {
+    final theme = Theme.of(context);
+    
     showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: const Text('Pilih Tema'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildThemeOption(
-                  title: 'Light Mode',
-                  icon: Icons.light_mode,
-                  isSelected: !_isDarkMode,
-                  onTap: () {
-                    Navigator.pop(context);
-                    ThemeHelper.setLightMode(context);
-                    _initializeTheme();
-                  },
-                ),
-                const SizedBox(height: 8),
-                _buildThemeOption(
-                  title: 'Dark Mode',
-                  icon: Icons.dark_mode,
-                  isSelected: _isDarkMode,
-                  onTap: () {
-                    Navigator.pop(context);
-                    ThemeHelper.setDarkMode(context);
-                    _initializeTheme();
-                  },
-                ),
-                const SizedBox(height: 8),
-                _buildThemeOption(
-                  title: 'Sistem (Auto)',
-                  icon: Icons.settings_suggest,
-                  isSelected: false,
-                  onTap: () {
-                    Navigator.pop(context);
-                    ThemeHelper.setSystemMode(context);
-                    _initializeTheme();
-                  },
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Batal'),
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: _isDarkMode ? Colors.grey[850] : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05), // Mengurangi opasitas
+                blurRadius: 10, // Mengurangi blur
+                offset: const Offset(0, 5), // Mengurangi offset
               ),
             ],
           ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: theme.primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: Icon(
+                      Icons.color_lens_rounded,
+                      color: theme.primaryColor,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Text(
+                    'Pilih Tema',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: _isDarkMode ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              _buildThemeOption(
+                title: 'Light Mode',
+                icon: Icons.light_mode_rounded,
+                isSelected: !_isDarkMode,
+                onTap: () {
+                  Navigator.pop(context);
+                  ThemeHelper.setLightMode(context);
+                  _initializeTheme();
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildThemeOption(
+                title: 'Dark Mode',
+                icon: Icons.dark_mode_rounded,
+                isSelected: _isDarkMode,
+                onTap: () {
+                  Navigator.pop(context);
+                  ThemeHelper.setDarkMode(context);
+                  _initializeTheme();
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildThemeOption(
+                title: 'Sistem (Auto)',
+                icon: Icons.settings_suggest_rounded,
+                isSelected: false,
+                onTap: () {
+                  Navigator.pop(context);
+                  ThemeHelper.setSystemMode(context);
+                  _initializeTheme();
+                },
+              ),
+              const SizedBox(height: 25),
+              Container(
+                width: double.infinity,
+                height: 45,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(15),
+                  child: InkWell(
+                    onTap: () => Navigator.pop(context),
+                    borderRadius: BorderRadius.circular(15),
+                    child: Ink(
+                      decoration: BoxDecoration(
+                        color: _isDarkMode ? Colors.grey[800] : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(
+                          color: _isDarkMode ? Colors.grey[700]! : Colors.grey.shade300,
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Container(
+                        alignment: Alignment.center,
+                        child: Text(
+                          'Tutup',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: _isDarkMode ? Colors.grey[400] : Colors.grey[700],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -427,34 +685,73 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        decoration: BoxDecoration(
-          color:
-              isSelected ? _primaryColor.withOpacity(0.1) : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isSelected ? _primaryColor : Colors.grey.withOpacity(0.3),
-            width: isSelected ? 2 : 1,
-          ),
+    final theme = Theme.of(context);
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: isSelected 
+          ? theme.primaryColor.withOpacity(0.1) 
+          : _isDarkMode ? Colors.grey[800] : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isSelected 
+            ? theme.primaryColor 
+            : _isDarkMode ? Colors.grey[700]! : Colors.grey.shade200,
+          width: isSelected ? 2 : 1,
         ),
-        child: Row(
-          children: [
-            Icon(icon, color: isSelected ? _primaryColor : null),
-            const SizedBox(width: 16),
-            Text(
-              title,
-              style: TextStyle(
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? _primaryColor : null,
-              ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                      ? theme.primaryColor.withOpacity(0.2)
+                      : _isDarkMode 
+                        ? Colors.grey[700]!.withOpacity(0.5)
+                        : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    icon, 
+                    color: isSelected ? theme.primaryColor : null,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected ? theme.primaryColor : null,
+                    fontSize: 15,
+                  ),
+                ),
+                const Spacer(),
+                if (isSelected) 
+                  Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: theme.primaryColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.check, 
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                  ),
+              ],
             ),
-            const Spacer(),
-            if (isSelected) Icon(Icons.check_circle, color: _primaryColor),
-          ],
+          ),
         ),
       ),
     );
@@ -462,6 +759,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
 
   // Tampilkan pertanyaan populer
   void _showPopularQuestions() {
+    final theme = Theme.of(context);
     final popularQuestions = [
       'Bagaimana cara memesan tiket feri?',
       'Apa saja metode pembayaran yang tersedia?',
@@ -476,62 +774,79 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: _isDarkMode ? Colors.grey[850] : Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              vertical: 16.0,
-              horizontal: 12.0,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: _isDarkMode ? Colors.grey[700] : Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Icon(Icons.trending_up, color: _primaryColor),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Pertanyaan Populer',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: _isDarkMode ? Colors.white : Colors.black,
-                      ),
+        return Container(
+          decoration: BoxDecoration(
+            color: _isDarkMode ? Colors.grey[850] : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05), // Mengurangi opasitas
+                blurRadius: 10, // Mengurangi blur
+                offset: const Offset(0, -3), // Mengurangi offset
+              ),
+            ],
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: _isDarkMode ? Colors.grey[700] : Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: popularQuestions.length,
-                  itemBuilder: (context, index) {
-                    return _buildPopularQuestionItem(
-                      question: popularQuestions[index],
-                      index: index,
-                      onTap: () {
-                        Navigator.pop(context);
-                        _messageController.text = popularQuestions[index];
-                        _sendMessage();
-                      },
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-              ],
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: theme.primaryColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: Icon(
+                          Icons.trending_up_rounded,
+                          color: theme.primaryColor,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 15),
+                      Text(
+                        'Pertanyaan Populer',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: _isDarkMode ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: popularQuestions.length,
+                    itemBuilder: (context, index) {
+                      return _buildPopularQuestionItem(
+                        question: popularQuestions[index],
+                        onTap: () {
+                          Navigator.pop(context);
+                          _messageController.text = popularQuestions[index];
+                          _sendMessage();
+                        },
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
             ),
           ),
         );
@@ -542,36 +857,40 @@ class _ChatbotScreenState extends State<ChatbotScreen>
   // Item pertanyaan populer
   Widget _buildPopularQuestionItem({
     required String question,
-    required int index,
     required VoidCallback onTap,
   }) {
-    return TweenAnimationBuilder(
-      tween: Tween<double>(begin: 0, end: 1),
-      duration: Duration(milliseconds: 200 + (index * 50)),
-      builder: (context, double value, child) {
-        return Transform.translate(
-          offset: Offset(0, 20 * (1 - value)),
-          child: Opacity(opacity: value, child: child),
-        );
-      },
-      child: Card(
+    final theme = Theme.of(context);
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
         color: _isDarkMode ? Colors.grey[800] : Colors.white,
-        elevation: 2,
-        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        borderRadius: BorderRadius.circular(16),
+        // Menghilangkan shadow untuk optimasi
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           child: Padding(
-            padding: const EdgeInsets.all(12.0),
+            padding: const EdgeInsets.all(16.0),
             child: Row(
               children: [
-                Icon(
-                  Icons.question_answer_outlined,
-                  color: _primaryColor.withOpacity(0.7),
-                  size: 20,
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: theme.primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.question_answer_rounded,
+                    color: theme.primaryColor.withOpacity(0.8),
+                    size: 20,
+                  ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 15),
                 Expanded(
                   child: Text(
                     question,
@@ -581,7 +900,11 @@ class _ChatbotScreenState extends State<ChatbotScreen>
                     ),
                   ),
                 ),
-                Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 14),
+                Icon(
+                  Icons.arrow_forward_ios_rounded, 
+                  color: _isDarkMode ? Colors.grey[600] : Colors.grey[400], 
+                  size: 14
+                ),
               ],
             ),
           ),
@@ -596,7 +919,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
       SnackBar(
         content: Row(
           children: [
-            Icon(Icons.info_outline, color: Colors.white),
+            const Icon(Icons.info_outline, color: Colors.white),
             const SizedBox(width: 10),
             const Text('Fitur akan segera tersedia!'),
           ],
@@ -604,113 +927,510 @@ class _ChatbotScreenState extends State<ChatbotScreen>
         behavior: SnackBarBehavior.floating,
         backgroundColor: _secondaryColor,
         duration: const Duration(seconds: 2),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         margin: const EdgeInsets.all(8),
       ),
     );
   }
 
-  // Konfirmasi reset percakapan dengan animasi
+  // Konfirmasi reset percakapan
   void _showResetConfirmation() {
+    final theme = Theme.of(context);
+    
     showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: Row(
-              children: [
-                Icon(Icons.warning_amber_rounded, color: Colors.orange),
-                const SizedBox(width: 10),
-                const Text('Mulai Percakapan Baru?'),
-              ],
-            ),
-            content: const Text(
-              'Semua pesan di percakapan ini akan dihapus dan tidak dapat dipulihkan. Lanjutkan?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Batal'),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  elevation: 2,
-                ),
-                onPressed: () {
-                  Navigator.pop(context);
-                  // Haptic feedback saat reset
-                  HapticFeedback.mediumImpact();
-                  _chatbotProvider.clearConversation();
-                },
-                child: const Text('Hapus'),
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: _isDarkMode ? Colors.grey[850] : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05), // Mengurangi opasitas
+                blurRadius: 10, // Mengurangi blur
+                offset: const Offset(0, 5), // Mengurangi offset
               ),
             ],
           ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: const Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.orange,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  const Text(
+                    'Mulai Percakapan Baru?',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Semua pesan di percakapan ini akan dihapus dan tidak dapat dipulihkan. Lanjutkan?',
+                style: TextStyle(
+                  fontSize: 15,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 25),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    width: 120,
+                    height: 45,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(15),
+                      child: InkWell(
+                        onTap: () => Navigator.pop(context),
+                        borderRadius: BorderRadius.circular(15),
+                        child: Ink(
+                          decoration: BoxDecoration(
+                            color: _isDarkMode ? Colors.grey[800] : Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(15),
+                            border: Border.all(
+                              color: _isDarkMode ? Colors.grey[700]! : Colors.grey.shade300,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Container(
+                            alignment: Alignment.center,
+                            child: Text(
+                              'Batal',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: _isDarkMode ? Colors.grey[400] : Colors.grey[700],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: 120,
+                    height: 45,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.red.withOpacity(0.2), // Mengurangi opasitas
+                          blurRadius: 8, // Mengurangi blur
+                          offset: const Offset(0, 4), // Mengurangi offset
+                          spreadRadius: -3, // Mengurangi spread
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(15),
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.pop(context);
+                          // Haptic feedback saat reset
+                          HapticFeedback.mediumImpact();
+                          try {
+                            _chatbotProvider.clearConversation();
+                            _shouldScrollToBottom = true; // Set flag untuk scroll otomatis setelah reset
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Row(
+                                    children: [
+                                      const Icon(Icons.check_circle, color: Colors.white),
+                                      const SizedBox(width: 10),
+                                      const Text('Percakapan berhasil dihapus'),
+                                    ],
+                                  ),
+                                  backgroundColor: Colors.green,
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            print("Error clearing conversation: $e");
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Row(
+                                    children: [
+                                      const Icon(Icons.error_outline, color: Colors.white),
+                                      const SizedBox(width: 10),
+                                      const Text('Gagal menghapus percakapan'),
+                                    ],
+                                  ),
+                                  backgroundColor: Colors.red,
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(15),
+                        child: Ink(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.red.shade400,
+                                Colors.red.shade600,
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: Container(
+                            alignment: Alignment.center,
+                            child: const Text(
+                              'Hapus',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
-  // Widget untuk item opsi dengan animasi
-  Widget _buildAnimatedOptionItem({
+  // Widget untuk item opsi tanpa animasi
+  Widget _buildOptionItem({
     required BuildContext context,
     required IconData icon,
     required String title,
     required String subtitle,
     required VoidCallback onTap,
-    required int index,
   }) {
-    return TweenAnimationBuilder(
-      tween: Tween<double>(begin: 0, end: 1),
-      duration: Duration(milliseconds: 300 + (index * 100)),
-      builder: (context, double value, child) {
-        return Transform.translate(
-          offset: Offset(20 * (1 - value), 0),
-          child: Opacity(opacity: value, child: child),
-        );
-      },
-      child: ListTile(
-        leading: Icon(icon, color: _primaryColor),
-        title: Text(
-          title,
-          style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black87),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: TextStyle(
-            color: _isDarkMode ? Colors.grey[400] : Colors.grey[600],
+    final theme = Theme.of(context);
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: _isDarkMode ? Colors.grey[800]!.withOpacity(0.5) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        // Menghilangkan shadow untuk optimasi
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: theme.primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: theme.primaryColor,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: _isDarkMode ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          color: _isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios_rounded, 
+                  color: _isDarkMode ? Colors.grey[600] : Colors.grey[400], 
+                  size: 14
+                ),
+              ],
+            ),
           ),
         ),
-        onTap: onTap,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final size = MediaQuery.of(context).size;
+    
+    // Jika flag _shouldScrollToBottom == true, scroll otomatis SETELAH build selesai
+    if (_shouldScrollToBottom) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToBottom();
+        setState(() {
+          _shouldScrollToBottom = false; // Reset flag setelah scroll
+        });
+      });
+    }
+    
     return Scaffold(
-      backgroundColor: _backgroundColor,
-      appBar: AppBar(
-        backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
-        title: Row(
+      backgroundColor: Colors.transparent,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+            colors: [
+              Colors.white,
+              Colors.blue.shade50,
+              Colors.blue.shade100.withOpacity(0.4),
+            ],
+          ),
+        ),
+        child: Stack(
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: _primaryColor.withOpacity(0.1),
-                shape: BoxShape.circle,
+            // Background elements (disederhanakan)
+            Positioned(
+              top: -50,
+              right: -50,
+              child: Container(
+                width: 180,
+                height: 180,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: theme.primaryColor.withOpacity(0.1),
+                ),
               ),
-              child: Icon(Icons.support_agent, color: _primaryColor, size: 24),
             ),
-            const SizedBox(width: 10),
-            Column(
+            Positioned(
+              bottom: -80,
+              left: -80,
+              child: Container(
+                width: 200,
+                height: 200,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: theme.primaryColor.withOpacity(0.1),
+                ),
+              ),
+            ),
+            
+            // Main content
+            SafeArea(
+              child: Column(
+                children: [
+                  // Custom AppBar
+                  _buildAppBar(),
+                  
+                  // Main content area
+                  Expanded(
+                    child: Consumer<ChatbotProvider>(
+                      builder: (context, provider, _) {
+                        if (provider.isLoading && provider.messages.isEmpty) {
+                          return _buildLoadingState();
+                        }
+            
+                        return Column(
+                          children: [
+                            // Status koneksi
+                            if (provider.isOffline)
+                              ConnectionStatusBanner(
+                                isDarkMode: _isDarkMode,
+                                message: 'Anda sedang offline. Pesan akan dikirim saat koneksi tersedia.',
+                              ),
+            
+                            // Daftar pesan
+                            Expanded(
+                              child: provider.messages.isEmpty
+                                ? _buildEmptyState()
+                                : Stack(
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () => FocusScope.of(context).unfocus(),
+                                      child: ListView.builder(
+                                        controller: _scrollController,
+                                        padding: const EdgeInsets.all(16),
+                                        itemCount: provider.messages.length + (_isTyping ? 1 : 0),
+                                        itemBuilder: (context, index) {
+                                          if (index < provider.messages.length) {
+                                            return _buildMessageItem(provider.messages[index]);
+                                          } else {
+                                            // Efek mengetik
+                                            return const TypingIndicator();
+                                          }
+                                        },
+                                      ),
+                                    ),
+            
+                                    // Tombol scroll ke bawah (hanya tampilkan jika perlu)
+                                    if (_showScrollButton)
+                                      Positioned(
+                                        right: 16,
+                                        bottom: 16,
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(25),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: theme.primaryColor.withOpacity(0.2), // Mengurangi opasitas
+                                                blurRadius: 8, // Mengurangi blur
+                                                offset: const Offset(0, 3), // Mengurangi offset
+                                                spreadRadius: -3, // Mengurangi spread
+                                              ),
+                                            ],
+                                          ),
+                                          child: FloatingActionButton(
+                                            heroTag: 'chatbotScreenFab',
+                                            mini: true,
+                                            backgroundColor: theme.primaryColor,
+                                            foregroundColor: Colors.white,
+                                            elevation: 0,
+                                            child: const Icon(
+                                              Icons.keyboard_arrow_down,
+                                            ),
+                                            onPressed: () {
+                                              HapticFeedback.selectionClick();
+                                              _scrollToBottom();
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                            ),
+            
+                            // Saran pertanyaan
+                            if (provider.suggestedQuestions.isNotEmpty)
+                              SuggestedQuestions(
+                                questions: provider.suggestedQuestions,
+                                onTap: (question) {
+                                  HapticFeedback.selectionClick();
+                                  provider.sendSuggestedQuestion(question);
+                                  _shouldScrollToBottom = true; // Set flag untuk scroll setelah kirim pertanyaan
+                                },
+                              ),
+            
+                            // Input pesan
+                            _buildMessageInput(provider),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildAppBar() {
+    final theme = Theme.of(context);
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03), // Mengurangi opasitas
+            blurRadius: 6, // Mengurangi blur
+            offset: const Offset(0, 3), // Mengurangi offset
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(15),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(15),
+              onTap: () {
+                Navigator.pop(context);
+              },
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(15),
+                  // Menghilangkan shadow untuk optimasi
+                ),
+                child: Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  size: 22,
+                  color: theme.primaryColor,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 15),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: theme.primaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Icon(
+              Icons.support_agent_rounded,
+              color: theme.primaryColor,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
@@ -718,7 +1438,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: _isDarkMode ? Colors.white : Colors.black87,
+                    color: Colors.black87,
                   ),
                 ),
                 Row(
@@ -737,427 +1457,301 @@ class _ChatbotScreenState extends State<ChatbotScreen>
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.normal,
-                        color:
-                            _isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                        color: Colors.grey[600],
                       ),
                     ),
                   ],
                 ),
               ],
             ),
-          ],
-        ),
-        elevation: _isDarkMode ? 0 : 1,
-        actions: [
-          IconButton(
-            icon: Icon(
-              Icons.more_vert,
-              color: _isDarkMode ? Colors.white : Colors.black87,
+          ),
+          Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(15),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(15),
+              onTap: _showOptionsMenu,
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(15),
+                  // Menghilangkan shadow untuk optimasi
+                ),
+                child: Icon(
+                  Icons.more_horiz_rounded,
+                  size: 22,
+                  color: theme.primaryColor,
+                ),
+              ),
             ),
-            onPressed: _showOptionsMenu,
           ),
         ],
       ),
-      body: Consumer<ChatbotProvider>(
-        builder: (context, provider, _) {
-          if (provider.isLoading && provider.messages.isEmpty) {
-            return _buildLoadingState();
-          }
-
-          // Scroll setelah build jika ada pesan
-          if (provider.messages.isNotEmpty) {
-            WidgetsBinding.instance.addPostFrameCallback(
-              (_) => _scrollToBottom(),
-            );
-          }
-
-          return Column(
-            children: [
-              // Status koneksi
-              if (provider.isOffline)
-                ConnectionStatusBanner(
-                  isDarkMode: _isDarkMode,
-                  message:
-                      'Anda sedang offline. Pesan akan dikirim saat koneksi tersedia.',
-                ),
-
-              // Daftar pesan
-              Expanded(
-                child:
-                    provider.messages.isEmpty
-                        ? _buildEmptyState()
-                        : Stack(
-                          children: [
-                            GestureDetector(
-                              onTap: () => FocusScope.of(context).unfocus(),
-                              child: ListView.builder(
-                                controller: _scrollController,
-                                padding: const EdgeInsets.all(16),
-                                itemCount:
-                                    provider.messages.length +
-                                    (_isTyping ? 1 : 0),
-                                itemBuilder: (context, index) {
-                                  if (index < provider.messages.length) {
-                                    return _buildMessageItem(
-                                      provider.messages[index],
-                                    );
-                                  } else {
-                                    // Efek mengetik
-                                    return const TypingIndicator();
-                                  }
-                                },
-                              ),
-                            ),
-
-                            // Tombol scroll ke bawah dengan animasi
-                            AnimatedBuilder(
-                              animation: _animation,
-                              builder: (context, child) {
-                                return Positioned(
-                                  right: 16,
-                                  bottom: 16,
-                                  child: ScaleTransition(
-                                    scale: _animation,
-                                    child: FloatingActionButton(
-                                      heroTag: 'chatbotScreenFab',
-                                      mini: true,
-                                      backgroundColor: _primaryColor
-                                          .withOpacity(0.9),
-                                      foregroundColor: Colors.white,
-                                      elevation: 4,
-                                      child: const Icon(
-                                        Icons.keyboard_arrow_down,
-                                      ),
-                                      onPressed: () {
-                                        HapticFeedback.selectionClick();
-                                        _scrollToBottom();
-                                      },
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
+    );
+  }
+  
+  Widget _buildMessageInput(ChatbotProvider provider) {
+    final theme = Theme.of(context);
+    
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03), // Mengurangi opasitas
+            blurRadius: 6, // Mengurangi blur
+            offset: const Offset(0, -3), // Mengurangi offset
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Row(
+          children: [
+            // Tombol mikrofon
+            Container(
+              decoration: BoxDecoration(
+                color: theme.primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(15),
+                // Menghilangkan shadow untuk optimasi
               ),
-
-              // Saran pertanyaan
-              if (provider.suggestedQuestions.isNotEmpty)
-                SuggestedQuestions(
-                  questions: provider.suggestedQuestions,
-                  onTap: (question) {
-                    HapticFeedback.selectionClick();
-                    provider.sendSuggestedQuestion(question);
-                  },
-                  // isDarkMode: _isDarkMode,
-                  // primaryColor: _primaryColor,
+              child: IconButton(
+                icon: Icon(
+                  Icons.mic_rounded,
+                  color: theme.primaryColor.withOpacity(
+                    provider.isSending || provider.isOffline ? 0.4 : 0.8,
+                  ),
                 ),
-
-              // Input pesan
-              Container(
-                padding: const EdgeInsets.all(8.0),
+                onPressed: provider.isSending || provider.isOffline
+                  ? null
+                  : () {
+                    HapticFeedback.selectionClick();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Input suara akan segera tersedia!'),
+                        backgroundColor: theme.primaryColor,
+                      ),
+                    );
+                  },
+              ),
+            ),
+            
+            // Text field
+            const SizedBox(width: 12),
+            Expanded(
+              child: Container(
                 decoration: BoxDecoration(
-                  color: _isDarkMode ? Colors.grey[900] : Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      spreadRadius: 1,
-                      blurRadius: 3,
-                      offset: const Offset(0, -1),
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.grey.shade200,
+                    width: 1,
+                  ),
+                  // Menghilangkan shadow untuk optimasi
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _messageController,
+                        style: TextStyle(
+                          color: Colors.black87,
+                          fontSize: 15,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Tulis pesan Anda...',
+                          hintStyle: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 15,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: Colors.transparent,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                        maxLines: null,
+                        textInputAction: TextInputAction.send,
+                        onSubmitted: (_) => _sendMessage(),
+                        enabled: !provider.isSending && !provider.isOffline,
+                      ),
                     ),
+                    if (_messageController.text.isNotEmpty)
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 20),
+                        onPressed: () {
+                          setState(() {
+                            _messageController.clear();
+                          });
+                        },
+                        splashRadius: 20,
+                        color: Colors.grey[600],
+                      ),
                   ],
                 ),
-                child: SafeArea(
-                  child: Row(
-                    children: [
-                      // Tombol mikrofon
-                      Container(
-                        decoration: BoxDecoration(
-                          color: _primaryColor.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: IconButton(
-                          icon: Icon(
-                            Icons.mic,
-                            color: _primaryColor.withOpacity(
-                              provider.isSending || provider.isOffline
-                                  ? 0.4
-                                  : 0.8,
-                            ),
-                          ),
-                          onPressed:
-                              provider.isSending || provider.isOffline
-                                  ? null
-                                  : () {
-                                    HapticFeedback.selectionClick();
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Row(
-                                          children: [
-                                            Icon(
-                                              Icons.info_outline,
-                                              color: Colors.white,
-                                            ),
-                                            const SizedBox(width: 10),
-                                            const Text(
-                                              'Input suara akan segera tersedia!',
-                                            ),
-                                          ],
-                                        ),
-                                        behavior: SnackBarBehavior.floating,
-                                        backgroundColor: _primaryColor,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                        margin: const EdgeInsets.all(8),
-                                      ),
-                                    );
-                                  },
-                        ),
+              ),
+            ),
+            
+            // Tombol kirim
+            const SizedBox(width: 12),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(15),
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.primaryColor.withOpacity(
+                      provider.isSending || provider.isOffline ? 0 : 0.2,
+                    ),
+                    spreadRadius: -3, // Mengurangi spread
+                    blurRadius: 8, // Mengurangi blur
+                    offset: const Offset(0, 3), // Mengurangi offset
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(15),
+                child: InkWell(
+                  onTap: provider.isSending || provider.isOffline ? null : _sendMessage,
+                  borderRadius: BorderRadius.circular(15),
+                  child: Ink(
+                    padding: const EdgeInsets.all(13),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: provider.isSending || provider.isOffline
+                          ? [Colors.grey, Colors.grey]
+                          : [theme.primaryColor.withBlue(255), theme.primaryColor],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                      // Text field
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color:
-                                _isDarkMode
-                                    ? Colors.grey[800]
-                                    : Colors.grey[100],
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _messageController,
-                                  style: TextStyle(
-                                    color:
-                                        _isDarkMode
-                                            ? Colors.white
-                                            : Colors.black87,
-                                  ),
-                                  decoration: InputDecoration(
-                                    hintText: 'Tulis pesan Anda...',
-                                    hintStyle: TextStyle(
-                                      color:
-                                          _isDarkMode
-                                              ? Colors.grey[400]
-                                              : Colors.grey[600],
-                                    ),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(24),
-                                      borderSide: BorderSide.none,
-                                    ),
-                                    filled: true,
-                                    fillColor: Colors.transparent,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 8,
-                                    ),
-                                  ),
-                                  maxLines: null,
-                                  textInputAction: TextInputAction.send,
-                                  onSubmitted: (_) => _sendMessage(),
-                                  enabled:
-                                      !provider.isSending &&
-                                      !provider.isOffline,
-                                ),
-                              ),
-                              if (_messageController.text.isNotEmpty)
-                                IconButton(
-                                  icon: const Icon(Icons.close, size: 20),
-                                  onPressed: () {
-                                    setState(() {
-                                      _messageController.clear();
-                                    });
-                                  },
-                                  splashRadius: 20,
-                                  color:
-                                      _isDarkMode
-                                          ? Colors.grey[400]
-                                          : Colors.grey[600],
-                                ),
-                            ],
-                          ),
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: provider.isSending
+                      ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
                         ),
+                      )
+                      : const Icon(
+                        Icons.send_rounded, 
+                        color: Colors.white,
+                        size: 22,
                       ),
-                      const SizedBox(width: 8),
-                      // Tombol kirim
-                      Container(
-                        decoration: BoxDecoration(
-                          color:
-                              provider.isSending || provider.isOffline
-                                  ? Colors.grey
-                                  : _primaryColor,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: _primaryColor.withOpacity(
-                                provider.isSending || provider.isOffline
-                                    ? 0
-                                    : 0.3,
-                              ),
-                              spreadRadius: 1,
-                              blurRadius: 3,
-                            ),
-                          ],
-                        ),
-                        child: IconButton(
-                          onPressed:
-                              provider.isSending || provider.isOffline
-                                  ? null
-                                  : _sendMessage,
-                          icon:
-                              provider.isSending
-                                  ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                  : const Icon(Icons.send, color: Colors.white),
-                        ),
-                      ),
-                    ],
                   ),
                 ),
               ),
-            ],
-          );
-        },
+            ),
+          ],
+        ),
       ),
     );
   }
 
   // Loading state dengan shimmer effect
   Widget _buildLoadingState() {
+    // Optimasi Shimmer effect
     return Shimmer.fromColors(
       baseColor: _isDarkMode ? Colors.grey[800]! : Colors.grey[300]!,
       highlightColor: _isDarkMode ? Colors.grey[700]! : Colors.grey[100]!,
+      period: const Duration(milliseconds: 1500), // Memperlambat animasi untuk mengurangi beban CPU
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: 5,
-        itemBuilder:
-            (_, __) => Align(
-              alignment:
-                  __ % 2 == 0 ? Alignment.centerRight : Alignment.centerLeft,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Container(
-                  width: 250,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
+        itemCount: 3, // Mengurangi jumlah item
+        itemBuilder: (_, __) => Align(
+          alignment: __ % 2 == 0 ? Alignment.centerRight : Alignment.centerLeft,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Container(
+              width: 250,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
               ),
             ),
+          ),
+        ),
       ),
     );
   }
 
-  // Empty state dengan animasi dan ilustrasi
+  // Empty state dengan minimal animasi yang lebih ringkas
   Widget _buildEmptyState() {
+    final theme = Theme.of(context);
+    
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        TweenAnimationBuilder(
-          tween: Tween<double>(begin: 0, end: 1),
-          duration: const Duration(milliseconds: 800),
-          builder: (context, double value, child) {
-            return Transform.scale(
-              scale: 0.8 + (value * 0.2),
-              child: Opacity(opacity: value, child: child),
-            );
-          },
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: _primaryColor.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.chat_bubble_outline,
-              size: 80,
-              color: _primaryColor,
-            ),
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: theme.primaryColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(30),
+          ),
+          child: Icon(
+            Icons.chat_bubble_outline_rounded,
+            size: 80,
+            color: theme.primaryColor,
           ),
         ),
         const SizedBox(height: 24),
-        TweenAnimationBuilder(
-          tween: Tween<double>(begin: 0, end: 1),
-          duration: const Duration(milliseconds: 1000),
-          builder: (context, double value, child) {
-            return Opacity(
-              opacity: value,
-              child: Transform.translate(
-                offset: Offset(0, 20 * (1 - value)),
-                child: child,
-              ),
-            );
-          },
-          child: Text(
-            'Selamat datang di Chatbot Ferry Booking',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: _isDarkMode ? Colors.white : Colors.grey[800],
-            ),
+        Text(
+          'Selamat datang di Chatbot Ferry Booking',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: _isDarkMode ? Colors.white : Colors.grey[800],
           ),
         ),
         const SizedBox(height: 12),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 40),
-          child: AnimatedTextKit(
-            animatedTexts: [
-              TypewriterAnimatedText(
-                'Tanyakan informasi tentang jadwal, pemesanan tiket, atau bantuan lainnya.',
-                textAlign: TextAlign.center,
-                textStyle: TextStyle(
-                  color: _isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                  fontSize: 14,
-                ),
-                speed: const Duration(milliseconds: 50),
-              ),
-            ],
-            totalRepeatCount: 1,
-            displayFullTextOnTap: true,
+          child: Text(
+            'Tanyakan informasi tentang jadwal, pemesanan tiket, atau bantuan lainnya.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: _isDarkMode ? Colors.grey[400] : Colors.grey[600],
+              fontSize: 15,
+            ),
           ),
         ),
         const SizedBox(height: 32),
-        TweenAnimationBuilder(
-          tween: Tween<double>(begin: 0, end: 1),
-          duration: const Duration(milliseconds: 1200),
-          builder: (context, double value, child) {
-            return Opacity(
-              opacity: value,
-              child: Transform.translate(
-                offset: Offset(0, 20 * (1 - value)),
-                child: child,
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(25),
+            boxShadow: [
+              BoxShadow(
+                color: theme.primaryColor.withOpacity(0.2), // Mengurangi opasitas
+                blurRadius: 8, // Mengurangi blur
+                offset: const Offset(0, 3), // Mengurangi offset
+                spreadRadius: -3, // Mengurangi spread
               ),
-            );
-          },
+            ],
+          ),
           child: ElevatedButton.icon(
             onPressed: () {
               _messageController.text = 'Halo, saya butuh bantuan';
               _sendMessage();
             },
-            icon: const Icon(Icons.chat),
+            icon: const Icon(Icons.chat_rounded),
             label: const Text('Mulai Percakapan'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: _primaryColor,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
+                borderRadius: BorderRadius.circular(25),
               ),
-              elevation: 4,
+              elevation: 0,
+              backgroundColor: theme.primaryColor,
             ),
           ),
         ),
@@ -1166,10 +1760,11 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     );
   }
 
-  // Item pesan dengan berbagai status dan format
+  // Item pesan dengan animasi minimal
   Widget _buildMessageItem(ChatMessage message) {
     final isFailedMessage = message.messageStatus == 'failed';
     final isPendingMessage = message.messageStatus == 'pending';
+    final theme = Theme.of(context);
 
     // Tambahkan jarak yang lebih besar jika pesan dari pengirim berbeda
     // (untuk memisahkan 'grup' pesan)
@@ -1186,26 +1781,43 @@ class _ChatbotScreenState extends State<ChatbotScreen>
         bottom: 4.0,
       ),
       child: Column(
-        crossAxisAlignment:
-            message.isFromUser
-                ? CrossAxisAlignment.end
-                : CrossAxisAlignment.start,
+        crossAxisAlignment: message.isFromUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
           // Header untuk grup pesan baru
           if (showGroupSeparator)
             Padding(
               padding: const EdgeInsets.only(
-                bottom: 4.0,
+                bottom: 8.0,
                 left: 8.0,
                 right: 8.0,
               ),
-              child: Text(
-                message.isFromUser ? 'Anda' : 'Chatbot',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: _isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: message.isFromUser 
+                        ? theme.primaryColor.withOpacity(0.1)
+                        : Colors.grey.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      message.isFromUser ? Icons.person : Icons.support_agent_rounded,
+                      size: 14,
+                      color: message.isFromUser ? theme.primaryColor : Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    message.isFromUser ? 'Anda' : 'Chatbot',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: message.isFromUser ? theme.primaryColor : Colors.grey[600],
+                    ),
+                  ),
+                ],
               ),
             ),
 
@@ -1219,98 +1831,98 @@ class _ChatbotScreenState extends State<ChatbotScreen>
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment:
-                    message.isFromUser
-                        ? MainAxisAlignment.end
-                        : MainAxisAlignment.start,
+                mainAxisAlignment: message.isFromUser ? MainAxisAlignment.end : MainAxisAlignment.start,
                 children: [
-                  Icon(
-                    isFailedMessage ? Icons.error_outline : Icons.access_time,
-                    size: 12,
-                    color: isFailedMessage ? Colors.red : Colors.orange,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    isFailedMessage ? 'Gagal terkirim' : 'Menunggu koneksi',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: isFailedMessage ? Colors.red : Colors.orange,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: (isFailedMessage ? Colors.red : Colors.orange).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isFailedMessage ? Icons.error_outline : Icons.access_time_rounded,
+                          size: 12,
+                          color: isFailedMessage ? Colors.red : Colors.orange,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          isFailedMessage ? 'Gagal terkirim' : 'Menunggu koneksi',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isFailedMessage ? Colors.red : Colors.orange,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
 
-          // Bubble chat dengan efek animasi saat muncul
-          TweenAnimationBuilder(
-            tween: Tween<double>(begin: 0.8, end: 1.0),
-            duration: const Duration(milliseconds: 300),
-            builder: (context, double value, child) {
-              return Transform.scale(
-                scale: value,
-                alignment:
-                    message.isFromUser
-                        ? Alignment.centerRight
-                        : Alignment.centerLeft,
-                child: Opacity(opacity: value, child: child),
-              );
-            },
-            child: ChatBubble(
-              clipper: ChatBubbleClipper6(
-                type:
-                    message.isFromUser
-                        ? BubbleType.sendBubble
-                        : BubbleType.receiverBubble,
-                radius: 16,
+          // Bubble chat dengan efek animasi minimal
+          ChatBubble(
+            clipper: ChatBubbleClipper6(
+              type: message.isFromUser ? BubbleType.sendBubble : BubbleType.receiverBubble,
+              radius: 20,
+            ),
+            alignment: message.isFromUser ? Alignment.topRight : Alignment.topLeft,
+            margin: const EdgeInsets.only(top: 6),
+            backGroundColor: isFailedMessage
+              ? Colors.red[100]
+              : isPendingMessage
+              ? Colors.orange[100]
+              : message.isFromUser
+              ? theme.primaryColor
+              : Colors.white,
+            elevation: 1, // Mengurangi elevasi
+            shadowColor: Colors.black.withOpacity(0.05), // Mengurangi opasitas shadow
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.7,
               ),
-              alignment:
-                  message.isFromUser ? Alignment.topRight : Alignment.topLeft,
-              margin: const EdgeInsets.only(top: 6),
-              backGroundColor:
-                  isFailedMessage
-                      ? Colors.red[100]
-                      : isPendingMessage
-                      ? Colors.orange[100]
-                      : message.isFromUser
-                      ? _userBubbleColor
-                      : _botBubbleColor,
-              child: Container(
-                constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.7,
-                ),
-                child: _buildMessageContent(message),
-              ),
+              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+              child: _buildMessageContent(message),
             ),
           ),
 
           // Info waktu dan status pengiriman
           Padding(
-            padding: const EdgeInsets.only(top: 2.0, left: 8.0, right: 8.0),
+            padding: const EdgeInsets.only(top: 4.0, left: 8.0, right: 8.0),
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment:
-                  message.isFromUser
-                      ? MainAxisAlignment.end
-                      : MainAxisAlignment.start,
+              mainAxisAlignment: message.isFromUser ? MainAxisAlignment.end : MainAxisAlignment.start,
               children: [
-                Text(
-                  _formatTime(message.createdAt),
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: _isDarkMode ? Colors.grey[500] : Colors.grey[600],
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _formatTime(message.createdAt),
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: _isDarkMode ? Colors.grey[400] : Colors.grey[700],
+                        ),
+                      ),
+                      // Status pesan berupa icon centang
+                      if (message.isFromUser && !isFailedMessage && !isPendingMessage) ...[
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.check,
+                          size: 12,
+                          color: _isDarkMode ? Colors.grey[400] : Colors.grey[700],
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-                // Status pesan berupa icon centang
-                if (message.isFromUser &&
-                    !isFailedMessage &&
-                    !isPendingMessage) ...[
-                  const SizedBox(width: 4),
-                  Icon(
-                    Icons.check,
-                    size: 12,
-                    color: _isDarkMode ? Colors.grey[500] : Colors.grey[600],
-                  ),
-                ],
               ],
             ),
           ),
@@ -1319,31 +1931,81 @@ class _ChatbotScreenState extends State<ChatbotScreen>
           if (isFailedMessage)
             Padding(
               padding: const EdgeInsets.only(top: 4, right: 8.0),
-              child: GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  _chatbotProvider.resendMessage(message.message);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _primaryColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Icon(Icons.refresh, size: 14, color: _primaryColor),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Coba lagi',
-                        style: TextStyle(color: _primaryColor, fontSize: 12),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.primaryColor.withOpacity(0.1), // Mengurangi opasitas
+                      blurRadius: 5, // Mengurangi blur
+                      offset: const Offset(0, 2), // Mengurangi offset
+                      spreadRadius: -2, // Mengurangi spread
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(15),
+                  child: InkWell(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      try {
+                        _chatbotProvider.resendMessage(message.message);
+                        _shouldScrollToBottom = true; // Set flag untuk scroll otomatis setelah kirim ulang
+                      } catch (e) {
+                        print("Error resending message: $e");
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Row(
+                                children: [
+                                  const Icon(Icons.error_outline, color: Colors.white),
+                                  const SizedBox(width: 10),
+                                  const Text('Gagal mengirim ulang pesan'),
+                                ],
+                              ),
+                              backgroundColor: Colors.red,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(15),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            theme.primaryColor.withBlue(255),
+                            theme.primaryColor,
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(15),
                       ),
-                    ],
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Icon(
+                            Icons.refresh_rounded, 
+                            size: 14, 
+                            color: Colors.white
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'Coba lagi',
+                            style: TextStyle(
+                              color: Colors.white, 
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -1352,70 +2014,108 @@ class _ChatbotScreenState extends State<ChatbotScreen>
           // Tombol feedback jika pesan dari chatbot
           if (!message.isFromUser && message.id > 0)
             Padding(
-              padding: const EdgeInsets.only(top: 4, left: 8.0),
+              padding: const EdgeInsets.only(top: 8, left: 8.0),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  InkWell(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      _showFeedbackDialog(message.id, true);
-                    },
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _isDarkMode ? Colors.grey[800] : Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.green, width: 1),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.thumb_up, size: 14, color: Colors.green),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Membantu',
-                            style: TextStyle(color: Colors.green, fontSize: 12),
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.green.withOpacity(0.1), // Mengurangi opasitas
+                          blurRadius: 5, // Mengurangi blur
+                          offset: const Offset(0, 2), // Mengurangi offset
+                          spreadRadius: -2, // Mengurangi spread
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(15),
+                      child: InkWell(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          _showFeedbackDialog(message.id, true);
+                        },
+                        borderRadius: BorderRadius.circular(15),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.green.shade400,
+                                Colors.green.shade600,
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(15),
                           ),
-                        ],
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(
+                                Icons.thumb_up_rounded, 
+                                size: 14, 
+                                color: Colors.white
+                              ),
+                              SizedBox(width: 6),
+                              Text(
+                                'Membantu',
+                                style: TextStyle(
+                                  color: Colors.white, 
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  InkWell(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      _showFeedbackDialog(message.id, false);
-                    },
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _isDarkMode ? Colors.grey[800] : Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.red, width: 1),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.thumb_down,
-                            size: 14,
-                            color: Colors.red,
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(15),
+                      child: InkWell(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          _showFeedbackDialog(message.id, false);
+                        },
+                        borderRadius: BorderRadius.circular(15),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(15),
+                            border: Border.all(color: Colors.red, width: 1.5),
                           ),
-                          const SizedBox(width: 4),
-                          const Text(
-                            'Tidak Membantu',
-                            style: TextStyle(color: Colors.red, fontSize: 12),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(
+                                Icons.thumb_down_rounded, 
+                                size: 14, 
+                                color: Colors.red
+                              ),
+                              SizedBox(width: 6),
+                              Text(
+                                'Tidak Membantu',
+                                style: TextStyle(
+                                  color: Colors.red, 
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -1448,13 +2148,11 @@ class _ChatbotScreenState extends State<ChatbotScreen>
         data: message.message,
         styleSheet: MarkdownStyleSheet(
           p: TextStyle(
-            color:
-                message.isFromUser
-                    ? Colors.white
-                    : (_isDarkMode ? Colors.white : Colors.black),
+            color: message.isFromUser ? Colors.white : (_isDarkMode ? Colors.white : Colors.black),
+            fontSize: 15,
           ),
           a: TextStyle(
-            color: message.isFromUser ? Colors.white70 : _primaryColor,
+            color: message.isFromUser ? Colors.white70 : Theme.of(context).primaryColor,
           ),
           code: TextStyle(
             backgroundColor: _isDarkMode ? Colors.grey[700] : Colors.grey[200],
@@ -1463,7 +2161,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
           ),
           codeblockDecoration: BoxDecoration(
             color: _isDarkMode ? Colors.grey[800] : Colors.grey[200],
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(16),
           ),
         ),
         onTapLink: (text, href, title) {
@@ -1478,10 +2176,8 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     return SelectableText(
       message.message,
       style: TextStyle(
-        color:
-            message.isFromUser
-                ? Colors.white
-                : (_isDarkMode ? Colors.white : Colors.black),
+        color: message.isFromUser ? Colors.white : (_isDarkMode ? Colors.white : Colors.black),
+        fontSize: 15,
       ),
     );
   }

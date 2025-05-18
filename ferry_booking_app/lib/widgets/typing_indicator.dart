@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
 
-/// Widget kustom untuk menampilkan indikator mengetik
-/// sebagai alternatif animated_text_kit yang mungkin bermasalah
 class TypingIndicator extends StatefulWidget {
   const TypingIndicator({Key? key}) : super(key: key);
 
@@ -10,48 +7,41 @@ class TypingIndicator extends StatefulWidget {
   _TypingIndicatorState createState() => _TypingIndicatorState();
 }
 
-class _TypingIndicatorState extends State<TypingIndicator> with SingleTickerProviderStateMixin {
-  int _dotCount = 0;
-  Timer? _timer;
-  late AnimationController _bounceController;
-  late List<Animation<double>> _dotAnimations;
+class _TypingIndicatorState extends State<TypingIndicator>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  // Dot widgets dibuat sekali saja
+  final List<Widget> _dots = List.generate(
+    3,
+    (index) => const Text(
+      '.',
+      style: TextStyle(
+        color: Color(0xFF616161), // Menggunakan nilai konstan
+        fontSize: 24,
+        fontWeight: FontWeight.bold,
+      ),
+    ),
+  );
 
   @override
   void initState() {
     super.initState();
-    
-    // Setup animasi bounce
-    _bounceController = AnimationController(
+
+    // Satu controller untuk semua animasi
+    _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1200),
     )..repeat();
-    
-    // Buat animasi untuk setiap titik
-    _dotAnimations = List.generate(3, (index) {
-      return Tween<double>(begin: 0, end: 1).animate(
-        CurvedAnimation(
-          parent: _bounceController,
-          curve: Interval(
-            index * 0.2, // mulai animasi dengan delay
-            0.6 + index * 0.2, // akhir animasi
-            curve: Curves.easeInOut,
-          ),
-        ),
-      );
-    });
-    
-    // Timer untuk update titik-titik
-    _timer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
-      setState(() {
-        _dotCount = (_dotCount + 1) % 4; // 0-3 titik
-      });
-    });
+
+    // Satu animasi saja yang digunakan untuk efek muncul/hilang
+    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
-    _bounceController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
@@ -66,34 +56,59 @@ class _TypingIndicatorState extends State<TypingIndicator> with SingleTickerProv
           color: Colors.grey[200],
           borderRadius: BorderRadius.circular(18),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Animasi titik-titik
-            AnimatedBuilder(
-              animation: _bounceController,
-              builder: (context, child) {
-                return Row(
-                  children: List.generate(3, (index) {
-                    return Opacity(
-                      opacity: index < _dotCount ? 1.0 : 0.0,
-                      child: Transform.translate(
-                        offset: Offset(0, -3 * _dotAnimations[index].value),
-                        child: Text(
-                          '.',
-                          style: TextStyle(
-                            color: Colors.grey[700],
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                );
-              },
-            ),
-          ],
+        // Gunakan AnimatedBuilder hanya sekali
+        child: AnimatedBuilder(
+          animation: _animation,
+          builder: (context, child) {
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Efek fade dan bounce untuk dot pertama
+                Transform.translate(
+                  offset: Offset(0, -3 * _controller.value),
+                  child: Opacity(
+                    opacity:
+                        _controller.value < 0.3 ? _controller.value * 3 : 1.0,
+                    child: _dots[0],
+                  ),
+                ),
+                // Efek fade dan bounce untuk dot kedua dengan delay
+                Transform.translate(
+                  offset: Offset(
+                    0,
+                    -3 *
+                        (_controller.value > 0.2
+                            ? (_controller.value - 0.2) * 1.25
+                            : 0),
+                  ),
+                  child: Opacity(
+                    opacity:
+                        _controller.value < 0.5 && _controller.value > 0.2
+                            ? (_controller.value - 0.2) * 3
+                            : (_controller.value > 0.5 ? 1.0 : 0.0),
+                    child: _dots[1],
+                  ),
+                ),
+                // Efek fade dan bounce untuk dot ketiga dengan delay lebih lama
+                Transform.translate(
+                  offset: Offset(
+                    0,
+                    -3 *
+                        (_controller.value > 0.4
+                            ? (_controller.value - 0.4) * 1.67
+                            : 0),
+                  ),
+                  child: Opacity(
+                    opacity:
+                        _controller.value < 0.7 && _controller.value > 0.4
+                            ? (_controller.value - 0.4) * 3
+                            : (_controller.value > 0.7 ? 1.0 : 0.0),
+                    child: _dots[2],
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

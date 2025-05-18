@@ -17,20 +17,20 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Import Controller - Mobile API
+| Import Controller - User API
 |--------------------------------------------------------------------------
 */
-use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\RouteController;
-use App\Http\Controllers\Api\ScheduleController;
-use App\Http\Controllers\Api\BookingController;
-use App\Http\Controllers\Api\PaymentController;
-use App\Http\Controllers\Api\TicketController;
-use App\Http\Controllers\Api\NotificationController;
-use App\Http\Controllers\Api\VehicleController;
-use App\Http\Controllers\Api\ChatbotController;
-use App\Http\Controllers\Api\PollingController;
-use App\Http\Controllers\Api\RefundController;
+use App\Http\Controllers\Api\User\AuthController;
+use App\Http\Controllers\Api\User\RouteController;
+use App\Http\Controllers\Api\User\ScheduleController;
+use App\Http\Controllers\Api\User\BookingController;
+use App\Http\Controllers\Api\User\PaymentController;
+use App\Http\Controllers\Api\User\TicketController;
+use App\Http\Controllers\Api\User\NotificationController;
+use App\Http\Controllers\Api\User\VehicleController;
+use App\Http\Controllers\Api\User\ChatbotController;
+use App\Http\Controllers\Api\User\PollingController;
+use App\Http\Controllers\Api\User\RefundController;
 
 /*
 |--------------------------------------------------------------------------

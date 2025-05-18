@@ -14,6 +14,8 @@ class BookingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     // Format date
     final dateFormat = DateFormat('EEEE, d MMM yyyy', 'id_ID');
     final dateObj = DateTime.parse(booking.departureDate).toLocal();
@@ -22,112 +24,80 @@ class BookingCard extends StatelessWidget {
     // Format time
     final departureTime = booking.schedule?.departureTime?.substring(0, 5) ?? '--:--';
     
-    return Card(
+    // Check if booking is today
+    final now = DateTime.now();
+    final isToday = dateObj.year == now.year && 
+                   dateObj.month == now.month && 
+                   dateObj.day == now.day;
+    
+    return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+        border: isToday && booking.status == 'CONFIRMED' ? Border.all(
+          color: theme.primaryColor,
+          width: 2,
+        ) : null,
       ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Booking code and status
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Booking #${booking.bookingCode}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _getStatusColor(booking.status),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      _getStatusText(booking.status),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+              // Header dengan gradien untuk status
+              _buildHeader(context),
+              
+              // Konten utama
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Route and date info
+                    _buildRouteAndDateInfo(context, formattedDate, departureTime),
+                    
+                    const SizedBox(height: 20),
+                    
+                    // Divider dengan gradient
+                    Container(
+                      height: 1,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.grey.shade200,
+                            Colors.grey.shade300,
+                            Colors.grey.shade200,
+                          ],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              
-              // Route and date
-              Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.directions_boat,
-                      color: Theme.of(context).primaryColor,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${booking.schedule?.route?.origin ?? ''} - ${booking.schedule?.route?.destination ?? ''}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '$formattedDate · $departureTime',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              const Divider(),
-              const SizedBox(height: 12),
-              
-              // Passenger and vehicle count
-              Row(
-                children: [
-                  _buildDetailItem(
-                    'Penumpang',
-                    '${booking.passengerCount} orang',
-                    Icons.people,
-                  ),
-                  const SizedBox(width: 24),
-                  if (booking.vehicleCount > 0)
-                    _buildDetailItem(
-                      'Kendaraan',
-                      '${booking.vehicleCount} unit',
-                      Icons.directions_car,
-                    ),
-                ],
+                    
+                    const SizedBox(height: 20),
+                    
+                    // Detail penumpang dan kendaraan
+                    _buildDetailsSection(context),
+                    
+                    // Tombol aksi untuk booking confirmed
+                    if (booking.status == 'CONFIRMED') ...[
+                      const SizedBox(height: 20),
+                      _buildActionButton(context),
+                    ],
+                  ],
+                ),
               ),
             ],
           ),
@@ -136,19 +106,324 @@ class BookingCard extends StatelessWidget {
     );
   }
   
-  Widget _buildDetailItem(String label, String value, IconData icon) {
+  Widget _buildHeader(BuildContext context) {
+    final theme = Theme.of(context);
+    final statusColor = _getStatusColor(booking.status);
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            statusColor.withOpacity(0.9),
+            statusColor,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.confirmation_number_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Booking #${booking.bookingCode}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.white,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 6,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Text(
+              _getStatusText(booking.status),
+              style: TextStyle(
+                color: statusColor,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildRouteAndDateInfo(BuildContext context, String formattedDate, String departureTime) {
+    final theme = Theme.of(context);
+    
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.grey.shade200,
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: theme.primaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Icon(
+              Icons.directions_boat_rounded,
+              color: theme.primaryColor,
+              size: 28,
+            ),
+          ),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${booking.schedule?.route?.origin ?? ''} - ${booking.schedule?.route?.destination ?? ''}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.calendar_today_rounded,
+                      size: 14,
+                      color: Colors.grey[600],
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      formattedDate,
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 14,
+                      ),
+                    ),
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 6),
+                      width: 4,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[400],
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    Icon(
+                      Icons.access_time_rounded,
+                      size: 14,
+                      color: Colors.grey[600],
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      departureTime,
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildDetailsSection(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.grey.shade200,
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildDetailItem(
+              context,
+              'Penumpang',
+              '${booking.passengerCount} orang',
+              Icons.people_rounded,
+            ),
+          ),
+          if (booking.vehicleCount > 0) ...[
+            Container(
+              height: 40,
+              width: 1,
+              color: Colors.grey.shade200,
+            ),
+            Expanded(
+              child: _buildDetailItem(
+                context,
+                'Kendaraan',
+                '${booking.vehicleCount} unit',
+                Icons.directions_car_rounded,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildDetailItem(
+    BuildContext context,
+    String label,
+    String value,
+    IconData icon,
+  ) {
     return Row(
       children: [
-        Icon(
-          icon,
-          size: 16,
-          color: Colors.grey[600],
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Icon(
+            icon,
+            size: 20,
+            color: Colors.grey.shade700,
+          ),
         ),
-        const SizedBox(width: 4),
-        Text(
-          '$label: $value',
-          style: const TextStyle(
-            fontSize: 14,
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildActionButton(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    return Row(
+      children: [
+        Expanded(
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(15),
+            child: Container(
+              height: 45,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    theme.primaryColor.withBlue(255),
+                    theme.primaryColor,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(15),
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.primaryColor.withOpacity(0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 5),
+                    spreadRadius: -5,
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  Icon(
+                    Icons.qr_code_scanner_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                  SizedBox(width: 10),
+                  Text(
+                    'Lihat E-Ticket',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ],
@@ -158,18 +433,18 @@ class BookingCard extends StatelessWidget {
   Color _getStatusColor(String status) {
     switch (status) {
       case 'CONFIRMED':
-        return Colors.green;
+        return Colors.green.shade600;
       case 'PENDING':
-        return Colors.orange;
+        return Colors.orange.shade600;
       case 'CANCELLED':
       case 'REFUNDED':
-        return Colors.red;
+        return Colors.red.shade600;
       case 'COMPLETED':
-        return Colors.blue;
+        return Colors.blue.shade600;
       case 'RESCHEDULED':
-        return Colors.purple;
+        return Colors.purple.shade600;
       default:
-        return Colors.grey;
+        return Colors.grey.shade600;
     }
   }
   

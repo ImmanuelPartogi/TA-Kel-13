@@ -187,7 +187,7 @@ class ChatbotProvider with ChangeNotifier {
   }
 
   // Set token jika pengguna login
-   void setToken(String? token) {
+  void setToken(String? token) {
     _token = token;
     _chatbotService.token = token;
   }
@@ -394,6 +394,7 @@ class ChatbotProvider with ChangeNotifier {
   // Kirim pesan
   Future<void> sendMessage(String message, {bool retrying = false}) async {
     if (message.trim().isEmpty) return;
+    debugPrint('Mengirim pesan: $message');
 
     // Kosongkan saran pertanyaan ketika pengguna mengirim pesan baru
     _suggestedQuestions = [];

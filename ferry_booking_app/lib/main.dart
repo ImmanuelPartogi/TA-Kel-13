@@ -4,7 +4,6 @@ import 'package:ferry_booking_app/models/route.dart';
 import 'package:ferry_booking_app/screens/notification/notification_screen.dart';
 import 'package:ferry_booking_app/screens/payment/payment_method_screen.dart';
 import 'package:ferry_booking_app/screens/booking/schedule_selection_screen.dart';
-import 'package:ferry_booking_app/widgets/global_fab.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ferry_booking_app/config/theme.dart';
@@ -82,10 +81,9 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ScheduleProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProxyProvider<AuthProvider, ChatbotProvider>(
-          create:
-              (context) => ChatbotProvider(
-                Provider.of<AuthProvider>(context, listen: false),
-              ),
+          create: (context) => ChatbotProvider(
+            Provider.of<AuthProvider>(context, listen: false),
+          ),
           update: (context, auth, previous) => previous!,
         ),
         ChangeNotifierProvider(
@@ -96,41 +94,28 @@ class MyApp extends StatelessWidget {
         title: 'Ferry Booking',
         theme: AppTheme.lightTheme,
         debugShowCheckedModeBanner: false,
-        home: FabWrapper(child: const SplashScreen()),
+        home: const SplashScreen(), // Tidak perlu menambahkan FAB ke SplashScreen
         // Di bagian routes (hanya rute tanpa parameter wajib)
         routes: {
-          '/login': (context) => FabWrapper(child: const LoginScreen()),
-          '/register': (context) => FabWrapper(child: const RegisterScreen()),
-          '/home': (context) => FabWrapper(child: const HomeScreen()),
-          '/profile': (context) => FabWrapper(child: const ProfileScreen()),
-          '/tickets':
-              (context) => FabWrapper(
-                child: const TicketListScreen(),
-                showAddTicket: true,
-                ticketRouteDestination: '/booking/routes',
-              ),
+          '/login': (context) => const LoginScreen(),
+          '/register': (context) => const RegisterScreen(),
+          '/home': (context) => const HomeScreen(), // GlobalFAB sudah ditambahkan di HomeScreen
+          '/profile': (context) => const ProfileScreen(),
+          '/tickets': (context) => const TicketListScreen(),
 
           // Rute Booking
-          '/booking/routes':
-              (context) => FabWrapper(child: const RouteSelectionScreen()),
-          '/booking/passengers':
-              (context) => FabWrapper(child: const PassengerDetailsScreen()),
-          '/booking/vehicles':
-              (context) => FabWrapper(child: const VehicleDetailsScreen()),
-          '/booking/summary':
-              (context) => FabWrapper(child: const BookingSummaryScreen()),
-          '/booking/payment':
-              (context) => FabWrapper(child: const PaymentScreen()),
+          '/booking/routes': (context) => const RouteSelectionScreen(),
+          '/booking/passengers': (context) => const PassengerDetailsScreen(),
+          '/booking/vehicles': (context) => const VehicleDetailsScreen(),
+          '/booking/summary': (context) => const BookingSummaryScreen(),
+          '/booking/payment': (context) => const PaymentScreen(),
           
-          // Rute Chatbot - perbaikan definisi route
-          '/chatbot': (context) => FabWrapper(child: const ChatbotScreen()),
+          // Rute Chatbot
+          '/chatbot': (context) => const ChatbotScreen(), // Tanpa FAB
 
-          '/booking/payment-method':
-              (context) => FabWrapper(child: const PaymentMethodScreen()),
-          '/forgot-password':
-              (context) => FabWrapper(child: const ForgotPasswordScreen()),
-          '/notifications':
-              (context) => FabWrapper(child: const NotificationScreen()),
+          '/booking/payment-method': (context) => const PaymentMethodScreen(),
+          '/forgot-password': (context) => const ForgotPasswordScreen(),
+          '/notifications': (context) => const NotificationScreen(),
         },
 
         // Di bagian onGenerateRoute (rute dengan parameter wajib)
@@ -139,45 +124,35 @@ class MyApp extends StatelessWidget {
           if (settings.name == '/booking/schedules') {
             final route = settings.arguments as FerryRoute;
             return MaterialPageRoute(
-              builder: (context) => FabWrapper(
-                child: ScheduleSelectionScreen(route: route),
-              ),
+              builder: (context) => ScheduleSelectionScreen(route: route),
               settings: settings,
             );
           } else if (settings.name == '/tickets/detail') {
             final bookingId = settings.arguments as int;
             return MaterialPageRoute(
-              builder: (context) => FabWrapper(
-                child: TicketDetailScreen(bookingId: bookingId),
-              ),
+              builder: (context) => TicketDetailScreen(bookingId: bookingId),
               settings: settings,
             );
           } else if (settings.name == '/booking/success') {
             final bookingId = settings.arguments as int;
             return MaterialPageRoute(
-              builder: (context) => FabWrapper(
-                child: BookingSuccessScreen(bookingId: bookingId),
-              ),
+              builder: (context) => BookingSuccessScreen(bookingId: bookingId),
               settings: settings,
             );
           } else if (settings.name == '/booking/payment') {
             final args = settings.arguments as Map<String, dynamic>?;
             return MaterialPageRoute(
-              builder: (context) => FabWrapper(
-                child: PaymentScreen(
-                  paymentMethod: args?['paymentMethod'],
-                  paymentType: args?['paymentType'],
-                ),
+              builder: (context) => PaymentScreen(
+                paymentMethod: args?['paymentMethod'],
+                paymentType: args?['paymentType'],
               ),
             );
           } else if (settings.name == '/reset-password') {
             final args = settings.arguments as Map<String, String>;
             return MaterialPageRoute(
-              builder: (context) => FabWrapper(
-                child: ResetPasswordScreen(
-                  email: args['email']!,
-                  token: args['token'] ?? '',
-                ),
+              builder: (context) => ResetPasswordScreen(
+                email: args['email']!,
+                token: args['token'] ?? '',
               ),
             );
           }
@@ -187,52 +162,5 @@ class MyApp extends StatelessWidget {
         },
       ),
     );
-  }
-}
-
-// Class FabWrapper untuk mengemas halaman dengan FAB global
-class FabWrapper extends StatelessWidget {
-  final Widget child;
-  final bool showAddTicket;
-  final String? ticketRouteDestination;
-
-  const FabWrapper({
-    Key? key,
-    required this.child,
-    this.showAddTicket = false,
-    this.ticketRouteDestination,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    // Periksa apakah child sudah punya Scaffold
-    if (child is Scaffold) {
-      return Stack(
-        children: [
-          child,
-          Positioned(
-            right: 16,
-            bottom: 16,
-            child: GlobalFAB(
-              showAddTicket: showAddTicket,
-              onAddTicket: ticketRouteDestination != null
-                ? () => Navigator.pushNamed(context, ticketRouteDestination!)
-                : null,
-            ),
-          ),
-        ],
-      );
-    } else {
-      // Jika child bukan Scaffold, bungkus dengan Scaffold
-      return Scaffold(
-        body: child,
-        floatingActionButton: GlobalFAB(
-          showAddTicket: showAddTicket,
-          onAddTicket: ticketRouteDestination != null
-            ? () => Navigator.pushNamed(context, ticketRouteDestination!)
-            : null,
-        ),
-      );
-    }
   }
 }

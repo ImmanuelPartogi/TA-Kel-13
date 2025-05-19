@@ -6,8 +6,8 @@ import 'package:ferry_booking_app/providers/notification_provider.dart';
 import 'package:ferry_booking_app/screens/home/home_tab.dart';
 import 'package:ferry_booking_app/screens/tickets/ticket_list_screen.dart';
 import 'package:ferry_booking_app/screens/profile/profile_screen.dart';
-import 'package:ferry_booking_app/widgets/chatbot_fab.dart';
 import 'package:ferry_booking_app/widgets/notification_badge.dart';
+import 'package:ferry_booking_app/widgets/global_fab.dart';
 import 'dart:ui';
 
 class HomeScreen extends StatefulWidget {
@@ -21,44 +21,53 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _currentIndex = 0;
   late List<Widget> _tabs;
   late TabController _tabController;
-  bool _isLoading = true; // Tambahkan state loading untuk menampilkan indikator
+  bool _isLoading = true;
+
+  // Tambahkan GlobalKey untuk GlobalFAB
+  final GlobalKey<GlobalFABState> _fabKey = GlobalKey<GlobalFABState>();
 
   @override
   void initState() {
     super.initState();
-    
+
     _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
         setState(() {
           _currentIndex = _tabController.index;
+
+          // Tutup FAB ketika tab berubah
+          _closeFabIfOpen();
         });
       }
     });
 
-    // Gunakan ini untuk menunda pemanggilan sampai setelah build selesai
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadInitialData();
     });
   }
 
-  // Metode baru untuk memuat semua data awal sekaligus
+  // Metode baru untuk menutup FAB
+  void _closeFabIfOpen() {
+    final fabState = _fabKey.currentState;
+    if (fabState != null) {
+      fabState.closeMenu();
+    }
+  }
+
   Future<void> _loadInitialData() async {
     setState(() {
       _isLoading = true;
     });
-    
+
     try {
-      // Memuat data secara paralel untuk performa lebih baik
-      await Future.wait([
-        _loadUserData(),
-        _loadNotifications(),
-      ]);
+      await Future.wait([_loadUserData(), _loadNotifications()]);
     } catch (e) {
-      // Tangani error dengan lebih baik
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal memuat data: ${e.toString()}')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memuat data: ${e.toString()}')),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -88,16 +97,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
-    // Inisialisasi tabs di sini untuk memastikan context tersedia untuk Provider
-    _tabs = [
-      const HomeTab(),
-      const TicketListScreen(),
-      const ProfileScreen(),
-    ];
+
+    _tabs = [const HomeTab(), const TicketListScreen(), const ProfileScreen()];
 
     return Scaffold(
-      extendBody: true, // Biarkan konten mengalir di bawah bottom navigation bar
+      extendBody: true,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -137,40 +141,49 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
               ),
             ),
-            
+
             // Main content
             SafeArea(
               child: Column(
                 children: [
                   // Custom AppBar
                   _buildAppBar(),
-                  
+
                   // Tampilkan loading indicator atau konten tab
                   _isLoading
-                    ? const Expanded(
-                        child: Center(
-                          child: CircularProgressIndicator(),
-                        ),
+                      ? const Expanded(
+                        child: Center(child: CircularProgressIndicator()),
                       )
-                    : Expanded(
+                      : Expanded(
                         child: TabBarView(
                           controller: _tabController,
-                          physics: const NeverScrollableScrollPhysics(), // Disable swipe
+                          physics: const NeverScrollableScrollPhysics(),
                           children: _tabs,
                         ),
                       ),
                 ],
               ),
             ),
+
+            // Gunakan GlobalKey pada GlobalFAB
+            Positioned(
+              right: 10,
+              bottom: 70,
+              child: GlobalFAB(
+                key: _fabKey,
+                onAddTicket: () {
+                  Navigator.pushNamed(context, '/booking/routes');
+                },
+              ),
+            ),
           ],
         ),
       ),
       bottomNavigationBar: _buildBottomNavigationBar(theme),
-      floatingActionButton: const ChatbotFAB(),
     );
   }
 
-  // Metode terpisah untuk bottom navigation bar
+  // Metode untuk bottom navigation bar
   Widget _buildBottomNavigationBar(ThemeData theme) {
     return Container(
       decoration: BoxDecoration(
@@ -193,6 +206,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             setState(() {
               _currentIndex = index;
               _tabController.animateTo(index);
+
+              // Tutup FAB ketika tab diubah melalui BottomNavigationBar
+              _closeFabIfOpen();
             });
           },
           elevation: 0,
@@ -203,9 +219,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             fontWeight: FontWeight.bold,
             fontSize: 12,
           ),
-          unselectedLabelStyle: const TextStyle(
-            fontSize: 12,
-          ),
+          unselectedLabelStyle: const TextStyle(fontSize: 12),
           type: BottomNavigationBarType.fixed,
           items: const [
             BottomNavigationBarItem(
@@ -229,12 +243,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // Custom AppBar dengan desain elevated
+  // Custom AppBar - tetap sama
   Widget _buildAppBar() {
     final titles = ['Beranda', 'Tiket Saya', 'Profil'];
-    
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), // Gunakan margin bukan padding
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -284,7 +298,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ],
             ),
           ),
-          
+
           // Notification button
           NotificationBadge(
             child: Container(
@@ -302,14 +316,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ],
               ),
               child: IconButton(
-                icon: const Icon(
-                  Icons.notifications_outlined,
-                  size: 20,
-                ),
+                icon: const Icon(Icons.notifications_outlined, size: 20),
                 color: Colors.grey.shade700,
-                padding: EdgeInsets.zero, // Hilangkan padding pada IconButton
-                constraints: const BoxConstraints(), // Hapus constraints default
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
                 onPressed: () {
+                  // Tutup FAB juga saat masuk ke halaman notifikasi
+                  _closeFabIfOpen();
                   Navigator.pushNamed(context, '/notifications');
                 },
               ),

@@ -23,37 +23,34 @@ class ChatbotService
      */
     public function getOrCreateConversation($userId = null, $deviceId = null)
     {
-        // Cek berdasarkan user ID
+        // Jika user login, prioritaskan mencari berdasarkan user_id
         if ($userId) {
+            // SELALU cari percakapan berdasarkan user_id dulu
             $conversation = ChatConversation::where('user_id', $userId)->latest()->first();
             if ($conversation) return $conversation;
+
+            // Jika user login tapi belum punya percakapan, BUAT BARU
+            // (tidak mencoba menggunakan percakapan device_id yang mungkin dari user lain)
+            return ChatConversation::create([
+                'user_id' => $userId,
+                'session_id' => $deviceId,
+                'context' => json_encode([/* default context */])
+            ]);
         }
 
-        // Cek berdasarkan device ID
+        // Jika tidak login, baru gunakan device_id
         if ($deviceId) {
-            $conversation = ChatConversation::where('session_id', $deviceId)->latest()->first();
-            if ($conversation) {
-                // Update user_id jika user login
-                if ($userId && !$conversation->user_id) {
-                    $conversation->update(['user_id' => $userId]);
-                }
-                return $conversation;
-            }
+            $conversation = ChatConversation::where('session_id', $deviceId)
+                ->whereNull('user_id') // Hanya ambil yang tidak terikat dengan user
+                ->latest()->first();
+            if ($conversation) return $conversation;
         }
 
         // Buat percakapan baru jika tidak ditemukan
         return ChatConversation::create([
             'user_id' => $userId,
             'session_id' => $deviceId,
-            'context' => json_encode([
-                'last_category_id' => null,
-                'recent_keywords' => [],
-                'chat_count' => 0,
-                'unanswered_count' => 0,
-                'user_preferences' => [],
-                'last_queries' => [],
-                'detected_entities' => []
-            ])
+            'context' => json_encode([/* default context */])
         ]);
     }
 
@@ -157,10 +154,21 @@ class ChatbotService
 
         // Normalisasi singkatan umum Bahasa Indonesia
         $replacements = [
-            'tdk' => 'tidak', 'gk' => 'tidak', 'ga' => 'tidak', 'gak' => 'tidak',
-            'dgn' => 'dengan', 'dg' => 'dengan', 'utk' => 'untuk', 'u/' => 'untuk',
-            'yg' => 'yang', 'sy' => 'saya', 'bs' => 'bisa', 'thx' => 'terima kasih',
-            'tq' => 'terima kasih', 'gmn' => 'bagaimana', 'skrg' => 'sekarang'
+            'tdk' => 'tidak',
+            'gk' => 'tidak',
+            'ga' => 'tidak',
+            'gak' => 'tidak',
+            'dgn' => 'dengan',
+            'dg' => 'dengan',
+            'utk' => 'untuk',
+            'u/' => 'untuk',
+            'yg' => 'yang',
+            'sy' => 'saya',
+            'bs' => 'bisa',
+            'thx' => 'terima kasih',
+            'tq' => 'terima kasih',
+            'gmn' => 'bagaimana',
+            'skrg' => 'sekarang'
         ];
 
         foreach ($replacements as $find => $replace) {
@@ -208,7 +216,7 @@ class ChatbotService
      */
     private function getValidWords()
     {
-        return Cache::remember('chatbot_valid_words', self::CACHE_TTL_WORDS, function() {
+        return Cache::remember('chatbot_valid_words', self::CACHE_TTL_WORDS, function () {
             $words = [];
             $templates = ChatTemplate::all(['keywords', 'question_pattern']);
 
@@ -230,11 +238,34 @@ class ChatbotService
 
             // Tambahkan domain vocabulary
             $domainWords = [
-                'tiket', 'jadwal', 'kapal', 'feri', 'kendaraan', 'pembayaran',
-                'refund', 'reschedule', 'booking', 'bayar', 'pesan', 'kursi',
-                'terminal', 'pelabuhan', 'bagasi', 'promo', 'diskon', 'voucher',
-                'transfer', 'virtual', 'account', 'kartu', 'kredit', 'debit',
-                'check-in', 'boarding', 'keberangkatan', 'kedatangan'
+                'tiket',
+                'jadwal',
+                'kapal',
+                'feri',
+                'kendaraan',
+                'pembayaran',
+                'refund',
+                'reschedule',
+                'booking',
+                'bayar',
+                'pesan',
+                'kursi',
+                'terminal',
+                'pelabuhan',
+                'bagasi',
+                'promo',
+                'diskon',
+                'voucher',
+                'transfer',
+                'virtual',
+                'account',
+                'kartu',
+                'kredit',
+                'debit',
+                'check-in',
+                'boarding',
+                'keberangkatan',
+                'kedatangan'
             ];
 
             return array_unique(array_merge($words, $domainWords));
@@ -248,15 +279,47 @@ class ChatbotService
     {
         // Stopwords Bahasa Indonesia
         $stopwords = [
-            'yang', 'dan', 'di', 'dengan', 'ke', 'pada', 'untuk', 'dari', 'ini', 'itu',
-            'atau', 'adalah', 'ada', 'jika', 'maka', 'saya', 'kami', 'kita', 'mereka',
-            'dia', 'kamu', 'anda', 'bagaimana', 'kapan', 'dimana', 'mengapa', 'apa',
-            'apakah', 'ya', 'tidak', 'bisa', 'boleh', 'harus', 'akan', 'sudah', 'belum'
+            'yang',
+            'dan',
+            'di',
+            'dengan',
+            'ke',
+            'pada',
+            'untuk',
+            'dari',
+            'ini',
+            'itu',
+            'atau',
+            'adalah',
+            'ada',
+            'jika',
+            'maka',
+            'saya',
+            'kami',
+            'kita',
+            'mereka',
+            'dia',
+            'kamu',
+            'anda',
+            'bagaimana',
+            'kapan',
+            'dimana',
+            'mengapa',
+            'apa',
+            'apakah',
+            'ya',
+            'tidak',
+            'bisa',
+            'boleh',
+            'harus',
+            'akan',
+            'sudah',
+            'belum'
         ];
 
         // Filter kata dan hapus stopwords
         $words = explode(' ', $text);
-        $keywords = array_values(array_filter($words, function($word) use ($stopwords) {
+        $keywords = array_values(array_filter($words, function ($word) use ($stopwords) {
             return !in_array($word, $stopwords) && strlen($word) > 2;
         }));
 
@@ -293,8 +356,20 @@ class ChatbotService
 
         // Marker untuk pertanyaan lanjutan
         $followUpMarkers = [
-            'bagaimana dengan', 'yang lain', 'selain itu', 'tersebut', 'itu', 'nya',
-            'lalu', 'dan', 'atau', 'juga', 'kalau', 'misalnya', 'berapa', 'kapan'
+            'bagaimana dengan',
+            'yang lain',
+            'selain itu',
+            'tersebut',
+            'itu',
+            'nya',
+            'lalu',
+            'dan',
+            'atau',
+            'juga',
+            'kalau',
+            'misalnya',
+            'berapa',
+            'kapan'
         ];
 
         // Cek marker spesifik
@@ -349,15 +424,13 @@ class ChatbotService
                     return $message . ' untuk ' . $entity;
                 }
             }
-        }
-        else if (preg_match('/^(ya|tidak|ok|oke|baik)/i', $message)) {
+        } else if (preg_match('/^(ya|tidak|ok|oke|baik)/i', $message)) {
             foreach ($lastEntities as $entity) {
                 if (stripos($message, $entity) === false) {
                     return $message . ', tentang ' . $entity;
                 }
             }
-        }
-        else if (preg_match('/^(dan|atau|lalu|terus|selain)/i', $message)) {
+        } else if (preg_match('/^(dan|atau|lalu|terus|selain)/i', $message)) {
             $enhancedMessage = preg_replace('/^(dan|atau|lalu|terus|selain)\s+/i', '', $message);
 
             foreach ($lastEntities as $entity) {
@@ -440,8 +513,13 @@ class ChatbotService
 
         // Prioritas intent
         $intentPriority = [
-            'refund' => 10, 'reschedule' => 9, 'pemesanan_tiket' => 8, 'pembayaran' => 7,
-            'check_in' => 6, 'informasi_jadwal' => 5, 'informasi_harga' => 4
+            'refund' => 10,
+            'reschedule' => 9,
+            'pemesanan_tiket' => 8,
+            'pembayaran' => 7,
+            'check_in' => 6,
+            'informasi_jadwal' => 5,
+            'informasi_harga' => 4
         ];
 
         // Deteksi intent
@@ -456,7 +534,7 @@ class ChatbotService
 
             if ($score > 0 && ($detectedIntent === null || $score > $intentScore ||
                 ($score == $intentScore &&
-                 ($intentPriority[$intent] ?? 0) > ($intentPriority[$detectedIntent] ?? 0)))) {
+                    ($intentPriority[$intent] ?? 0) > ($intentPriority[$detectedIntent] ?? 0)))) {
                 $detectedIntent = $intent;
                 $intentScore = $score;
             }
@@ -468,24 +546,48 @@ class ChatbotService
 
         // Pemetaan category berdasarkan intent/entity
         $categoryMap = [
-            'informasi_umum' => 1, 'jadwal_rute' => 2, 'pemesanan' => 3, 'pembayaran' => 4,
-            'salam_percakapan' => 5, 'fasilitas' => 6, 'kendaraan_bagasi' => 7,
-            'layanan_pelanggan' => 8, 'kebijakan_peraturan' => 9, 'faq' => 10,
-            'akun_pengguna' => 11, 'refund_reschedule' => 12, 'layanan_tambahan' => 13,
-            'check_in' => 14, 'keamanan_data' => 15, 'promo_diskon' => 16
+            'informasi_umum' => 1,
+            'jadwal_rute' => 2,
+            'pemesanan' => 3,
+            'pembayaran' => 4,
+            'salam_percakapan' => 5,
+            'fasilitas' => 6,
+            'kendaraan_bagasi' => 7,
+            'layanan_pelanggan' => 8,
+            'kebijakan_peraturan' => 9,
+            'faq' => 10,
+            'akun_pengguna' => 11,
+            'refund_reschedule' => 12,
+            'layanan_tambahan' => 13,
+            'check_in' => 14,
+            'keamanan_data' => 15,
+            'promo_diskon' => 16
         ];
 
         // Intent ke category
         $intentCategoryMap = [
-            'informasi_jadwal' => 2, 'informasi_harga' => 1, 'pemesanan_tiket' => 3,
-            'pembayaran' => 4, 'refund' => 12, 'reschedule' => 12, 'check_in' => 14,
-            'kendaraan' => 7, 'bagasi' => 7
+            'informasi_jadwal' => 2,
+            'informasi_harga' => 1,
+            'pemesanan_tiket' => 3,
+            'pembayaran' => 4,
+            'refund' => 12,
+            'reschedule' => 12,
+            'check_in' => 14,
+            'kendaraan' => 7,
+            'bagasi' => 7
         ];
 
         // Entity ke category
         $entityCategoryMap = [
-            'tiket' => 3, 'jadwal' => 2, 'kapal' => 1, 'kendaraan' => 7, 'harga' => 1,
-            'pembayaran' => 4, 'terminal' => 1, 'bagasi' => 7, 'refund' => 12,
+            'tiket' => 3,
+            'jadwal' => 2,
+            'kapal' => 1,
+            'kendaraan' => 7,
+            'harga' => 1,
+            'pembayaran' => 4,
+            'terminal' => 1,
+            'bagasi' => 7,
+            'refund' => 12,
             'reschedule' => 12
         ];
 
@@ -522,15 +624,45 @@ class ChatbotService
     {
         // Kata positif dan negatif
         $positiveWords = [
-            'bagus', 'baik', 'senang', 'suka', 'puas', 'terima kasih', 'thanks',
-            'thx', 'hebat', 'cepat', 'nyaman', 'ramah', 'membantu', 'mudah',
-            'berhasil', 'lancar', 'mantap', 'keren'
+            'bagus',
+            'baik',
+            'senang',
+            'suka',
+            'puas',
+            'terima kasih',
+            'thanks',
+            'thx',
+            'hebat',
+            'cepat',
+            'nyaman',
+            'ramah',
+            'membantu',
+            'mudah',
+            'berhasil',
+            'lancar',
+            'mantap',
+            'keren'
         ];
 
         $negativeWords = [
-            'buruk', 'jelek', 'lambat', 'marah', 'kecewa', 'kesal', 'sulit',
-            'mengesalkan', 'tidak bisa', 'gagal', 'masalah', 'problem', 'error',
-            'salah', 'bingung', 'lama', 'terlambat', 'mengecewakan'
+            'buruk',
+            'jelek',
+            'lambat',
+            'marah',
+            'kecewa',
+            'kesal',
+            'sulit',
+            'mengesalkan',
+            'tidak bisa',
+            'gagal',
+            'masalah',
+            'problem',
+            'error',
+            'salah',
+            'bingung',
+            'lama',
+            'terlambat',
+            'mengecewakan'
         ];
 
         // Hitung skor
@@ -572,7 +704,7 @@ class ChatbotService
         }
 
         // Ambil semua template dari cache
-        $templates = Cache::remember('all_templates', self::CACHE_TTL_TEMPLATES, function() {
+        $templates = Cache::remember('all_templates', self::CACHE_TTL_TEMPLATES, function () {
             return ChatTemplate::all();
         });
 
@@ -592,20 +724,26 @@ class ChatbotService
             $score = $baseScore;
 
             // Boost dari konteks kategori
-            if ($context && isset($context['last_category_id']) &&
-                $context['last_category_id'] == $template->category_id) {
+            if (
+                $context && isset($context['last_category_id']) &&
+                $context['last_category_id'] == $template->category_id
+            ) {
                 $score += $contextBoost;
             }
 
             // Boost dari intent/entity
-            if ($intentEntity && isset($intentEntity['category_id']) &&
-                $intentEntity['category_id'] == $template->category_id) {
+            if (
+                $intentEntity && isset($intentEntity['category_id']) &&
+                $intentEntity['category_id'] == $template->category_id
+            ) {
                 $score += $intentBoost;
             }
 
             // Boost pertanyaan lanjutan
-            if ($isFollowUpQuestion && $context && isset($context['last_category_id']) &&
-                $context['last_category_id'] == $template->category_id) {
+            if (
+                $isFollowUpQuestion && $context && isset($context['last_category_id']) &&
+                $context['last_category_id'] == $template->category_id
+            ) {
                 $score += $followUpBoost;
             }
 
@@ -647,9 +785,11 @@ class ChatbotService
                 $templateKeyword = trim($templateKeyword);
 
                 // Cek kecocokan atau kesamaan
-                if (stripos($keyword, $templateKeyword) !== false ||
+                if (
+                    stripos($keyword, $templateKeyword) !== false ||
                     stripos($templateKeyword, $keyword) !== false ||
-                    similar_text($keyword, $templateKeyword) / max(strlen($keyword), strlen($templateKeyword)) > 0.7) {
+                    similar_text($keyword, $templateKeyword) / max(strlen($keyword), strlen($templateKeyword)) > 0.7
+                ) {
                     $keywordMatches++;
                     break;
                 }
@@ -1226,8 +1366,10 @@ class ChatbotService
         }
 
         // Tambahkan informasi promo jika relevan
-        if ($template->category_id == 4 && isset($context['user_preferences']['category_16']) &&
-            $context['user_preferences']['category_16'] > 0) {
+        if (
+            $template->category_id == 4 && isset($context['user_preferences']['category_16']) &&
+            $context['user_preferences']['category_16'] > 0
+        ) {
             if (strpos($answer, 'promo') === false && strpos($answer, 'diskon') === false) {
                 $answer .= "\n\nKami juga memiliki beberapa promo pembayaran yang mungkin menarik untuk Anda. Anda dapat melihatnya di menu 'Promo' pada aplikasi.";
             }
@@ -1235,8 +1377,10 @@ class ChatbotService
 
         // Informasi kendaraan untuk rute populer
         if ($template->category_id == 2 && strpos($answer, 'rute populer') !== false) {
-            if (isset($context['user_preferences']['kendaraan_interest']) &&
-                $context['user_preferences']['kendaraan_interest'] > 0) {
+            if (
+                isset($context['user_preferences']['kendaraan_interest']) &&
+                $context['user_preferences']['kendaraan_interest'] > 0
+            ) {
                 $answer .= "\n\nPerlu diketahui bahwa semua rute tersebut memiliki fasilitas angkutan kendaraan bermotor.";
             }
         }

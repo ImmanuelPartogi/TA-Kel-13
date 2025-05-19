@@ -253,54 +253,6 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                                 ),
                               ),
                               
-                              const SizedBox(height: 12),
-                              
-                              // Membership badge with gradient
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      theme.primaryColor.withOpacity(0.7),
-                                      theme.primaryColor.withOpacity(0.9),
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: theme.primaryColor.withOpacity(0.3),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 4),
-                                      spreadRadius: -5,
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.star,
-                                      size: 18,
-                                      color: Colors.white,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'Regular Member',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              
                               const SizedBox(height: 10),
                               
                               // Edit Profile Button
@@ -362,15 +314,6 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                                   'Total Perjalanan',
                                   user.totalBookings.toString(),
                                   Icons.directions_boat,
-                                  theme,
-                                ),
-                              ),
-                              Container(height: 60, width: 1, color: Colors.grey[200]),
-                              Expanded(
-                                child: _buildStatItem(
-                                  'Poin Loyalitas',
-                                  user.loyaltyPoints.toString(),
-                                  Icons.star,
                                   theme,
                                 ),
                               ),
@@ -499,20 +442,20 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                                 },
                                 theme,
                               ),
-                              _buildMenuOption(
-                                'Notifikasi',
-                                Icons.notifications,
-                                () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder:
-                                          (context) => const NotificationSettingsScreen(),
-                                    ),
-                                  );
-                                },
-                                theme,
-                              ),
+                              // _buildMenuOption(
+                              //   'Notifikasi',
+                              //   Icons.notifications,
+                              //   () {
+                              //     Navigator.push(
+                              //       context,
+                              //       MaterialPageRoute(
+                              //         builder:
+                              //             (context) => const NotificationSettingsScreen(),
+                              //       ),
+                              //     );
+                              //   },
+                              //   theme,
+                              // ),
                               _buildMenuOption(
                                 'Bantuan',
                                 Icons.help,

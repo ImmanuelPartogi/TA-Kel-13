@@ -19,14 +19,10 @@ class _TicketListScreenState extends State<TicketListScreen>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
-  // Tab indicator position
   double _indicatorWidth = 0.0;
   double _indicatorPosition = 0.0;
   final List<GlobalKey> _tabKeys = [GlobalKey(), GlobalKey()];
   bool _isTabInitialized = false;
-  
-  // Hover state tracking for tabs
-  final Map<int, bool> _isHovering = {0: false, 1: false};
 
   @override
   void initState() {
@@ -61,38 +57,14 @@ class _TicketListScreenState extends State<TicketListScreen>
     // Tab controller listener
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
-        _updateTabIndicator();
+        setState(() {});
       }
     });
 
     // Use post-frame callback to avoid setState during build
-    WidgetsBinding.instance!.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadBookings();
-      // Tambahkan delay sebelum memperbarui indikator tab untuk memastikan widget sudah sepenuhnya dirender
-      Future.delayed(const Duration(milliseconds: 100), () {
-        _updateTabIndicator();
-      });
     });
-  }
-
-  void _updateTabIndicator() {
-    if (!mounted) return;
-    
-    // Pastikan context ada sebelum mengakses render object
-    if (_tabKeys[_tabController.index].currentContext == null) return;
-
-    try {
-      final RenderBox renderBox = _tabKeys[_tabController.index].currentContext!.findRenderObject() as RenderBox;
-      final position = renderBox.localToGlobal(Offset.zero);
-      
-      setState(() {
-        _indicatorWidth = renderBox.size.width * 0.8;
-        _indicatorPosition = position.dx + (renderBox.size.width - _indicatorWidth) / 2;
-        _isTabInitialized = true;
-      });
-    } catch (e) {
-      print("Error updating tab indicator: $e");
-    }
   }
 
   @override
@@ -135,13 +107,6 @@ class _TicketListScreenState extends State<TicketListScreen>
         [];
 
     final historyBookings = bookings ?? [];
-
-    // Inisialisasi indikator tab jika belum terinisialisasi
-    if (!_isTabInitialized) {
-      WidgetsBinding.instance!.addPostFrameCallback((_) {
-        _updateTabIndicator();
-      });
-    }
 
     return Scaffold(
       body: Container(
@@ -238,136 +203,85 @@ class _TicketListScreenState extends State<TicketListScreen>
                   // Custom Tab Bar
                   Padding(
                     padding: const EdgeInsets.fromLTRB(24, 24, 24, 10),
-                    child: Stack(
-                      children: [
-                        // Tab Container
-                        Container(
-                          height: 60,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.1),
-                                blurRadius: 15,
-                                offset: const Offset(0, 5),
-                                spreadRadius: -5,
-                              ),
-                            ],
+                    child: Container(
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.1),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
+                            spreadRadius: -5,
                           ),
-                          child: Row(
-                            children: [
-                              // Tab 1 - Akan Datang
-                              Expanded(
-                                child: MouseRegion(
-                                  onEnter: (_) => setState(() => _isHovering[0] = true),
-                                  onExit: (_) => setState(() => _isHovering[0] = false),
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      _tabController.animateTo(0);
-                                    },
-                                    child: AnimatedContainer(
-                                      duration: const Duration(milliseconds: 200),
-                                      key: _tabKeys[0],
-                                      alignment: Alignment.center,
-                                      decoration: BoxDecoration(
-                                        color: _tabController.index == 0 
-                                          ? theme.primaryColor.withOpacity(0.1)
-                                          : (_isHovering[0] ?? false) 
-                                            ? Colors.grey.withOpacity(0.1)
-                                            : Colors.transparent,
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Text(
-                                        'Akan Datang',
-                                        style: TextStyle(
-                                          fontWeight: _tabController.index == 0
-                                              ? FontWeight.bold
-                                              : FontWeight.normal,
-                                          color: _tabController.index == 0
-                                              ? theme.primaryColor
-                                              : (_isHovering[0] ?? false)
-                                                ? theme.primaryColor.withOpacity(0.8)
-                                                : Colors.grey.shade600,
-                                          fontSize: 15,
-                                        ),
-                                      ),
-                                    ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          // Tab 1 - Akan Datang
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                _tabController.animateTo(0);
+                              },
+                              child: Container(
+                                key: _tabKeys[0],
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: _tabController.index == 0
+                                      ? theme.primaryColor.withOpacity(0.1)
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  'Akan Datang',
+                                  style: TextStyle(
+                                    fontWeight: _tabController.index == 0
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                    color: _tabController.index == 0
+                                        ? theme.primaryColor
+                                        : Colors.grey.shade600,
+                                    fontSize: 15,
                                   ),
                                 ),
                               ),
-                              
-                              // Tab 2 - Riwayat
-                              Expanded(
-                                child: MouseRegion(
-                                  onEnter: (_) => setState(() => _isHovering[1] = true),
-                                  onExit: (_) => setState(() => _isHovering[1] = false),
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      _tabController.animateTo(1);
-                                    },
-                                    child: AnimatedContainer(
-                                      duration: const Duration(milliseconds: 200),
-                                      key: _tabKeys[1],
-                                      alignment: Alignment.center,
-                                      decoration: BoxDecoration(
-                                        color: _tabController.index == 1 
-                                          ? theme.primaryColor.withOpacity(0.1)
-                                          : (_isHovering[1] ?? false) 
-                                            ? Colors.grey.withOpacity(0.1)
-                                            : Colors.transparent,
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Text(
-                                        'Riwayat',
-                                        style: TextStyle(
-                                          fontWeight: _tabController.index == 1
-                                              ? FontWeight.bold
-                                              : FontWeight.normal,
-                                          color: _tabController.index == 1
-                                              ? theme.primaryColor
-                                              : (_isHovering[1] ?? false)
-                                                ? theme.primaryColor.withOpacity(0.8)
-                                                : Colors.grey.shade600,
-                                          fontSize: 15,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        
-                        // Custom indicator dengan animasi yang lebih halus
-                        AnimatedPositioned(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeOutCirc,
-                          bottom: 0,
-                          left: _indicatorPosition,
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeOutCirc,
-                            width: _indicatorWidth,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: _isTabInitialized 
-                                ? theme.primaryColor
-                                : Colors.transparent, 
-                              borderRadius: BorderRadius.circular(2),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: theme.primaryColor.withOpacity(0.3),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 1),
-                                  spreadRadius: -1,
-                                ),
-                              ],
                             ),
                           ),
-                        ),
-                      ],
+                          
+                          // Tab 2 - Riwayat
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                _tabController.animateTo(1);
+                              },
+                              child: Container(
+                                key: _tabKeys[1],
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: _tabController.index == 1
+                                      ? theme.primaryColor.withOpacity(0.1)
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  'Riwayat',
+                                  style: TextStyle(
+                                    fontWeight: _tabController.index == 1
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                    color: _tabController.index == 1
+                                        ? theme.primaryColor
+                                        : Colors.grey.shade600,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   
@@ -491,57 +405,19 @@ class _TicketListScreenState extends State<TicketListScreen>
           ],
         ),
       ),
-      floatingActionButton: Container(
-        height: 65,
-        width: 65,
-        margin: const EdgeInsets.only(bottom: 15),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(50),
-          boxShadow: [
-            BoxShadow(
-              color: theme.primaryColor.withOpacity(0.4),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
-              spreadRadius: -5,
-            ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(50),
-          child: InkWell(
-            onTap: () {
-              Navigator.pushNamed(context, '/booking/routes');
-            },
-            borderRadius: BorderRadius.circular(50),
-            child: Ink(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    theme.primaryColor.withBlue(255),
-                    theme.primaryColor,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(50),
-              ),
-              child: Container(
-                alignment: Alignment.center,
-                child: const Icon(
-                  Icons.add_rounded,
-                  color: Colors.white,
-                  size: 32,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
+      // PENTING: TicketListScreen TIDAK PERLU menambahkan FAB sendiri,
+      // karena sudah dibungkus dengan FabWrapper di main.dart
+      // floatingActionButton: GlobalFAB(
+      //   showAddTicket: true,
+      //   onAddTicket: () {
+      //     Navigator.pushNamed(context, '/booking/routes');
+      //   },
+      // ),
     );
   }
 
   Widget _buildEmptyTickets(String message, ThemeData theme) {
+    // Widget untuk menampilkan pesan kosong (tidak berubah)
     return Center(
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),

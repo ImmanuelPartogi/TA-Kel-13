@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ferry_booking_app/models/booking.dart';
 
-/// Widget yang menampilkan kartu tiket untuk pemesanan ferry dengan desain yang selaras
-/// dengan LoginScreen.
+/// Widget yang menampilkan kartu tiket untuk pemesanan ferry dengan desain modern dan profesional.
 class TicketCard extends StatelessWidget {
   /// Model data pemesanan yang akan ditampilkan.
   final Booking booking;
@@ -11,11 +10,8 @@ class TicketCard extends StatelessWidget {
   /// Fungsi callback yang dipanggil ketika kartu ditekan.
   final VoidCallback onTap;
 
-  const TicketCard({
-    Key? key,
-    required this.booking,
-    required this.onTap,
-  }) : super(key: key);
+  const TicketCard({Key? key, required this.booking, required this.onTap})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -23,340 +19,501 @@ class TicketCard extends StatelessWidget {
     final dateInfo = _getFormattedDateInfo(context);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 20),
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-            spreadRadius: 0,
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
-        border: dateInfo.isToday ? Border.all(
-          color: theme.primaryColor,
-          width: 2,
-        ) : null,
       ),
-      child: Material(
-        color: Colors.transparent,
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Column(
-            children: [
-              _buildHeader(context),
-              _buildBody(context, dateInfo),
-            ],
+        child: Material(
+          color: Colors.white,
+          child: InkWell(
+            onTap: onTap,
+            splashColor: theme.primaryColor.withOpacity(0.1),
+            highlightColor: theme.primaryColor.withOpacity(0.05),
+            child: Column(
+              children: [
+                _buildHeader(context),
+                _buildDivider(),
+                _buildBody(context, dateInfo),
+                _buildFooter(context),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  /// Membangun bagian header kartu dengan latar belakang gradien.
+  /// Membangun bagian header kartu dengan latar belakang gradien dan elemen visual yang ditingkatkan.
   Widget _buildHeader(BuildContext context) {
-    final theme = Theme.of(context);
     final route = booking.schedule?.route;
     final originText = route?.origin ?? '';
     final destinationText = route?.destination ?? '';
-    final routeText = '$originText - $destinationText';
     final ferryName = booking.schedule?.ferry?.name ?? 'Kapal Ferry';
+    final isExpired = booking.isExpired;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            theme.primaryColor.withBlue(255),
-            theme.primaryColor,
+            Color(0xFF1A73E8), // Biru Google yang lebih professional
+            Color(0xFF4285F4),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
       ),
-      child: Row(
+      child: Stack(
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: const Icon(
-              Icons.directions_boat_rounded,
-              color: Colors.white,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  routeText,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  ferryName,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.85),
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          _buildStatusBadge(context),
-        ],
-      ),
-    );
-  }
-
-  /// Membangun badge status pemesanan.
-  Widget _buildStatusBadge(BuildContext context) {
-    final statusText = _getStatusText(booking.status);
-    final statusColor = _getStatusColor(booking.status);
-    
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 6,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Text(
-        statusText,
-        style: TextStyle(
-          color: statusColor,
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 0.5,
-        ),
-      ),
-    );
-  }
-
-  /// Membangun bagian isi dari kartu tiket.
-  Widget _buildBody(BuildContext context, _DateInfo dateInfo) {
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          _buildDateTimeSection(dateInfo),
-          const SizedBox(height: 20),
-          Container(
-            height: 1,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.grey.shade200,
-                  Colors.grey.shade300,
-                  Colors.grey.shade200,
-                ],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
+          // Elemen dekoratif yang ditingkatkan (lingkaran dan pola)
+          Positioned(
+            top: -30,
+            right: -30,
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.1),
               ),
             ),
           ),
-          const SizedBox(height: 20),
-          _buildBookingDetailsSection(),
-          if (dateInfo.isToday && booking.status == 'CONFIRMED') ...[
-            const SizedBox(height: 20),
-            _buildTodayReminderSection(context),
-          ],
-        ],
-      ),
-    );
-  }
-
-  /// Membangun bagian informasi tanggal dan waktu.
-  Widget _buildDateTimeSection(_DateInfo dateInfo) {
-    final departureTime = booking.schedule?.departureTime?.substring(0, 5) ?? '--:--';
-
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.grey.shade200,
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildInfoItem(
-              icon: Icons.calendar_today_rounded,
-              label: 'Tanggal',
-              value: dateInfo.formattedDate,
+          Positioned(
+            bottom: -20,
+            left: -20,
+            child: Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.07),
+              ),
             ),
           ),
-          Container(
-            height: 40,
-            width: 1,
-            color: Colors.grey.shade200,
-          ),
-          Expanded(
-            child: _buildInfoItem(
-              icon: Icons.access_time_rounded,
-              label: 'Waktu',
-              value: departureTime,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  /// Membangun item informasi dasar dengan ikon, label dan nilai.
-  Widget _buildInfoItem({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            size: 20,
-            color: Colors.grey.shade600,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontSize: 12,
+          // Konten header yang ditingkatkan
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Badge status di bagian atas
+              Align(
+                alignment: Alignment.topRight,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 5,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    isExpired ? 'KADALUARSA' : _getStatusText(booking.status),
+                    style: TextStyle(
+                      color:
+                          isExpired
+                              ? Colors.grey.shade600
+                              : _getStatusColor(booking.status),
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
+              ),
+
+              const SizedBox(height: 16),
+
+              // Informasi rute dengan layout yang ditingkatkan
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          originText,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Asal',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.8),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  overflow: TextOverflow.ellipsis,
+
+                  // Ikon dan garis rute
+                  Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.directions_boat_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
+                      Container(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        height: 30,
+                        width: 1,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.white.withOpacity(0.3),
+                              Colors.white.withOpacity(0.8),
+                              Colors.white.withOpacity(0.3),
+                            ],
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          destinationText,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                          textAlign: TextAlign.right,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Tujuan',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.8),
+                            fontSize: 12,
+                          ),
+                          textAlign: TextAlign.right,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // Informasi kapal
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
                 ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Membangun bagian detail pemesanan.
-  Widget _buildBookingDetailsSection() {
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.grey.shade200,
-          width: 1,
-        ),
-      ),
-      child: Column(
-        children: [
-          _buildDetailItem(
-            'Kode Booking',
-            booking.bookingCode,
-            Icons.confirmation_number_rounded,
-          ),
-          const SizedBox(height: 15),
-          _buildDetailItem(
-            'Penumpang',
-            '${booking.passengerCount} orang',
-            Icons.people_rounded,
-          ),
-          if (booking.vehicles != null && booking.vehicles!.isNotEmpty) ...[
-            const SizedBox(height: 15),
-            _buildDetailItem(
-              'Kendaraan',
-              _getVehicleTypeText(booking.vehicles!.first.type),
-              Icons.directions_car_rounded,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  /// Membangun item detail dengan ikon.
-  Widget _buildDetailItem(String label, String value, IconData icon) {
-    return Row(
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.03),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.sailing_outlined, color: Colors.white, size: 14),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        ferryName,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          child: Icon(
-            icon,
-            size: 20,
-            color: Colors.grey.shade700,
+        ],
+      ),
+    );
+  }
+
+  /// Membuat divider bergerigi seperti tiket
+  Widget _buildDivider() {
+    return Container(
+      height: 20,
+      width: double.infinity,
+      color: Colors.white,
+      child: Stack(
+        children: [
+          // Garis putus-putus
+          Positioned.fill(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(
+                    (constraints.maxWidth / 15).ceil(),
+                    (index) => Container(
+                      width: 10,
+                      height: 1,
+                      color: Colors.grey.withOpacity(0.3),
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
+          // Lubang kiri
+          Positioned(
+            left: -10,
+            top: 0,
+            bottom: 0,
+            child: Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                color: Color(0xFFF5F5F5),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          // Lubang kanan
+          Positioned(
+            right: -10,
+            top: 0,
+            bottom: 0,
+            child: Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                color: Color(0xFFF5F5F5),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Membangun bagian isi dari kartu tiket dengan desain yang ditingkatkan.
+  Widget _buildBody(BuildContext context, _DateInfo dateInfo) {
+    final departureTime =
+        booking.schedule?.departureTime != null
+            ? booking.schedule?.departureTime?.substring(11, 16)
+            : '--:--';
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+      color: Colors.white,
+      child: Column(
+        children: [
+          // Kode Booking dengan highlight
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+            decoration: BoxDecoration(
+              color: Color(0xFFF1F8FF),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Color(0xFFD4E9FF), width: 1),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.confirmation_number_rounded,
+                  size: 20,
+                  color: Color(0xFF1A73E8),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Kode Booking',
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      booking.bookingCode,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Color(0xFF1A73E8),
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Tanggal
+          _buildInfoItem(
+            icon: Icons.calendar_today_rounded,
+            iconColor: Color(0xFFFF6D00),
+            label: 'Tanggal',
+            value: dateInfo.formattedDate,
+          ),
+
+          const SizedBox(height: 16),
+
+          // Waktu
+          _buildInfoItem(
+            icon: Icons.access_time_rounded,
+            iconColor: Color(0xFF1A73E8),
+            label: 'Waktu',
+            value: departureTime ?? '--:--',
+          ),
+
+          const SizedBox(height: 16),
+
+          // Penumpang
+          _buildInfoItem(
+            icon: Icons.people_rounded,
+            iconColor: Color(0xFF00C853),
+            label: 'Penumpang',
+            value: '${booking.passengerCount} orang',
+          ),
+
+          // Kendaraan (jika ada)
+          if (booking.vehicles != null && booking.vehicles!.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _buildInfoItem(
+              icon: Icons.directions_car_rounded,
+              iconColor: Color(0xFF00B0FF),
+              label: 'Kendaraan',
+              value: _getVehicleTypeText(booking.vehicles!.first.type),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Membangun bagian footer kartu
+  Widget _buildFooter(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+      decoration: BoxDecoration(
+        color: Color(0xFFF9FAFC),
+        border: Border(
+          top: BorderSide(color: Colors.grey.withOpacity(0.15), width: 1),
         ),
-        const SizedBox(width: 15),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Watermark perusahaan
+          Text(
+            'Ferry Booking',
+            style: TextStyle(
+              color: Colors.grey.shade400,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+
+          // Tombol Detail
+          Row(
+            children: [
+              Text(
+                'Lihat Detail',
+                style: TextStyle(
+                  color: Color(0xFF1A73E8),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                color: Color(0xFF1A73E8),
+                size: 12,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Membangun item informasi dengan ikon dan teks yang ditingkatkan.
+  Widget _buildInfoItem({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Ikon dengan background berwarna
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: iconColor.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, size: 18, color: iconColor),
+        ),
+
+        const SizedBox(width: 14),
+
+        // Label dan nilai
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 label,
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 3),
               Text(
                 value,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: Colors.grey.shade800,
+                  height: 1.2,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -364,76 +521,6 @@ class TicketCard extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-
-  /// Membangun bagian pengingat untuk perjalanan hari ini.
-  Widget _buildTodayReminderSection(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        vertical: 15,
-        horizontal: 20,
-      ),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.green.shade400,
-            Colors.green.shade600,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.green.shade200.withOpacity(0.5),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-            spreadRadius: 0,
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.notifications_active_rounded,
-              color: Colors.white,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Perjalanan Anda Hari Ini!',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  'Jangan lupa untuk check-in minimal 30 menit sebelum keberangkatan.',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -446,9 +533,10 @@ class TicketCard extends StatelessWidget {
 
     // Pengecekan apakah tanggal pemesanan adalah hari ini
     final now = DateTime.now();
-    final isToday = dateObj.year == now.year && 
-                   dateObj.month == now.month && 
-                   dateObj.day == now.day;
+    final isToday =
+        dateObj.year == now.year &&
+        dateObj.month == now.month &&
+        dateObj.day == now.day;
 
     return _DateInfo(
       formattedDate: formattedDate,
@@ -470,24 +558,24 @@ class TicketCard extends StatelessWidget {
 
     return statusMap[status] ?? status;
   }
-  
+
   /// Mendapatkan warna untuk status pemesanan.
   Color _getStatusColor(String status) {
     switch (status) {
       case 'CONFIRMED':
-        return Colors.green.shade700;
+        return Color(0xFF00C853); // Green yang lebih profesional
       case 'PENDING':
-        return Colors.orange.shade700;
+        return Color(0xFFFF9800); // Orange yang lebih profesional
       case 'CANCELLED':
-        return Colors.red.shade700;
+        return Color(0xFFE53935); // Red yang lebih profesional
       case 'COMPLETED':
-        return Colors.blue.shade700;
+        return Color(0xFF1A73E8); // Blue Google yang lebih profesional
       case 'REFUNDED':
-        return Colors.purple.shade700;
+        return Color(0xFF7B1FA2); // Purple yang lebih profesional
       case 'RESCHEDULED':
-        return Colors.teal.shade700;
+        return Color(0xFF00897B); // Teal yang lebih profesional
       default:
-        return Colors.grey.shade700;
+        return Color(0xFF607D8B); // Grey yang lebih profesional
     }
   }
 

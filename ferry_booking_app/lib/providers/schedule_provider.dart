@@ -164,7 +164,10 @@ class ScheduleProvider extends ChangeNotifier {
       // Validasi tambahan untuk memastikan jadwal sesuai dengan tanggal
       _schedules =
           schedules.where((schedule) {
-            return schedule.scheduleDateStatus == 'AVAILABLE';
+            return [
+              'ACTIVE',
+              'AVAILABLE',
+            ].contains(schedule.scheduleDateStatus);
           }).toList();
 
       _isLoading = false;

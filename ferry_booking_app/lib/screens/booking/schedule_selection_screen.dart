@@ -21,7 +21,6 @@ class ScheduleSelectionScreen extends StatefulWidget {
 
 class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
   DateTime _selectedDate = DateTime.now();
-  bool _forceRefresh = false;
 
   @override
   void initState() {
@@ -66,48 +65,58 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
     if (isToday) {
       if (schedule.departureTime != null) {
         DateTime departureDateTime;
-        if (schedule.departureTime is String) {
-          final parts = schedule.departureTime.split(':');
-          final hour = int.parse(parts[0]);
-          final minute = parts.length > 1 ? int.parse(parts[1]) : 0;
-          departureDateTime = DateTime(
-            _selectedDate.year,
-            _selectedDate.month,
-            _selectedDate.day,
-            hour,
-            minute,
-          );
-        } else {
-          final parts = schedule.departureTime.split(':');
-          final hour = int.parse(parts[0]);
-          final minute = parts.length > 1 ? int.parse(parts[1]) : 0;
-          departureDateTime = DateTime(
-            _selectedDate.year,
-            _selectedDate.month,
-            _selectedDate.day,
-            hour,
-            minute,
-          );
-        }
+        try {
+          // Handle format ISO 8601: 2025-05-19T12:24:00.000000Z
+          if (schedule.departureTime.contains('T')) {
+            departureDateTime = DateTime.parse(schedule.departureTime);
+          } else {
+            // Handle format jam biasa: 12:24 atau 12:24:00
+            final parts = schedule.departureTime.split(':');
+            final hour = int.parse(parts[0]);
+            final minute = parts.length > 1 ? int.parse(parts[1]) : 0;
+            departureDateTime = DateTime(
+              _selectedDate.year,
+              _selectedDate.month,
+              _selectedDate.day,
+              hour,
+              minute,
+            );
+          }
 
-        if (departureDateTime.isBefore(now)) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Jadwal ini sudah lewat waktu keberangkatan'),
-            ),
-          );
+          if (departureDateTime.isBefore(now)) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Jadwal ini sudah lewat waktu keberangkatan'),
+              ),
+            );
+            return;
+          }
+        } catch (e) {
+          print('ERROR: Gagal memproses waktu keberangkatan: $e');
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error: $e')));
           return;
         }
       }
     }
 
-    final bookingProvider = Provider.of<BookingProvider>(
-      context,
-      listen: false,
-    );
-    bookingProvider.setSelectedSchedule(schedule);
-    bookingProvider.setSelectedDate(_selectedDate);
-    Navigator.pushNamed(context, '/booking/passengers');
+    try {
+      final bookingProvider = Provider.of<BookingProvider>(
+        context,
+        listen: false,
+      );
+      bookingProvider.setSelectedSchedule(schedule);
+      bookingProvider.setSelectedDate(_selectedDate);
+
+      print('DEBUG: Navigasi ke halaman penumpang');
+      Navigator.pushNamed(context, '/booking/passengers');
+    } catch (e) {
+      print('ERROR: Gagal navigasi ke halaman penumpang: $e');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal proses booking: $e')));
+    }
   }
 
   Future<void> _loadSchedules() async {
@@ -116,10 +125,6 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
       listen: false,
     );
     try {
-      setState(() {
-        _forceRefresh = true;
-      });
-      
       final formattedDate = _formatDateForApi(_selectedDate);
       print('DEBUG: Loading schedules for date: $formattedDate');
 
@@ -128,25 +133,11 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
         formattedDate,
       );
 
-      // Filter jadwal yang sudah lewat jika hari ini
-      if (isToday(_selectedDate) && (scheduleProvider.schedules?.isNotEmpty ?? false)) {
-        // Jadwal akan difilter pada saat menampilkan, bukan melalui provider
-        // Kita tidak perlu mengubah data di provider langsung
-        print('DEBUG: Hari ini, jadwal akan difilter saat ditampilkan');
-      }
-
-      setState(() {
-        _forceRefresh = false;
-      });
-
       if (scheduleProvider.schedules?.isEmpty ?? true) {
         _showNoSchedulesMessage();
       }
     } catch (e) {
       print('ERROR: Failed to load schedules: $e');
-      setState(() {
-        _forceRefresh = false;
-      });
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -155,18 +146,12 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
     }
   }
 
-  bool isToday(DateTime date) {
-    final now = DateTime.now();
-    return date.year == now.year && date.month == now.month && date.day == now.day;
-  }
-
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 90)),
-      locale: const Locale('id', 'ID'),
     );
 
     if (picked != null && picked != _selectedDate) {
@@ -174,8 +159,11 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
         _selectedDate = picked;
       });
 
-      // Gunakan getSchedulesByFormattedDate untuk konsistensi
-      _loadSchedules();
+      final scheduleProvider = Provider.of<ScheduleProvider>(
+        context,
+        listen: false,
+      );
+      await scheduleProvider.getSchedules(widget.route.id, _selectedDate);
     }
   }
 
@@ -186,28 +174,18 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
     );
     DateTime nextDate = _selectedDate.add(const Duration(days: 1));
 
-    setState(() {
-      _forceRefresh = true;
-    });
-
     for (int i = 0; i < 7; i++) {
-      final formattedDate = _formatDateForApi(nextDate);
-      await scheduleProvider.getSchedulesByFormattedDate(widget.route.id, formattedDate);
+      await scheduleProvider.getSchedules(widget.route.id, nextDate);
 
       if (scheduleProvider.schedules?.isNotEmpty ?? false) {
         setState(() {
           _selectedDate = nextDate;
-          _forceRefresh = false;
         });
         return;
       }
 
       nextDate = nextDate.add(const Duration(days: 1));
     }
-
-    setState(() {
-      _forceRefresh = false;
-    });
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -217,209 +195,624 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
   }
 
   Widget _buildScheduleCard(Schedule schedule) {
+    final currencyFormat = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    );
+
+    // Calculate travel time
+    Duration? travelDuration;
+    try {
+      if (schedule.departureTime.contains('T') &&
+          schedule.arrivalTime.contains('T')) {
+        final departure = DateTime.parse(schedule.departureTime);
+        final arrival = DateTime.parse(schedule.arrivalTime);
+        travelDuration = arrival.difference(departure);
+      }
+    } catch (e) {
+      print('ERROR: Gagal menghitung durasi: $e');
+    }
+
+    final travelTime =
+        travelDuration != null
+            ? '${travelDuration.inMinutes} menit'
+            : '${widget.route.duration ?? 0} menit';
+
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+            spreadRadius: 0,
           ),
         ],
       ),
+      clipBehavior: Clip.antiAlias,
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
           onTap: () => _selectSchedule(schedule),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
+          splashColor: Theme.of(context).primaryColor.withOpacity(0.1),
+          highlightColor: Colors.transparent,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header with status and ferry name
+              _buildCardHeader(schedule),
+
+              // Main content with time and availability info
+              _buildCardContent(schedule, travelTime),
+
+              // Footer with price and action
+              _buildCardFooter(schedule, currencyFormat),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Card header with ferry name and status
+  Widget _buildCardHeader(Schedule schedule) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Theme.of(context).primaryColor.withOpacity(0.05),
+            Theme.of(context).primaryColor.withOpacity(0.02),
+          ],
+        ),
+        border: Border(
+          bottom: BorderSide(color: Colors.grey.shade100, width: 1),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.directions_ferry_rounded,
+              color: Theme.of(context).primaryColor,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header dengan nama kapal dan status
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Text(
+                  schedule.ferry?.name ?? 'Kapal Ferry',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.black87,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Ferry ID: ${schedule.ferry?.registrationNumber ?? '-'}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: _getStatusColor(schedule.status).withOpacity(0.08),
+              borderRadius: BorderRadius.circular(30),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: _getStatusColor(schedule.status),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  _getStatusText(schedule.status),
+                  style: TextStyle(
+                    color: _getStatusColor(schedule.status),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Card main content with time and route info
+  Widget _buildCardContent(Schedule schedule, String travelTime) {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          // Time information with origin & destination
+          Row(
+            children: [
+              // Time and locations
+              Expanded(
+                child: Row(
                   children: [
-                    Text(
-                      schedule.ferry?.name ?? 'Kapal Ferry',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Colors.black87,
+                    // Vertical timeline with dots
+                    Column(
+                      children: [
+                        Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).primaryColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        Container(
+                          width: 1,
+                          height: 30,
+                          color: Colors.grey.shade300,
+                        ),
+                        Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade400,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: 12),
+
+                    // Departure and arrival details
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Departure
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _formatTime(schedule.departureTime),
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              Text(
+                                widget.route.origin,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade700,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 18),
+                          // Arrival
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _formatTime(schedule.arrivalTime),
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              Text(
+                                widget.route.destination,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade700,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8, 
-                        vertical: 2
+                  ],
+                ),
+              ),
+
+              // Vertical divider
+              Container(
+                height: 60,
+                width: 1,
+                margin: const EdgeInsets.symmetric(horizontal: 20),
+                color: Colors.grey.shade200,
+              ),
+
+              // Duration info
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Durasi',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.access_time_rounded,
+                        size: 16,
+                        color: Theme.of(context).primaryColor,
                       ),
-                      decoration: BoxDecoration(
-                        color: _getStatusColor(schedule.status).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        _getStatusText(schedule.status),
+                      const SizedBox(width: 4),
+                      Text(
+                        travelTime,
                         style: TextStyle(
-                          color: _getStatusColor(schedule.status),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).primaryColor,
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+
+          // Availability information
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade200, width: 1),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Ketersediaan',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade700,
+                  ),
                 ),
-                
-                const SizedBox(height: 12),
-                
-                // Waktu keberangkatan dan kedatangan
+                const SizedBox(height: 10),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Keberangkatan',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _formatISOTime(_selectedDate, schedule.departureTime),
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            widget.route.origin,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.black87,
-                            ),
-                          ),
-                        ],
-                      ),
+                    _buildAvailabilityItem(
+                      icon: Icons.person,
+                      label: 'Penumpang',
+                      available: schedule.availablePassenger ?? 0,
+                      total: schedule.ferry?.capacityPassenger ?? 0,
                     ),
-                    
-                    // Panah
-                    Icon(
-                      Icons.arrow_forward,
-                      color: Colors.grey.shade400,
-                      size: 16,
+                    _buildAvailabilityItem(
+                      icon: Icons.two_wheeler,
+                      label: 'Motor',
+                      available: schedule.availableMotorcycle ?? 0,
+                      total: schedule.ferry?.capacityVehicleMotorcycle ?? 0,
                     ),
-                    
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Kedatangan',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _formatISOTime(_selectedDate, schedule.arrivalTime),
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            widget.route.destination,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.black87,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                
-                const SizedBox(height: 12),
-                
-                // Info kapasitas
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildAvailabilityInfo(
-                      icon: Icons.person_outline,
-                      type: 'Penumpang',
-                      count: schedule.availablePassenger ?? 0,
-                    ),
-                    _buildAvailabilityInfo(
-                      icon: Icons.two_wheeler_outlined,
-                      type: 'Motor',
-                      count: schedule.availableMotorcycle ?? 0,
-                    ),
-                    _buildAvailabilityInfo(
-                      icon: Icons.directions_car_outlined,
-                      type: 'Mobil',
-                      count: schedule.availableCar ?? 0,
+                    _buildAvailabilityItem(
+                      icon: Icons.directions_car,
+                      label: 'Mobil',
+                      available: schedule.availableCar ?? 0,
+                      total: schedule.ferry?.capacityVehicleCar ?? 0,
                     ),
                   ],
                 ),
               ],
             ),
           ),
-        ),
+        ],
       ),
     );
   }
-  
-  Widget _buildAvailabilityInfo({
+
+  // Card footer with price and action button
+  Widget _buildCardFooter(Schedule schedule, NumberFormat currencyFormat) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Price information
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Mulai dari',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+              Text(
+                currencyFormat.format(widget.route.basePrice ?? 0),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).primaryColor,
+                ),
+              ),
+            ],
+          ),
+
+          // Action button
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Theme.of(context).primaryColor,
+                  Color.fromARGB(255, 36, 107, 253),
+                ],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: Theme.of(context).primaryColor.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _selectSchedule(schedule),
+                borderRadius: BorderRadius.circular(30),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Pilih',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAvailabilityItem({
     required IconData icon,
-    required String type,
-    required int count,
+    required String label,
+    required int available,
+    required int total,
   }) {
-    return Row(
+    final double percentage = total > 0 ? available / total : 0;
+    final bool isEmpty = available <= 0;
+
+    Color statusColor;
+    if (isEmpty) {
+      statusColor = Colors.red;
+    } else if (percentage < 0.3) {
+      statusColor = Colors.orange;
+    } else {
+      statusColor = Colors.green;
+    }
+
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: statusColor.withOpacity(0.08),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 20, color: statusColor),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$available',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: statusColor,
+              ),
+            ),
+            Text(
+              '/$total',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCapacityBadge({
+    required String label,
+    required int available,
+    required int total,
+    required IconData icon,
+  }) {
+    final bool isAvailable = available > 0;
+    final double percentage = total > 0 ? available / total : 0;
+
+    Color color;
+    if (percentage > 0.5) {
+      color = Colors.green;
+    } else if (percentage > 0.2) {
+      color = Colors.orange;
+    } else if (percentage > 0) {
+      color = Colors.deepOrange;
+    } else {
+      color = Colors.red;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: isAvailable ? color.withOpacity(0.1) : Colors.red.shade50,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: isAvailable ? color : Colors.red),
+          const SizedBox(width: 4),
+          Text(
+            '$available',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: isAvailable ? color : Colors.red,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAvailabilityIndicator({
+    required bool isAvailable,
+    required int count,
+    required IconData icon,
+    required Color color,
+    required int total,
+  }) {
+    final double percentage = total > 0 ? count / total : 0;
+    final Color displayColor = isAvailable ? color : Colors.red.shade300;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: displayColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: displayColor.withOpacity(0.3), width: 1),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: displayColor),
+          const SizedBox(width: 4),
+          Text(
+            '$count',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: displayColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCapacityInfo({
+    required IconData icon,
+    required String label,
+    required int available,
+  }) {
+    return Column(
       children: [
         Icon(
           icon,
-          size: 16,
-          color: Colors.grey.shade600,
+          color:
+              available > 0
+                  ? Theme.of(context).primaryColor
+                  : Colors.grey.shade400,
+          size: 22,
         ),
-        const SizedBox(width: 4),
+        const SizedBox(height: 4),
         Text(
-          count > 0 ? "$count tersedia" : "Penuh",
+          label,
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          available > 0 ? '$available tersedia' : 'Penuh',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.bold,
-            color: count > 0 ? Colors.green : Colors.red,
+            color: available > 0 ? Colors.green : Colors.red,
           ),
         ),
       ],
     );
   }
-  
-  String _formatISOTime(DateTime date, String time) {
+
+  String _formatTime(String time) {
     if (time.isEmpty) return "00:00";
-    
-    // Parse waktu dari format HH:MM:SS
-    final parts = time.split(':');
-    if (parts.length < 2) return time;
-    
-    // Format dalam bentuk ISO dengan T seperti di gambar
-    final formattedDate = DateFormat('yyyy-MM-dd').format(date);
-    return "$formattedDate\T${parts[0]}:${parts[1]}";
+
+    try {
+      // Jika format ISO 8601
+      if (time.contains('T')) {
+        final datetime = DateTime.parse(time);
+        return DateFormat('HH:mm').format(datetime);
+      }
+
+      // Format waktu biasa
+      final parts = time.split(':');
+      if (parts.length >= 2) {
+        return '${parts[0]}:${parts[1]}';
+      }
+      return time;
+    } catch (e) {
+      print('ERROR: Gagal format waktu: $e');
+      return time;
+    }
   }
-  
+
   Color _getStatusColor(String status) {
     switch (status.toUpperCase()) {
       case 'ACTIVE':
@@ -432,11 +825,13 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
         return Colors.grey;
     }
   }
-  
+
   String _getStatusText(String status) {
     switch (status.toUpperCase()) {
       case 'ACTIVE':
         return 'Aktif';
+      case 'AVAILABLE':
+        return 'Tersedia';
       case 'DELAYED':
         return 'Tertunda';
       case 'CANCELLED':
@@ -445,282 +840,307 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
         return 'Tidak Diketahui';
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final scheduleProvider = Provider.of<ScheduleProvider>(context);
+    final bookingProvider = Provider.of<BookingProvider>(
+      context,
+      listen: false,
+    );
     final schedules = scheduleProvider.schedules;
-    final isLoading = scheduleProvider.isLoading || _forceRefresh;
     final theme = Theme.of(context);
+    final size = MediaQuery.of(context).size;
 
     return Scaffold(
       body: Container(
         height: double.infinity,
         decoration: BoxDecoration(
-          color: Colors.blue.shade50,
+          gradient: LinearGradient(
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+            colors: [
+              Colors.white,
+              Colors.blue.shade50,
+              Colors.blue.shade100.withOpacity(0.4),
+            ],
+          ),
         ),
         child: Stack(
           children: [
-            // Background elements
+            // Elemen background
             Positioned(
-              top: -100,
+              top: -50,
               right: -50,
               child: Container(
-                width: 200,
-                height: 200,
+                width: 180,
+                height: 180,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.blue.shade100.withOpacity(0.5),
+                  color: theme.primaryColor.withOpacity(0.1),
                 ),
               ),
             ),
             Positioned(
-              bottom: -100,
-              left: -50,
+              bottom: -80,
+              left: -80,
               child: Container(
                 width: 200,
                 height: 200,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.blue.shade100.withOpacity(0.5),
+                  color: theme.primaryColor.withOpacity(0.1),
                 ),
               ),
             ),
-            
-            // Main content
+
+            // Ikon perahu kecil di background
+            Positioned(
+              top: size.height * 0.15,
+              left: size.width * 0.1,
+              child: Icon(
+                Icons.sailing_outlined,
+                size: 20,
+                color: theme.primaryColor.withOpacity(0.2),
+              ),
+            ),
+            Positioned(
+              top: size.height * 0.3,
+              right: size.width * 0.15,
+              child: Icon(
+                Icons.directions_boat_outlined,
+                size: 25,
+                color: theme.primaryColor.withOpacity(0.15),
+              ),
+            ),
+            Positioned(
+              bottom: size.height * 0.25,
+              left: size.width * 0.2,
+              child: Icon(
+                Icons.directions_boat_filled_outlined,
+                size: 22,
+                color: theme.primaryColor.withOpacity(0.1),
+              ),
+            ),
+
+            // Konten utama
             SafeArea(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // App Bar
+                  // Custom App Bar
                   Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Row(
                       children: [
-                        GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: const Icon(
-                            Icons.chevron_left,
-                            size: 28,
-                            color: Colors.black87,
-                          ),
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back_ios_rounded),
+                          onPressed: () => Navigator.pop(context),
+                          color: Colors.black87,
                         ),
-                        const SizedBox(width: 16),
                         Expanded(
                           child: Text(
                             '${widget.route.origin} - ${widget.route.destination}',
                             style: const TextStyle(
-                              fontSize: 16,
+                              fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: Colors.black87,
                             ),
                             textAlign: TextAlign.center,
                           ),
                         ),
-                        const SizedBox(width: 28), // Balance the back button
+                        const SizedBox(width: 48), // Balance the back button
                       ],
                     ),
                   ),
-                  
-                  // Tanggal Keberangkatan
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Text(
-                      'Tanggal Keberangkatan',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 8),
-                  
+
                   // Date Selector
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Tanggal Keberangkatan',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
                           ),
-                        ],
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        borderRadius: BorderRadius.circular(12),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(12),
-                          onTap: () => _selectDate(context),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.blue.shade50,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Icon(
-                                    Icons.calendar_today_outlined,
-                                    color: Colors.blue,
-                                    size: 16,
-                                  ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.03),
+                                blurRadius: 10,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            borderRadius: BorderRadius.circular(16),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: () => _selectDate(context),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 16,
                                 ),
-                                const SizedBox(width: 12),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(
-                                      DateFormat(
-                                        'EEEE',
-                                        'id_ID',
-                                      ).format(_selectedDate).capitalize(),
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey.shade700,
-                                      ),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: theme.primaryColor
+                                                .withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
+                                          ),
+                                          child: Icon(
+                                            Icons.calendar_today_rounded,
+                                            color: theme.primaryColor,
+                                            size: 20,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              DateFormat(
+                                                'EEEE',
+                                                'id_ID',
+                                              ).format(_selectedDate),
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: Colors.grey.shade600,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              DateFormat(
+                                                'd MMMM yyyy',
+                                                'id_ID',
+                                              ).format(_selectedDate),
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.black87,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
                                     ),
-                                    Text(
-                                      DateFormat(
-                                        'd MMMM yyyy',
-                                        'id_ID',
-                                      ).format(_selectedDate),
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black87,
-                                      ),
+                                    Icon(
+                                      Icons.arrow_drop_down,
+                                      color: theme.primaryColor,
                                     ),
                                   ],
                                 ),
-                                Spacer(),
-                                Icon(
-                                  Icons.keyboard_arrow_down,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
-                  
+
                   const SizedBox(height: 16),
-                  
-                  // Schedule List
+
+                  // Schedules List
                   Expanded(
-                    child: isLoading
-                      ? const Center(
-                          child: CircularProgressIndicator(),
-                        )
-                      : schedules == null || schedules.isEmpty
-                        ? Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              // Centered icon
-                              Center(
-                                child: Icon(
-                                  Icons.timer_off_outlined,
-                                  size: 48,
-                                  color: Colors.grey.shade400,
-                                ),
+                    child:
+                        scheduleProvider.isLoading
+                            ? Center(
+                              child: CircularProgressIndicator(
+                                color: theme.primaryColor,
                               ),
-                              const SizedBox(height: 16),
-                              // Text message
-                              Center(
-                                child: Text(
-                                  'Tidak ada jadwal tersedia untuk tanggal ini',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade700,
-                                    fontSize: 14,
+                            )
+                            : schedules == null || schedules.isEmpty
+                            ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.timer_off,
+                                    size: 64,
+                                    color: Colors.grey[400],
                                   ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                              const SizedBox(height: 24),
-                              // Buttons
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Expanded(
-                                      child: ElevatedButton(
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Tidak ada jadwal tersedia untuk tanggal ini',
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      ElevatedButton(
                                         onPressed: () => _selectDate(context),
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.blue,
+                                          backgroundColor: theme.primaryColor,
                                           foregroundColor: Colors.white,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(8),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 12,
                                           ),
-                                          padding: const EdgeInsets.symmetric(vertical: 12),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
+                                          ),
                                         ),
-                                        child: Text('Pilih Tanggal Lain'),
+                                        child: const Text('Pilih Tanggal Lain'),
                                       ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: ElevatedButton(
-                                        onPressed: () => _findNextAvailableDate(),
+                                      const SizedBox(width: 12),
+                                      ElevatedButton(
+                                        onPressed:
+                                            () => _findNextAvailableDate(),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.green,
                                           foregroundColor: Colors.white,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(8),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 12,
                                           ),
-                                          padding: const EdgeInsets.symmetric(vertical: 12),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
+                                          ),
                                         ),
-                                        child: Text('Cari Jadwal Terdekat'),
+                                        child: const Text(
+                                          'Cari Jadwal Terdekat',
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
+                                    ],
+                                  ),
+                                ],
                               ),
-                            ],
-                          )
-                        : ListView.builder(
-                            itemCount: schedules.length,
-                            itemBuilder: (context, index) {
-                              final schedule = schedules[index];
-                              
-                              // Filter jadwal yang sudah lewat jika hari ini
-                              if (isToday(_selectedDate)) {
-                                // Parse waktu keberangkatan
-                                final parts = schedule.departureTime.split(':');
-                                final hour = int.parse(parts[0]);
-                                final minute = parts.length > 1 ? int.parse(parts[1]) : 0;
-                                
-                                // Buat objek datetime untuk perbandingan
-                                final departureTime = DateTime(
-                                  _selectedDate.year,
-                                  _selectedDate.month,
-                                  _selectedDate.day,
-                                  hour,
-                                  minute,
-                                );
-                                
-                                // Jika jadwal sudah lewat, lewati
-                                if (departureTime.isBefore(DateTime.now())) {
-                                  // Skip jadwal yang sudah lewat
-                                  return const SizedBox.shrink(); // Widget kosong
-                                }
-                              }
-                              
-                              return _buildScheduleCard(schedule);
-                            },
-                          ),
+                            )
+                            : ListView.builder(
+                              padding: const EdgeInsets.all(24.0),
+                              itemCount: schedules.length,
+                              itemBuilder: (context, index) {
+                                final schedule = schedules[index];
+                                return _buildScheduleCard(schedule);
+                              },
+                            ),
                   ),
                 ],
               ),
@@ -729,12 +1149,5 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
         ),
       ),
     );
-  }
-}
-
-// Extension untuk mengkapitalisasi string (untuk nama hari)
-extension StringExtension on String {
-  String capitalize() {
-    return "${this[0].toUpperCase()}${this.substring(1)}";
   }
 }

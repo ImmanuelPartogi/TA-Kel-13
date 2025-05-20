@@ -5,7 +5,7 @@ import '../../providers/booking_provider.dart';
 import '../../widgets/custom_appbar.dart';
 import 'dart:developer' as developer;
 
-/// Screen untuk memilih metode pembayaran yang sudah diperbaiki
+/// Screen untuk memilih metode pembayaran dengan desain modern
 class PaymentMethodScreen extends StatefulWidget {
   const PaymentMethodScreen({Key? key}) : super(key: key);
 
@@ -13,12 +13,15 @@ class PaymentMethodScreen extends StatefulWidget {
   _PaymentMethodScreenState createState() => _PaymentMethodScreenState();
 }
 
-class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
+class _PaymentMethodScreenState extends State<PaymentMethodScreen>
+    with SingleTickerProviderStateMixin {
   String? _selectedPaymentMethod;
   String? _selectedPaymentType;
   bool _isLoading = false;
   bool _isCreatingBooking = false;
   bool _hasFetchedBooking = false;
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
 
   // Data metode pembayaran dengan path yang sesuai dengan struktur asset
   final Map<String, List<Map<String, dynamic>>> _paymentMethods = {
@@ -29,6 +32,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
         'type': 'virtual_account',
         'iconAsset': 'assets/images/payment_methods/bca.png',
         'description': 'Transfer dari mobile banking atau internet banking',
+        'color': const Color(0xFF005BAA),
       },
       {
         'id': 'bni',
@@ -36,6 +40,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
         'type': 'virtual_account',
         'iconAsset': 'assets/images/payment_methods/bni.png',
         'description': 'Transfer dari mobile banking atau internet banking',
+        'color': const Color(0xFFFF6600),
       },
       {
         'id': 'bri',
@@ -43,6 +48,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
         'type': 'virtual_account',
         'iconAsset': 'assets/images/payment_methods/bri.png',
         'description': 'Transfer dari mobile banking atau internet banking',
+        'color': const Color(0xFF00529C),
       },
       {
         'id': 'mandiri',
@@ -50,6 +56,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
         'type': 'virtual_account',
         'iconAsset': 'assets/images/payment_methods/mandiri.png',
         'description': 'Transfer dari mobile banking atau internet banking',
+        'color': const Color(0xFF003366),
       },
     ],
     'E-Wallet': [
@@ -59,6 +66,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
         'type': 'e_wallet',
         'iconAsset': 'assets/images/payment_methods/gopay.png',
         'description': 'Bayar menggunakan aplikasi e-wallet',
+        'color': const Color(0xFF00AAD2),
       },
       {
         'id': 'shopeepay',
@@ -66,32 +74,38 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
         'type': 'e_wallet',
         'iconAsset': 'assets/images/payment_methods/shopeepay.png',
         'description': 'Bayar menggunakan aplikasi e-wallet',
+        'color': const Color(0xFFEE4D2D),
       },
-      // {
-      //   'id': 'dana',
-      //   'name': 'DANA',
-      //   'type': 'e_wallet',
-      //   'iconAsset': 'assets/images/payment_methods/dana.png',
-      //   'description': 'Bayar menggunakan aplikasi e-wallet',
-      // },
-      // {
-      //   'id': 'ovo',
-      //   'name': 'OVO',
-      //   'type': 'e_wallet',
-      //   'iconAsset': 'assets/images/payment_methods/ovo.png',
-      //   'description': 'Bayar menggunakan aplikasi e-wallet',
-      // },
     ],
   };
 
   @override
   void initState() {
     super.initState();
+    
+    // Setup animasi untuk fade-in effect
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeIn,
+      ),
+    );
+    _animationController.forward();
 
     // Jalankan pengecekan booking setelah build pertama
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkBookingData();
     });
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   // Cek dan persiapkan data booking dengan penanganan error yang lebih baik
@@ -227,12 +241,21 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
 
   void _showNoBookingMessage() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
+      SnackBar(
+        content: const Text(
           'Data pemesanan tidak ditemukan. Silakan buat pemesanan baru.',
         ),
-        backgroundColor: Colors.red,
-        duration: Duration(seconds: 3),
+        backgroundColor: Colors.red.shade800,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        margin: EdgeInsets.only(
+          bottom: MediaQuery.of(context).size.height - 150,
+          left: 16,
+          right: 16,
+        ),
+        duration: const Duration(seconds: 3),
       ),
     );
 
@@ -248,7 +271,16 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.red,
+        backgroundColor: Colors.red.shade800,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        margin: EdgeInsets.only(
+          bottom: MediaQuery.of(context).size.height - 150,
+          left: 16,
+          right: 16,
+        ),
         duration: const Duration(seconds: 3),
       ),
     );
@@ -257,86 +289,357 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
   @override
   Widget build(BuildContext context) {
     final bookingProvider = Provider.of<BookingProvider>(context);
-
+    final primaryColor = Theme.of(context).primaryColor;
+    final accentColor = Theme.of(context).colorScheme.secondary;
+    
     return Scaffold(
-      appBar: const CustomAppBar(title: 'Pilih Metode Pembayaran'),
-      body:
-          _isLoading || _isCreatingBooking
-              ? const Center(child: CircularProgressIndicator())
-              : _buildContent(bookingProvider),
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: primaryColor,
+        title: const Text(
+          'Pilih Metode Pembayaran', 
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 20,
+          ),
+        ),
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, size: 22),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(8),
+          child: Container(
+            height: 4,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  primaryColor.withOpacity(0.3),
+                  primaryColor.withOpacity(0.1),
+                  Colors.transparent,
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+          ),
+        ),
+      ),
+      body: _isLoading || _isCreatingBooking
+          ? _buildLoadingState()
+          : _buildContent(bookingProvider),
       bottomNavigationBar: _buildBottomBar(bookingProvider),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    final primaryColor = Theme.of(context).primaryColor;
+    
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 56,
+            height: 56,
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+              strokeWidth: 3,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Memuat Data Pembayaran...',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey[700],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildContent(BookingProvider bookingProvider) {
     // Tampilkan pesan jika tidak ada booking
     if (!bookingProvider.hasActiveBooking) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
-              const SizedBox(height: 16),
-              const Text(
-                'Data pemesanan tidak ditemukan',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Silahkan lengkapi data pemesanan terlebih dahulu',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Kembali'),
-              ),
-            ],
+      return FadeTransition(
+        opacity: _fadeAnimation,
+        child: Center(
+          child: Container(
+            margin: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline_rounded,
+                  size: 72,
+                  color: Colors.amber[700],
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Data Pemesanan Tidak Ditemukan',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Silakan lengkapi data pemesanan terlebih dahulu untuk melanjutkan proses pembayaran',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 32),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Kembali ke Pemesanan',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
     }
 
     // Tampilkan daftar metode pembayaran jika booking tersedia
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children:
-            _paymentMethods.entries.map((entry) {
-              final sectionTitle = entry.key;
-              final methods = entry.value;
-
-              return Column(
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: Stack(
+        children: [
+          // Background Decoration
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: 150,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Theme.of(context).primaryColor.withOpacity(0.2),
+                    Colors.transparent,
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+            ),
+          ),
+          
+          // Progress Indicator
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildSectionHeader(sectionTitle),
-                  const SizedBox(height: 8),
-                  ...methods
-                      .map((method) => _buildPaymentMethodCard(method))
-                      .toList(),
-                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      _buildStepCircle(1, true, "Booking"),
+                      _buildStepLine(true),
+                      _buildStepCircle(2, true, "Pembayaran"),
+                      _buildStepLine(false),
+                      _buildStepCircle(3, false, "Selesai"),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Pilih metode pembayaran untuk menyelesaikan transaksi Anda',
+                            style: TextStyle(color: Colors.grey[700], fontSize: 14),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
-              );
-            }).toList(),
+              ),
+            ),
+          ),
+          
+          // Main Payment Methods List
+          Padding(
+            padding: const EdgeInsets.only(top: 140), // Make room for the stepper
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children:
+                    _paymentMethods.entries.map((entry) {
+                      final sectionTitle = entry.key;
+                      final methods = entry.value;
+                      
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildSectionHeader(sectionTitle),
+                          const SizedBox(height: 12),
+                          ...List.generate(
+                            methods.length,
+                            (index) => TweenAnimationBuilder<double>(
+                              tween: Tween<double>(begin: 0.0, end: 1.0),
+                              duration: Duration(milliseconds: 400 + (index * 100)),
+                              curve: Curves.easeOutCubic,
+                              builder: (context, value, child) {
+                                return Transform.translate(
+                                  offset: Offset(0, 30 * (1 - value)),
+                                  child: Opacity(
+                                    opacity: value,
+                                    child: child,
+                                  ),
+                                );
+                              },
+                              child: _buildPaymentMethodCard(methods[index]),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+                      );
+                    }).toList(),
+              ),
+            ),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildStepCircle(int step, bool isActive, String label) {
+    final primaryColor = Theme.of(context).primaryColor;
+    
+    return Expanded(
+      child: Column(
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: isActive ? primaryColor : Colors.grey[300],
+              shape: BoxShape.circle,
+              boxShadow: isActive ? [
+                BoxShadow(
+                  color: primaryColor.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ] : null,
+            ),
+            child: Center(
+              child: Text(
+                '$step',
+                style: TextStyle(
+                  color: isActive ? Colors.white : Colors.grey[600],
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+              color: isActive ? primaryColor : Colors.grey[600],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepLine(bool isActive) {
+    final primaryColor = Theme.of(context).primaryColor;
+    
+    return Container(
+      width: 30,
+      height: 2,
+      color: isActive ? primaryColor : Colors.grey[300],
     );
   }
 
   Widget _buildSectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF333333),
-        ),
+      padding: const EdgeInsets.only(top: 16, bottom: 8, left: 4),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 20,
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              letterSpacing: -0.3,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -345,33 +648,35 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
     final isSelected =
         _selectedPaymentMethod == method['id'] &&
         _selectedPaymentType == method['type'];
+    final primaryColor = Theme.of(context).primaryColor;
+    final Color methodColor = method['color'] ?? primaryColor;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color:
-                isSelected
-                    ? Theme.of(context).primaryColor.withOpacity(0.3)
-                    : Colors.black.withOpacity(0.05),
-            blurRadius: isSelected ? 8 : 2,
-            offset: const Offset(0, 2),
+            color: isSelected
+                ? methodColor.withOpacity(0.25)
+                : Colors.black.withOpacity(0.05),
+            blurRadius: isSelected ? 16 : 5,
+            offset: const Offset(0, 3),
+            spreadRadius: isSelected ? 1 : 0,
           ),
         ],
         border: Border.all(
-          color:
-              isSelected
-                  ? Theme.of(context).primaryColor
-                  : Colors.grey.withOpacity(0.2),
+          color: isSelected
+              ? methodColor
+              : Colors.grey.withOpacity(0.15),
           width: isSelected ? 2 : 1,
         ),
       ),
       child: Material(
         color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
         child: InkWell(
           onTap: () {
             setState(() {
@@ -395,39 +700,57 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
               }
             }
           },
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
                 // Logo/Icon metode pembayaran
                 Container(
-                  width: 48,
-                  height: 48,
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(6),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                    border: Border.all(
+                      color: Colors.grey.withOpacity(0.1),
+                      width: 1,
+                    ),
                   ),
                   child:
                       method.containsKey('iconAsset')
                           // Gunakan gambar jika tersedia
                           ? ClipRRect(
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(10),
                             child: Image.asset(
                               method['iconAsset'],
                               fit: BoxFit.contain,
                               errorBuilder: (context, error, stackTrace) {
                                 // Fallback jika gambar tidak ditemukan
                                 return Center(
-                                  child: Text(
-                                    method['id']
-                                        .toString()
-                                        .substring(0, 1)
-                                        .toUpperCase(),
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.grey[800],
-                                      fontSize: 18,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: methodColor.withOpacity(0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    padding: const EdgeInsets.all(8),
+                                    child: Text(
+                                      method['id']
+                                          .toString()
+                                          .substring(0, 1)
+                                          .toUpperCase(),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: methodColor,
+                                        fontSize: 20,
+                                      ),
                                     ),
                                   ),
                                 );
@@ -436,15 +759,22 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
                           )
                           // Fallback ke huruf kapital pertama
                           : Center(
-                            child: Text(
-                              method['id']
-                                  .toString()
-                                  .substring(0, 1)
-                                  .toUpperCase(),
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey[800],
-                                fontSize: 18,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: methodColor.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              padding: const EdgeInsets.all(8),
+                              child: Text(
+                                method['id']
+                                    .toString()
+                                    .substring(0, 1)
+                                    .toUpperCase(),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: methodColor,
+                                  fontSize: 20,
+                                ),
                               ),
                             ),
                           ),
@@ -458,26 +788,44 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
                       Text(
                         method['name'],
                         style: const TextStyle(
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w600,
                           fontSize: 16,
+                          letterSpacing: -0.3,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 5),
                       Text(
                         method['description'] ?? '',
-                        style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 13,
+                          height: 1.3,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 // Indikator terpilih
-                AnimatedOpacity(
-                  opacity: isSelected ? 1.0 : 0.0,
+                AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
-                  child: Icon(
-                    Icons.check_circle,
-                    color: Theme.of(context).primaryColor,
-                    size: 24,
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isSelected ? methodColor : Colors.grey[200],
+                    border: Border.all(
+                      color: isSelected ? methodColor : Colors.grey[300]!,
+                      width: 2,
+                    ),
+                  ),
+                  child: AnimatedOpacity(
+                    opacity: isSelected ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: const Icon(
+                      Icons.check,
+                      color: Colors.white,
+                      size: 18,
+                    ),
                   ),
                 ),
               ],
@@ -489,6 +837,8 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
   }
 
   Widget _buildBottomBar(BookingProvider bookingProvider) {
+    final primaryColor = Theme.of(context).primaryColor;
+    
     // Jika tidak ada booking, tampilkan pesan
     if (!bookingProvider.hasActiveBooking) {
       return Container(
@@ -497,16 +847,20 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 4,
-              offset: const Offset(0, -2),
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -3),
             ),
           ],
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
         ),
         child: const SafeArea(
           child: Text(
             'Data pemesanan tidak ditemukan',
-            style: TextStyle(color: Colors.red),
+            style: TextStyle(color: Colors.red, fontWeight: FontWeight.w500),
             textAlign: TextAlign.center,
           ),
         ),
@@ -521,16 +875,21 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
     );
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, -2),
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -3),
+            spreadRadius: 1,
           ),
         ],
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
+        ),
       ),
       child: SafeArea(
         child: Column(
@@ -541,39 +900,101 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Total Pembayaran', style: TextStyle(fontSize: 16)),
-                Text(
-                  currencyFormat.format(
-                    bookingProvider.currentBooking?.totalAmount ?? 0,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Total Pembayaran',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      currencyFormat.format(
+                        bookingProvider.currentBooking?.totalAmount ?? 0,
+                      ),
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: primaryColor,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ],
+                ),
+                // Booking code badge
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
                   ),
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).primaryColor,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(
+                      color: Colors.grey[300]!,
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    'ID: ${bookingProvider.currentBooking?.bookingCode ?? ""}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[800],
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            // PERUBAHAN: Tombol "Lanjutkan ke Pembayaran" memanggil createBooking
-            ElevatedButton(
-              onPressed:
-                  _selectedPaymentMethod != null
-                      ? () => _createBookingAndProceed(context, bookingProvider)
-                      : null,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                backgroundColor: Theme.of(context).primaryColor,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: Colors.grey[300],
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+            const SizedBox(height: 20),
+            // Tombol "Lanjutkan ke Pembayaran" memanggil createBooking
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              height: 54,
+              child: ElevatedButton(
+                onPressed: _selectedPaymentMethod != null
+                    ? () => _createBookingAndProceed(context, bookingProvider)
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: Colors.grey[300],
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: _selectedPaymentMethod != null ? 2 : 0,
+                  shadowColor: _selectedPaymentMethod != null
+                      ? primaryColor.withOpacity(0.3)
+                      : Colors.transparent,
                 ),
-                elevation: 0,
-              ),
-              child: const Text(
-                'Lanjutkan ke Pembayaran',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                child: _isLoading
+                    ? SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Lanjutkan ke Pembayaran',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.arrow_forward, size: 18),
+                        ],
+                      ),
               ),
             ),
           ],
@@ -582,11 +1003,23 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
     );
   }
 
-  // PERUBAHAN: Metode baru untuk membuat booking setelah memilih metode pembayaran
+  // Metode untuk membuat booking setelah memilih metode pembayaran
   Future<void> _createBookingAndProceed(BuildContext context, BookingProvider bookingProvider) async {
     if (_selectedPaymentMethod == null || _selectedPaymentType == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Silakan pilih metode pembayaran')),
+        SnackBar(
+          content: const Text('Silakan pilih metode pembayaran'),
+          backgroundColor: Colors.amber[700],
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: EdgeInsets.only(
+            bottom: MediaQuery.of(context).size.height - 150,
+            left: 16,
+            right: 16,
+          ),
+        ),
       );
       return;
     }
@@ -622,9 +1055,8 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
         });
 
         if (paymentSuccess) {
-          // Navigasi ke halaman instruksi pembayaran
-          Navigator.pushNamed(
-            context,
+          // Navigasi ke halaman instruksi pembayaran dengan animasi
+          Navigator.of(context).pushNamed(
             '/booking/payment',
             arguments: {
               'bookingCode': bookingCode,

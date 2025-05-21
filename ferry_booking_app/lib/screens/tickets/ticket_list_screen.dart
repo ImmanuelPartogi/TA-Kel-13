@@ -32,32 +32,35 @@ class _TicketListScreenState extends State<TicketListScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    
+
     // Animation controller setup
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     );
-    
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
         curve: const Interval(0.0, 0.7, curve: Curves.easeOut),
       ),
     );
-    
-    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.1),
+      end: Offset.zero,
+    ).animate(
       CurvedAnimation(
         parent: _animationController,
         curve: const Interval(0.0, 0.8, curve: Curves.easeOutCubic),
       ),
     );
-    
+
     // Start animation
     Future.delayed(const Duration(milliseconds: 100), () {
       _animationController.forward();
     });
-    
+
     // Tab controller listener
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
@@ -68,7 +71,7 @@ class _TicketListScreenState extends State<TicketListScreen>
     // Use post-frame callback to avoid setState during build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadBookings();
-      
+
       // Timer untuk refresh status tiket secara periodik (setiap 1 menit)
       _statusUpdateTimer = Timer.periodic(const Duration(minutes: 1), (_) {
         if (mounted) {
@@ -99,50 +102,43 @@ class _TicketListScreenState extends State<TicketListScreen>
   Future<void> _refreshBookings() async {
     await _loadBookings();
   }
-  
+
   // Fungsi untuk memeriksa apakah tiket (booking) seharusnya expired
   bool _shouldBeExpired(Booking booking) {
     if (booking.schedule == null) return false;
-    
+
     final now = DateTime.now();
     final departureDate = DateTime.parse(booking.departureDate);
-    
+
     // Gabungkan tanggal dan waktu keberangkatan
     final departureTime = booking.schedule!.departureTime;
     final departureParts = departureTime.split(':');
-    
+
     if (departureParts.length < 2) return false;
-    
+
     final hour = int.tryParse(departureParts[0]) ?? 0;
     final minute = int.tryParse(departureParts[1]) ?? 0;
-    
+
     final departureDateTime = DateTime(
       departureDate.year,
-      departureDate.month, 
+      departureDate.month,
       departureDate.day,
       hour,
       minute,
     );
-    
+
     // Jadwal keberangkatan sudah lewat
     return now.isAfter(departureDateTime);
   }
-  
+
   // Fungsi untuk mendapatkan status efektif dari booking/tiket
   String _getEffectiveStatus(Booking booking) {
-    // Jika status di database sudah final (CANCELLED, EXPIRED, COMPLETED, REFUNDED)
-    // maka gunakan status tersebut
-    if (['CANCELLED', 'EXPIRED', 'COMPLETED', 'REFUNDED'].contains(booking.status.toUpperCase())) {
-      return booking.status;
-    }
-    
-    // Jika status PENDING atau CONFIRMED tapi waktu keberangkatan sudah lewat
-    // maka harus dianggap EXPIRED (meskipun belum diupdate di database)
+    // Jika jadwal keberangkatan sudah lewat (lebih prioritas cek waktunya dulu)
     if (_shouldBeExpired(booking)) {
       return 'EXPIRED';
     }
-    
-    // Gunakan status asli dari database
+
+    // Jika status di database sudah final, gunakan status tersebut
     return booking.status;
   }
 
@@ -155,28 +151,36 @@ class _TicketListScreenState extends State<TicketListScreen>
     final now = DateTime.now();
 
     // Lista semua booking dengan status efektif
-    final List<Booking> allBookingsWithEffectiveStatus = bookings?.map((booking) {
-      // Buat salinan booking dengan status efektif
-      final effectiveBooking = booking;
-      effectiveBooking.status = _getEffectiveStatus(booking);
-      return effectiveBooking;
-    }).toList() ?? [];
+    final List<Booking> allBookingsWithEffectiveStatus =
+        bookings?.map((booking) {
+          // Buat salinan booking dengan status efektif
+          final effectiveBooking = booking;
+          effectiveBooking.status = _getEffectiveStatus(booking);
+          return effectiveBooking;
+        }).toList() ??
+        [];
 
     // Filter untuk "Akan Datang"
-    final upcomingBookings = allBookingsWithEffectiveStatus
-        .where((booking) => 
-            (booking.status == 'CONFIRMED' || 
-             booking.status == 'PENDING') &&
-            !_shouldBeExpired(booking))
-        .toList();
+    final upcomingBookings =
+        allBookingsWithEffectiveStatus
+            .where(
+              (booking) =>
+                  (booking.status == 'CONFIRMED' ||
+                      booking.status == 'PENDING') &&
+                  !_shouldBeExpired(booking),
+            )
+            .toList();
 
     // Filter untuk "Riwayat"
-    final historyBookings = allBookingsWithEffectiveStatus
-        .where((booking) => 
-            (booking.status != 'CONFIRMED' && 
-             booking.status != 'PENDING') ||
-            _shouldBeExpired(booking))
-        .toList();
+    final historyBookings =
+        allBookingsWithEffectiveStatus
+            .where(
+              (booking) =>
+                  (booking.status != 'CONFIRMED' &&
+                      booking.status != 'PENDING') ||
+                  _shouldBeExpired(booking),
+            )
+            .toList();
 
     return Scaffold(
       body: Container(
@@ -218,7 +222,7 @@ class _TicketListScreenState extends State<TicketListScreen>
                 ),
               ),
             ),
-            
+
             // Small boat icons in the background
             Positioned(
               top: size.height * 0.15,
@@ -247,7 +251,7 @@ class _TicketListScreenState extends State<TicketListScreen>
                 color: theme.primaryColor.withOpacity(0.1),
               ),
             ),
-            
+
             // Main Content
             SafeArea(
               child: Column(
@@ -269,7 +273,7 @@ class _TicketListScreenState extends State<TicketListScreen>
                       ],
                     ),
                   ),
-                  
+
                   // Custom Tab Bar
                   Padding(
                     padding: const EdgeInsets.fromLTRB(24, 24, 24, 10),
@@ -299,9 +303,10 @@ class _TicketListScreenState extends State<TicketListScreen>
                                 key: _tabKeys[0],
                                 alignment: Alignment.center,
                                 decoration: BoxDecoration(
-                                  color: _tabController.index == 0
-                                      ? theme.primaryColor.withOpacity(0.1)
-                                      : Colors.transparent,
+                                  color:
+                                      _tabController.index == 0
+                                          ? theme.primaryColor.withOpacity(0.1)
+                                          : Colors.transparent,
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Row(
@@ -310,22 +315,29 @@ class _TicketListScreenState extends State<TicketListScreen>
                                     Text(
                                       'Akan Datang',
                                       style: TextStyle(
-                                        fontWeight: _tabController.index == 0
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                        color: _tabController.index == 0
-                                            ? theme.primaryColor
-                                            : Colors.grey.shade600,
+                                        fontWeight:
+                                            _tabController.index == 0
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                        color:
+                                            _tabController.index == 0
+                                                ? theme.primaryColor
+                                                : Colors.grey.shade600,
                                         fontSize: 15,
                                       ),
                                     ),
                                     if (upcomingBookings.isNotEmpty) ...[
                                       const SizedBox(width: 6),
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 2,
+                                        ),
                                         decoration: BoxDecoration(
                                           color: theme.primaryColor,
-                                          borderRadius: BorderRadius.circular(10),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
                                         ),
                                         child: Text(
                                           '${upcomingBookings.length}',
@@ -342,7 +354,7 @@ class _TicketListScreenState extends State<TicketListScreen>
                               ),
                             ),
                           ),
-                          
+
                           // Tab 2 - Riwayat
                           Expanded(
                             child: GestureDetector(
@@ -353,9 +365,10 @@ class _TicketListScreenState extends State<TicketListScreen>
                                 key: _tabKeys[1],
                                 alignment: Alignment.center,
                                 decoration: BoxDecoration(
-                                  color: _tabController.index == 1
-                                      ? theme.primaryColor.withOpacity(0.1)
-                                      : Colors.transparent,
+                                  color:
+                                      _tabController.index == 1
+                                          ? theme.primaryColor.withOpacity(0.1)
+                                          : Colors.transparent,
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Row(
@@ -364,24 +377,32 @@ class _TicketListScreenState extends State<TicketListScreen>
                                     Text(
                                       'Riwayat',
                                       style: TextStyle(
-                                        fontWeight: _tabController.index == 1
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                        color: _tabController.index == 1
-                                            ? theme.primaryColor
-                                            : Colors.grey.shade600,
+                                        fontWeight:
+                                            _tabController.index == 1
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                        color:
+                                            _tabController.index == 1
+                                                ? theme.primaryColor
+                                                : Colors.grey.shade600,
                                         fontSize: 15,
                                       ),
                                     ),
                                     if (historyBookings.isNotEmpty) ...[
                                       const SizedBox(width: 6),
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 2,
+                                        ),
                                         decoration: BoxDecoration(
-                                          color: _tabController.index == 1
-                                              ? theme.primaryColor
-                                              : Colors.grey.shade400,
-                                          borderRadius: BorderRadius.circular(10),
+                                          color:
+                                              _tabController.index == 1
+                                                  ? theme.primaryColor
+                                                  : Colors.grey.shade400,
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
                                         ),
                                         child: Text(
                                           '${historyBookings.length}',
@@ -402,7 +423,7 @@ class _TicketListScreenState extends State<TicketListScreen>
                       ),
                     ),
                   ),
-                  
+
                   // Tab Content
                   Expanded(
                     child: TabBarView(
@@ -416,150 +437,236 @@ class _TicketListScreenState extends State<TicketListScreen>
                             child: RefreshIndicator(
                               onRefresh: _refreshBookings,
                               color: theme.primaryColor,
-                              child: bookingProvider.isLoading
-                                ? const Center(child: CircularProgressIndicator())
-                                : upcomingBookings.isEmpty
-                                ? _buildEmptyTickets(
-                                  'Tidak ada tiket untuk perjalanan yang akan datang',
-                                  theme,
-                                )
-                                : ListView.builder(
-                                  padding: const EdgeInsets.all(24.0),
-                                  itemCount: upcomingBookings.length,
-                                  itemBuilder: (context, index) {
-                                    final booking = upcomingBookings[index];
-                                    // Perhitungan waktu keberangkatan
-                                    final departureDate = DateTime.parse(booking.departureDate);
-                                    final departureTime = booking.schedule?.departureTime ?? "00:00";
-                                    final departureParts = departureTime.split(':');
-                                    
-                                    final departureDateTime = DateTime(
-                                      departureDate.year,
-                                      departureDate.month,
-                                      departureDate.day,
-                                      int.tryParse(departureParts[0]) ?? 0,
-                                      int.tryParse(departureParts[1]) ?? 0,
-                                    );
-                                    
-                                    final timeDifference = departureDateTime.difference(now);
-                                    
-                                    return Padding(
-                                      padding: const EdgeInsets.only(bottom: 16),
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(20),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.grey.withOpacity(0.1),
-                                              blurRadius: 15,
-                                              offset: const Offset(0, 5),
-                                              spreadRadius: -5,
+                              child:
+                                  bookingProvider.isLoading
+                                      ? const Center(
+                                        child: CircularProgressIndicator(),
+                                      )
+                                      : upcomingBookings.isEmpty
+                                      ? _buildEmptyTickets(
+                                        'Tidak ada tiket untuk perjalanan yang akan datang',
+                                        theme,
+                                      )
+                                      : ListView.builder(
+                                        padding: const EdgeInsets.all(24.0),
+                                        itemCount: upcomingBookings.length,
+                                        itemBuilder: (context, index) {
+                                          final booking =
+                                              upcomingBookings[index];
+                                          // Perhitungan waktu keberangkatan
+                                          final departureDate = DateTime.parse(
+                                            booking.departureDate,
+                                          );
+                                          final departureTime =
+                                              booking.schedule?.departureTime ??
+                                              "00:00";
+                                          final departureParts = departureTime
+                                              .split(':');
+
+                                          final departureDateTime = DateTime(
+                                            departureDate.year,
+                                            departureDate.month,
+                                            departureDate.day,
+                                            int.tryParse(departureParts[0]) ??
+                                                0,
+                                            int.tryParse(departureParts[1]) ??
+                                                0,
+                                          );
+
+                                          final timeDifference =
+                                              departureDateTime.difference(now);
+
+                                          return Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: 16,
                                             ),
-                                          ],
-                                        ),
-                                        child: Column(
-                                          children: [
-                                            // Status indikator (jika PENDING)
-                                            if (booking.status == 'PENDING') ...[
-                                              Container(
-                                                width: double.infinity,
-                                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.orange.withOpacity(0.2),
-                                                  borderRadius: const BorderRadius.only(
-                                                    topLeft: Radius.circular(20),
-                                                    topRight: Radius.circular(20),
+                                            child: Container(
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: Colors.grey
+                                                        .withOpacity(0.1),
+                                                    blurRadius: 15,
+                                                    offset: const Offset(0, 5),
+                                                    spreadRadius: -5,
                                                   ),
-                                                ),
-                                                child: Row(
-                                                  children: [
-                                                    Icon(
-                                                      Icons.warning_amber_rounded,
-                                                      size: 16,
-                                                      color: Colors.orange.shade800,
-                                                    ),
-                                                    const SizedBox(width: 8),
-                                                    Text(
-                                                      'Menunggu pembayaran',
-                                                      style: TextStyle(
-                                                        color: Colors.orange.shade800,
-                                                        fontWeight: FontWeight.bold,
-                                                        fontSize: 12,
+                                                ],
+                                              ),
+                                              child: Column(
+                                                children: [
+                                                  // Status indikator (jika PENDING)
+                                                  if (booking.status ==
+                                                      'PENDING') ...[
+                                                    Container(
+                                                      width: double.infinity,
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            vertical: 8,
+                                                            horizontal: 16,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.orange
+                                                            .withOpacity(0.2),
+                                                        borderRadius:
+                                                            const BorderRadius.only(
+                                                              topLeft:
+                                                                  Radius.circular(
+                                                                    20,
+                                                                  ),
+                                                              topRight:
+                                                                  Radius.circular(
+                                                                    20,
+                                                                  ),
+                                                            ),
+                                                      ),
+                                                      child: Row(
+                                                        children: [
+                                                          Icon(
+                                                            Icons
+                                                                .warning_amber_rounded,
+                                                            size: 16,
+                                                            color:
+                                                                Colors
+                                                                    .orange
+                                                                    .shade800,
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 8,
+                                                          ),
+                                                          Text(
+                                                            'Menunggu pembayaran',
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors
+                                                                      .orange
+                                                                      .shade800,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize: 12,
+                                                            ),
+                                                          ),
+                                                        ],
                                                       ),
                                                     ),
                                                   ],
-                                                ),
-                                              ),
-                                            ],
-                                            
-                                            // Timer keberangkatan (jika < 24 jam)
-                                            if (timeDifference.inHours < 24) ...[
-                                              Container(
-                                                width: double.infinity,
-                                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                                                decoration: BoxDecoration(
-                                                  color: booking.status == 'PENDING'
-                                                      ? Colors.white
-                                                      : theme.primaryColor.withOpacity(0.1),
-                                                  borderRadius: booking.status == 'PENDING'
-                                                      ? BorderRadius.zero
-                                                      : const BorderRadius.only(
-                                                          topLeft: Radius.circular(20),
-                                                          topRight: Radius.circular(20),
-                                                        ),
-                                                ),
-                                                child: Row(
-                                                  children: [
-                                                    Icon(
-                                                      Icons.access_time,
-                                                      size: 16,
-                                                      color: theme.primaryColor,
-                                                    ),
-                                                    const SizedBox(width: 8),
-                                                    Text(
-                                                      'Berangkat dalam ${_formatTimeRemaining(timeDifference)}',
-                                                      style: TextStyle(
-                                                        color: theme.primaryColor,
-                                                        fontWeight: FontWeight.bold,
-                                                        fontSize: 12,
+
+                                                  // Timer keberangkatan (jika < 24 jam)
+                                                  if (timeDifference.inHours <
+                                                      24) ...[
+                                                    Container(
+                                                      width: double.infinity,
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            vertical: 8,
+                                                            horizontal: 16,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color:
+                                                            booking.status ==
+                                                                    'PENDING'
+                                                                ? Colors.white
+                                                                : theme
+                                                                    .primaryColor
+                                                                    .withOpacity(
+                                                                      0.1,
+                                                                    ),
+                                                        borderRadius:
+                                                            booking.status ==
+                                                                    'PENDING'
+                                                                ? BorderRadius
+                                                                    .zero
+                                                                : const BorderRadius.only(
+                                                                  topLeft:
+                                                                      Radius.circular(
+                                                                        20,
+                                                                      ),
+                                                                  topRight:
+                                                                      Radius.circular(
+                                                                        20,
+                                                                      ),
+                                                                ),
+                                                      ),
+                                                      child: Row(
+                                                        children: [
+                                                          Icon(
+                                                            Icons.access_time,
+                                                            size: 16,
+                                                            color:
+                                                                theme
+                                                                    .primaryColor,
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 8,
+                                                          ),
+                                                          Text(
+                                                            'Berangkat dalam ${_formatTimeRemaining(timeDifference)}',
+                                                            style: TextStyle(
+                                                              color:
+                                                                  theme
+                                                                      .primaryColor,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize: 12,
+                                                            ),
+                                                          ),
+                                                        ],
                                                       ),
                                                     ),
                                                   ],
-                                                ),
-                                              ),
-                                            ],
-                                            
-                                            ClipRRect(
-                                              borderRadius: BorderRadius.only(
-                                                topLeft: (booking.status != 'PENDING' && 
-                                                       timeDifference.inHours >= 24)
-                                                    ? const Radius.circular(20)
-                                                    : Radius.zero,
-                                                topRight: (booking.status != 'PENDING' && 
-                                                        timeDifference.inHours >= 24)
-                                                    ? const Radius.circular(20)
-                                                    : Radius.zero,
-                                                bottomLeft: const Radius.circular(20),
-                                                bottomRight: const Radius.circular(20),
-                                              ),
-                                              child: TicketCard(
-                                                booking: booking,
-                                                onTap: () {
-                                                  Navigator.pushNamed(
-                                                    context,
-                                                    '/tickets/detail',
-                                                    arguments: booking.id,
-                                                  );
-                                                },
+
+                                                  ClipRRect(
+                                                    borderRadius: BorderRadius.only(
+                                                      topLeft:
+                                                          (booking.status !=
+                                                                      'PENDING' &&
+                                                                  timeDifference
+                                                                          .inHours >=
+                                                                      24)
+                                                              ? const Radius.circular(
+                                                                20,
+                                                              )
+                                                              : Radius.zero,
+                                                      topRight:
+                                                          (booking.status !=
+                                                                      'PENDING' &&
+                                                                  timeDifference
+                                                                          .inHours >=
+                                                                      24)
+                                                              ? const Radius.circular(
+                                                                20,
+                                                              )
+                                                              : Radius.zero,
+                                                      bottomLeft:
+                                                          const Radius.circular(
+                                                            20,
+                                                          ),
+                                                      bottomRight:
+                                                          const Radius.circular(
+                                                            20,
+                                                          ),
+                                                    ),
+                                                    child: TicketCard(
+                                                      booking: booking,
+                                                      onTap: () {
+                                                        Navigator.pushNamed(
+                                                          context,
+                                                          '/tickets/detail',
+                                                          arguments: booking.id,
+                                                        );
+                                                      },
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                             ),
-                                          ],
-                                        ),
+                                          );
+                                        },
                                       ),
-                                    );
-                                  },
-                                ),
                             ),
                           ),
                         ),
@@ -572,52 +679,74 @@ class _TicketListScreenState extends State<TicketListScreen>
                             child: RefreshIndicator(
                               onRefresh: _refreshBookings,
                               color: theme.primaryColor,
-                              child: bookingProvider.isLoading
-                                ? const Center(child: CircularProgressIndicator())
-                                : historyBookings.isEmpty
-                                ? _buildEmptyTickets('Tidak ada riwayat perjalanan', theme)
-                                : ListView.builder(
-                                  padding: const EdgeInsets.all(24.0),
-                                  itemCount: historyBookings.length,
-                                  itemBuilder: (context, index) {
-                                    final booking = historyBookings[index];
-                                    final effectiveStatus = booking.status;
-                                    
-                                    return Padding(
-                                      padding: const EdgeInsets.only(bottom: 16),
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(20),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.grey.withOpacity(0.1),
-                                              blurRadius: 15,
-                                              offset: const Offset(0, 5),
-                                              spreadRadius: -5,
+                              child:
+                                  bookingProvider.isLoading
+                                      ? const Center(
+                                        child: CircularProgressIndicator(),
+                                      )
+                                      : historyBookings.isEmpty
+                                      ? _buildEmptyTickets(
+                                        'Tidak ada riwayat perjalanan',
+                                        theme,
+                                      )
+                                      : ListView.builder(
+                                        padding: const EdgeInsets.all(24.0),
+                                        itemCount: historyBookings.length,
+                                        itemBuilder: (context, index) {
+                                          final booking =
+                                              historyBookings[index];
+                                          final effectiveStatus =
+                                              booking.status;
+
+                                          return Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: 16,
                                             ),
-                                          ],
-                                        ),
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(20),
-                                          child: Opacity(
-                                            opacity: ['EXPIRED', 'CANCELLED', 'REFUNDED'].contains(effectiveStatus) ? 0.9 : 1.0,
-                                            child: TicketCard(
-                                              booking: booking,
-                                              onTap: () {
-                                                Navigator.pushNamed(
-                                                  context,
-                                                  '/tickets/detail',
-                                                  arguments: booking.id,
-                                                );
-                                              },
+                                            child: Container(
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: Colors.grey
+                                                        .withOpacity(0.1),
+                                                    blurRadius: 15,
+                                                    offset: const Offset(0, 5),
+                                                    spreadRadius: -5,
+                                                  ),
+                                                ],
+                                              ),
+                                              child: ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                                child: Opacity(
+                                                  opacity:
+                                                      [
+                                                            'EXPIRED',
+                                                            'CANCELLED',
+                                                            'REFUNDED',
+                                                          ].contains(
+                                                            effectiveStatus,
+                                                          )
+                                                          ? 0.9
+                                                          : 1.0,
+                                                  child: TicketCard(
+                                                    booking: booking,
+                                                    onTap: () {
+                                                      Navigator.pushNamed(
+                                                        context,
+                                                        '/tickets/detail',
+                                                        arguments: booking.id,
+                                                      );
+                                                    },
+                                                  ),
+                                                ),
+                                              ),
                                             ),
-                                          ),
-                                        ),
+                                          );
+                                        },
                                       ),
-                                    );
-                                  },
-                                ),
                             ),
                           ),
                         ),
@@ -632,7 +761,7 @@ class _TicketListScreenState extends State<TicketListScreen>
       ),
     );
   }
-  
+
   // Fungsi untuk memformat sisa waktu
   String _formatTimeRemaining(Duration duration) {
     if (duration.inDays > 0) {
@@ -643,7 +772,7 @@ class _TicketListScreenState extends State<TicketListScreen>
       return '${duration.inMinutes} menit';
     }
   }
-  
+
   // Fungsi untuk mendapatkan warna status
   Color _getStatusColor(String status) {
     switch (status.toUpperCase()) {
@@ -667,7 +796,7 @@ class _TicketListScreenState extends State<TicketListScreen>
         return Colors.grey;
     }
   }
-  
+
   // Fungsi untuk mendapatkan teks status
   String _getStatusText(String status) {
     switch (status.toUpperCase()) {

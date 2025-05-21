@@ -8,6 +8,8 @@ const FerryList = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedFerry, setSelectedFerry] = useState(null);
+  const [alert, setAlert] = useState({ show: false, type: '', message: '' });
+  const [viewMode, setViewMode] = useState('table'); // table or grid
   const [pagination, setPagination] = useState({
     current_page: 1,
     last_page: 1,
@@ -23,7 +25,15 @@ const FerryList = () => {
 
   useEffect(() => {
     fetchFerries();
-  }, [searchParams]);
+    
+    // Auto-hide alert after 5 seconds
+    if (alert.show) {
+      const timer = setTimeout(() => {
+        setAlert({...alert, show: false});
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, alert.show]);
 
   const fetchFerries = async () => {
     setLoading(true);
@@ -50,6 +60,11 @@ const FerryList = () => {
     } catch (error) {
       console.error('Error fetching ferries:', error);
       setFerries([]);
+      setAlert({
+        show: true,
+        type: 'error',
+        message: 'Gagal memuat data kapal'
+      });
     } finally {
       setLoading(false);
     }
@@ -81,13 +96,26 @@ const FerryList = () => {
         fetchFerries();
         setShowDeleteModal(false);
         setSelectedFerry(null);
+        setAlert({
+          show: true,
+          type: 'success',
+          message: 'Kapal berhasil dihapus'
+        });
       } else {
-        alert(response.message || 'Gagal menghapus kapal');
+        setAlert({
+          show: true,
+          type: 'error',
+          message: response.message || 'Gagal menghapus kapal'
+        });
       }
     } catch (error) {
       console.error('Error deleting ferry:', error);
       const errorMessage = error.response?.data?.message || 'Terjadi kesalahan saat menghapus kapal';
-      alert(errorMessage);
+      setAlert({
+        show: true,
+        type: 'error',
+        message: errorMessage
+      });
     }
   };
 
@@ -97,351 +125,634 @@ const FerryList = () => {
     setSearchParams(searchParams);
   };
 
-
   const getFirstItem = () => ((pagination.current_page - 1) * pagination.per_page) + 1;
   const getLastItem = () => Math.min(pagination.current_page * pagination.per_page, pagination.total);
 
+  // Status badge configuration
+  const getStatusConfig = (status) => {
+    switch(status) {
+      case 'ACTIVE':
+        return {
+          bg: 'bg-emerald-100',
+          text: 'text-emerald-800',
+          icon: 'fa-check-circle',
+          label: 'Aktif',
+          border: 'border-emerald-200',
+          indicator: 'bg-emerald-500'
+        };
+      case 'MAINTENANCE':
+        return {
+          bg: 'bg-amber-100',
+          text: 'text-amber-800',
+          icon: 'fa-tools',
+          label: 'Perawatan',
+          border: 'border-amber-200',
+          indicator: 'bg-amber-500'
+        };
+      default:
+        return {
+          bg: 'bg-gray-100',
+          text: 'text-gray-800',
+          icon: 'fa-ban',
+          label: 'Tidak Aktif',
+          border: 'border-gray-200',
+          indicator: 'bg-gray-500'
+        };
+    }
+  };
+
   return (
-    <div className="container px-4 py-6 mx-auto">
-      <div className="flex flex-col md:flex-row items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Manajemen Kapal</h1>
-        <Link to="/admin/ferries/create" className="mt-3 md:mt-0 flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-md">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+    <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+      {/* Modern Header */}
+      <div className="bg-gradient-to-br from-blue-800 via-blue-600 to-blue-500 p-8 text-white relative">
+        <div className="absolute inset-0 opacity-20">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" className="w-full h-full">
+            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
+                  fill="#fff" opacity="0.2" />
+            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
+                  fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
           </svg>
-          Tambah Kapal
-        </Link>
-      </div>
-
-      {/* Form Pencarian */}
-      <div className="bg-white rounded-lg shadow-lg mb-6 overflow-hidden">
-        <div className="border-b border-gray-200 bg-gray-50 px-6 py-3">
-          <h2 className="text-lg font-semibold text-blue-600">Filter Kapal</h2>
-        </div>
-        <div className="p-6">
-          <form onSubmit={handleSearch}>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Nama Kapal</label>
-                <input 
-                  type="text" 
-                  id="name" 
-                  name="name" 
-                  defaultValue={name}
-                  className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label htmlFor="registration_number" className="block text-sm font-medium text-gray-700 mb-1">Nomor Registrasi</label>
-                <input 
-                  type="text" 
-                  id="registration_number" 
-                  name="registration_number" 
-                  defaultValue={registration_number}
-                  className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select 
-                  id="status" 
-                  name="status"
-                  defaultValue={status}
-                  className="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Semua Status</option>
-                  <option value="ACTIVE">Aktif</option>
-                  <option value="MAINTENANCE">Perawatan</option>
-                  <option value="INACTIVE">Tidak Aktif</option>
-                </select>
-              </div>
-            </div>
-            <div className="mt-6 flex items-center space-x-3">
-              <button type="submit" className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md shadow-sm transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                Cari
-              </button>
-              {(name || registration_number || status) && (
-                <button type="button" onClick={handleReset} className="inline-flex items-center px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md shadow-sm transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Reset
-                </button>
-              )}
-            </div>
-          </form>
-        </div>
-      </div>
-
-      {/* Tabel Kapal */}
-      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-        <div className="border-b border-gray-200 bg-gray-50 px-6 py-3">
-          <h2 className="text-lg font-semibold text-blue-600">Daftar Kapal</h2>
         </div>
         
-        {/* Results Counter */}
-        <div className="px-6 py-3 border-b border-gray-200">
+        <div className="relative z-10">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+            <div className="flex items-start">
+              <div className="bg-white/20 backdrop-blur-sm p-3 rounded-lg mr-4">
+                <i className="fas fa-ship text-2xl"></i>
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold">Manajemen Kapal</h1>
+                <p className="mt-1 text-blue-100">Kelola seluruh armada kapal dalam sistem</p>
+              </div>
+            </div>
+            
+            <div>
+              <Link to="/admin/ferries/create"
+                className="inline-flex items-center px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-white/20 shadow-sm">
+                <i className="fas fa-plus mr-2"></i> Tambah Kapal Baru
+              </Link>
+            </div>
+          </div>
+          
+          {/* Quick Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+              <p className="text-blue-100 text-sm">Total Kapal</p>
+              <div className="flex items-center mt-1">
+                <i className="fas fa-ship mr-2 text-blue-100"></i>
+                <span className="text-2xl font-bold">{pagination.total}</span>
+              </div>
+            </div>
+            
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+              <p className="text-blue-100 text-sm">Kapal Aktif</p>
+              <div className="flex items-center mt-1">
+                <i className="fas fa-check-circle mr-2 text-blue-100"></i>
+                <span className="text-2xl font-bold">
+                  {ferries.filter(ferry => ferry.status === 'ACTIVE').length}
+                </span>
+              </div>
+            </div>
+            
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+              <p className="text-blue-100 text-sm">Dalam Perawatan</p>
+              <div className="flex items-center mt-1">
+                <i className="fas fa-tools mr-2 text-blue-100"></i>
+                <span className="text-2xl font-bold">
+                  {ferries.filter(ferry => ferry.status === 'MAINTENANCE').length}
+                </span>
+              </div>
+            </div>
+            
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+              <p className="text-blue-100 text-sm">Tidak Aktif</p>
+              <div className="flex items-center mt-1">
+                <i className="fas fa-ban mr-2 text-blue-100"></i>
+                <span className="text-2xl font-bold">
+                  {ferries.filter(ferry => ferry.status === 'INACTIVE').length}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-8">
+        {/* Alert Messages with modern styling */}
+        {alert.show && (
+          <div className={`mb-6 rounded-lg shadow-lg overflow-hidden animate-slideIn`}>
+            <div className={`${alert.type === 'success' ? 'bg-emerald-500' : 'bg-red-500'} px-4 py-2 text-white flex items-center justify-between`}>
+              <div className="flex items-center">
+                <i className={`fas ${alert.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-2`}></i>
+                <span className="font-medium">{alert.type === 'success' ? 'Sukses' : 'Error'}</span>
+              </div>
+              <button onClick={() => setAlert({...alert, show: false})} className="text-white/80 hover:text-white">
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className={`${alert.type === 'success' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-red-50 border-red-100 text-red-700'} px-4 py-3 border-t`}>
+              {alert.message}
+            </div>
+          </div>
+        )}
+
+        {/* Modern Filter Card */}
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 mb-8 overflow-hidden hover:shadow-lg transition-shadow duration-300">
+          <div className="bg-gray-50 px-6 py-4 border-b border-gray-100">
+            <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+              <i className="fas fa-filter text-blue-500 mr-2"></i>
+              Filter & Pencarian
+            </h2>
+          </div>
+          
+          <div className="p-6 bg-white">
+            <form onSubmit={handleSearch}>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Nama Kapal</label>
+                  <div className="relative rounded-md shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <i className="fas fa-ship text-gray-400"></i>
+                    </div>
+                    <input
+                      type="text"
+                      id="name"
+                      name="name"
+                      defaultValue={name}
+                      placeholder="Cari nama kapal..."
+                      className="block w-full pl-10 pr-3 py-2.5 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="registration_number" className="block text-sm font-medium text-gray-700 mb-1">Nomor Registrasi</label>
+                  <div className="relative rounded-md shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <i className="fas fa-id-card text-gray-400"></i>
+                    </div>
+                    <input
+                      type="text"
+                      id="registration_number"
+                      name="registration_number"
+                      defaultValue={registration_number}
+                      placeholder="Nomor registrasi..."
+                      className="block w-full pl-10 pr-3 py-2.5 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <div className="relative rounded-md shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <i className="fas fa-toggle-on text-gray-400"></i>
+                    </div>
+                    <select
+                      id="status"
+                      name="status"
+                      defaultValue={status}
+                      className="block w-full pl-10 pr-3 py-2.5 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    >
+                      <option value="">Semua Status</option>
+                      <option value="ACTIVE">Aktif</option>
+                      <option value="MAINTENANCE">Perawatan</option>
+                      <option value="INACTIVE">Tidak Aktif</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end space-x-3">
+                {(name || registration_number || status) && (
+                  <button
+                    onClick={handleReset}
+                    type="button"
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+                  >
+                    <i className="fas fa-times mr-2"></i> Reset
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                >
+                  <i className="fas fa-search mr-2"></i> Cari
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        {/* View Toggle & Result Count */}
+        <div className="flex justify-between items-center mb-6">
           <p className="text-sm text-gray-600">
-            Menampilkan <span className="font-medium">{ferries.length}</span> dari
+            Menampilkan <span className="font-medium">{getFirstItem()}</span> - 
+            <span className="font-medium"> {getLastItem()}</span> dari 
             <span className="font-medium"> {pagination.total}</span> kapal
           </p>
+          
+          <div className="flex items-center space-x-2">
+            <div className="p-1 bg-gray-100 rounded-lg flex">
+              <button 
+                onClick={() => setViewMode('table')}
+                className={`px-3 py-1 rounded ${viewMode === 'table' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-800'}`}
+              >
+                <i className="fas fa-list"></i>
+              </button>
+              <button 
+                onClick={() => setViewMode('grid')}
+                className={`px-3 py-1 rounded ${viewMode === 'grid' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-800'}`}
+              >
+                <i className="fas fa-th-large"></i>
+              </button>
+            </div>
+          </div>
         </div>
-        
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Foto</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. Registrasi</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kapasitas Penumpang</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kapasitas Kendaraan</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tahun Pembuatan</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {loading ? (
-                <tr>
-                  <td colSpan="9" className="px-6 py-10 text-center text-gray-500">
-                    <div className="flex justify-center items-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                      <span className="ml-2">Loading...</span>
-                    </div>
-                  </td>
-                </tr>
-              ) : ferries.length === 0 ? (
-                <tr>
-                  <td colSpan="9" className="px-6 py-10 text-center text-gray-500">
-                    <div className="flex flex-col items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                      </svg>
-                      <p>Tidak ada data kapal</p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                ferries.map((ferry, index) => (
-                  <tr key={ferry.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {getFirstItem() + index}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      {ferry.image ? (
-                        <img 
-                          src={adminFerryService.getImageUrl(ferry.image)} 
-                          alt={ferry.name} 
-                          className="h-10 w-10 rounded-full object-cover mx-auto" 
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = '/default-ferry-image.png';
-                          }}
-                        />
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-300 mx-auto" viewBox="0 0 20 20" fill="currentColor">
-                          <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-                        </svg>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{ferry.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{ferry.registration_number}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{ferry.capacity_passenger} orang</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="text-xs space-y-1">
-                        <div>Motor: <span className="font-medium">{ferry.capacity_vehicle_motorcycle}</span></div>
-                        <div>Mobil: <span className="font-medium">{ferry.capacity_vehicle_car}</span></div>
-                        <div>Bus: <span className="font-medium">{ferry.capacity_vehicle_bus}</span></div>
-                        <div>Truk: <span className="font-medium">{ferry.capacity_vehicle_truck}</span></div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {ferry.status === 'ACTIVE' && (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Aktif</span>
-                      )}
-                      {ferry.status === 'MAINTENANCE' && (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">Perawatan</span>
-                      )}
-                      {ferry.status === 'INACTIVE' && (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">Tidak Aktif</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{ferry.year_built || 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
-                        <Link to={`/admin/ferries/${ferry.id}`} className="inline-flex items-center px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded shadow-sm transition-colors">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                          Detail
-                        </Link>
-                        <Link to={`/admin/ferries/${ferry.id}/edit`} className="inline-flex items-center px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded shadow-sm transition-colors">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                          Edit
-                        </Link>
-                        <button 
-                          onClick={() => { setSelectedFerry(ferry); setShowDeleteModal(true); }}
-                          className="inline-flex items-center px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded shadow-sm transition-colors"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                          Hapus
-                        </button>
-                      </div>
-                    </td>
+
+        {/* Loading State */}
+        {loading && (
+          <div className="bg-white rounded-xl border border-gray-100 shadow-md p-8 text-center">
+            <div className="inline-block relative">
+              <div className="h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-500 animate-spin"></div>
+              <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-200 animate-spin" style={{animationDirection: 'reverse', animationDuration: '1.5s'}}></div>
+            </div>
+            <p className="mt-4 text-gray-600">Memuat data kapal...</p>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && ferries.length === 0 && (
+          <div className="bg-white rounded-xl border border-gray-100 shadow-md p-12 text-center">
+            <div className="bg-gray-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <i className="fas fa-ship text-gray-400 text-4xl"></i>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">Belum Ada Data Kapal</h3>
+            <p className="text-gray-600 mb-6">Belum ada kapal yang ditambahkan atau sesuai dengan filter yang Anda pilih</p>
+            <Link to="/admin/ferries/create" className="inline-flex items-center px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-sm">
+              <i className="fas fa-plus mr-2"></i> Tambah Kapal Baru
+            </Link>
+          </div>
+        )}
+
+        {/* Table View */}
+        {!loading && ferries.length > 0 && viewMode === 'table' && (
+          <div className="bg-white rounded-xl border border-gray-100 shadow-md overflow-hidden mb-6 hover:shadow-lg transition-shadow duration-300">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kapal</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. Registrasi</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kapasitas</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tahun</th>
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        
-        {/* Pagination */}
-        {pagination.total > 0 && (
-          <div className="px-6 py-4 border-t border-gray-200">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-700">
-                Menampilkan <span className="font-medium">{getFirstItem()}</span> - 
-                <span className="font-medium"> {getLastItem()}</span> dari 
-                <span className="font-medium"> {pagination.total}</span> hasil
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {ferries.map((ferry, index) => {
+                    const statusConfig = getStatusConfig(ferry.status);
+                    return (
+                      <tr key={ferry.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {getFirstItem() + index}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            {ferry.image ? (
+                              <div className="flex-shrink-0 h-10 w-10 relative">
+                                <img 
+                                  src={adminFerryService.getImageUrl(ferry.image)} 
+                                  alt={ferry.name} 
+                                  className="h-10 w-10 rounded-lg object-cover shadow-sm" 
+                                  onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src = '/default-ferry-image.png';
+                                  }}
+                                />
+                              </div>
+                            ) : (
+                              <div className="flex-shrink-0 h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
+                                <i className="fas fa-ship"></i>
+                              </div>
+                            )}
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">{ferry.name}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <span className="bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md text-xs font-medium">
+                              {ferry.registration_number}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 flex items-center">
+                            <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-md text-xs mr-2 flex items-center">
+                              <i className="fas fa-users mr-1 text-blue-500"></i> {ferry.capacity_passenger}
+                            </span>
+                            <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md text-xs flex items-center">
+                              <i className="fas fa-car-side mr-1 text-emerald-500"></i> {ferry.capacity_vehicle_car + ferry.capacity_vehicle_motorcycle}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${statusConfig.bg} ${statusConfig.text} border ${statusConfig.border}`}>
+                            <span className={`w-1.5 h-1.5 ${statusConfig.indicator} rounded-full mr-1.5 ${ferry.status === 'ACTIVE' ? 'animate-pulse' : ''}`}></span>
+                            {statusConfig.label}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {ferry.year_built || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex justify-end space-x-2">
+                            <Link to={`/admin/ferries/${ferry.id}`}
+                              className="btn-icon bg-blue-50 hover:bg-blue-100 text-blue-600 p-2 rounded-lg transition-colors"
+                              title="Detail">
+                              <i className="fas fa-eye"></i>
+                            </Link>
+                            <Link to={`/admin/ferries/${ferry.id}/edit`}
+                              className="btn-icon bg-amber-50 hover:bg-amber-100 text-amber-600 p-2 rounded-lg transition-colors"
+                              title="Edit">
+                              <i className="fas fa-edit"></i>
+                            </Link>
+                            <button
+                              onClick={() => { setSelectedFerry(ferry); setShowDeleteModal(true); }}
+                              className="btn-icon bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded-lg transition-colors"
+                              title="Hapus"
+                            >
+                              <i className="fas fa-trash"></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Grid View */}
+        {!loading && ferries.length > 0 && viewMode === 'grid' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+            {ferries.map(ferry => {
+              const statusConfig = getStatusConfig(ferry.status);
+              return (
+                <div key={ferry.id} className="bg-white rounded-xl border border-gray-100 shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+                  <div className="h-32 bg-gradient-to-r from-blue-500 to-blue-600 relative">
+                    {ferry.image ? (
+                      <img 
+                        src={adminFerryService.getImageUrl(ferry.image)} 
+                        alt={ferry.name} 
+                        className="w-full h-full object-cover opacity-75" 
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = '/default-ferry-image.png';
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <i className="fas fa-ship text-white text-5xl opacity-25"></i>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/60"></div>
+                    <div className="absolute bottom-0 left-0 p-4 text-white">
+                      <h3 className="text-xl font-bold">{ferry.name}</h3>
+                      <p className="text-sm text-white/80">{ferry.registration_number}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="p-4">
+                    <div className="flex justify-between items-center mb-4">
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${statusConfig.bg} ${statusConfig.text} border ${statusConfig.border}`}>
+                        <span className={`w-1.5 h-1.5 ${statusConfig.indicator} rounded-full mr-1.5 ${ferry.status === 'ACTIVE' ? 'animate-pulse' : ''}`}></span>
+                        {statusConfig.label}
+                      </span>
+                      
+                      {ferry.year_built && (
+                        <span className="text-sm text-gray-600">
+                          <i className="fas fa-calendar-alt mr-1"></i> {ferry.year_built}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2 mb-4">
+                      <div className="bg-blue-50 p-2 rounded-lg text-center">
+                        <p className="text-xs text-blue-600 mb-1">Penumpang</p>
+                        <div className="flex items-center justify-center">
+                          <i className="fas fa-users text-blue-400 mr-1"></i>
+                          <span className="text-lg font-semibold text-blue-700">{ferry.capacity_passenger}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-emerald-50 p-2 rounded-lg text-center">
+                        <p className="text-xs text-emerald-600 mb-1">Kendaraan</p>
+                        <div className="flex items-center justify-center">
+                          <i className="fas fa-car-side text-emerald-400 mr-1"></i>
+                          <span className="text-lg font-semibold text-emerald-700">
+                            {ferry.capacity_vehicle_car + ferry.capacity_vehicle_motorcycle}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-between border-t border-gray-100 pt-4">
+                      <Link to={`/admin/ferries/${ferry.id}`} className="btn-icon bg-blue-50 hover:bg-blue-100 text-blue-600 p-2 rounded-lg transition-colors">
+                        <i className="fas fa-eye"></i>
+                      </Link>
+                      <Link to={`/admin/ferries/${ferry.id}/edit`} className="btn-icon bg-amber-50 hover:bg-amber-100 text-amber-600 p-2 rounded-lg transition-colors">
+                        <i className="fas fa-edit"></i>
+                      </Link>
+                      <button
+                        onClick={() => { setSelectedFerry(ferry); setShowDeleteModal(true); }}
+                        className="btn-icon bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded-lg transition-colors"
+                      >
+                        <i className="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Modern Pagination */}
+        {!loading && pagination.total > 0 && (
+          <div className="flex flex-col md:flex-row justify-between items-center bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+            <div className="text-sm text-gray-600 mb-4 md:mb-0">
+              Menampilkan <span className="font-medium">{getFirstItem()}</span> - 
+              <span className="font-medium"> {getLastItem()}</span> dari 
+              <span className="font-medium"> {pagination.total}</span> hasil
+            </div>
+            <div className="flex space-x-1">
+              <button 
+                onClick={() => handlePageChange(1)}
+                disabled={pagination.current_page === 1}
+                className="px-3 py-1 rounded-md bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+              >
+                <i className="fas fa-angle-double-left"></i>
+              </button>
+              <button 
+                onClick={() => handlePageChange(pagination.current_page - 1)}
+                disabled={pagination.current_page === 1}
+                className="px-3 py-1 rounded-md bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+              >
+                <i className="fas fa-angle-left"></i>
+              </button>
+              
+              {/* Page numbers */}
+              <div className="flex space-x-1">
+                {Array.from({ length: Math.min(5, pagination.last_page) }, (_, i) => {
+                  let pageNum;
+                  if (pagination.last_page <= 5) {
+                    // Show all pages if 5 or fewer
+                    pageNum = i + 1;
+                  } else if (pagination.current_page <= 3) {
+                    // Near the start
+                    pageNum = i + 1;
+                  } else if (pagination.current_page >= pagination.last_page - 2) {
+                    // Near the end
+                    pageNum = pagination.last_page - 4 + i;
+                  } else {
+                    // Middle cases
+                    pageNum = pagination.current_page - 2 + i;
+                  }
+                  
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`w-8 h-8 flex items-center justify-center rounded-md text-sm transition-colors shadow-sm 
+                        ${pagination.current_page === pageNum ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
               </div>
-              <div className="flex space-x-2">
-                <button 
-                  onClick={() => handlePageChange(pagination.current_page - 1)}
-                  disabled={pagination.current_page === 1}
-                  className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Previous
-                </button>
-                
-                {/* Pagination numbers */}
-                {pagination.last_page <= 7 ? (
-                  [...Array(pagination.last_page)].map((_, i) => (
-                    <button
-                      key={i + 1}
-                      onClick={() => handlePageChange(i + 1)}
-                      className={`px-3 py-1 rounded transition-colors ${
-                        pagination.current_page === i + 1 
-                          ? 'bg-blue-600 text-white' 
-                          : 'bg-gray-200 hover:bg-gray-300'
-                      }`}
-                    >
-                      {i + 1}
-                    </button>
-                  ))
-                ) : (
-                  <>
-                    <button
-                      onClick={() => handlePageChange(1)}
-                      className={`px-3 py-1 rounded transition-colors ${
-                        pagination.current_page === 1 
-                          ? 'bg-blue-600 text-white' 
-                          : 'bg-gray-200 hover:bg-gray-300'
-                      }`}
-                    >
-                      1
-                    </button>
-
-                    {pagination.current_page > 3 && <span className="px-2">...</span>}
-
-                    {[...Array(3)].map((_, i) => {
-                      const page = pagination.current_page - 1 + i;
-                      if (page > 1 && page < pagination.last_page) {
-                        return (
-                          <button
-                            key={page}
-                            onClick={() => handlePageChange(page)}
-                            className={`px-3 py-1 rounded transition-colors ${
-                              pagination.current_page === page 
-                                ? 'bg-blue-600 text-white' 
-                                : 'bg-gray-200 hover:bg-gray-300'
-                            }`}
-                          >
-                            {page}
-                          </button>
-                        );
-                      }
-                      return null;
-                    })}
-
-                    {pagination.current_page < pagination.last_page - 2 && <span className="px-2">...</span>}
-
-                    <button
-                      onClick={() => handlePageChange(pagination.last_page)}
-                      className={`px-3 py-1 rounded transition-colors ${
-                        pagination.current_page === pagination.last_page 
-                          ? 'bg-blue-600 text-white' 
-                          : 'bg-gray-200 hover:bg-gray-300'
-                      }`}
-                    >
-                      {pagination.last_page}
-                    </button>
-                  </>
-                )}
-                
-                <button 
-                  onClick={() => handlePageChange(pagination.current_page + 1)}
-                  disabled={pagination.current_page === pagination.last_page}
-                  className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Next
-                </button>
-              </div>
+              
+              <button 
+                onClick={() => handlePageChange(pagination.current_page + 1)}
+                disabled={pagination.current_page === pagination.last_page}
+                className="px-3 py-1 rounded-md bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+              >
+                <i className="fas fa-angle-right"></i>
+              </button>
+              <button 
+                onClick={() => handlePageChange(pagination.last_page)}
+                disabled={pagination.current_page === pagination.last_page}
+                className="px-3 py-1 rounded-md bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+              >
+                <i className="fas fa-angle-double-right"></i>
+              </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Delete Modal */}
+      {/* Modern Delete Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all animate-modal-in">
             <div className="p-6">
-              <div className="text-center">
-                <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
+              <div className="text-center mb-5">
+                <div className="w-20 h-20 bg-red-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+                  <i className="fas fa-exclamation-triangle text-red-500 text-4xl"></i>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-1">Konfirmasi Hapus</h3>
-                <p className="text-gray-500">Apakah Anda yakin ingin menghapus kapal:</p>
-                <p className="font-semibold text-gray-800 mt-2 mb-4">
-                  {selectedFerry?.name} ({selectedFerry?.registration_number})
-                </p>
+                <h3 className="text-xl font-bold text-gray-900">Konfirmasi Hapus</h3>
+                <p className="text-gray-600 mt-2">Apakah Anda yakin ingin menghapus kapal:</p>
+                <div className="bg-gray-50 rounded-lg p-3 mt-3 border border-gray-200">
+                  <p className="font-semibold text-lg text-gray-800">{selectedFerry?.name}</p>
+                  <p className="text-gray-600">{selectedFerry?.registration_number}</p>
+                </div>
               </div>
-              <div className="mt-6 grid grid-cols-2 gap-3">
+              
+              <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-r mb-6">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <i className="fas fa-info-circle"></i>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm">
+                      Kapal dengan jadwal aktif tidak dapat dihapus. Pastikan tidak ada jadwal terkait untuk melanjutkan.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex space-x-3">
                 <button 
                   onClick={() => setShowDeleteModal(false)}
-                  className="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg bg-white text-gray-700 hover:bg-gray-50"
+                  className="w-full py-3 px-4 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-gray-200 transition-colors"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
                   Batal
                 </button>
                 <button 
                   onClick={handleDelete}
-                  className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700"
+                  className="w-full py-3 px-4 bg-red-500 rounded-lg text-white font-medium hover:bg-red-600 focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  Hapus
+                  <i className="fas fa-trash mr-2"></i> Hapus Kapal
                 </button>
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* CSS for animations and button styling */}
+      <style jsx>{`
+        .btn-icon {
+          width: 36px;
+          height: 36px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 8px;
+          transition: all 0.2s ease;
+        }
+        
+        .btn-icon:hover {
+          transform: translateY(-2px);
+        }
+        
+        @keyframes modal-in {
+          0% {
+            opacity: 0;
+            transform: scale(0.95) translateY(10px);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
+        
+        .animate-modal-in {
+          animation: modal-in 0.3s ease-out forwards;
+        }
+        
+        @keyframes slideIn {
+          0% {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-slideIn {
+          animation: slideIn 0.4s ease-out forwards;
+        }
+      `}</style>
     </div>
   );
 };

@@ -25,9 +25,14 @@ class PaymentPollingService {
       {};
 
   // Configuration
-  final Duration _initialPollingInterval = const Duration(seconds: 5);
-  final Duration _maxPollingInterval = const Duration(minutes: 5);
-  final int _maxRetries = 20; // Maximum polling attempts per booking
+  // Konfigurasi polling dengan interval lebih cepat
+  final Duration _initialPollingInterval = const Duration(
+    seconds: 3,
+  ); // Lebih cepat dari sebelumnya
+  final Duration _maxPollingInterval = const Duration(
+    seconds: 30,
+  ); // Lebih cepat dari sebelumnya
+  final int _maxRetries = 30; // Lebih banyak retry karena waktu cepat habis
 
   /// Mulai polling untuk kode booking tertentu
   ///

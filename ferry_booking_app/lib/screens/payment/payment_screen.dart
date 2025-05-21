@@ -303,31 +303,30 @@ class _PaymentScreenState extends State<PaymentScreen>
     // Tampilkan dialog konfirmasi
     bool? shouldNavigateHome = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Konfirmasi'),
-        content: const Text('Pembayaran sedang diproses. Apakah Anda ingin kembali ke beranda?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Batal'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Konfirmasi'),
+            content: const Text(
+              'Pembayaran sedang diproses. Apakah Anda ingin kembali ke beranda?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Batal'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Ya, ke Beranda'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Ya, ke Beranda'),
-          ),
-        ],
-      ),
     );
-    
+
     // Jika user memilih kembali ke beranda
     if (shouldNavigateHome == true) {
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        '/home',
-        (route) => false,
-      );
+      Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
     }
-    
+
     // Selalu return false untuk mencegah back normal
     return false;
   }
@@ -375,10 +374,10 @@ class _PaymentScreenState extends State<PaymentScreen>
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
-                  onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(
-                    '/home',
-                    (route) => false,
-                  ),
+                  onPressed:
+                      () => Navigator.of(
+                        context,
+                      ).pushNamedAndRemoveUntil('/home', (route) => false),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryColor,
                     foregroundColor: Colors.white,
@@ -413,22 +412,25 @@ class _PaymentScreenState extends State<PaymentScreen>
           // Tampilkan dialog konfirmasi
           bool? shouldNavigateHome = await showDialog<bool>(
             context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('Konfirmasi'),
-              content: const Text('Pembayaran sedang diproses. Apakah Anda ingin kembali ke beranda?'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('Batal'),
+            builder:
+                (context) => AlertDialog(
+                  title: const Text('Konfirmasi'),
+                  content: const Text(
+                    'Pembayaran sedang diproses. Apakah Anda ingin kembali ke beranda?',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: const Text('Batal'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      child: const Text('Ya, ke Beranda'),
+                    ),
+                  ],
                 ),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text('Ya, ke Beranda'),
-                ),
-              ],
-            ),
           );
-          
+
           // Jika user memilih kembali ke beranda
           if (shouldNavigateHome == true) {
             Navigator.pushNamedAndRemoveUntil(
@@ -449,7 +451,8 @@ class _PaymentScreenState extends State<PaymentScreen>
             style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20),
           ),
           centerTitle: true,
-          automaticallyImplyLeading: false, // Mencegah back button muncul otomatis
+          automaticallyImplyLeading:
+              false, // Mencegah back button muncul otomatis
           leading: Container(), // Tetap container kosong
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(8),
@@ -469,54 +472,55 @@ class _PaymentScreenState extends State<PaymentScreen>
             ),
           ),
         ),
-        body: _isLoading
-            ? _buildLoadingState(bankColor)
-            : RefreshIndicator(
-                onRefresh: _refreshPaymentStatus,
-                color: bankColor,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.zero,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header dengan gradient dan informasi metode pembayaran
-                      _buildPaymentHeader(
-                        booking,
-                        payment,
-                        bankColor,
-                        currencyFormat,
-                      ),
-
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Ringkasan Booking
-                            _buildBookingSummary(booking, payment),
-
-                            const SizedBox(height: 24),
-
-                            // Informasi Pembayaran
-                            _buildPaymentInfo(payment, bankColor),
-
-                            const SizedBox(height: 24),
-
-                            // Instruksi Pembayaran
-                            _buildPaymentInstructionsCard(bankColor),
-
-                            const SizedBox(height: 32),
-
-                            // Tombol Refresh Status
-                            _buildActionButtons(bankColor),
-                          ],
+        body:
+            _isLoading
+                ? _buildLoadingState(bankColor)
+                : RefreshIndicator(
+                  onRefresh: _refreshPaymentStatus,
+                  color: bankColor,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.zero,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header dengan gradient dan informasi metode pembayaran
+                        _buildPaymentHeader(
+                          booking,
+                          payment,
+                          bankColor,
+                          currencyFormat,
                         ),
-                      ),
-                    ],
+
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Ringkasan Booking
+                              _buildBookingSummary(booking, payment),
+
+                              const SizedBox(height: 24),
+
+                              // Informasi Pembayaran
+                              _buildPaymentInfo(payment, bankColor),
+
+                              const SizedBox(height: 24),
+
+                              // Instruksi Pembayaran
+                              _buildPaymentInstructionsCard(bankColor),
+
+                              const SizedBox(height: 32),
+
+                              // Tombol Refresh Status
+                              _buildActionButtons(bankColor),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
       ),
     );
   }
@@ -751,26 +755,28 @@ class _PaymentScreenState extends State<PaymentScreen>
 
   Widget _buildBookingSummary(dynamic booking, dynamic payment) {
     final expiryDate =
-        payment?.expiryTime ?? DateTime.now().add(const Duration(hours: 24));
+        payment?.expiryTime ?? DateTime.now().add(const Duration(minutes: 5));
     final now = DateTime.now();
     final remaining = expiryDate.difference(now);
 
-    // Format the remaining time
+    // Format the remaining time (lebih fokus pada menit dan detik karena hanya 5 menit)
     String remainingTime;
     if (remaining.isNegative) {
       remainingTime = 'Pembayaran kedaluwarsa';
-    } else if (remaining.inHours >= 24) {
-      remainingTime = '${remaining.inDays} hari ${remaining.inHours % 24} jam';
+    } else if (remaining.inMinutes <= 0) {
+      remainingTime = '${remaining.inSeconds} detik';
     } else {
       remainingTime =
-          '${remaining.inHours} jam ${remaining.inMinutes % 60} menit';
+          '${remaining.inMinutes} menit ${remaining.inSeconds % 60} detik';
     }
 
-    // Get color based on remaining time
+    // Get color based on remaining time (lebih sensitif dengan skala waktu 5 menit)
     Color timeColor;
     if (remaining.isNegative) {
       timeColor = Colors.red;
-    } else if (remaining.inHours < 2) {
+    } else if (remaining.inMinutes < 1) {
+      timeColor = Colors.red;
+    } else if (remaining.inMinutes < 2) {
       timeColor = Colors.orange;
     } else {
       timeColor = Colors.green.shade700;
@@ -1414,5 +1420,101 @@ class _PaymentScreenState extends State<PaymentScreen>
         const SizedBox(height: 32),
       ],
     );
+  }
+
+  Widget _buildExpiryTimer(dynamic payment) {
+    if (payment?.expiryTime == null) return SizedBox.shrink();
+
+    return StreamBuilder<int>(
+      stream: Stream.periodic(
+        Duration(seconds: 1),
+        (i) => payment.expiryTime.difference(DateTime.now()).inSeconds,
+      ),
+      builder: (context, snapshot) {
+        final secondsRemaining = snapshot.data ?? 0;
+
+        if (secondsRemaining <= 0) {
+          // Jika waktu habis, tampilkan tombol untuk memulai ulang pembayaran
+          return ElevatedButton(
+            onPressed: () => _restartPayment(),
+            child: Text('Waktu Habis - Coba Lagi'),
+          );
+        }
+
+        // Format waktu tersisa (mm:ss)
+        final minutes = (secondsRemaining ~/ 60).toString().padLeft(2, '0');
+        final seconds = (secondsRemaining % 60).toString().padLeft(2, '0');
+
+        return Container(
+          padding: EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color:
+                secondsRemaining < 60
+                    ? Colors.red.shade100
+                    : Colors.amber.shade100,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.timer,
+                color:
+                    secondsRemaining < 60 ? Colors.red : Colors.amber.shade800,
+                size: 18,
+              ),
+              SizedBox(width: 4),
+              Text(
+                'Bayar dalam: $minutes:$seconds',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color:
+                      secondsRemaining < 60
+                          ? Colors.red
+                          : Colors.amber.shade800,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _restartPayment() async {
+    final bookingProvider = Provider.of<BookingProvider>(
+      context,
+      listen: false,
+    );
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Reset status pembayaran dan proses ulang
+      final success = await bookingProvider.processPayment(
+        _bookingCode!,
+        _paymentMethod!,
+        _paymentType!,
+      );
+
+      if (success) {
+        // Refresh UI dengan pembayaran baru
+        setState(() {
+          _isLoading = false;
+        });
+        // Optional: tampilkan pesan sukses
+      } else {
+        throw Exception(bookingProvider.errorMessage);
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal memproses ulang pembayaran: $e')),
+      );
+    }
   }
 }

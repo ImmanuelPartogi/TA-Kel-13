@@ -18,7 +18,7 @@ class Payment {
   final String updatedAt;
   final Map<String, dynamic>? rawData;
 
-  Payment({
+  Payment({ 
     required this.id,
     required this.bookingId,
     this.paymentCode,

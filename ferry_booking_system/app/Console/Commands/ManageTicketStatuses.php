@@ -65,7 +65,7 @@ class ManageTicketStatuses extends Command
             ->whereDate('bookings.departure_date', '<', Carbon::today())
             ->update([
                 'tickets.status' => 'EXPIRED',
-                'tickets.boarding_status' => 'EXPIRED'
+                'tickets.boarding_status' => 'MISSED'  // Diubah dari 'EXPIRED'
             ]);
 
         $this->info("   - {$pastTicketsCount} tiket tanggal sebelumnya diupdate menjadi EXPIRED");
@@ -96,7 +96,7 @@ class ManageTicketStatuses extends Command
 
                     if ($departureDateTime->isPast()) {
                         $ticket->status = 'EXPIRED';
-                        $ticket->boarding_status = 'EXPIRED';
+                        $ticket->boarding_status = 'MISSED';  // Diubah dari 'EXPIRED'
                         $ticket->save();
                         $todayTicketsCount++;
 
@@ -155,7 +155,7 @@ class ManageTicketStatuses extends Command
                         Ticket::where('booking_id', $booking->id)
                             ->update([
                                 'status' => 'EXPIRED',
-                                'boarding_status' => 'EXPIRED'
+                                'boarding_status' => 'MISSED'  // Diubah dari 'EXPIRED'
                             ]);
 
                         $expiredBookingsCount++;
@@ -192,7 +192,7 @@ class ManageTicketStatuses extends Command
             ->where('tickets.status', '!=', 'EXPIRED')
             ->update([
                 'tickets.status' => 'EXPIRED',
-                'tickets.boarding_status' => 'EXPIRED'
+                'tickets.boarding_status' => 'MISSED'  // Diubah dari 'EXPIRED'
             ]);
 
         $this->info("   Total {$expiredTicketsCount} tiket diupdate menjadi EXPIRED karena booking expired");
@@ -252,9 +252,9 @@ class ManageTicketStatuses extends Command
         $boardingExpiredCount = DB::table('tickets')
             ->where('status', 'EXPIRED')
             ->where('boarding_status', 'NOT_BOARDED')
-            ->update(['boarding_status' => 'EXPIRED']);
+            ->update(['boarding_status' => 'MISSED']);  // Diubah dari 'EXPIRED'
 
-        $this->info("   - {$boardingExpiredCount} tiket diupdate boarding status menjadi EXPIRED");
+        $this->info("   - {$boardingExpiredCount} tiket diupdate boarding status menjadi MISSED");
 
         // Update boarding status untuk tiket yang masih ACTIVE tapi jadwalnya sudah lewat
         $missedBoardingCount = DB::table('tickets')

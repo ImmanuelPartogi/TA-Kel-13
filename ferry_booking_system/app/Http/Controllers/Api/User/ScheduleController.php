@@ -192,7 +192,7 @@ class ScheduleController extends Controller
             $availableSchedules = $result->filter(function ($schedule) use ($currentTime, $date) {
                 // Periksa status jadwal
                 $status = $schedule->schedule_date_status;
-                $isAvailable = $status === 'ACTIVE';
+                $isAvailable = in_array($status, ['ACTIVE', 'AVAILABLE']); // tambahkan status valid lainnya
 
                 if (!$isAvailable) {
                     return false;
@@ -210,9 +210,9 @@ class ScheduleController extends Controller
                 $departureDateTime = Carbon::parse($date->format('Y-m-d') . ' ' . $departureTime, 'Asia/Jakarta');
 
                 // Untuk hari ini, filter berdasarkan waktu saat ini
-                if ($date->isToday()) {
+                if ($date->isToday() || $date->isPast()) {
                     $isAfterCurrentTime = $departureDateTime->isAfter($currentTime);
-                    return $isAfterCurrentTime;
+                    return $isAvailable && $isAfterCurrentTime;
                 }
 
                 // Untuk tanggal lain, jadwal tersedia

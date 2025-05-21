@@ -8,38 +8,36 @@ use Illuminate\Support\Facades\Log;
 
 class Kernel extends ConsoleKernel
 {
+    // File: app/Console/Kernel.php
+
     protected function schedule(Schedule $schedule)
     {
-        $schedule->command('tickets:update-expired')
+        // Command yang sudah ada
+        $schedule->command('tickets:manage-statuses')
             ->everyMinute()
             ->withoutOverlapping()
-            ->appendOutputTo(storage_path('logs/ticket-updates.log'));
+            ->appendOutputTo(storage_path('logs/ticket-status-management.log'));
 
-        $schedule->command('payments:check-pending')
+        $schedule->command('notifications:manage')
             ->everyMinute()
             ->withoutOverlapping()
-            ->appendOutputTo(storage_path('logs/payment-polling.log'));
+            ->appendOutputTo(storage_path('logs/notification-management.log'));
 
-        $schedule->command('schedules:update-expired')->everyMinute();
-        $schedule->command('schedules:update-expired-statuses')->everyMinute();
-
-        $schedule->command('payment:check-status')
+        $schedule->command('schedules:manage-statuses')
             ->everyMinute()
             ->withoutOverlapping()
-            ->appendOutputTo(storage_path('logs/payment-check.log'));
+            ->appendOutputTo(storage_path('logs/schedule-status-management.log'));
 
-        $schedule->command('notifications:send-boarding-reminders')
+        // Tambahkan command baru untuk payment expiry
+        $schedule->command('payments:check-expiry')
             ->everyMinute()
             ->withoutOverlapping()
-            ->appendOutputTo(storage_path('logs/notification-boarding.log'));
+            ->appendOutputTo(storage_path('logs/payment-expiry.log'));
 
-        // Tambahkan jadwal untuk pengiriman ulang notifikasi gagal
-        $schedule->command('notifications:resend-failed')
-            ->everyThirtyMinutes()
-            ->withoutOverlapping()
-            ->appendOutputTo(storage_path('logs/notification-retry.log'));
-
-        $schedule->command('bookings:sync-status')->everyMinute();
+        // Command lainnya
+        $schedule->command('notifications:manage --action=cleanup')
+            ->daily()
+            ->appendOutputTo(storage_path('logs/notification-cleanup.log'));
     }
 
     protected function commands()

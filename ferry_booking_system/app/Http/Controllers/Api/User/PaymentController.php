@@ -57,7 +57,7 @@ class PaymentController extends Controller
             // Gunakan pembayaran yang sudah ada atau buat baru
             if ($pendingPayment) {
                 $payment = $pendingPayment;
-                $payment->payment_method = $this->mapPaymentMethod($request->payment_method);
+                $payment->payment_method = $this->mapPaymentMethod($request->payment_method, $request->payment_type);
                 $payment->payment_channel = $request->payment_method;
                 $payment->save();
             } else {
@@ -66,22 +66,47 @@ class PaymentController extends Controller
                 $payment->booking_id = $booking->id;
                 $payment->amount = $booking->total_amount;
                 $payment->status = 'PENDING';
-                $payment->payment_method = $this->mapPaymentMethod($request->payment_method);
+                $payment->payment_method = $this->mapPaymentMethod($request->payment_method, $request->payment_type);
                 $payment->payment_channel = $request->payment_method;
-                $payment->expiry_date = now()->addHours(config('midtrans.expiry_duration', 24));
+
+                // Set expiry berdasarkan konfigurasi baru - 5 menit untuk semua metode
+                $payment->expiry_date = now()->addMinutes(5);
+
                 $payment->save();
             }
 
-            // Buat transaksi di Midtrans
-            $response = $this->midtransService->createTransaction($booking, [
+            // Buat transaksi di Midtrans dengan opsi tambahan jika ada
+            $additionalOptions = [];
+
+            // Opsi-opsi khusus per payment method
+            if ($request->has('va_number')) {
+                $additionalOptions['va_number'] = $request->va_number;
+            }
+
+            if ($request->has('sub_company_code')) {
+                $additionalOptions['sub_company_code'] = $request->sub_company_code;
+            }
+
+            if ($request->has('bill_key')) {
+                $additionalOptions['bill_key'] = $request->bill_key;
+            }
+
+            if ($request->has('acquirer')) {
+                $additionalOptions['acquirer'] = $request->acquirer;
+            }
+
+            // Gabungkan opsi dasar dengan opsi tambahan
+            $options = array_merge([
                 'payment_method' => $request->payment_method,
                 'payment_type' => $request->payment_type
-            ]);
+            ], $additionalOptions);
 
-            // PERBAIKAN: Jika respons null, buat transaksi fallback
+            // Buat transaksi di Midtrans
+            $response = $this->midtransService->createTransaction($booking, $options);
+
+            // Jika respons null, buat transaksi fallback
             if (!$response) {
                 // Gunakan metode fallback yang sudah diimplementasi di midtransService
-                // Ini memastikan pengguna tetap mendapatkan informasi pembayaran
                 $payment = Payment::where('booking_id', $booking->id)->latest()->first();
 
                 // Jika sudah ada info pembayaran dari fallback, gunakan itu
@@ -97,6 +122,7 @@ class PaymentController extends Controller
                         'virtual_account_number' => $payment->virtual_account_number,
                         'qr_code_url' => $payment->qr_code_url,
                         'deep_link_url' => $payment->deep_link_url,
+                        'expiry_date' => $payment->expiry_date->format('Y-m-d H:i:s'),
                         'is_fallback' => true
                     ];
 
@@ -116,10 +142,29 @@ class PaymentController extends Controller
             // Ekstrak detail pembayaran dari respons Midtrans
             $this->midtransService->setPaymentDetails($payment, $response);
 
-            $payment->payload = json_encode($response);
+            // Pastikan expiry date sesuai dengan konfigurasi 5 menit
+            if (!$payment->expiry_date) {
+                $payment->expiry_date = now()->addMinutes(5);
+            }
+
             $payment->save();
 
             DB::commit();
+
+            // Tambahkan URL simulator jika dalam mode sandbox
+            $simulatorUrl = null;
+            if (!config('midtrans.is_production')) {
+                $simulatorUrl = $this->midtransService->getSimulatorUrl($request->payment_method, $request->payment_type);
+            }
+
+            // Dapatkan instruksi pembayaran
+            $instructions = $this->midtransService->getPaymentInstructions($request->payment_method, $request->payment_type);
+
+            // Tambahkan info device-specific untuk e-wallet
+            $redirectInfo = null;
+            if ($request->payment_type == 'e_wallet' || $request->payment_type == 'qris') {
+                $redirectInfo = $this->midtransService->getEWalletRedirectUrl($payment, $request->header('User-Agent'));
+            }
 
             // Buat respons
             $responseData = [
@@ -127,9 +172,14 @@ class PaymentController extends Controller
                 'status' => $payment->status,
                 'payment_method' => $payment->payment_method,
                 'payment_channel' => $payment->payment_channel,
+                'transaction_id' => $payment->transaction_id,
                 'virtual_account_number' => $payment->virtual_account_number,
                 'qr_code_url' => $payment->qr_code_url,
                 'deep_link_url' => $payment->deep_link_url,
+                'expiry_date' => $payment->expiry_date->format('Y-m-d H:i:s'),
+                'redirect_info' => $redirectInfo,
+                'instructions' => $instructions,
+                'simulator_url' => $simulatorUrl
             ];
 
             return response()->json([
@@ -139,7 +189,6 @@ class PaymentController extends Controller
             ], 200);
         } catch (\Exception $e) {
             DB::rollBack();
-
             Log::error('Failed to create payment', [
                 'booking_code' => $bookingCode,
                 'error' => $e->getMessage(),
@@ -154,21 +203,21 @@ class PaymentController extends Controller
     }
 
     /**
-     * Perbaikan handler untuk notifikasi callback dari Midtrans
+     * Handler untuk notifikasi callback dari Midtrans
      */
     public function notification(Request $request)
     {
         $notification = $request->all();
-
         Log::info('Midtrans notification received', [
             'order_id' => $notification['order_id'] ?? 'unknown',
-            'transaction_status' => $notification['transaction_status'] ?? 'unknown'
+            'transaction_status' => $notification['transaction_status'] ?? 'unknown',
+            'payment_type' => $notification['payment_type'] ?? 'unknown'
         ]);
 
         // Log data lengkap untuk debugging (sesuaikan untuk production)
         Log::debug('Complete notification payload', $notification);
 
-        // PERBAIKAN: Dalam sandbox mode, kita bisa skip verifikasi untuk debugging
+        // Dalam sandbox mode, kita bisa skip verifikasi untuk debugging
         $isVerified = true;
         if (config('midtrans.is_production')) {
             $isVerified = $this->midtransService->verifyNotification($notification);
@@ -192,16 +241,13 @@ class PaymentController extends Controller
 
         // Proses notifikasi
         $orderId = $notification['order_id']; // Ini adalah booking_code
-
         try {
             // Cari booking dan payment
             $booking = Booking::where('booking_code', $orderId)->first();
-
             if (!$booking) {
                 Log::warning('Booking not found for notification', [
                     'order_id' => $orderId
                 ]);
-
                 return response()->json([
                     'success' => false,
                     'message' => 'Booking tidak ditemukan'
@@ -217,7 +263,6 @@ class PaymentController extends Controller
                     'order_id' => $orderId,
                     'booking_id' => $booking->id
                 ]);
-
                 return response()->json([
                     'success' => false,
                     'message' => 'Pembayaran tidak ditemukan'
@@ -285,6 +330,15 @@ class PaymentController extends Controller
         // Refresh payment dari database
         $payment = $payment->fresh();
 
+        // Tambahkan instruksi pembayaran
+        $instructions = $this->midtransService->getPaymentInstructions($payment->payment_channel, $this->getPaymentTypeByMethod($payment->payment_method));
+
+        // Tambahkan redirect info untuk e-wallet jika perlu
+        $redirectInfo = null;
+        if (in_array($payment->payment_method, ['E_WALLET', 'QRIS'])) {
+            $redirectInfo = $this->midtransService->getEWalletRedirectUrl($payment, $request->header('User-Agent'));
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Status pembayaran berhasil diambil',
@@ -299,7 +353,9 @@ class PaymentController extends Controller
                 'deep_link_url' => $payment->deep_link_url,
                 'payment_date' => $payment->payment_date,
                 'expiry_date' => $payment->expiry_date,
-                'booking_status' => $booking->status
+                'booking_status' => $booking->status,
+                'instructions' => $instructions,
+                'redirect_info' => $redirectInfo
             ]
         ], 200);
     }
@@ -307,18 +363,37 @@ class PaymentController extends Controller
     /**
      * Map nilai payment_method ke nilai enum yang valid
      */
-    protected function mapPaymentMethod($method)
+    protected function mapPaymentMethod($method, $type = 'virtual_account')
     {
         $methodMap = [
             'bca' => 'VIRTUAL_ACCOUNT',
             'bni' => 'VIRTUAL_ACCOUNT',
             'bri' => 'VIRTUAL_ACCOUNT',
             'mandiri' => 'VIRTUAL_ACCOUNT',
+            'permata' => 'VIRTUAL_ACCOUNT',
+            'cimb' => 'VIRTUAL_ACCOUNT',
             'gopay' => 'E_WALLET',
             'shopeepay' => 'E_WALLET',
         ];
 
+        if ($type == 'qris') {
+            return 'E_WALLET';
+        }
+
         return $methodMap[strtolower($method)] ?? 'VIRTUAL_ACCOUNT';
+    }
+
+    /**
+     * Mendapatkan payment_type dari payment_method
+     */
+    protected function getPaymentTypeByMethod($method)
+    {
+        $typeMap = [
+            'VIRTUAL_ACCOUNT' => 'virtual_account',
+            'E_WALLET' => 'e_wallet',
+        ];
+
+        return $typeMap[$method] ?? 'virtual_account';
     }
 
     /**
@@ -348,95 +423,6 @@ class PaymentController extends Controller
     }
 
     /**
-     * Endpoint untuk mengecek dan memperbarui status pembayaran secara manual
-     */
-    public function manualCheckStatus(Request $request, $bookingCode)
-    {
-        try {
-            Log::info('Manual payment status check requested', [
-                'booking_code' => $bookingCode,
-                'user_id' => $request->user()->id
-            ]);
-
-            $booking = Booking::where('booking_code', $bookingCode)
-                ->where('user_id', $request->user()->id)
-                ->firstOrFail();
-
-            $payment = Payment::where('booking_id', $booking->id)
-                ->latest()
-                ->first();
-
-            if (!$payment) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Pembayaran tidak ditemukan'
-                ], 404);
-            }
-
-            // Cek status langsung ke Midtrans
-            $statusResponse = $this->midtransService->getStatus($payment->transaction_id ?? $booking->booking_code);
-
-            if (!$statusResponse) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Gagal memeriksa status di Midtrans'
-                ], 500);
-            }
-
-            Log::info('Retrieved status from Midtrans', [
-                'booking_code' => $bookingCode,
-                'transaction_status' => $statusResponse['transaction_status'] ?? 'unknown'
-            ]);
-
-            // PENTING: Update status berdasarkan respons dari Midtrans
-            // Jika Settlement -> harus update booking juga menjadi CONFIRMED
-            if (
-                isset($statusResponse['transaction_status']) &&
-                ($statusResponse['transaction_status'] == 'settlement' ||
-                    $statusResponse['transaction_status'] == 'capture')
-            ) {
-
-                $payment->status = 'SUCCESS';
-                $payment->payment_date = isset($statusResponse['settlement_time'])
-                    ? date('Y-m-d H:i:s', strtotime($statusResponse['settlement_time']))
-                    : now();
-                $payment->save();
-
-                // Update booking status
-                if ($booking->status == 'PENDING') {
-                    $booking->status = 'CONFIRMED';
-                    $booking->save();
-
-                    Log::info('Booking status updated through manual check', [
-                        'booking_id' => $booking->id,
-                        'new_status' => 'CONFIRMED'
-                    ]);
-                }
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Status pembayaran berhasil diperiksa',
-                'data' => [
-                    'payment_status' => $payment->fresh()->status,
-                    'booking_status' => $booking->fresh()->status,
-                    'transaction_status' => $statusResponse['transaction_status'] ?? null
-                ]
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Error checking payment status manually', [
-                'booking_code' => $bookingCode,
-                'error' => $e->getMessage()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
      * Mendapatkan instruksi pembayaran
      */
     public function getInstructions(Request $request, $paymentType, $paymentMethod)
@@ -457,6 +443,9 @@ class PaymentController extends Controller
         ], 200);
     }
 
+    /**
+     * Refresh status pembayaran
+     */
     public function refreshStatus($bookingCode)
     {
         $midtransService = app(MidtransService::class);

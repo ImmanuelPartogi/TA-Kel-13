@@ -11,7 +11,7 @@ const ScheduleDates = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [dateType, setDateType] = useState('single');
-  
+
   const [formData, setFormData] = useState({
     date: '',
     end_date: '',
@@ -67,7 +67,7 @@ const ScheduleDates = () => {
   const handleEditDate = async (e) => {
     e.preventDefault();
     if (!selectedDate) return;
-    
+
     try {
       await adminScheduleService.put(`/admin-panel/schedules/${id}/dates/${selectedDate.id}`, {
         status: formData.status,
@@ -84,7 +84,7 @@ const ScheduleDates = () => {
 
   const handleDeleteDate = async (dateId) => {
     if (!window.confirm('Apakah Anda yakin ingin menghapus tanggal jadwal ini?')) return;
-    
+
     try {
       await adminScheduleService.delete(`/admin-panel/schedules/${id}/dates/${dateId}`);
       fetchScheduleData();
@@ -164,7 +164,16 @@ const ScheduleDates = () => {
 
                 <dt className="col-span-1 text-sm font-medium text-gray-500">Waktu:</dt>
                 <dd className="col-span-3 md:col-span-2 text-sm text-gray-900">
-                  {schedule.departure_time} - {schedule.arrival_time}
+                  {schedule.departure_time ? new Intl.DateTimeFormat('id-ID', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour24: true,
+                  }).format(new Date(schedule.departure_time)) : 'N/A'} -
+                  {schedule.arrival_time ? new Intl.DateTimeFormat('id-ID', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour24: true,
+                  }).format(new Date(schedule.arrival_time)) : 'N/A'}
                 </dd>
               </dl>
             </div>
@@ -206,7 +215,7 @@ const ScheduleDates = () => {
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="px-6 py-4 bg-blue-50 border-b border-gray-200 flex justify-between items-center">
           <h2 className="text-lg font-medium text-gray-800">Tanggal Jadwal</h2>
-          <button 
+          <button
             onClick={() => setShowAddModal(true)}
             className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -239,8 +248,8 @@ const ScheduleDates = () => {
                       <div className="flex items-center">
                         <span className="mr-2">{date.passenger_count} / {schedule.ferry.capacity_passenger}</span>
                         <div className="w-16 bg-gray-200 rounded-full h-2.5">
-                          <div 
-                            className="bg-blue-600 h-2.5 rounded-full" 
+                          <div
+                            className="bg-blue-600 h-2.5 rounded-full"
                             style={{ width: `${Math.min(100, (date.passenger_count / schedule.ferry.capacity_passenger) * 100)}%` }}
                           ></div>
                         </div>
@@ -311,14 +320,14 @@ const ScheduleDates = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex space-x-1 justify-end">
-                        <button 
+                        <button
                           onClick={() => openEditModal(date)}
                           className="text-white bg-blue-600 hover:bg-blue-700 rounded-full p-1.5 inline-flex items-center justify-center">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                           </svg>
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleDeleteDate(date.id)}
                           className="text-white bg-red-600 hover:bg-red-700 rounded-full p-1.5 inline-flex items-center justify-center">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -352,7 +361,7 @@ const ScheduleDates = () => {
           <div className="bg-white rounded-lg max-w-lg w-full">
             <div className="px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Tambah Tanggal Jadwal</h3>
-              
+
               <form onSubmit={handleAddDate}>
                 <div className="mb-4">
                   <label htmlFor="date_type" className="block text-sm font-medium text-gray-700 mb-1">
@@ -360,7 +369,7 @@ const ScheduleDates = () => {
                   </label>
                   <select
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
-                    id="date_type" 
+                    id="date_type"
                     value={dateType}
                     onChange={(e) => setDateType(e.target.value)}
                     required
@@ -383,14 +392,14 @@ const ScheduleDates = () => {
                   <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">
                     Tanggal <span className="text-red-500">*</span>
                   </label>
-                  <input 
+                  <input
                     type="date"
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
-                    id="date" 
-                    name="date" 
+                    id="date"
+                    name="date"
                     value={formData.date}
                     onChange={handleInputChange}
-                    required 
+                    required
                     min={new Date().toISOString().split('T')[0]}
                   />
                 </div>
@@ -400,11 +409,11 @@ const ScheduleDates = () => {
                     <label htmlFor="end_date" className="block text-sm font-medium text-gray-700 mb-1">
                       Tanggal Akhir <span className="text-red-500">*</span>
                     </label>
-                    <input 
+                    <input
                       type="date"
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
-                      id="end_date" 
-                      name="end_date" 
+                      id="end_date"
+                      name="end_date"
                       value={formData.end_date}
                       onChange={handleInputChange}
                       required={dateType === 'range'}
@@ -419,8 +428,8 @@ const ScheduleDates = () => {
                   </label>
                   <select
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
-                    id="status" 
-                    name="status" 
+                    id="status"
+                    name="status"
                     value={formData.status}
                     onChange={handleInputChange}
                     required
@@ -437,11 +446,11 @@ const ScheduleDates = () => {
                     <label htmlFor="status_reason" className="block text-sm font-medium text-gray-700 mb-1">
                       Alasan Status
                     </label>
-                    <input 
+                    <input
                       type="text"
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
-                      id="status_reason" 
-                      name="status_reason" 
+                      id="status_reason"
+                      name="status_reason"
                       value={formData.status_reason}
                       onChange={handleInputChange}
                     />
@@ -453,11 +462,11 @@ const ScheduleDates = () => {
                     <label htmlFor="status_expiry_date" className="block text-sm font-medium text-gray-700 mb-1">
                       Tanggal Berakhir Status
                     </label>
-                    <input 
+                    <input
                       type="datetime-local"
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
-                      id="status_expiry_date" 
-                      name="status_expiry_date" 
+                      id="status_expiry_date"
+                      name="status_expiry_date"
                       value={formData.status_expiry_date}
                       onChange={handleInputChange}
                     />
@@ -466,14 +475,14 @@ const ScheduleDates = () => {
                 )}
 
                 <div className="mt-6 flex justify-end space-x-3">
-                  <button 
+                  <button
                     type="button"
-                    onClick={() => {setShowAddModal(false); resetForm();}}
+                    onClick={() => { setShowAddModal(false); resetForm(); }}
                     className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
                   >
                     Batal
                   </button>
-                  <button 
+                  <button
                     type="submit"
                     className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                   >
@@ -488,22 +497,22 @@ const ScheduleDates = () => {
 
       {/* Edit Date Modal */}
       {showEditModal && selectedDate && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-white rounded-lg max-w-lg w-full">
             <div className="px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Edit Tanggal Jadwal</h3>
-              
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Edit Status Jadwal</h3>
+
               <form onSubmit={handleEditDate}>
                 <p className="mb-4 text-gray-700 font-medium">Tanggal: {formatDate(selectedDate.date)}</p>
-                
+
                 <div className="mb-4">
                   <label htmlFor="edit_status" className="block text-sm font-medium text-gray-700 mb-1">
                     Status <span className="text-red-500">*</span>
                   </label>
                   <select
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
-                    id="edit_status" 
-                    name="status" 
+                    id="edit_status"
+                    name="status"
                     value={formData.status}
                     onChange={handleInputChange}
                     required
@@ -522,11 +531,11 @@ const ScheduleDates = () => {
                     <label htmlFor="edit_status_reason" className="block text-sm font-medium text-gray-700 mb-1">
                       Alasan Status
                     </label>
-                    <input 
+                    <input
                       type="text"
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
-                      id="edit_status_reason" 
-                      name="status_reason" 
+                      id="edit_status_reason"
+                      name="status_reason"
                       value={formData.status_reason}
                       onChange={handleInputChange}
                     />
@@ -538,11 +547,11 @@ const ScheduleDates = () => {
                     <label htmlFor="edit_status_expiry_date" className="block text-sm font-medium text-gray-700 mb-1">
                       Tanggal Berakhir Status
                     </label>
-                    <input 
+                    <input
                       type="datetime-local"
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
-                      id="edit_status_expiry_date" 
-                      name="status_expiry_date" 
+                      id="edit_status_expiry_date"
+                      name="status_expiry_date"
                       value={formData.status_expiry_date}
                       onChange={handleInputChange}
                     />
@@ -551,14 +560,14 @@ const ScheduleDates = () => {
                 )}
 
                 <div className="mt-6 flex justify-end space-x-3">
-                  <button 
+                  <button
                     type="button"
-                    onClick={() => {setShowEditModal(false); resetForm();}}
+                    onClick={() => { setShowEditModal(false); resetForm(); }}
                     className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
                   >
                     Batal
                   </button>
-                  <button 
+                  <button
                     type="submit"
                     className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                   >

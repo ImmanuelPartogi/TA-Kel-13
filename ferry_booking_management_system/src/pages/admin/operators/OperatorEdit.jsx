@@ -31,13 +31,14 @@ const OperatorEdit = () => {
   const filteredRoutes = routes.filter(route => {
     const searchLower = searchTerm.toLowerCase();
     return (
-      route.origin.toLowerCase().includes(searchLower) || 
-      route.destination.toLowerCase().includes(searchLower)
+      route.origin?.toLowerCase().includes(searchLower) || 
+      route.destination?.toLowerCase().includes(searchLower)
     );
   });
 
   const fetchOperatorAndRoutes = async () => {
     try {
+      setLoading(true);
       // Fetch operator dan routes yang sudah di-assign
       const operatorResponse = await adminOperatorService.getOperatorWithRoutes(id);
       console.log('Operator response:', operatorResponse);
@@ -47,17 +48,6 @@ const OperatorEdit = () => {
       // Fetch semua routes yang tersedia
       const allRoutesResponse = await adminOperatorService.getRoutes();
       console.log('All routes response:', allRoutesResponse);
-      console.log('All routes response type:', typeof allRoutesResponse);
-      console.log('All routes response keys:', Object.keys(allRoutesResponse || {}));
-      
-      // Debug lebih dalam jika response adalah object
-      if (allRoutesResponse && typeof allRoutesResponse === 'object' && !Array.isArray(allRoutesResponse)) {
-        console.log('All routes response is object, checking data property:', allRoutesResponse.data);
-        if (allRoutesResponse.data) {
-          console.log('Data property type:', typeof allRoutesResponse.data);
-          console.log('Data property keys:', Object.keys(allRoutesResponse.data));
-        }
-      }
       
       // Ensure routes is an array
       let allRoutes = [];
@@ -68,9 +58,6 @@ const OperatorEdit = () => {
       } else if (allRoutesResponse && Array.isArray(allRoutesResponse.routes)) {
         allRoutes = allRoutesResponse.routes;
       }
-      
-      console.log('Processed routes:', allRoutes);
-      console.log('Operator assigned routes:', operatorData.assigned_routes);
       
       setOperator(operatorData);
       setRoutes(allRoutes);
@@ -95,6 +82,8 @@ const OperatorEdit = () => {
     } catch (error) {
       console.error('Error fetching data:', error);
       setErrors({ general: 'Gagal memuat data operator' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -164,8 +153,12 @@ const OperatorEdit = () => {
 
   if (!operator) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary-600"></div>
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="relative">
+          <div className="w-16 h-16 border-t-4 border-b-4 border-blue-600 rounded-full animate-spin"></div>
+          <div className="absolute top-0 left-0 w-16 h-16 border-t-4 border-b-4 border-blue-200 rounded-full animate-pulse"></div>
+        </div>
+        <span className="ml-4 text-lg font-medium text-gray-600">Loading...</span>
       </div>
     );
   }
@@ -187,7 +180,7 @@ const OperatorEdit = () => {
             </div>
           </div>
           <div className="mt-4 md:mt-0">
-            <Link to="/admin/operators" className="inline-flex items-center px-4 py-2 bg-blue-800 bg-opacity-50 text-white text-sm font-medium rounded-lg shadow-sm hover:bg-opacity-70 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150">
+            <Link to="/admin/operators" className="inline-flex items-center px-4 py-2 bg-blue-800 bg-opacity-50 text-white text-sm font-medium rounded-lg shadow-sm hover:bg-opacity-70 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300 transition-colors duration-150">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
@@ -199,11 +192,11 @@ const OperatorEdit = () => {
 
       {/* Error notification */}
       {errors.general && (
-        <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg p-4 mb-4">
+        <div className="bg-red-50 border-l-4 border-red-500 text-red-600 rounded-lg p-4 mb-6 shadow-md">
           <div className="flex">
             <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.028 7.795a1.007 1.007 0 00-.067 1.423l1.586 1.586-1.586 1.586a1 1 0 101.414 1.414l1.586-1.586 1.586 1.586a1 1 0 001.414-1.414l-1.586-1.586 1.586-1.586a1.002 1.002 0 00-.094-1.319l-.023-.023a1 1 0 00-1.397.094l-1.586 1.586-1.586-1.586a1.002 1.002 0 00-1.247-.08z" clipRule="evenodd" />
+              <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
               </svg>
             </div>
             <div className="ml-3">
@@ -215,8 +208,8 @@ const OperatorEdit = () => {
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-        <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center">
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 transition duration-200 hover:shadow-xl">
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-100 flex items-center">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
           </svg>
@@ -229,16 +222,16 @@ const OperatorEdit = () => {
         <div className="p-6">
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Informasi Dasar */}
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+            <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 shadow-sm">
               <h3 className="text-md font-medium text-gray-700 mb-4 flex items-center">
-                <span className="bg-blue-100 text-blue-700 rounded-full h-6 w-6 flex items-center justify-center mr-2 text-sm">1</span>
+                <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full h-6 w-6 flex items-center justify-center mr-2 text-sm shadow-sm">1</span>
                 Informasi Dasar
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label htmlFor="company_name" className="block text-sm font-medium text-gray-700 mb-1">
-                    Nama Perusahaan <span className="text-red-600">*</span>
+                    Nama Perusahaan <span className="text-red-500">*</span>
                   </label>
                   <input 
                     type="text"
@@ -250,12 +243,12 @@ const OperatorEdit = () => {
                     required
                   />
                   {errors.company_name && (
-                    <p className="mt-1 text-sm text-red-600">{errors.company_name}</p>
+                    <p className="mt-2 text-sm text-red-600">{errors.company_name}</p>
                   )}
                 </div>
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                    Email <span className="text-red-600">*</span>
+                    Email <span className="text-red-500">*</span>
                   </label>
                   <input 
                     type="email"
@@ -267,23 +260,23 @@ const OperatorEdit = () => {
                     required
                   />
                   {errors.email && (
-                    <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                    <p className="mt-2 text-sm text-red-600">{errors.email}</p>
                   )}
                 </div>
               </div>
             </div>
 
             {/* Informasi Kontak & Administrasi */}
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+            <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 shadow-sm">
               <h3 className="text-md font-medium text-gray-700 mb-4 flex items-center">
-                <span className="bg-blue-100 text-blue-700 rounded-full h-6 w-6 flex items-center justify-center mr-2 text-sm">2</span>
+                <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full h-6 w-6 flex items-center justify-center mr-2 text-sm shadow-sm">2</span>
                 Informasi Kontak & Administrasi
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div>
                   <label htmlFor="phone_number" className="block text-sm font-medium text-gray-700 mb-1">
-                    Nomor Telepon <span className="text-red-600">*</span>
+                    Nomor Telepon <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <input 
@@ -296,13 +289,13 @@ const OperatorEdit = () => {
                       required
                     />
                     {errors.phone_number && (
-                      <p className="mt-1 text-sm text-red-600">{errors.phone_number}</p>
+                      <p className="mt-2 text-sm text-red-600">{errors.phone_number}</p>
                     )}
                   </div>
                 </div>
                 <div>
                   <label htmlFor="license_number" className="block text-sm font-medium text-gray-700 mb-1">
-                    Nomor Lisensi <span className="text-red-600">*</span>
+                    Nomor Lisensi <span className="text-red-500">*</span>
                   </label>
                   <input 
                     type="text"
@@ -314,7 +307,7 @@ const OperatorEdit = () => {
                     required
                   />
                   {errors.license_number && (
-                    <p className="mt-1 text-sm text-red-600">{errors.license_number}</p>
+                    <p className="mt-2 text-sm text-red-600">{errors.license_number}</p>
                   )}
                 </div>
               </div>
@@ -339,12 +332,12 @@ const OperatorEdit = () => {
                     </div>
                   </div>
                   {errors.fleet_size && (
-                    <p className="mt-1 text-sm text-red-600">{errors.fleet_size}</p>
+                    <p className="mt-2 text-sm text-red-600">{errors.fleet_size}</p>
                   )}
                 </div>
                 <div>
                   <label htmlFor="company_address" className="block text-sm font-medium text-gray-700 mb-1">
-                    Alamat Perusahaan <span className="text-red-600">*</span>
+                    Alamat Perusahaan <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     className={`w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 transition duration-150 ${errors.company_address ? 'border-red-500' : ''}`}
@@ -356,16 +349,16 @@ const OperatorEdit = () => {
                     required
                   />
                   {errors.company_address && (
-                    <p className="mt-1 text-sm text-red-600">{errors.company_address}</p>
+                    <p className="mt-2 text-sm text-red-600">{errors.company_address}</p>
                   )}
                 </div>
               </div>
             </div>
 
             {/* Pengaturan Akun */}
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+            <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 shadow-sm">
               <h3 className="text-md font-medium text-gray-700 mb-4 flex items-center">
-                <span className="bg-blue-100 text-blue-700 rounded-full h-6 w-6 flex items-center justify-center mr-2 text-sm">3</span>
+                <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full h-6 w-6 flex items-center justify-center mr-2 text-sm shadow-sm">3</span>
                 Pengaturan Akun
               </h3>
 
@@ -382,10 +375,11 @@ const OperatorEdit = () => {
                       name="password" 
                       value={formData.password}
                       onChange={handleChange}
+                      placeholder="••••••••"
                     />
                   </div>
                   {errors.password && (
-                    <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+                    <p className="mt-2 text-sm text-red-600">{errors.password}</p>
                   )}
                   <p className="mt-1 text-xs text-gray-500">Minimal 8 karakter dengan kombinasi huruf besar, huruf kecil, angka, dan simbol</p>
                 </div>
@@ -401,11 +395,26 @@ const OperatorEdit = () => {
                       name="password_confirmation" 
                       value={formData.password_confirmation}
                       onChange={handleChange}
+                      placeholder="••••••••"
                     />
                   </div>
                   {formData.password && formData.password_confirmation && (
-                    <p className={`mt-1 text-sm ${formData.password === formData.password_confirmation ? 'text-green-600' : 'text-red-600'}`}>
-                      {formData.password === formData.password_confirmation ? 'Password cocok' : 'Password tidak cocok'}
+                    <p className={`mt-2 text-sm ${formData.password === formData.password_confirmation ? 'text-green-600' : 'text-red-600'} flex items-center`}>
+                      {formData.password === formData.password_confirmation ? (
+                        <>
+                          <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
+                          </svg>
+                          Password cocok
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"></path>
+                          </svg>
+                          Password tidak cocok
+                        </>
+                      )}
                     </p>
                   )}
                 </div>
@@ -413,9 +422,9 @@ const OperatorEdit = () => {
             </div>
 
             {/* Rute */}
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+            <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 shadow-sm">
               <h3 className="text-md font-medium text-gray-700 mb-4 flex items-center">
-                <span className="bg-blue-100 text-blue-700 rounded-full h-6 w-6 flex items-center justify-center mr-2 text-sm">4</span>
+                <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full h-6 w-6 flex items-center justify-center mr-2 text-sm shadow-sm">4</span>
                 Rute yang Dikelola
               </h3>
 
@@ -439,25 +448,31 @@ const OperatorEdit = () => {
                   <button 
                     type="button" 
                     onClick={selectAllRoutes}
-                    className="px-3 py-2 bg-blue-50 text-blue-600 text-sm font-medium rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150"
+                    className="px-3 py-2 text-blue-700 bg-blue-100 text-sm font-medium rounded-lg hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150 flex items-center"
                   >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
                     Pilih Semua
                   </button>
                   <button 
                     type="button" 
                     onClick={clearAllRoutes}
-                    className="px-3 py-2 bg-red-50 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 transition duration-150"
+                    className="px-3 py-2 text-red-700 bg-red-100 text-sm font-medium rounded-lg hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 transition duration-150 flex items-center"
                   >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
                     Hapus Semua
                   </button>
                 </div>
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-60 overflow-y-auto">
                   {filteredRoutes.length > 0 ? (
                     filteredRoutes.map((route) => (
-                      <div key={route.id} className="flex items-center p-2 rounded-lg hover:bg-gray-50 route-item transition duration-150">
+                      <div key={route.id} className="flex items-center p-2 rounded-lg hover:bg-blue-50 route-item transition duration-150">
                         <div className="flex items-center h-5">
                           <input 
                             type="checkbox"
@@ -474,6 +489,9 @@ const OperatorEdit = () => {
                     ))
                   ) : (
                     <div className="col-span-full text-center py-4 text-gray-500">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto text-gray-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                      </svg>
                       <p>{searchTerm ? `Tidak ada rute yang cocok dengan "${searchTerm}"` : 'Tidak ada rute tersedia'}</p>
                     </div>
                   )}
@@ -481,18 +499,28 @@ const OperatorEdit = () => {
               </div>
 
               {errors.routes && (
-                <p className="mt-2 text-sm text-red-600">{errors.routes}</p>
+                <p className="mt-2 text-sm text-red-600 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  {errors.routes}
+                </p>
               )}
 
-              <div className="mt-2 text-sm text-gray-500">
-                <span>{formData.assigned_routes.length}</span> rute dipilih
+              <div className="mt-3">
+                <div className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-blue-50 border border-blue-100">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-700 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="font-medium text-blue-700">{formData.assigned_routes.length}</span> <span className="text-blue-700 ml-1">rute dipilih</span>
+                </div>
               </div>
             </div>
 
             {/* Buttons */}
             <div className="flex justify-between">
-              <Link to={`/admin/operators/${operator.id}`} className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-150">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <Link to={`/admin/operators/${operator.id}`} className="px-6 py-3 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-150 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
@@ -500,15 +528,18 @@ const OperatorEdit = () => {
               </Link>
 
               <div className="flex space-x-3">
-                <Link to="/admin/operators" className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition duration-150">
+                <Link to="/admin/operators" className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition duration-150 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                   Batal
                 </Link>
                 <button 
                   type="submit"
                   disabled={loading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 disabled:opacity-50"
+                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 disabled:opacity-50 shadow-md flex items-center"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                   </svg>
                   {loading ? 'Memperbarui...' : 'Perbarui'}
@@ -521,24 +552,24 @@ const OperatorEdit = () => {
 
       {/* Info tambahan */}
       <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-blue-500">
+        <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-blue-500 hover:shadow-lg transition-shadow duration-200">
           <h4 className="font-medium text-blue-700 mb-1 text-sm">Tanggal Pendaftaran</h4>
-          <p className="text-gray-600">{new Date(operator.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+          <p className="text-gray-700 font-medium">{new Date(operator.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-indigo-500">
+        <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-indigo-500 hover:shadow-lg transition-shadow duration-200">
           <h4 className="font-medium text-indigo-700 mb-1 text-sm">Login Terakhir</h4>
-          <p className="text-gray-600">
+          <p className="text-gray-700 font-medium">
             {operator.last_login ? 
               new Date(operator.last_login).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 
-              'Belum pernah login'
+              <span className="text-yellow-600">Belum pernah login</span>
             }
           </p>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-green-500">
+        <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-green-500 hover:shadow-lg transition-shadow duration-200">
           <h4 className="font-medium text-green-700 mb-1 text-sm">Update Terakhir</h4>
-          <p className="text-gray-600">{new Date(operator.updated_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+          <p className="text-gray-700 font-medium">{new Date(operator.updated_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
         </div>
       </div>
     </div>

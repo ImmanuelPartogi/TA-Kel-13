@@ -36,7 +36,7 @@ const RouteShow = () => {
       const response = await api.get('/admin-panel/schedules', {
         params: { route_id: id }
       });
-      
+
       // Perbaiki struktur response untuk pagination
       if (response.data.status === 'success') {
         setSchedules(response.data.data.data || []);
@@ -89,7 +89,7 @@ const RouteShow = () => {
     } catch (error) {
       console.error('Failed to parse time:', error);
       return timeString;
-    }    
+    }
   };
 
   const formatPrice = (price) => {
@@ -100,7 +100,7 @@ const RouteShow = () => {
     if (!days) return [];
     const dayNames = {
       '1': 'Sen',
-      '2': 'Sel', 
+      '2': 'Sel',
       '3': 'Rab',
       '4': 'Kam',
       '5': 'Jum',
@@ -189,8 +189,8 @@ const RouteShow = () => {
               <div className="flex">
                 <div className="flex-1">
                   <p className="font-medium text-gray-700">
-                    {route.status === 'WEATHER_ISSUE' 
-                      ? 'Rute ini saat ini memiliki masalah cuaca dan beroperasi terbatas.' 
+                    {route.status === 'WEATHER_ISSUE'
+                      ? 'Rute ini saat ini memiliki masalah cuaca dan beroperasi terbatas.'
                       : 'Rute ini saat ini tidak aktif dan tidak beroperasi.'}
                   </p>
                   {route.status_reason && (
@@ -285,206 +285,206 @@ const RouteShow = () => {
         </div>
 
         {/* Information Cards - Layout dan desain yang lebih profesional */}
-<div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-  {/* Informasi Rute Card - Desain yang ditingkatkan */}
-  <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200 transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1">
-    <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 flex justify-between items-center">
-      <h3 className="font-bold text-lg flex items-center">
-        <i className="fas fa-map-marked-alt mr-3 text-blue-200"></i> Informasi Rute
-      </h3>
-      <div className="bg-blue-500/30 rounded-full h-8 w-8 flex items-center justify-center">
-        <i className="fas fa-route"></i>
-      </div>
-    </div>
-    
-    <div className="p-6">
-      <div className="space-y-5">
-        <div className="flex items-center bg-blue-50 rounded-lg p-3 border-l-4 border-blue-500 shadow-sm transition-all duration-200 hover:shadow">
-          <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-blue-100 text-blue-600 rounded-lg mr-3 shadow-sm">
-            <i className="fas fa-hashtag"></i>
-          </div>
-          <div className="flex-1">
-            <div className="text-xs font-medium text-blue-500 uppercase tracking-wider">Kode Rute</div>
-            <div className="font-semibold text-gray-800 mt-1">{route.route_code}</div>
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <div className="bg-gray-50 rounded-lg p-4 transition-all duration-200 hover:bg-gray-100 border border-gray-200">
-            <div className="flex items-center mb-2">
-              <div className="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-600 rounded-full mr-2 shadow-sm">
-                <i className="fas fa-map-marker-alt"></i>
-              </div>
-              <span className="text-sm font-medium text-gray-600">Asal</span>
-            </div>
-            <div className="font-bold text-gray-800 pl-2">{route.origin}</div>
-          </div>
-          
-          <div className="bg-gray-50 rounded-lg p-4 transition-all duration-200 hover:bg-gray-100 border border-gray-200">
-            <div className="flex items-center mb-2">
-              <div className="w-8 h-8 flex items-center justify-center bg-red-100 text-red-600 rounded-full mr-2 shadow-sm">
-                <i className="fas fa-map-marker-alt"></i>
-              </div>
-              <span className="text-sm font-medium text-gray-600">Tujuan</span>
-            </div>
-            <div className="font-bold text-gray-800 pl-2">{route.destination}</div>
-          </div>
-        </div>
-        
-        <div className="bg-gray-50 rounded-lg overflow-hidden shadow-sm border border-gray-200">
-          <div className="grid grid-cols-2 divide-x divide-gray-200">
-            <div className="p-4 transition-all duration-200 hover:bg-gray-100">
-              <div className="flex items-center mb-1">
-                <div className="w-6 h-6 flex items-center justify-center bg-gray-200 text-gray-600 rounded-full mr-2">
-                  <i className="fas fa-ruler text-xs"></i>
-                </div>
-                <span className="text-xs font-medium text-gray-500">Jarak</span>
-              </div>
-              <div className="font-semibold text-gray-800">
-                {route.distance ? route.distance + ' KM' : '-'}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          {/* Informasi Rute Card - Desain yang ditingkatkan */}
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200 transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 flex justify-between items-center">
+              <h3 className="font-bold text-lg flex items-center">
+                <i className="fas fa-map-marked-alt mr-3 text-blue-200"></i> Informasi Rute
+              </h3>
+              <div className="bg-blue-500/30 rounded-full h-8 w-8 flex items-center justify-center">
+                <i className="fas fa-route"></i>
               </div>
             </div>
-            
-            <div className="p-4 transition-all duration-200 hover:bg-gray-100">
-              <div className="flex items-center mb-1">
-                <div className="w-6 h-6 flex items-center justify-center bg-gray-200 text-gray-600 rounded-full mr-2">
-                  <i className="fas fa-clock text-xs"></i>
-                </div>
-                <span className="text-xs font-medium text-gray-500">Durasi</span>
-              </div>
-              <div className="font-semibold text-gray-800">
-                <span>{Math.floor(route.duration / 60)}j {route.duration % 60}m</span> 
-                <span className="text-xs text-gray-500 ml-1">({route.duration} menit)</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div className="flex items-center mt-4">
-          <div className="text-sm text-gray-600 font-medium mr-3">Status:</div>
-          <div>
-            {route.status === 'ACTIVE' ? (
-              <div className="flex items-center px-4 py-2 rounded-lg bg-green-100 text-green-800 border border-green-200 shadow-sm">
-                <div className="animate-pulse w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                <i className="fas fa-check-circle mr-2"></i>
-                <span className="font-medium">Aktif</span>
-              </div>
-            ) : route.status === 'WEATHER_ISSUE' ? (
-              <div className="flex items-center px-4 py-2 rounded-lg bg-yellow-100 text-yellow-800 border border-yellow-200 shadow-sm">
-                <i className="fas fa-cloud-rain mr-2"></i>
-                <span className="font-medium">Masalah Cuaca</span>
-              </div>
-            ) : (
-              <div className="flex items-center px-4 py-2 rounded-lg bg-red-100 text-red-800 border border-red-200 shadow-sm">
-                <i className="fas fa-ban mr-2"></i>
-                <span className="font-medium">Tidak Aktif</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  {/* Informasi Harga Card - Desain yang ditingkatkan */}
-  <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200 transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1">
-    <div className="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-4 flex justify-between items-center">
-      <h3 className="font-bold text-lg flex items-center">
-        <i className="fas fa-money-bill-wave mr-3 text-green-200"></i> Informasi Harga
-      </h3>
-      <div className="bg-green-500/30 rounded-full h-8 w-8 flex items-center justify-center">
-        <i className="fas fa-tag"></i>
-      </div>
-    </div>
-    
-    <div className="p-6">
-      <div className="flex items-center justify-between bg-green-50 rounded-lg p-4 border-l-4 border-green-500 shadow-sm mb-6">
-        <div className="flex items-center">
-          <div className="w-10 h-10 flex items-center justify-center bg-green-100 text-green-600 rounded-lg mr-3 shadow-sm">
-            <i className="fas fa-ticket-alt"></i>
-          </div>
-          <div>
-            <div className="text-xs font-medium text-green-500 uppercase tracking-wider">Harga Dasar</div>
-            <div className="font-bold text-gray-800 mt-1">Penumpang</div>
-          </div>
-        </div>
-        <div className="font-bold text-lg text-green-700">
-          Rp {formatPrice(route.base_price)}
-        </div>
-      </div>
-      
-      <div className="space-y-4">
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden transition-all duration-200 hover:shadow">
-          <div className="flex items-center justify-between p-4 hover:bg-blue-50">
-            <div className="flex items-center">
-              <div className="w-9 h-9 flex items-center justify-center bg-blue-100 text-blue-600 rounded-lg mr-3">
-                <i className="fas fa-motorcycle"></i>
+            <div className="p-6">
+              <div className="space-y-5">
+                <div className="flex items-center bg-blue-50 rounded-lg p-3 border-l-4 border-blue-500 shadow-sm transition-all duration-200 hover:shadow">
+                  <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-blue-100 text-blue-600 rounded-lg mr-3 shadow-sm">
+                    <i className="fas fa-hashtag"></i>
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-xs font-medium text-blue-500 uppercase tracking-wider">Kode Rute</div>
+                    <div className="font-semibold text-gray-800 mt-1">{route.route_code}</div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <div className="bg-gray-50 rounded-lg p-4 transition-all duration-200 hover:bg-gray-100 border border-gray-200">
+                    <div className="flex items-center mb-2">
+                      <div className="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-600 rounded-full mr-2 shadow-sm">
+                        <i className="fas fa-map-marker-alt"></i>
+                      </div>
+                      <span className="text-sm font-medium text-gray-600">Asal</span>
+                    </div>
+                    <div className="font-bold text-gray-800 pl-2">{route.origin}</div>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-lg p-4 transition-all duration-200 hover:bg-gray-100 border border-gray-200">
+                    <div className="flex items-center mb-2">
+                      <div className="w-8 h-8 flex items-center justify-center bg-red-100 text-red-600 rounded-full mr-2 shadow-sm">
+                        <i className="fas fa-map-marker-alt"></i>
+                      </div>
+                      <span className="text-sm font-medium text-gray-600">Tujuan</span>
+                    </div>
+                    <div className="font-bold text-gray-800 pl-2">{route.destination}</div>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg overflow-hidden shadow-sm border border-gray-200">
+                  <div className="grid grid-cols-2 divide-x divide-gray-200">
+                    <div className="p-4 transition-all duration-200 hover:bg-gray-100">
+                      <div className="flex items-center mb-1">
+                        <div className="w-6 h-6 flex items-center justify-center bg-gray-200 text-gray-600 rounded-full mr-2">
+                          <i className="fas fa-ruler text-xs"></i>
+                        </div>
+                        <span className="text-xs font-medium text-gray-500">Jarak</span>
+                      </div>
+                      <div className="font-semibold text-gray-800">
+                        {route.distance ? route.distance + ' KM' : '-'}
+                      </div>
+                    </div>
+
+                    <div className="p-4 transition-all duration-200 hover:bg-gray-100">
+                      <div className="flex items-center mb-1">
+                        <div className="w-6 h-6 flex items-center justify-center bg-gray-200 text-gray-600 rounded-full mr-2">
+                          <i className="fas fa-clock text-xs"></i>
+                        </div>
+                        <span className="text-xs font-medium text-gray-500">Durasi</span>
+                      </div>
+                      <div className="font-semibold text-gray-800">
+                        <span>{Math.floor(route.duration / 60)}j {route.duration % 60}m</span>
+                        <span className="text-xs text-gray-500 ml-1">({route.duration} menit)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center mt-4">
+                  <div className="text-sm text-gray-600 font-medium mr-3">Status:</div>
+                  <div>
+                    {route.status === 'ACTIVE' ? (
+                      <div className="flex items-center px-4 py-2 rounded-lg bg-green-100 text-green-800 border border-green-200 shadow-sm">
+                        <div className="animate-pulse w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                        <i className="fas fa-check-circle mr-2"></i>
+                        <span className="font-medium">Aktif</span>
+                      </div>
+                    ) : route.status === 'WEATHER_ISSUE' ? (
+                      <div className="flex items-center px-4 py-2 rounded-lg bg-yellow-100 text-yellow-800 border border-yellow-200 shadow-sm">
+                        <i className="fas fa-cloud-rain mr-2"></i>
+                        <span className="font-medium">Masalah Cuaca</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center px-4 py-2 rounded-lg bg-red-100 text-red-800 border border-red-200 shadow-sm">
+                        <i className="fas fa-ban mr-2"></i>
+                        <span className="font-medium">Tidak Aktif</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div>
-                <div className="text-sm font-medium text-gray-700">Motor</div>
-                <div className="text-xs text-gray-500">Kategori kendaraan kecil</div>
-              </div>
-            </div>
-            <div className="font-bold text-gray-800">
-              Rp {formatPrice(route.motorcycle_price)}
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden transition-all duration-200 hover:shadow">
-          <div className="flex items-center justify-between p-4 hover:bg-indigo-50">
-            <div className="flex items-center">
-              <div className="w-9 h-9 flex items-center justify-center bg-indigo-100 text-indigo-600 rounded-lg mr-3">
-                <i className="fas fa-car"></i>
-              </div>
-              <div>
-                <div className="text-sm font-medium text-gray-700">Mobil</div>
-                <div className="text-xs text-gray-500">Kategori kendaraan sedang</div>
-              </div>
-            </div>
-            <div className="font-bold text-gray-800">
-              Rp {formatPrice(route.car_price)}
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden transition-all duration-200 hover:shadow">
-          <div className="flex items-center justify-between p-4 hover:bg-purple-50">
-            <div className="flex items-center">
-              <div className="w-9 h-9 flex items-center justify-center bg-purple-100 text-purple-600 rounded-lg mr-3">
-                <i className="fas fa-bus"></i>
-              </div>
-              <div>
-                <div className="text-sm font-medium text-gray-700">Bus</div>
-                <div className="text-xs text-gray-500">Kategori kendaraan besar</div>
-              </div>
-            </div>
-            <div className="font-bold text-gray-800">
-              Rp {formatPrice(route.bus_price)}
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden transition-all duration-200 hover:shadow">
-          <div className="flex items-center justify-between p-4 hover:bg-yellow-50">
-            <div className="flex items-center">
-              <div className="w-9 h-9 flex items-center justify-center bg-yellow-100 text-yellow-600 rounded-lg mr-3">
-                <i className="fas fa-truck"></i>
-              </div>
-              <div>
-                <div className="text-sm font-medium text-gray-700">Truk</div>
-                <div className="text-xs text-gray-500">Kategori kendaraan angkutan</div>
-              </div>
-            </div>
-            <div className="font-bold text-gray-800">
-              Rp {formatPrice(route.truck_price)}
             </div>
           </div>
+
+          {/* Informasi Harga Card - Desain yang ditingkatkan */}
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200 transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1">
+            <div className="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-4 flex justify-between items-center">
+              <h3 className="font-bold text-lg flex items-center">
+                <i className="fas fa-money-bill-wave mr-3 text-green-200"></i> Informasi Harga
+              </h3>
+              <div className="bg-green-500/30 rounded-full h-8 w-8 flex items-center justify-center">
+                <i className="fas fa-tag"></i>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <div className="flex items-center justify-between bg-green-50 rounded-lg p-4 border-l-4 border-green-500 shadow-sm mb-6">
+                <div className="flex items-center">
+                  <div className="w-10 h-10 flex items-center justify-center bg-green-100 text-green-600 rounded-lg mr-3 shadow-sm">
+                    <i className="fas fa-ticket-alt"></i>
+                  </div>
+                  <div>
+                    <div className="text-xs font-medium text-green-500 uppercase tracking-wider">Harga Dasar</div>
+                    <div className="font-bold text-gray-800 mt-1">Penumpang</div>
+                  </div>
+                </div>
+                <div className="font-bold text-lg text-green-700">
+                  Rp {formatPrice(route.base_price)}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden transition-all duration-200 hover:shadow">
+                  <div className="flex items-center justify-between p-4 hover:bg-blue-50">
+                    <div className="flex items-center">
+                      <div className="w-9 h-9 flex items-center justify-center bg-blue-100 text-blue-600 rounded-lg mr-3">
+                        <i className="fas fa-motorcycle"></i>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-700">Motor</div>
+                        <div className="text-xs text-gray-500">Kategori kendaraan kecil</div>
+                      </div>
+                    </div>
+                    <div className="font-bold text-gray-800">
+                      Rp {formatPrice(route.motorcycle_price)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden transition-all duration-200 hover:shadow">
+                  <div className="flex items-center justify-between p-4 hover:bg-indigo-50">
+                    <div className="flex items-center">
+                      <div className="w-9 h-9 flex items-center justify-center bg-indigo-100 text-indigo-600 rounded-lg mr-3">
+                        <i className="fas fa-car"></i>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-700">Mobil</div>
+                        <div className="text-xs text-gray-500">Kategori kendaraan sedang</div>
+                      </div>
+                    </div>
+                    <div className="font-bold text-gray-800">
+                      Rp {formatPrice(route.car_price)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden transition-all duration-200 hover:shadow">
+                  <div className="flex items-center justify-between p-4 hover:bg-purple-50">
+                    <div className="flex items-center">
+                      <div className="w-9 h-9 flex items-center justify-center bg-purple-100 text-purple-600 rounded-lg mr-3">
+                        <i className="fas fa-bus"></i>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-700">Bus</div>
+                        <div className="text-xs text-gray-500">Kategori kendaraan besar</div>
+                      </div>
+                    </div>
+                    <div className="font-bold text-gray-800">
+                      Rp {formatPrice(route.bus_price)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden transition-all duration-200 hover:shadow">
+                  <div className="flex items-center justify-between p-4 hover:bg-yellow-50">
+                    <div className="flex items-center">
+                      <div className="w-9 h-9 flex items-center justify-center bg-yellow-100 text-yellow-600 rounded-lg mr-3">
+                        <i className="fas fa-truck"></i>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-700">Truk</div>
+                        <div className="text-xs text-gray-500">Kategori kendaraan angkutan</div>
+                      </div>
+                    </div>
+                    <div className="font-bold text-gray-800">
+                      Rp {formatPrice(route.truck_price)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-  </div>
-</div>
 
         {/* Schedules Section - Tampilan ditingkatkan */}
         <div className="mt-8">
@@ -495,7 +495,7 @@ const RouteShow = () => {
               </div>
               Jadwal Keberangkatan
             </h3>
-            <Link to={`/admin/schedules/create?route_id=${route.id}`} 
+            <Link to={`/admin/schedules/create?route_id=${route.id}`}
               className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition duration-300 flex items-center text-sm shadow-md">
               <i className="fas fa-plus mr-2"></i> Tambah Jadwal
             </Link>
@@ -612,7 +612,7 @@ const RouteShow = () => {
 
         {/* Delete Button Section */}
         <div className="mt-10 flex justify-end">
-          <button 
+          <button
             onClick={() => setShowDeleteModal(true)}
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 shadow-md transition-colors"
           >
@@ -653,12 +653,12 @@ const RouteShow = () => {
                 </div>
               </div>
               <div className="flex justify-between gap-3">
-                <button 
+                <button
                   onClick={() => setShowDeleteModal(false)}
                   className="w-full flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg bg-white text-gray-700 hover:bg-gray-50 transition-colors">
                   <i className="fas fa-times mr-2"></i> Batal
                 </button>
-                <button 
+                <button
                   onClick={handleDelete}
                   className="w-full flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">
                   <i className="fas fa-trash mr-2"></i> Hapus

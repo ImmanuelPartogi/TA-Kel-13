@@ -9,14 +9,14 @@ const FerryShow = () => {
   const [loading, setLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [alert, setAlert] = useState({ show: false, type: '', message: '' });
-  
+
   useEffect(() => {
     fetchFerry();
-    
+
     // Auto-hide alert after 5 seconds
     if (alert.show) {
       const timer = setTimeout(() => {
-        setAlert({...alert, show: false});
+        setAlert({ ...alert, show: false });
       }, 5000);
       return () => clearTimeout(timer);
     }
@@ -25,7 +25,7 @@ const FerryShow = () => {
   const fetchFerry = async () => {
     try {
       const response = await adminFerryService.getFerryDetail(id);
-      
+
       if (response.status === 'success' && response.data) {
         setFerry(response.data);
       } else {
@@ -52,7 +52,7 @@ const FerryShow = () => {
   const handleDelete = async () => {
     try {
       const response = await adminFerryService.deleteFerry(id);
-      
+
       if (response.status === 'success' || response.success) {
         setAlert({
           show: true,
@@ -116,7 +116,7 @@ const FerryShow = () => {
       <div className="flex justify-center items-center h-screen bg-gray-50">
         <div className="relative">
           <div className="h-24 w-24 rounded-full border-t-4 border-b-4 border-blue-500 animate-spin"></div>
-          <div className="absolute top-0 left-0 h-24 w-24 rounded-full border-t-4 border-b-4 border-blue-200 animate-spin" style={{animationDirection: 'reverse', animationDuration: '1.5s'}}></div>
+          <div className="absolute top-0 left-0 h-24 w-24 rounded-full border-t-4 border-b-4 border-blue-200 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
           <div className="mt-4 text-center text-gray-600 font-medium">Memuat data...</div>
         </div>
       </div>
@@ -129,10 +129,10 @@ const FerryShow = () => {
         <div className="bg-gradient-to-br from-blue-800 via-blue-600 to-blue-500 p-8 text-white relative">
           <div className="absolute inset-0 opacity-20">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" className="w-full h-full">
-              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                    fill="#fff" opacity="0.2" />
-              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                    fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
+              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+                fill="#fff" opacity="0.2" />
+              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+                fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
             </svg>
           </div>
           <div className="relative z-10">
@@ -208,13 +208,13 @@ const FerryShow = () => {
       <div className="bg-gradient-to-br from-blue-800 via-blue-600 to-blue-500 p-8 text-white relative">
         <div className="absolute inset-0 opacity-20">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" className="w-full h-full">
-            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                  fill="#fff" opacity="0.2" />
-            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                  fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
+            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+              fill="#fff" opacity="0.2" />
+            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+              fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
           </svg>
         </div>
-        
+
         <div className="relative z-10">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div className="flex items-start">
@@ -242,7 +242,7 @@ const FerryShow = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex flex-wrap gap-3">
               <Link to={`/admin/ferries/${ferry.id}/edit`}
                 className="inline-flex items-center px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-white/20">
@@ -254,7 +254,7 @@ const FerryShow = () => {
               </Link>
             </div>
           </div>
-          
+
         </div>
       </div>
 
@@ -267,7 +267,7 @@ const FerryShow = () => {
                 <i className={`fas ${alert.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-2`}></i>
                 <span className="font-medium">{alert.type === 'success' ? 'Sukses' : 'Error'}</span>
               </div>
-              <button onClick={() => setAlert({...alert, show: false})} className="text-white/80 hover:text-white">
+              <button onClick={() => setAlert({ ...alert, show: false })} className="text-white/80 hover:text-white">
                 <i className="fas fa-times"></i>
               </button>
             </div>
@@ -289,14 +289,14 @@ const FerryShow = () => {
                   Foto Kapal
                 </h2>
               </div>
-              
+
               <div className="p-6">
                 {ferry.image ? (
                   <div className="aspect-w-16 aspect-h-10 rounded-lg overflow-hidden shadow-md">
-                    <img 
-                      src={adminFerryService.getImageUrl(ferry.image)} 
-                      alt={ferry.name} 
-                      className="object-cover w-full h-full transform hover:scale-105 transition-transform duration-500" 
+                    <img
+                      src={adminFerryService.getImageUrl(ferry.image)}
+                      alt={ferry.name}
+                      className="object-cover w-full h-full transform hover:scale-105 transition-transform duration-500"
                       onError={(e) => {
                         e.target.onerror = null;
                         e.target.src = '/default-ferry-image.png';
@@ -325,40 +325,40 @@ const FerryShow = () => {
                   Status Kapal
                 </h2>
               </div>
-              
+
               <div className="p-6">
                 <div className="flex flex-col items-center justify-center py-4">
                   <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full ${statusConfig.iconBg} mb-4`}>
                     <i className={`${ferry.status === 'ACTIVE' ? 'fas fa-check-circle' : ferry.status === 'MAINTENANCE' ? 'fas fa-tools' : 'fas fa-ban'} text-4xl ${statusConfig.iconColor}`}></i>
                   </div>
-                  
+
                   <div className={`px-6 py-2 rounded-full ${statusConfig.bg} ${statusConfig.text} border ${statusConfig.border} text-lg font-medium inline-flex items-center`}>
                     <span className={`w-3 h-3 ${statusConfig.indicator} rounded-full mr-2 ${ferry.status === 'ACTIVE' ? 'animate-pulse' : ''}`}></span>
                     {ferry.status === 'ACTIVE' ? 'Aktif' : ferry.status === 'MAINTENANCE' ? 'Dalam Perawatan' : 'Tidak Aktif'}
                   </div>
-                  
+
                   <p className="mt-4 text-center text-gray-600">
-                    {ferry.status === 'ACTIVE' 
-                      ? 'Kapal siap beroperasi dan melayani penumpang' 
+                    {ferry.status === 'ACTIVE'
+                      ? 'Kapal siap beroperasi dan melayani penumpang'
                       : ferry.status === 'MAINTENANCE'
-                      ? 'Kapal sedang dalam perawatan dan tidak dapat beroperasi'
-                      : 'Kapal sedang tidak beroperasi'}
+                        ? 'Kapal sedang dalam perawatan dan tidak dapat beroperasi'
+                        : 'Kapal sedang tidak beroperasi'}
                   </p>
                 </div>
-                
+
                 <div className="mt-6 space-y-3 pt-4 border-t border-gray-200">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-600">Terakhir diperbarui:</span>
                     <span className="font-medium">{formatDate(ferry.updated_at || ferry.created_at)}</span>
                   </div>
-                  
+
                   {ferry.last_maintenance_date && (
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-600">Perawatan terakhir:</span>
                       <span className="font-medium">{formatDate(ferry.last_maintenance_date)}</span>
                     </div>
                   )}
-                  
+
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-600">Tahun pembuatan:</span>
                     <span className="font-medium">{ferry.year_built || 'Tidak diketahui'}</span>
@@ -379,7 +379,7 @@ const FerryShow = () => {
                 </h2>
                 <span className="text-sm text-gray-500">Total daya tampung</span>
               </div>
-              
+
               <div className="p-6">
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                   {/* Penumpang */}
@@ -473,7 +473,7 @@ const FerryShow = () => {
                   Informasi Kapal
                 </h2>
               </div>
-              
+
               <div className="p-6">
                 {ferry.description ? (
                   <div className="prose max-w-none">
@@ -505,7 +505,7 @@ const FerryShow = () => {
                     {ferry.schedules.length} Jadwal
                   </span>
                 </div>
-                
+
                 <div className="p-6">
                   {ferry.schedules.length === 0 ? (
                     <div className="text-center py-8">
@@ -550,14 +550,23 @@ const FerryShow = () => {
                                 <div className="flex flex-col">
                                   <div className="flex items-center text-sm text-gray-900">
                                     <i className="fas fa-plane-departure text-emerald-500 mr-2"></i>
-                                    {schedule.departure_time || 'N/A'}
+                                    {schedule.departure_time ? new Intl.DateTimeFormat('id-ID', {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      hour24: true,
+                                    }).format(new Date(schedule.departure_time)) : 'N/A'}
                                   </div>
                                   <div className="flex items-center text-sm text-gray-900 mt-1">
                                     <i className="fas fa-plane-arrival text-red-500 mr-2"></i>
-                                    {schedule.arrival_time || 'N/A'}
+                                    {schedule.arrival_time ? new Intl.DateTimeFormat('id-ID', {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      hour24: true,
+                                    }).format(new Date(schedule.arrival_time)) : 'N/A'}
                                   </div>
                                 </div>
                               </td>
+
                               <td className="px-6 py-4">
                                 <div className="flex flex-wrap gap-1">
                                   {getDayNames(schedule.days).map((day, idx) => (
@@ -602,7 +611,7 @@ const FerryShow = () => {
             <Link to={`/admin/ferries/${ferry.id}/edit`} className="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors shadow-sm">
               <i className="fas fa-edit mr-2"></i> Edit Kapal
             </Link>
-            <button 
+            <button
               onClick={() => setShowDeleteModal(true)}
               className="inline-flex items-center px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-sm"
             >
@@ -628,7 +637,7 @@ const FerryShow = () => {
                   <p className="text-gray-600">{ferry.registration_number}</p>
                 </div>
               </div>
-              
+
               <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-r mb-6">
                 <div className="flex">
                   <div className="flex-shrink-0">
@@ -641,15 +650,15 @@ const FerryShow = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex space-x-3">
-                <button 
+                <button
                   onClick={() => setShowDeleteModal(false)}
                   className="w-full py-3 px-4 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-gray-200 transition-colors"
                 >
                   Batal
                 </button>
-                <button 
+                <button
                   onClick={handleDelete}
                   className="w-full py-3 px-4 bg-red-500 rounded-lg text-white font-medium hover:bg-red-600 focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
                 >

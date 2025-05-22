@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Carbon\Carbon;
 
 class RefundController extends Controller
 {
@@ -60,6 +61,28 @@ class RefundController extends Controller
                 ], 400);
             }
 
+            // Validasi metode pembayaran dapat di-refund
+            if (!$this->midtransService->isRefundable($payment->payment_method, $payment->payment_channel)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Metode pembayaran ini tidak mendukung refund otomatis. Silakan hubungi customer service.'
+                ], 400);
+            }
+
+            // Validasi periode refund
+            $refundPeriod = $this->midtransService->getRefundPeriod(
+                $payment->payment_method,
+                $payment->payment_channel,
+                $payment->payment_date
+            );
+
+            if ($refundPeriod === false) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Periode refund untuk transaksi ini telah berakhir'
+                ], 400);
+            }
+
             // Coba buat refund via Midtrans
             $refundResponse = $this->midtransService->requestRefund(
                 $payment->transaction_id,
@@ -78,8 +101,7 @@ class RefundController extends Controller
                 'amount' => $payment->amount,
                 'reason' => $request->reason,
                 'status' => $refundStatus,
-                // Gunakan nilai enum yang valid untuk refund_method
-                'refund_method' => 'BANK_TRANSFER', // Atau gunakan ORIGINAL_PAYMENT_METHOD jika sesuai
+                'refund_method' => 'BANK_TRANSFER', // Sesuai enum di database
                 'transaction_id' => $refundResponse['refund_key'] ?? null,
                 'bank_account_number' => $request->bank_account_number,
                 'bank_account_name' => $request->bank_account_name,
@@ -94,15 +116,22 @@ class RefundController extends Controller
 
             DB::commit();
 
+            // Ambil perkiraan SLA untuk respons
+            $slaPeriod = $this->midtransService->getRefundSLA(
+                $payment->payment_method,
+                $payment->payment_channel
+            );
+
             // Pesan yang informatif berdasarkan jenis proses refund
             $message = $requiresManualProcess
-                ? 'Permintaan refund berhasil dibuat dan akan diproses secara manual dalam 3-7 hari kerja'
-                : 'Permintaan refund berhasil dibuat dan sedang diproses';
+                ? "Permintaan refund berhasil dibuat dan akan diproses secara manual dalam $slaPeriod"
+                : "Permintaan refund berhasil dibuat dan sedang diproses. Dana akan dikembalikan dalam $slaPeriod";
 
             return response()->json([
                 'success' => true,
                 'message' => $message,
                 'data' => $refund,
+                'sla_period' => $slaPeriod,
                 'requires_manual_process' => $requiresManualProcess
             ], 201);
         } catch (\Exception $e) {
@@ -141,21 +170,34 @@ class RefundController extends Controller
             ], 404);
         }
 
-        // Jika status refund masih PENDING, periksa status di Midtrans
-        if ($refund->status === 'PENDING' && $refund->transaction_id) {
+        // Jika status refund masih PENDING atau PROCESSING, periksa status di Midtrans
+        if (in_array($refund->status, ['PENDING', 'PROCESSING']) && $refund->transaction_id) {
             try {
                 $refundStatus = $this->midtransService->checkRefundStatus($refund->transaction_id);
 
                 // Update status refund jika ada perubahan
-                if ($refundStatus && $refundStatus['status_code'] != $refund->status) {
-                    $refund->status = $this->mapMidtransRefundStatus($refundStatus['status_code']);
-                    $refund->save();
+                if ($refundStatus && isset($refundStatus['status_code'])) {
+                    $newStatus = $this->mapMidtransRefundStatus($refundStatus['status_code']);
 
-                    // Jika refund berhasil, update status booking
-                    if ($refund->status === 'SUCCESS') {
-                        $booking = $refund->booking;
-                        $booking->status = 'REFUNDED';
-                        $booking->save();
+                    if ($refund->status != $newStatus) {
+                        $refund->status = $newStatus;
+                        $refund->save();
+
+                        // Jika refund berhasil, update status booking
+                        if ($refund->status === 'SUCCESS') {
+                            $booking = $refund->booking;
+                            $booking->status = 'REFUNDED';
+                            $booking->save();
+
+                            // Update payment status
+                            $payment = $refund->payment;
+                            if ($payment) {
+                                $payment->status = 'REFUNDED';
+                                $payment->refund_amount = $refund->amount;
+                                $payment->refund_date = now();
+                                $payment->save();
+                            }
+                        }
                     }
                 }
             } catch (\Exception $e) {
@@ -166,10 +208,22 @@ class RefundController extends Controller
             }
         }
 
+        // Tambahkan SLA informasi
+        $payment = $refund->payment;
+        $slaPeriod = null;
+
+        if ($payment) {
+            $slaPeriod = $this->midtransService->getRefundSLA(
+                $payment->payment_method,
+                $payment->payment_channel
+            );
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Detail refund berhasil diambil',
-            'data' => $refund
+            'data' => $refund,
+            'sla_period' => $slaPeriod
         ], 200);
     }
 
@@ -247,8 +301,9 @@ class RefundController extends Controller
         switch ($statusCode) {
             case '200':
                 return 'SUCCESS';
+            case '201':
             case '202':
-                return 'PENDING';
+                return 'PROCESSING';
             case '412':
             case '500':
                 return 'FAILED';

@@ -13,17 +13,20 @@ class RefundProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   Refund? get currentRefund => _currentRefund;
   
-  // Request a refund
+  // Perbaikan: tambahkan parameter mounted untuk mencegah update UI setelah widget dibuang
   Future<bool> requestRefund({
     required int bookingId,
     required String reason,
     required String bankAccountNumber,
     required String bankAccountName,
     required String bankName,
+    required bool Function() isMounted, // Tambahkan callback untuk cek mounted state
   }) async {
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    
+    // Pastikan widget masih mounted sebelum update UI
+    if (isMounted()) notifyListeners();
     
     try {
       final refundData = {
@@ -37,59 +40,63 @@ class RefundProvider extends ChangeNotifier {
       _currentRefund = await _refundApi.requestRefund(refundData);
       
       _isLoading = false;
-      notifyListeners();
+      
+      // Periksa mounted state lagi setelah operasi async
+      if (isMounted()) notifyListeners();
       return true;
     } catch (e) {
       _isLoading = false;
       _errorMessage = e.toString();
-      notifyListeners();
+      
+      // Periksa mounted state lagi
+      if (isMounted()) notifyListeners();
       return false;
     }
   }
   
-  // Get refund details for a booking
-  Future<void> getRefundDetailsByBookingId(int bookingId) async {
+  // Perbaikan yang sama untuk metode lainnya
+  Future<void> getRefundDetailsByBookingId(int bookingId, {required bool Function() isMounted}) async {
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    if (isMounted()) notifyListeners();
     
     try {
       _currentRefund = await _refundApi.getRefundDetailsByBookingId(bookingId);
       
       _isLoading = false;
-      notifyListeners();
+      if (isMounted()) notifyListeners();
     } catch (e) {
       _isLoading = false;
       _errorMessage = e.toString();
-      notifyListeners();
+      if (isMounted()) notifyListeners();
     }
   }
   
-  // Cancel a refund
-  Future<bool> cancelRefund(int refundId) async {
+  // Perbaikan untuk cancelRefund juga
+  Future<bool> cancelRefund(int refundId, {required bool Function() isMounted}) async {
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    if (isMounted()) notifyListeners();
     
     try {
       _currentRefund = await _refundApi.cancelRefund(refundId);
       
       _isLoading = false;
-      notifyListeners();
+      if (isMounted()) notifyListeners();
       return true;
     } catch (e) {
       _isLoading = false;
       _errorMessage = e.toString();
-      notifyListeners();
+      if (isMounted()) notifyListeners();
       return false;
     }
   }
   
-  // Refresh current refund details
-  Future<void> refreshCurrentRefund() async {
+  // Metode lain
+  Future<void> refreshCurrentRefund({required bool Function() isMounted}) async {
     if (_currentRefund == null) return;
     
-    await getRefundDetailsByBookingId(_currentRefund!.bookingId);
+    await getRefundDetailsByBookingId(_currentRefund!.bookingId, isMounted: isMounted);
   }
   
   void clearRefund() {

@@ -5,13 +5,25 @@ import 'package:ferry_booking_app/services/api_service.dart';
 class RefundApi {
   final ApiService _apiService = ApiService();
 
-  // Request refund
+  // Request refund dengan informasi tambahan untuk check payment method
   Future<Refund> requestRefund(Map<String, dynamic> refundData) async {
     try {
       final response = await _apiService.post('refunds/request', refundData);
 
       if (response['success']) {
-        return Refund.fromJson(response['data']);
+        final refund = Refund.fromJson(response['data']);
+        
+        // Perbarui bahwa SLA periode bisa berbeda-beda
+        if (response['sla_period'] != null) {
+          refund.slaPeriod = response['sla_period'];
+        }
+        
+        // Informasi jika refund memerlukan proses manual
+        if (response['requires_manual_process'] != null) {
+          refund.requiresManualProcess = response['requires_manual_process'];
+        }
+        
+        return refund;
       } else {
         throw Exception(response['message']);
       }
@@ -21,13 +33,20 @@ class RefundApi {
     }
   }
 
-  // Get refund details for a booking
+  // Get refund details for a booking dengan informasi tambahan
   Future<Refund?> getRefundDetailsByBookingId(int bookingId) async {
     try {
       final response = await _apiService.get('refunds/booking/$bookingId');
 
       if (response['success']) {
-        return Refund.fromJson(response['data']);
+        final refund = Refund.fromJson(response['data']);
+        
+        // Perbarui bahwa SLA periode bisa berbeda-beda
+        if (response['sla_period'] != null) {
+          refund.slaPeriod = response['sla_period'];
+        }
+        
+        return refund;
       } else {
         // Jika tidak ada refund, return null
         return null;

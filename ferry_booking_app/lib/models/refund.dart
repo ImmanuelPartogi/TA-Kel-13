@@ -16,6 +16,10 @@ class Refund {
   final String createdAt;
   final String updatedAt;
 
+  // Tambahan field untuk informasi SLA
+  String? slaPeriod;
+  bool requiresManualProcess = false;
+
   Refund({
     required this.id,
     required this.bookingId,
@@ -31,10 +35,12 @@ class Refund {
     required this.bankName,
     required this.createdAt,
     required this.updatedAt,
+    this.slaPeriod,
+    this.requiresManualProcess = false,
   });
 
   factory Refund.fromJson(Map<String, dynamic> json) {
-    return Refund(
+    final refund = Refund(
       id: json['id'],
       bookingId: json['booking_id'],
       paymentId: json['payment_id'],
@@ -50,12 +56,25 @@ class Refund {
       createdAt: json['created_at'],
       updatedAt: json['updated_at'],
     );
+
+    // Dapatkan informasi tambahan jika ada
+    if (json['sla_period'] != null) {
+      refund.slaPeriod = json['sla_period'];
+    }
+
+    if (json['requires_manual_process'] != null) {
+      refund.requiresManualProcess = json['requires_manual_process'];
+    }
+
+    return refund;
   }
 
   // Helper untuk mendapatkan status refund yang mudah dibaca
   String get readableStatus {
     switch (status.toUpperCase()) {
       case 'PENDING':
+        return 'Sedang Diproses';
+      case 'PROCESSING':
         return 'Sedang Diproses';
       case 'SUCCESS':
         return 'Berhasil';
@@ -65,6 +84,28 @@ class Refund {
         return 'Dibatalkan';
       default:
         return status;
+    }
+  }
+
+  // Helper untuk mendapatkan deskripsi status refund berdasarkan SLA
+  String getStatusDescription() {
+    switch (status.toUpperCase()) {
+      case 'SUCCESS':
+        return 'Refund telah berhasil diproses dan dana telah dikembalikan';
+      case 'PENDING':
+        if (requiresManualProcess) {
+          return 'Refund sedang diproses secara manual. Estimasi pengembalian dana ${slaPeriod ?? "3-14 hari kerja"}';
+        } else {
+          return 'Permintaan refund sedang dalam proses. Estimasi pengembalian dana ${slaPeriod ?? "3-14 hari kerja"}';
+        }
+      case 'PROCESSING':
+        return 'Permintaan refund sedang diproses oleh sistem pembayaran. Estimasi pengembalian dana ${slaPeriod ?? "3-14 hari kerja"}';
+      case 'FAILED':
+        return 'Refund gagal diproses, silakan hubungi customer service';
+      case 'CANCELLED':
+        return 'Permintaan refund telah dibatalkan';
+      default:
+        return '';
     }
   }
 

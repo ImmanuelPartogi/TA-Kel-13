@@ -309,18 +309,27 @@ const BookingShow = () => {
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Tanggal Keberangkatan</p>
                   <p>{new Date(booking.booking_date).toLocaleDateString('id-ID', {
-                    day: 'numeric',
+                    day: '2-digit',
                     month: 'long',
                     year: 'numeric'
                   })}</p>
                 </div>
+
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Jam Keberangkatan</p>
-                  <p>{booking.schedule.departure_time}</p>
+                  {booking.schedule.departure_time ? new Intl.DateTimeFormat('id-ID', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour24: true,
+                  }).format(new Date(booking.schedule.departure_time)) : 'N/A'}
                 </div>
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Jam Kedatangan</p>
-                  <p>{booking.schedule.arrival_time}</p>
+                  {booking.schedule.arrival_time ? new Intl.DateTimeFormat('id-ID', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour24: true,
+                  }).format(new Date(booking.schedule.arrival_time)) : 'N/A'}
                 </div>
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Durasi</p>

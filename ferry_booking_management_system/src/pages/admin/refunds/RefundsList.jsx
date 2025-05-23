@@ -44,26 +44,56 @@ const RefundsList = () => {
         } 
       });
       
+      console.log('API Response:', response.data); // Debugging
+      
       if (response.data && response.data.data) {
-        // Handle pagination if it exists in response
-        if (response.data.meta || response.data.pagination) {
-          const paginationData = response.data.meta || response.data.pagination;
+        let refundsData = [];
+        let paginationData = {};
+        
+        // Check if response.data.data is array (new format) or paginated object (old format)
+        if (Array.isArray(response.data.data)) {
+          // New format: data is direct array
+          refundsData = response.data.data;
+          
+          // Pagination info in meta
+          if (response.data.meta) {
+            paginationData = response.data.meta;
+          }
+        } else if (response.data.data.data && Array.isArray(response.data.data.data)) {
+          // Old format: data.data.data is the array (Laravel paginate structure)
+          refundsData = response.data.data.data;
+          
+          // Pagination info in data level
+          paginationData = {
+            current_page: response.data.data.current_page || 1,
+            last_page: response.data.data.last_page || 1,
+            total: response.data.data.total || 0,
+            per_page: response.data.data.per_page || 10
+          };
+        }
+        
+        console.log('Processed refunds data:', refundsData); // Debugging
+        console.log('Processed pagination data:', paginationData); // Debugging
+        
+        setRefunds(refundsData);
+        
+        if (Object.keys(paginationData).length > 0) {
           setPagination({
             current_page: paginationData.current_page || 1,
             last_page: paginationData.last_page || 1,
-            total: paginationData.total || response.data.data.length,
+            total: paginationData.total || refundsData.length,
             per_page: paginationData.per_page || 10
           });
-          setRefunds(response.data.data);
         } else {
-          // If no pagination, just set the data
-          setRefunds(response.data.data);
           setPagination({
-            ...pagination,
-            total: response.data.data.length
+            current_page: 1,
+            last_page: 1,
+            total: refundsData.length,
+            per_page: 10
           });
         }
       } else {
+        console.log('Invalid response structure:', response.data); // Debugging
         setRefunds([]);
         setAlert({
           show: true,
@@ -73,11 +103,12 @@ const RefundsList = () => {
       }
     } catch (error) {
       console.error('Error fetching refunds:', error);
+      console.error('Error response:', error.response?.data); // Debugging
       setRefunds([]);
       setAlert({
         show: true,
         type: 'error',
-        message: 'Gagal memuat data refund'
+        message: 'Gagal memuat data refund: ' + (error.response?.data?.message || error.message)
       });
     } finally {
       setLoading(false);
@@ -219,6 +250,11 @@ const RefundsList = () => {
     }
   };
 
+  // Helper function to safely get filtered refunds
+  const getFilteredRefunds = (status) => {
+    return Array.isArray(refunds) ? refunds.filter(refund => refund.status === status) : [];
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden">
       {/* Modern Header */}
@@ -268,7 +304,7 @@ const RefundsList = () => {
               <div className="flex items-center mt-1">
                 <i className="fas fa-clock mr-2 text-blue-100"></i>
                 <span className="text-2xl font-bold">
-                  {refunds.filter(refund => refund.status === 'PENDING').length}
+                  {getFilteredRefunds('PENDING').length}
                 </span>
               </div>
             </div>
@@ -278,7 +314,7 @@ const RefundsList = () => {
               <div className="flex items-center mt-1">
                 <i className="fas fa-check mr-2 text-blue-100"></i>
                 <span className="text-2xl font-bold">
-                  {refunds.filter(refund => refund.status === 'APPROVED').length}
+                  {getFilteredRefunds('APPROVED').length}
                 </span>
               </div>
             </div>
@@ -288,7 +324,7 @@ const RefundsList = () => {
               <div className="flex items-center mt-1">
                 <i className="fas fa-check-circle mr-2 text-blue-100"></i>
                 <span className="text-2xl font-bold">
-                  {refunds.filter(refund => refund.status === 'COMPLETED').length}
+                  {getFilteredRefunds('COMPLETED').length}
                 </span>
               </div>
             </div>
@@ -467,7 +503,7 @@ const RefundsList = () => {
         )}
 
         {/* Empty State */}
-        {!loading && refunds.length === 0 && (
+        {!loading && (!Array.isArray(refunds) || refunds.length === 0) && (
           <div className="bg-white rounded-xl border border-gray-100 shadow-md p-12 text-center">
             <div className="bg-gray-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
               <i className="fas fa-hand-holding-usd text-gray-400 text-4xl"></i>
@@ -483,7 +519,7 @@ const RefundsList = () => {
         )}
 
         {/* Table View */}
-        {!loading && refunds.length > 0 && viewMode === 'table' && (
+        {!loading && Array.isArray(refunds) && refunds.length > 0 && viewMode === 'table' && (
           <div className="bg-white rounded-xl border border-gray-100 shadow-md overflow-hidden mb-6 hover:shadow-lg transition-shadow duration-300">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -601,7 +637,7 @@ const RefundsList = () => {
         )}
 
         {/* Grid View */}
-        {!loading && refunds.length > 0 && viewMode === 'grid' && (
+        {!loading && Array.isArray(refunds) && refunds.length > 0 && viewMode === 'grid' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
             {refunds.map(refund => {
               const statusConfig = getStatusConfig(refund.status);
@@ -941,7 +977,7 @@ const RefundsList = () => {
       )}
 
       {/* CSS for animations and button styling */}
-      <style jsx>{`
+      <style>{`
         .btn-icon {
           width: 36px;
           height: 36px;

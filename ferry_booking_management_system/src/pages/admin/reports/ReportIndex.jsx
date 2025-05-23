@@ -635,7 +635,7 @@ const ReportIndex = () => {
       </div>
 
       {/* CSS for animations */}
-      <style jsx>{`        
+      <style>{`        
         @keyframes slideIn {
           0% {
             opacity: 0;

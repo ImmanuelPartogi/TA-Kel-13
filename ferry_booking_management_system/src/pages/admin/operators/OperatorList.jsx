@@ -206,7 +206,7 @@ const OperatorList = () => {
         hour: '2-digit', 
         minute: '2-digit' 
       });
-    } catch (e) {
+    } catch {
       return 'Format tanggal invalid';
     }
   };
@@ -798,7 +798,7 @@ const OperatorList = () => {
       )}
 
       {/* CSS for animations and button styling */}
-      <style jsx>{`
+      <style>{`
         .btn-icon {
           width: 36px;
           height: 36px;

@@ -6,34 +6,73 @@ const RefundCreate = () => {
   const { bookingId } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [booking, setBooking] = useState(null);
-  const [payment, setPayment] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [bookingData, setBookingData] = useState(null);
+  const [alert, setAlert] = useState({ show: false, type: '', message: '' });
+  const [errors, setErrors] = useState([]);
+
   const [formData, setFormData] = useState({
-    amount: '',
+    amount: 0,
     reason: '',
-    refund_method: '',
+    refund_method: 'BANK_TRANSFER',
     bank_name: '',
     bank_account_number: '',
-    bank_account_name: ''
+    bank_account_name: '',
+    notes: ''
   });
-  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     fetchBookingDetails();
   }, [bookingId]);
 
+  useEffect(() => {
+    // Auto-hide alert after 5 seconds
+    if (alert.show) {
+      const timer = setTimeout(() => {
+        setAlert({ show: false, type: '', message: '' });
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [alert.show]);
+
   const fetchBookingDetails = async () => {
     try {
       setLoading(true);
       const response = await api.get(`/admin-panel/refunds/create/${bookingId}`);
-      setBooking(response.data.booking);
-      setPayment(response.data.payment);
-      setFormData(prev => ({
-        ...prev,
-        amount: response.data.booking.total_amount
-      }));
+      
+      console.log('Booking details response:', response.data); // Debugging
+      
+      if (response.data && response.data.success) {
+        const data = response.data.data;
+        setBookingData(data);
+        
+        // Set default amount berdasarkan suggested amount
+        setFormData(prev => ({
+          ...prev,
+          amount: data.suggested_refund_amount || data.payment.amount
+        }));
+      } else {
+        setAlert({
+          show: true,
+          type: 'error',
+          message: response.data?.message || 'Data booking tidak ditemukan'
+        });
+      }
     } catch (error) {
       console.error('Error fetching booking details:', error);
+      let errorMessage = 'Gagal memuat data booking';
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setAlert({
+        show: true,
+        type: 'error',
+        message: errorMessage
+      });
     } finally {
       setLoading(false);
     }
@@ -45,131 +84,312 @@ const RefundCreate = () => {
       ...prev,
       [name]: value
     }));
+  };
 
-    if (name === 'refund_method') {
-      if (value !== 'BANK_TRANSFER') {
-        setFormData(prev => ({
-          ...prev,
-          bank_name: '',
-          bank_account_number: '',
-          bank_account_name: ''
-        }));
+  const validateForm = () => {
+    const newErrors = [];
+    
+    if (!formData.amount || formData.amount <= 0) {
+      newErrors.push('Jumlah refund harus lebih dari 0');
+    }
+    
+    if (bookingData && formData.amount > bookingData.payment.amount) {
+      newErrors.push('Jumlah refund tidak boleh melebihi total pembayaran');
+    }
+    
+    if (!formData.reason) {
+      newErrors.push('Alasan refund harus diisi');
+    }
+    
+    if (!formData.refund_method) {
+      newErrors.push('Metode refund harus dipilih');
+    }
+    
+    if (formData.refund_method === 'BANK_TRANSFER') {
+      if (!formData.bank_name) {
+        newErrors.push('Nama bank harus diisi untuk transfer bank');
+      }
+      if (!formData.bank_account_number) {
+        newErrors.push('Nomor rekening harus diisi untuk transfer bank');
+      }
+      if (!formData.bank_account_name) {
+        newErrors.push('Nama pemilik rekening harus diisi untuk transfer bank');
       }
     }
+    
+    setErrors(newErrors);
+    return newErrors.length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      await api.post(`/admin-panel/refunds/store/${bookingId}`, formData);
-      navigate(`/admin/bookings/${bookingId}`);
-    } catch (error) {
-      if (error.response?.status === 422) {
-        setErrors(error.response.data.errors);
-      }
-      console.error('Error creating refund:', error);
+    
+    if (!validateForm()) {
+      return;
     }
+    
+    setSubmitting(true);
+    setErrors([]);
+    setAlert({ show: false, type: '', message: '' });
+
+    try {
+      const response = await api.post(`/admin-panel/refunds/store/${bookingId}`, formData);
+      
+      console.log('Create refund response:', response.data); // Debugging
+      
+      if (response.data && response.data.success) {
+        setAlert({
+          show: true,
+          type: 'success',
+          message: 'Permintaan refund berhasil dibuat! Redirecting...'
+        });
+        
+        // Redirect after 2 seconds
+        setTimeout(() => {
+          navigate('/admin/refunds');
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Error creating refund:', error);
+      
+      if (error.response?.data?.errors) {
+        // Handle validation errors from backend
+        const backendErrors = Object.values(error.response.data.errors).flat();
+        setErrors(backendErrors);
+      } else {
+        const errorMessage = error.response?.data?.message || 'Terjadi kesalahan saat membuat refund';
+        setAlert({
+          show: true,
+          type: 'error',
+          message: errorMessage
+        });
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0
+    }).format(amount);
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary-600"></div>
+      <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+        <div className="inline-block relative">
+          <div className="h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-500 animate-spin"></div>
+          <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-200 animate-spin" style={{animationDirection: 'reverse', animationDuration: '1.5s'}}></div>
+        </div>
+        <p className="mt-4 text-gray-600">Memuat data booking...</p>
+      </div>
+    );
+  }
+
+  if (!bookingData) {
+    return (
+      <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+        <div className="bg-gray-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+          <i className="fas fa-exclamation-triangle text-gray-400 text-4xl"></i>
+        </div>
+        <h3 className="text-xl font-semibold text-gray-800 mb-2">Data Booking Tidak Ditemukan</h3>
+        <p className="text-gray-600 mb-6">Booking tidak ditemukan atau tidak dapat di-refund</p>
+        <div className="flex justify-center space-x-3">
+          <Link 
+            to="/admin/bookings"
+            className="inline-flex items-center px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-sm">
+            <i className="fas fa-ticket-alt mr-2"></i> Lihat Daftar Booking
+          </Link>
+          <Link 
+            to="/admin/refunds"
+            className="inline-flex items-center px-5 py-2.5 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors shadow-sm">
+            <i className="fas fa-hand-holding-usd mr-2"></i> Lihat Daftar Refund
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-6">
-      {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Buat Refund</h1>
-          <p className="mt-1 text-gray-600">
-            Untuk Booking: <span className="font-medium">{booking?.booking_code}</span>
-          </p>
+    <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+      {/* Modern Header */}
+      <div className="bg-gradient-to-br from-emerald-800 via-emerald-600 to-emerald-500 p-8 text-white relative">
+        <div className="absolute inset-0 opacity-20">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" className="w-full h-full">
+            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
+                  fill="#fff" opacity="0.2" />
+          </svg>
         </div>
-        <div className="mt-4 md:mt-0">
-          <Link
-            to={`/admin/bookings/${bookingId}`}
-            className="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg text-white transition-colors shadow-sm"
-          >
-            <i className="fas fa-arrow-left mr-2 text-sm"></i> Kembali
-          </Link>
+        
+        <div className="relative z-10">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+            <div className="flex items-start">
+              <div className="bg-white/20 backdrop-blur-sm p-3 rounded-lg mr-4">
+                <i className="fas fa-plus-circle text-2xl"></i>
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold">Buat Refund Baru</h1>
+                <p className="mt-1 text-emerald-100">
+                  Booking: <span className="font-medium">{bookingData.booking.booking_code}</span>
+                </p>
+              </div>
+            </div>
+            
+            <div>
+              <Link
+                to="/admin/refunds"
+                className="inline-flex items-center px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-white/20 shadow-sm">
+                <i className="fas fa-arrow-left mr-2"></i> Kembali
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Error message */}
-      {Object.keys(errors).length > 0 && (
-        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-md">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <i className="fas fa-exclamation-circle text-red-500"></i>
+      <div className="p-8">
+        {/* Alert Messages */}
+        {alert.show && (
+          <div className={`mb-6 rounded-lg shadow-lg overflow-hidden animate-slideIn`}>
+            <div className={`${alert.type === 'success' ? 'bg-emerald-500' : 'bg-red-500'} px-4 py-2 text-white flex items-center justify-between`}>
+              <div className="flex items-center">
+                <i className={`fas ${alert.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-2`}></i>
+                <span className="font-medium">{alert.type === 'success' ? 'Sukses' : 'Error'}</span>
+              </div>
+              <button onClick={() => setAlert({ show: false, type: '', message: '' })} className="text-white/80 hover:text-white">
+                <i className="fas fa-times"></i>
+              </button>
             </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">Ada beberapa kesalahan:</h3>
-              <ul className="mt-2 text-sm text-red-700 list-disc list-inside">
-                {Object.values(errors).flat().map((error, index) => (
+            <div className={`${alert.type === 'success' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-red-50 border-red-100 text-red-700'} px-4 py-3 border-t`}>
+              {alert.message}
+            </div>
+          </div>
+        )}
+
+        {/* Error Messages */}
+        {errors.length > 0 && (
+          <div className="mb-6 rounded-lg shadow-lg overflow-hidden animate-slideIn">
+            <div className="bg-red-500 px-4 py-2 text-white flex items-center justify-between">
+              <div className="flex items-center">
+                <i className="fas fa-exclamation-circle mr-2"></i>
+                <span className="font-medium">Kesalahan Validasi</span>
+              </div>
+              <button onClick={() => setErrors([])} className="text-white/80 hover:text-white">
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="bg-red-50 border-red-100 text-red-700 px-4 py-3 border-t">
+              <ul className="list-disc list-inside space-y-1">
+                {errors.map((error, index) => (
                   <li key={index}>{error}</li>
                 ))}
               </ul>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Refund Form */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="font-semibold text-lg text-gray-800">Form Refund</h2>
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Form */}
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow duration-300">
+              <div className="bg-gray-50 px-6 py-4 border-b border-gray-100">
+                <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+                  <i className="fas fa-edit text-emerald-500 mr-2"></i>
+                  Form Refund
+                </h2>
+              </div>
 
-            <div className="p-6">
-              <form onSubmit={handleSubmit}>
-                <div className="space-y-6">
+              <div className="p-6">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  {/* Refund Policy Info */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h3 className="text-sm font-medium text-blue-800 mb-2 flex items-center">
+                      <i className="fas fa-info-circle mr-2"></i>
+                      Kebijakan Refund
+                    </h3>
+                    <p className="text-sm text-blue-700 mb-2">{bookingData.refund_policy}</p>
+                    <div className="grid grid-cols-2 gap-4 text-xs text-blue-600">
+                      <div>
+                        <span className="font-medium">Hari hingga keberangkatan:</span> {bookingData.days_until_departure} hari
+                      </div>
+                      <div>
+                        <span className="font-medium">Persentase refund:</span> {bookingData.refund_percentage}%
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Amount */}
                   <div>
                     <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
                       Jumlah Refund <span className="text-red-500">*</span>
                     </label>
-                    <div className="flex">
-                      <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500">
-                        Rp
-                      </span>
+                    <div className="relative rounded-md shadow-sm">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <span className="text-gray-500 sm:text-sm">Rp</span>
+                      </div>
                       <input
                         type="number"
                         id="amount"
                         name="amount"
-                        min="0"
-                        max={booking?.total_amount}
                         value={formData.amount}
                         onChange={handleInputChange}
-                        className="flex-1 min-w-0 block w-full rounded-none rounded-r-md border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                        className="block w-full pl-12 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                        placeholder="0"
+                        min="0"
+                        max={bookingData.payment.amount}
+                        step="1000"
                         required
                       />
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Maksimal: Rp {new Intl.NumberFormat('id-ID').format(booking?.total_amount || 0)}
-                    </p>
+                    <div className="mt-1 flex justify-between text-xs text-gray-500">
+                      <span>Maksimal: {formatCurrency(bookingData.payment.amount)}</span>
+                      <span>Disarankan: {formatCurrency(bookingData.suggested_refund_amount)}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, amount: bookingData.suggested_refund_amount }))}
+                      className="mt-2 text-xs text-emerald-600 hover:text-emerald-800 underline"
+                    >
+                      Gunakan jumlah yang disarankan
+                    </button>
                   </div>
 
+                  {/* Reason */}
                   <div>
                     <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-1">
                       Alasan Refund <span className="text-red-500">*</span>
                     </label>
-                    <textarea
+                    <select
                       id="reason"
                       name="reason"
-                      rows="3"
                       value={formData.reason}
                       onChange={handleInputChange}
-                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                      className="block w-full py-3 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                       required
-                    ></textarea>
+                    >
+                      <option value="">Pilih alasan refund</option>
+                      <option value="CUSTOMER_REQUEST">Permintaan Pelanggan</option>
+                      <option value="SCHEDULE_CANCELLED">Jadwal Dibatalkan</option>
+                      <option value="WEATHER_ISSUE">Masalah Cuaca</option>
+                      <option value="FERRY_ISSUE">Masalah Kapal</option>
+                      <option value="FORCE_MAJEURE">Force Majeure</option>
+                      <option value="ADMIN_DECISION">Keputusan Admin</option>
+                      <option value="OTHER">Lainnya</option>
+                    </select>
                   </div>
 
+                  {/* Refund Method */}
                   <div>
                     <label htmlFor="refund_method" className="block text-sm font-medium text-gray-700 mb-1">
                       Metode Refund <span className="text-red-500">*</span>
@@ -179,18 +399,23 @@ const RefundCreate = () => {
                       name="refund_method"
                       value={formData.refund_method}
                       onChange={handleInputChange}
-                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                      className="block w-full py-3 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                       required
                     >
-                      <option value="">Pilih Metode</option>
-                      <option value="ORIGINAL_PAYMENT_METHOD">Metode Pembayaran Asal</option>
                       <option value="BANK_TRANSFER">Transfer Bank</option>
+                      <option value="ORIGINAL_PAYMENT_METHOD">Metode Pembayaran Asli</option>
                       <option value="CASH">Tunai</option>
                     </select>
                   </div>
 
+                  {/* Bank Details - Show only for BANK_TRANSFER */}
                   {formData.refund_method === 'BANK_TRANSFER' && (
-                    <div className="space-y-4">
+                    <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <h4 className="text-sm font-medium text-gray-800 flex items-center">
+                        <i className="fas fa-university text-blue-500 mr-2"></i>
+                        Detail Bank
+                      </h4>
+                      
                       <div>
                         <label htmlFor="bank_name" className="block text-sm font-medium text-gray-700 mb-1">
                           Nama Bank <span className="text-red-500">*</span>
@@ -201,8 +426,9 @@ const RefundCreate = () => {
                           name="bank_name"
                           value={formData.bank_name}
                           onChange={handleInputChange}
-                          className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                          required
+                          className="block w-full py-3 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                          placeholder="Contoh: Bank BCA"
+                          required={formData.refund_method === 'BANK_TRANSFER'}
                         />
                       </div>
 
@@ -216,8 +442,9 @@ const RefundCreate = () => {
                           name="bank_account_number"
                           value={formData.bank_account_number}
                           onChange={handleInputChange}
-                          className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                          required
+                          className="block w-full py-3 px-3 border border-gray-300 rounded-lg font-mono focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                          placeholder="1234567890"
+                          required={formData.refund_method === 'BANK_TRANSFER'}
                         />
                       </div>
 
@@ -231,104 +458,154 @@ const RefundCreate = () => {
                           name="bank_account_name"
                           value={formData.bank_account_name}
                           onChange={handleInputChange}
-                          className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                          required
+                          className="block w-full py-3 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                          placeholder="Nama sesuai rekening bank"
+                          required={formData.refund_method === 'BANK_TRANSFER'}
                         />
                       </div>
                     </div>
                   )}
 
+                  {/* Notes */}
+                  <div>
+                    <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
+                      Catatan Admin
+                    </label>
+                    <textarea
+                      id="notes"
+                      name="notes"
+                      rows="4"
+                      value={formData.notes}
+                      onChange={handleInputChange}
+                      className="block w-full py-3 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                      placeholder="Catatan tambahan untuk refund ini..."
+                    />
+                  </div>
+
+                  {/* Submit Button */}
                   <div className="pt-4">
                     <button
                       type="submit"
-                      className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      disabled={submitting}
+                      className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white font-medium rounded-lg shadow-sm transition-colors disabled:cursor-not-allowed"
                     >
-                      <i className="fas fa-save mr-2"></i> Buat Refund
+                      {submitting ? (
+                        <>
+                          <i className="fas fa-spinner fa-spin mr-2"></i>
+                          Memproses...
+                        </>
+                      ) : (
+                        <>
+                          <i className="fas fa-check-circle mr-2"></i>
+                          Buat Refund
+                        </>
+                      )}
                     </button>
                   </div>
-                </div>
-              </form>
+                </form>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Right Column - Booking Details */}
-        <div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden sticky top-20">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-              <h2 className="font-semibold text-gray-800">Ringkasan Booking</h2>
-            </div>
+          {/* Sidebar - Booking Summary */}
+          <div>
+            <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden sticky top-20 hover:shadow-lg transition-shadow duration-300">
+              <div className="bg-gray-50 px-6 py-4 border-b border-gray-100">
+                <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+                  <i className="fas fa-ticket-alt text-purple-500 mr-2"></i>
+                  Detail Booking
+                </h2>
+              </div>
 
-            <div className="p-6">
-              <dl className="divide-y divide-gray-200">
-                <div className="py-3 flex justify-between">
-                  <dt className="text-sm font-medium text-gray-500">Kode Booking</dt>
-                  <dd className="text-sm font-medium text-blue-600">{booking?.booking_code}</dd>
+              <div className="p-6">
+                <dl className="divide-y divide-gray-200">
+                  <div className="py-3 flex justify-between">
+                    <dt className="text-sm font-medium text-gray-500">Kode Booking</dt>
+                    <dd className="text-sm font-medium text-blue-600">{bookingData.booking.booking_code}</dd>
+                  </div>
+                  
+                  <div className="py-3 flex justify-between">
+                    <dt className="text-sm font-medium text-gray-500">Pengguna</dt>
+                    <dd className="text-sm text-gray-900">{bookingData.booking.user.name}</dd>
+                  </div>
+
+                  <div className="py-3 flex justify-between">
+                    <dt className="text-sm font-medium text-gray-500">Email</dt>
+                    <dd className="text-sm text-gray-900 text-right break-all">{bookingData.booking.user.email}</dd>
+                  </div>
+
+                  <div className="py-3 flex justify-between">
+                    <dt className="text-sm font-medium text-gray-500">Rute</dt>
+                    <dd className="text-sm text-gray-900 text-right">
+                      {bookingData.booking.schedule.route.origin} → {bookingData.booking.schedule.route.destination}
+                    </dd>
+                  </div>
+
+                  <div className="py-3 flex justify-between">
+                    <dt className="text-sm font-medium text-gray-500">Tanggal</dt>
+                    <dd className="text-sm text-gray-900 text-right">
+                      {formatDate(bookingData.booking.departure_date)}
+                    </dd>
+                  </div>
+
+                  <div className="py-3 flex justify-between">
+                    <dt className="text-sm font-medium text-gray-500">Kapal</dt>
+                    <dd className="text-sm text-gray-900 text-right">{bookingData.booking.schedule.ferry.name}</dd>
+                  </div>
+
+                  <div className="py-3 flex justify-between">
+                    <dt className="text-sm font-medium text-gray-500">Penumpang</dt>
+                    <dd className="text-sm text-gray-900">{bookingData.booking.passenger_count} orang</dd>
+                  </div>
+
+                  <div className="py-3 flex justify-between">
+                    <dt className="text-sm font-medium text-gray-500">Total Dibayar</dt>
+                    <dd className="text-sm font-bold text-green-600">
+                      {formatCurrency(bookingData.payment.amount)}
+                    </dd>
+                  </div>
+
+                  <div className="py-3 flex justify-between">
+                    <dt className="text-sm font-medium text-gray-500">Metode Bayar</dt>
+                    <dd className="text-sm text-gray-900 text-right">
+                      {bookingData.payment.payment_method} - {bookingData.payment.payment_channel}
+                    </dd>
+                  </div>
+                </dl>
+
+                <div className="border-t border-gray-200 pt-4 mt-4">
+                  <Link
+                    to={`/admin/bookings/${bookingData.booking.id}`}
+                    className="block w-full text-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg shadow-sm transition-colors"
+                  >
+                    <i className="fas fa-eye mr-2"></i> Lihat Detail Booking
+                  </Link>
                 </div>
-                <div className="py-3 flex justify-between">
-                  <dt className="text-sm font-medium text-gray-500">Status</dt>
-                  <dd>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getBookingStatusBadge(booking?.status)}`}>
-                      {booking?.status}
-                    </span>
-                  </dd>
-                </div>
-                <div className="py-3 flex justify-between">
-                  <dt className="text-sm font-medium text-gray-500">Pengguna</dt>
-                  <dd className="text-sm text-gray-900">{booking?.user?.name}</dd>
-                </div>
-                <div className="py-3 flex justify-between">
-                  <dt className="text-sm font-medium text-gray-500">Rute</dt>
-                  <dd className="text-sm text-gray-900">
-                    {booking?.schedule?.route?.origin} - {booking?.schedule?.route?.destination}
-                  </dd>
-                </div>
-                <div className="py-3 flex justify-between">
-                  <dt className="text-sm font-medium text-gray-500">Tanggal</dt>
-                  <dd className="text-sm text-gray-900">
-                    {booking?.booking_date && new Date(booking.booking_date).toLocaleDateString('id-ID', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric'
-                    })}
-                  </dd>
-                </div>
-                <div className="py-3 flex justify-between">
-                  <dt className="text-sm font-medium text-gray-500">Penumpang</dt>
-                  <dd className="text-sm text-gray-900">{booking?.passenger_count} orang</dd>
-                </div>
-                <div className="py-3 flex justify-between">
-                  <dt className="text-sm font-medium text-gray-500">Kendaraan</dt>
-                  <dd className="text-sm text-gray-900">{booking?.vehicle_count} unit</dd>
-                </div>
-                <div className="py-3 flex justify-between">
-                  <dt className="text-sm font-medium text-gray-500">Pembayaran</dt>
-                  <dd className="text-sm text-gray-900">
-                    {payment?.payment_method} ({payment?.payment_channel})
-                  </dd>
-                </div>
-                <div className="py-3 flex justify-between">
-                  <dt className="text-sm font-medium text-gray-500">Total Bayar</dt>
-                  <dd className="text-sm font-bold text-blue-600">
-                    Rp {new Intl.NumberFormat('id-ID').format(booking?.total_amount || 0)}
-                  </dd>
-                </div>
-              </dl>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* CSS for animations */}
+      <style>{`
+        @keyframes slideIn {
+          0% {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-slideIn {
+          animation: slideIn 0.4s ease-out forwards;
+        }
+      `}</style>
     </div>
   );
-};
-
-const getBookingStatusBadge = (status) => {
-  const badges = {
-    PENDING: 'bg-yellow-100 text-yellow-800',
-    CONFIRMED: 'bg-green-100 text-green-800',
-    COMPLETED: 'bg-blue-100 text-blue-800'
-  };
-  return badges[status] || 'bg-gray-100 text-gray-800';
 };
 
 export default RefundCreate;

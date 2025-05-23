@@ -14,123 +14,116 @@ class Payment extends Model
         'amount',
         'payment_method',
         'payment_channel',
+        'status',
         'transaction_id',
-        'external_reference',
         'virtual_account_number',
         'qr_code_url',
         'deep_link_url',
-        'status',
-        'payment_date',
         'expiry_date',
+        'payment_date',
         'refund_amount',
         'refund_date',
+        'channel_response_code',
+        'channel_response_message',
+        'external_reference',
         'payload',
     ];
 
     protected $casts = [
-        'payment_date' => 'datetime',
+        'amount' => 'decimal:2',
+        'refund_amount' => 'decimal:2',
         'expiry_date' => 'datetime',
+        'payment_date' => 'datetime',
         'refund_date' => 'datetime',
-        'payload' => 'array',
     ];
 
-    // Status pembayaran yang tersedia
+    // Status constants
     const STATUS_PENDING = 'PENDING';
     const STATUS_SUCCESS = 'SUCCESS';
     const STATUS_FAILED = 'FAILED';
     const STATUS_REFUNDED = 'REFUNDED';
-    const STATUS_CHALLENGE = 'CHALLENGE';
+    const STATUS_PARTIAL_REFUND = 'PARTIAL_REFUND';
 
-    // Metode pembayaran yang tersedia
-    const METHOD_VIRTUAL_ACCOUNT = 'VIRTUAL_ACCOUNT';
-    const METHOD_CREDIT_CARD = 'CREDIT_CARD';
-    const METHOD_E_WALLET = 'E_WALLET';
-    const METHOD_CASH = 'CASH';
-    const METHOD_DIRECT_DEBIT = 'DIRECT_DEBIT';
-    const METHOD_CREDIT = 'CREDIT';
-
-    /**
-     * Getter untuk virtual account number yang memadukan kolom dan external_reference
-     */
-    public function getVirtualAccountNumberAttribute($value)
-    {
-        // Jika nilai langsung ada, gunakan nilai tersebut
-        if (!empty($value)) {
-            return $value;
-        }
-
-        // Jika tidak ada, coba ekstrak dari external_reference
-        if ($this->external_reference) {
-            $parts = explode(' ', $this->external_reference);
-            if (count($parts) > 1) {
-                return $parts[1]; // Ambil bagian kedua (nomor)
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Relasi ke model Booking
-     */
     public function booking()
     {
         return $this->belongsTo(Booking::class);
     }
 
-    /**
-     * Relasi ke model Refund
-     */
-    public function refund()
+    public function refunds()
     {
-        return $this->hasOne(Refund::class);
+        return $this->hasMany(Refund::class);
     }
 
     /**
-     * Cek apakah pembayaran masih dalam status pending
+     * Get latest refund
      */
-    public function isPending()
+    public function latestRefund()
     {
-        return $this->status === self::STATUS_PENDING;
+        return $this->hasOne(Refund::class)->latest();
     }
 
     /**
-     * Cek apakah pembayaran berhasil
+     * Check if payment can be refunded
      */
-    public function isSuccess()
+    public function canBeRefunded()
     {
-        return $this->status === self::STATUS_SUCCESS;
+        return $this->status === self::STATUS_SUCCESS &&
+               !$this->refunds()->whereIn('status', ['PENDING', 'APPROVED', 'PROCESSING', 'COMPLETED'])->exists();
     }
 
     /**
-     * Cek apakah pembayaran gagal
+     * Get formatted amount
      */
-    public function isFailed()
+    public function getFormattedAmountAttribute()
     {
-        return $this->status === self::STATUS_FAILED;
+        return 'Rp ' . number_format($this->amount, 0, ',', '.');
     }
 
     /**
-     * Cek apakah pembayaran sudah direfund
+     * Get formatted refund amount
      */
-    public function isRefunded()
+    public function getFormattedRefundAmountAttribute()
     {
-        return $this->status === self::STATUS_REFUNDED;
+        return $this->refund_amount ? 'Rp ' . number_format($this->refund_amount, 0, ',', '.') : null;
     }
 
     /**
-     * Cek apakah pembayaran dalam status challenge (fraud)
+     * Get status in Indonesian
      */
-    public function isChallenge()
+    public function getStatusIndonesianAttribute()
     {
-        return $this->status === self::STATUS_CHALLENGE;
+        $statuses = [
+            self::STATUS_PENDING => 'Menunggu Pembayaran',
+            self::STATUS_SUCCESS => 'Berhasil',
+            self::STATUS_FAILED => 'Gagal',
+            self::STATUS_REFUNDED => 'Sudah Direfund',
+            self::STATUS_PARTIAL_REFUND => 'Refund Sebagian',
+        ];
+
+        return $statuses[$this->status] ?? $this->status;
     }
 
     /**
-     * Cek apakah pembayaran sudah kedaluwarsa
+     * Check if payment is expired
      */
-    public function isExpired()
+    public function getIsExpiredAttribute()
     {
-        return $this->expiry_date && now()->isAfter($this->expiry_date);
+        return $this->expiry_date && $this->expiry_date->isPast();
+    }
+
+    /**
+     * Scope for successful payments
+     */
+    public function scopeSuccessful($query)
+    {
+        return $query->where('status', self::STATUS_SUCCESS);
+    }
+
+    /**
+     * Scope for refunded payments
+     */
+    public function scopeRefunded($query)
+    {
+        return $query->whereIn('status', [self::STATUS_REFUNDED, self::STATUS_PARTIAL_REFUND]);
     }
 }

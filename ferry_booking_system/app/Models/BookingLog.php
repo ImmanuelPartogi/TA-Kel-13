@@ -1,6 +1,5 @@
 <?php
 
-// app/Models/BookingLog.php
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,8 +9,6 @@ class BookingLog extends Model
 {
     use HasFactory;
 
-    public $timestamps = false;
-
     protected $fillable = [
         'booking_id',
         'previous_status',
@@ -20,16 +17,29 @@ class BookingLog extends Model
         'changed_by_id',
         'notes',
         'ip_address',
-        'device_info',
-        'location',
-    ];
-
-    protected $casts = [
-        'created_at' => 'datetime',
+        'user_agent',
     ];
 
     public function booking()
     {
         return $this->belongsTo(Booking::class);
+    }
+
+    public function changedBy()
+    {
+        return $this->morphTo();
+    }
+
+    /**
+     * Get the user who made the change (polymorphic)
+     */
+    public function getChangedByUserAttribute()
+    {
+        if ($this->changed_by_type === 'ADMIN') {
+            return Admin::find($this->changed_by_id);
+        } elseif ($this->changed_by_type === 'USER') {
+            return User::find($this->changed_by_id);
+        }
+        return null;
     }
 }

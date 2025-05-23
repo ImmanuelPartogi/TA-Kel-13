@@ -28,7 +28,7 @@ const RefundsList = () => {
     // Auto-hide alert after 5 seconds
     if (alert.show) {
       const timer = setTimeout(() => {
-        setAlert({...alert, show: false});
+        setAlert({ ...alert, show: false });
       }, 5000);
       return () => clearTimeout(timer);
     }
@@ -37,24 +37,24 @@ const RefundsList = () => {
   const fetchRefunds = async (page = 1) => {
     try {
       setLoading(true);
-      const response = await api.get('/admin-panel/refunds', { 
-        params: { 
+      const response = await api.get('/admin-panel/refunds', {
+        params: {
           ...filters,
           page
-        } 
+        }
       });
-      
+
       console.log('API Response:', response.data); // Debugging
-      
+
       if (response.data && response.data.data) {
         let refundsData = [];
         let paginationData = {};
-        
+
         // Check if response.data.data is array (new format) or paginated object (old format)
         if (Array.isArray(response.data.data)) {
           // New format: data is direct array
           refundsData = response.data.data;
-          
+
           // Pagination info in meta
           if (response.data.meta) {
             paginationData = response.data.meta;
@@ -62,7 +62,7 @@ const RefundsList = () => {
         } else if (response.data.data.data && Array.isArray(response.data.data.data)) {
           // Old format: data.data.data is the array (Laravel paginate structure)
           refundsData = response.data.data.data;
-          
+
           // Pagination info in data level
           paginationData = {
             current_page: response.data.data.current_page || 1,
@@ -71,12 +71,12 @@ const RefundsList = () => {
             per_page: response.data.data.per_page || 10
           };
         }
-        
+
         console.log('Processed refunds data:', refundsData); // Debugging
         console.log('Processed pagination data:', paginationData); // Debugging
-        
+
         setRefunds(refundsData);
-        
+
         if (Object.keys(paginationData).length > 0) {
           setPagination({
             current_page: paginationData.current_page || 1,
@@ -151,7 +151,7 @@ const RefundsList = () => {
   const getLastItem = () => Math.min(pagination.current_page * pagination.per_page, pagination.total);
 
   const getStatusConfig = (status) => {
-    switch(status) {
+    switch (status) {
       case 'PENDING':
         return {
           bg: 'bg-yellow-100',
@@ -230,19 +230,19 @@ const RefundsList = () => {
   // Helper function to format date
   const formatDate = (dateString, includeTime = false) => {
     if (!dateString) return 'N/A';
-    
+
     try {
       const options = {
         day: 'numeric',
         month: 'short',
         year: 'numeric'
       };
-      
+
       if (includeTime) {
         options.hour = '2-digit';
         options.minute = '2-digit';
       }
-      
+
       return new Date(dateString).toLocaleDateString('id-ID', options);
     } catch (error) {
       console.error('Error formatting date:', error);
@@ -261,13 +261,13 @@ const RefundsList = () => {
       <div className="bg-gradient-to-br from-blue-800 via-blue-600 to-blue-500 p-8 text-white relative">
         <div className="absolute inset-0 opacity-20">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" className="w-full h-full">
-            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                  fill="#fff" opacity="0.2" />
-            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                  fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
+            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+              fill="#fff" opacity="0.2" />
+            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+              fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
           </svg>
         </div>
-        
+
         <div className="relative z-10">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div className="flex items-start">
@@ -279,16 +279,17 @@ const RefundsList = () => {
                 <p className="mt-1 text-blue-100">Kelola seluruh refund tiket kapal ferry dalam sistem</p>
               </div>
             </div>
-            
+
             <div>
-              <button
-                onClick={() => setAlert({ show: true, type: 'success', message: 'Fitur ekspor data refund dalam pengembangan' })}
-                className="inline-flex items-center px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-white/20 shadow-sm">
-                <i className="fas fa-file-export mr-2"></i> Ekspor Data
-              </button>
+              <Link 
+                to="/admin/refunds/settings"
+                className="inline-flex items-center px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-white/20 shadow-sm"
+              >
+                <i className="fas fa-cog mr-2"></i> Kebijakan Refund
+              </Link>
             </div>
           </div>
-          
+
           {/* Quick Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-8">
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
@@ -298,7 +299,7 @@ const RefundsList = () => {
                 <span className="text-2xl font-bold">{pagination.total}</span>
               </div>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Pending</p>
               <div className="flex items-center mt-1">
@@ -308,7 +309,7 @@ const RefundsList = () => {
                 </span>
               </div>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Approved</p>
               <div className="flex items-center mt-1">
@@ -318,7 +319,7 @@ const RefundsList = () => {
                 </span>
               </div>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Completed</p>
               <div className="flex items-center mt-1">
@@ -341,7 +342,7 @@ const RefundsList = () => {
                 <i className={`fas ${alert.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-2`}></i>
                 <span className="font-medium">{alert.type === 'success' ? 'Sukses' : 'Error'}</span>
               </div>
-              <button onClick={() => setAlert({...alert, show: false})} className="text-white/80 hover:text-white">
+              <button onClick={() => setAlert({ ...alert, show: false })} className="text-white/80 hover:text-white">
                 <i className="fas fa-times"></i>
               </button>
             </div>
@@ -359,7 +360,7 @@ const RefundsList = () => {
               Filter & Pencarian
             </h2>
           </div>
-          
+
           <div className="p-6 bg-white">
             <form onSubmit={handleSearch}>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -464,24 +465,24 @@ const RefundsList = () => {
           <p className="text-sm text-gray-600">
             {pagination.total > 0 ? (
               <>
-                Menampilkan <span className="font-medium">{getFirstItem()}</span> - 
-                <span className="font-medium"> {getLastItem()}</span> dari 
+                Menampilkan <span className="font-medium">{getFirstItem()}</span> -
+                <span className="font-medium"> {getLastItem()}</span> dari
                 <span className="font-medium"> {pagination.total}</span> refund
               </>
             ) : (
               <span>Tidak ada hasil yang ditemukan</span>
             )}
           </p>
-          
+
           <div className="flex items-center space-x-2">
             <div className="p-1 bg-gray-100 rounded-lg flex">
-              <button 
+              <button
                 onClick={() => setViewMode('table')}
                 className={`px-3 py-1 rounded ${viewMode === 'table' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-800'}`}
               >
                 <i className="fas fa-list"></i>
               </button>
-              <button 
+              <button
                 onClick={() => setViewMode('grid')}
                 className={`px-3 py-1 rounded ${viewMode === 'grid' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-800'}`}
               >
@@ -496,7 +497,7 @@ const RefundsList = () => {
           <div className="bg-white rounded-xl border border-gray-100 shadow-md p-8 text-center">
             <div className="inline-block relative">
               <div className="h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-500 animate-spin"></div>
-              <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-200 animate-spin" style={{animationDirection: 'reverse', animationDuration: '1.5s'}}></div>
+              <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-200 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
             </div>
             <p className="mt-4 text-gray-600">Memuat data refund...</p>
           </div>
@@ -510,7 +511,7 @@ const RefundsList = () => {
             </div>
             <h3 className="text-xl font-semibold text-gray-800 mb-2">Belum Ada Data Refund</h3>
             <p className="text-gray-600 mb-6">Belum ada refund yang ditemukan atau sesuai dengan filter yang Anda pilih</p>
-            <button 
+            <button
               onClick={handleReset}
               className="inline-flex items-center px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-sm">
               <i className="fas fa-sync-alt mr-2"></i> Reset Filter
@@ -580,7 +581,7 @@ const RefundsList = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900 flex items-center">
                             <span className="bg-blue-100 text-blue-700 px-2.5 py-1 rounded-md text-xs font-medium">
-                              <i className={`fas ${getRefundMethodIcon(refund.refund_method)} mr-1`}></i> 
+                              <i className={`fas ${getRefundMethodIcon(refund.refund_method)} mr-1`}></i>
                               {getRefundMethodText(refund.refund_method)}
                             </span>
                           </div>
@@ -659,7 +660,7 @@ const RefundsList = () => {
                       </span>
                     </div>
                   </div>
-                  
+
                   <div className="p-4">
                     <div className="mb-4">
                       <div className="text-xs text-gray-500 mb-1">Pengguna</div>
@@ -667,7 +668,7 @@ const RefundsList = () => {
                         {refund.booking?.user?.name || 'N/A'}
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-2 mb-4">
                       <div className="bg-emerald-50 p-2 rounded-lg text-center">
                         <p className="text-xs text-emerald-600 mb-1">Jumlah Refund</p>
@@ -678,27 +679,27 @@ const RefundsList = () => {
                           </span>
                         </div>
                       </div>
-                      
+
                       <div className="bg-blue-50 p-2 rounded-lg text-center">
                         <p className="text-xs text-blue-600 mb-1">Metode</p>
                         <div className="flex items-center justify-center">
                           <i className={`fas ${getRefundMethodIcon(refund.refund_method)} text-blue-400 mr-1`}></i>
                           <span className="text-sm font-semibold text-blue-700">
-                            {refund.refund_method === 'ORIGINAL_PAYMENT_METHOD' ? 'Pembayaran Asal' : 
-                              (refund.refund_method === 'BANK_TRANSFER' ? 'Transfer Bank' : 
-                              (refund.refund_method === 'CASH' ? 'Tunai' : refund.refund_method))}
+                            {refund.refund_method === 'ORIGINAL_PAYMENT_METHOD' ? 'Pembayaran Asal' :
+                              (refund.refund_method === 'BANK_TRANSFER' ? 'Transfer Bank' :
+                                (refund.refund_method === 'CASH' ? 'Tunai' : refund.refund_method))}
                           </span>
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="bg-gray-50 p-3 rounded-lg mb-4">
                       <p className="text-xs text-gray-500 mb-1 text-center">Tanggal Pengajuan</p>
                       <p className="text-center text-sm font-medium text-gray-700">
                         {formatDate(refund.created_at, true)}
                       </p>
                     </div>
-                    
+
                     <div className="flex justify-between border-t border-gray-100 pt-4">
                       <button
                         onClick={() => viewRefundDetail(refund)}
@@ -725,7 +726,7 @@ const RefundsList = () => {
                       ) : (
                         <div className="flex-1"></div>
                       )}
-                      
+
                       <Link to={`/admin/refunds/${refund.id}`} className="btn-icon bg-purple-50 hover:bg-purple-100 text-purple-600 p-2 rounded-lg transition-colors">
                         <i className="fas fa-cog"></i>
                       </Link>
@@ -741,26 +742,26 @@ const RefundsList = () => {
         {!loading && pagination.total > 0 && pagination.last_page > 1 && (
           <div className="flex flex-col md:flex-row justify-between items-center bg-white rounded-xl border border-gray-100 shadow-sm p-4">
             <div className="text-sm text-gray-600 mb-4 md:mb-0">
-              Menampilkan <span className="font-medium">{getFirstItem()}</span> - 
-              <span className="font-medium"> {getLastItem()}</span> dari 
+              Menampilkan <span className="font-medium">{getFirstItem()}</span> -
+              <span className="font-medium"> {getLastItem()}</span> dari
               <span className="font-medium"> {pagination.total}</span> hasil
             </div>
             <div className="flex space-x-1">
-              <button 
+              <button
                 onClick={() => handlePageChange(1)}
                 disabled={pagination.current_page === 1}
                 className="px-3 py-1 rounded-md bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
               >
                 <i className="fas fa-angle-double-left"></i>
               </button>
-              <button 
+              <button
                 onClick={() => handlePageChange(pagination.current_page - 1)}
                 disabled={pagination.current_page === 1}
                 className="px-3 py-1 rounded-md bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
               >
                 <i className="fas fa-angle-left"></i>
               </button>
-              
+
               {/* Page numbers */}
               <div className="flex space-x-1">
                 {Array.from({ length: Math.min(5, pagination.last_page) }, (_, i) => {
@@ -778,7 +779,7 @@ const RefundsList = () => {
                     // Middle cases
                     pageNum = pagination.current_page - 2 + i;
                   }
-                  
+
                   return (
                     <button
                       key={i}
@@ -791,15 +792,15 @@ const RefundsList = () => {
                   );
                 })}
               </div>
-              
-              <button 
+
+              <button
                 onClick={() => handlePageChange(pagination.current_page + 1)}
                 disabled={pagination.current_page === pagination.last_page}
                 className="px-3 py-1 rounded-md bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
               >
                 <i className="fas fa-angle-right"></i>
               </button>
-              <button 
+              <button
                 onClick={() => handlePageChange(pagination.last_page)}
                 disabled={pagination.current_page === pagination.last_page}
                 className="px-3 py-1 rounded-md bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
@@ -853,7 +854,7 @@ const RefundsList = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div>
                     <h4 className="text-sm font-medium text-gray-500 mb-1">Informasi Pengguna</h4>
                     <div className="bg-gray-50 rounded-lg p-4">
@@ -873,7 +874,7 @@ const RefundsList = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="space-y-4">
                   <div>
                     <h4 className="text-sm font-medium text-gray-500 mb-1">Detail Booking</h4>
@@ -887,8 +888,8 @@ const RefundsList = () => {
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-sm text-gray-600">Rute:</span>
                         <span className="text-sm font-medium">
-                          {selectedRefund.booking?.schedule?.route ? 
-                            `${selectedRefund.booking.schedule.route.origin} - ${selectedRefund.booking.schedule.route.destination}` : 
+                          {selectedRefund.booking?.schedule?.route ?
+                            `${selectedRefund.booking.schedule.route.origin} - ${selectedRefund.booking.schedule.route.destination}` :
                             'N/A'
                           }
                         </span>
@@ -896,8 +897,8 @@ const RefundsList = () => {
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-sm text-gray-600">Tanggal Keberangkatan:</span>
                         <span className="text-sm font-medium">
-                          {selectedRefund.booking?.departure_date ? 
-                            formatDate(selectedRefund.booking.departure_date) : 
+                          {selectedRefund.booking?.departure_date ?
+                            formatDate(selectedRefund.booking.departure_date) :
                             'N/A'
                           }
                         </span>
@@ -905,15 +906,15 @@ const RefundsList = () => {
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-600">Total Booking:</span>
                         <span className="text-sm font-medium">
-                          {selectedRefund.booking?.total_amount ? 
-                            formatCurrency(selectedRefund.booking.total_amount) : 
+                          {selectedRefund.booking?.total_amount ?
+                            formatCurrency(selectedRefund.booking.total_amount) :
                             'N/A'
                           }
                         </span>
                       </div>
                     </div>
                   </div>
-                  
+
                   <div>
                     <h4 className="text-sm font-medium text-gray-500 mb-1">Alasan Refund</h4>
                     <div className="bg-gray-50 rounded-lg p-4">
@@ -922,13 +923,13 @@ const RefundsList = () => {
                       </p>
                     </div>
                   </div>
-                  
+
                   {selectedRefund.status === 'PENDING' && (
                     <div>
                       <h4 className="text-sm font-medium text-gray-500 mb-1">Tindakan</h4>
                       <div className="bg-gray-50 rounded-lg p-4">
                         <div className="grid grid-cols-2 gap-3">
-                          <button 
+                          <button
                             onClick={() => {
                               setShowDetailModal(false);
                               setAlert({ show: true, type: 'success', message: 'Refund telah disetujui' });
@@ -937,7 +938,7 @@ const RefundsList = () => {
                           >
                             <i className="fas fa-check mr-2"></i> Setujui
                           </button>
-                          <button 
+                          <button
                             onClick={() => {
                               setShowDetailModal(false);
                               setAlert({ show: true, type: 'error', message: 'Refund telah ditolak' });
@@ -952,7 +953,7 @@ const RefundsList = () => {
                   )}
                 </div>
               </div>
-              
+
               <div className="mt-6 flex justify-between">
                 <button
                   onClick={() => setShowDetailModal(false)}
@@ -960,7 +961,7 @@ const RefundsList = () => {
                 >
                   <i className="fas fa-times mr-2"></i> Tutup
                 </button>
-                
+
                 <div className="flex space-x-2">
                   <Link
                     to={`/admin/refunds/${selectedRefund.id}`}

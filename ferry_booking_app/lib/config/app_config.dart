@@ -2,7 +2,7 @@
 class AppConfig {
   // API Configuration
   // static const String apiBaseUrl = 'http://127.0.0.1:8000/api'; // Local development
-  static const String apiBaseUrl = 'http://192.168.50.145:8000/api';
+  static const String apiBaseUrl = 'http://172.27.65.165:8000/api';
 
   // Untuk akses dari perangkat lain atau Midtrans callback
   static const String publicBaseUrl =

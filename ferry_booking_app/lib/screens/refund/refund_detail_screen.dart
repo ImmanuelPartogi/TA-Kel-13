@@ -4,6 +4,7 @@ import 'package:ferry_booking_app/models/refund.dart';
 import 'package:ferry_booking_app/models/booking.dart';
 import 'package:ferry_booking_app/providers/refund_provider.dart';
 import 'package:ferry_booking_app/widgets/custom_appbar.dart';
+import 'package:intl/intl.dart';
 
 class RefundDetailScreen extends StatefulWidget {
   final Booking booking;
@@ -94,6 +95,11 @@ class _RefundDetailScreenState extends State<RefundDetailScreen> {
   Widget build(BuildContext context) {
     final refundProvider = Provider.of<RefundProvider>(context);
     final refund = refundProvider.currentRefund ?? widget.refund;
+    final currencyFormat = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    );
 
     return Scaffold(
       appBar: const CustomAppBar(title: 'Detail Refund', showBackButton: true),
@@ -166,6 +172,63 @@ class _RefundDetailScreenState extends State<RefundDetailScreen> {
 
                         const SizedBox(height: 24),
 
+                        // Refund Calculation Card
+                        Card(
+                          color: Colors.amber[50],
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.calculate, color: Colors.amber),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Perhitungan Refund',
+                                      style: Theme.of(context).textTheme.titleMedium
+                                          ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.amber[800],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                _buildCalculationRow(
+                                  'Total Pembayaran',
+                                  currencyFormat.format(refund.originalAmount),
+                                ),
+                                const SizedBox(height: 8),
+                                _buildCalculationRow(
+                                  'Persentase Refund',
+                                  '${refund.refundPercentage.toStringAsFixed(0)}%',
+                                  isPercentage: true,
+                                ),
+                                const SizedBox(height: 8),
+                                _buildCalculationRow(
+                                  'Biaya Administrasi',
+                                  '- ${currencyFormat.format(refund.refundFee)}',
+                                  isNegative: true,
+                                ),
+                                const Divider(thickness: 2, height: 24),
+                                _buildCalculationRow(
+                                  'Jumlah Refund',
+                                  currencyFormat.format(refund.amount),
+                                  isBold: true,
+                                  isLarge: true,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
                         // Refund Details
                         Card(
                           elevation: 2,
@@ -188,11 +251,6 @@ class _RefundDetailScreenState extends State<RefundDetailScreen> {
                                 _buildInfoRow(
                                   'Kode Booking',
                                   widget.booking.bookingCode,
-                                ),
-                                const Divider(),
-                                _buildInfoRow(
-                                  'Jumlah Refund',
-                                  refund.formattedAmount,
                                 ),
                                 const Divider(),
                                 _buildInfoRow(
@@ -261,7 +319,7 @@ class _RefundDetailScreenState extends State<RefundDetailScreen> {
                                       ?.copyWith(fontWeight: FontWeight.bold),
                                 ),
                                 const SizedBox(height: 12),
-                                _buildInfoRow('Bank', refund.bankName),
+                                _buildInfoRow('Bank', refund.bankNameLabel),
                                 const Divider(),
                                 _buildInfoRow(
                                   'Nomor Rekening',
@@ -276,6 +334,98 @@ class _RefundDetailScreenState extends State<RefundDetailScreen> {
                             ),
                           ),
                         ),
+
+                        // Admin Notes (if any)
+                        if (refund.notes != null && refund.notes!.isNotEmpty) ...[
+                          const SizedBox(height: 24),
+                          Card(
+                            color: Colors.blue[50],
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(Icons.note, color: Colors.blue[700]),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Catatan Admin',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.blue[700],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    refund.notes!,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      height: 1.5,
+                                      color: Colors.blue[900],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+
+                        // Rejection Reason (if rejected)
+                        if (refund.status == 'REJECTED' && 
+                            refund.rejectionReason != null && 
+                            refund.rejectionReason!.isNotEmpty) ...[
+                          const SizedBox(height: 24),
+                          Card(
+                            color: Colors.red[50],
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(Icons.cancel, color: Colors.red[700]),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Alasan Penolakan',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.red[700],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    refund.rejectionReason!,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      height: 1.5,
+                                      color: Colors.red[900],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
 
                         // Cancel button jika masih pending
                         if (refund.status.toUpperCase() == 'PENDING') ...[
@@ -317,30 +467,21 @@ class _RefundDetailScreenState extends State<RefundDetailScreen> {
   IconData _getStatusIcon(String status) {
     switch (status.toUpperCase()) {
       case 'SUCCESS':
+      case 'COMPLETED':
         return Icons.check_circle;
       case 'PENDING':
         return Icons.access_time;
+      case 'APPROVED':
+        return Icons.check;
+      case 'PROCESSING':
+        return Icons.sync;
       case 'FAILED':
+      case 'REJECTED':
         return Icons.cancel;
       case 'CANCELLED':
         return Icons.block;
       default:
         return Icons.help;
-    }
-  }
-
-  String _getStatusDescription(String status) {
-    switch (status.toUpperCase()) {
-      case 'SUCCESS':
-        return 'Refund telah berhasil diproses dan dana telah dikembalikan';
-      case 'PENDING':
-        return 'Permintaan refund sedang dalam proses';
-      case 'FAILED':
-        return 'Refund gagal diproses, silakan hubungi customer service';
-      case 'CANCELLED':
-        return 'Permintaan refund telah dibatalkan';
-      default:
-        return '';
     }
   }
 
@@ -362,6 +503,37 @@ class _RefundDetailScreenState extends State<RefundDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCalculationRow(
+    String label, 
+    String value, {
+    bool isPercentage = false,
+    bool isNegative = false,
+    bool isBold = false,
+    bool isLarge = false,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: isLarge ? 16 : 14,
+            color: Colors.grey[700],
+            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: isLarge ? 18 : 14,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+            color: isNegative ? Colors.red : (isPercentage ? Colors.blue : Colors.black),
+          ),
+        ),
+      ],
     );
   }
 }

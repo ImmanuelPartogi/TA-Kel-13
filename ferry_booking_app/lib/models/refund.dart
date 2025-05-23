@@ -4,82 +4,102 @@ class Refund {
   final int id;
   final int bookingId;
   final int paymentId;
+  final double originalAmount;
+  final double refundFee;
+  final double refundPercentage;
   final double amount;
   final String reason;
-  String status; // Tidak final karena bisa berubah
-  final String? refundedBy;
+  final String status;
   final String refundMethod;
   final String? transactionId;
   final String bankAccountNumber;
   final String bankAccountName;
   final String bankName;
-  final String createdAt;
-  final String updatedAt;
-
-  // Tambahan field untuk informasi SLA
-  String? slaPeriod;
-  bool requiresManualProcess = false;
+  final String? notes;
+  final String? rejectionReason;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
   Refund({
     required this.id,
     required this.bookingId,
     required this.paymentId,
+    required this.originalAmount,
+    required this.refundFee,
+    required this.refundPercentage,
     required this.amount,
     required this.reason,
     required this.status,
-    this.refundedBy,
     required this.refundMethod,
     this.transactionId,
     required this.bankAccountNumber,
     required this.bankAccountName,
     required this.bankName,
+    this.notes,
+    this.rejectionReason,
     required this.createdAt,
     required this.updatedAt,
-    this.slaPeriod,
-    this.requiresManualProcess = false,
   });
 
   factory Refund.fromJson(Map<String, dynamic> json) {
-    final refund = Refund(
+    return Refund(
       id: json['id'],
       bookingId: json['booking_id'],
       paymentId: json['payment_id'],
+      originalAmount: double.parse(json['original_amount'].toString()),
+      refundFee: double.parse(json['refund_fee'].toString()),
+      refundPercentage: double.parse(json['refund_percentage'].toString()),
       amount: double.parse(json['amount'].toString()),
       reason: json['reason'],
       status: json['status'],
-      refundedBy: json['refunded_by'],
       refundMethod: json['refund_method'],
       transactionId: json['transaction_id'],
-      bankAccountNumber: json['bank_account_number'],
-      bankAccountName: json['bank_account_name'],
-      bankName: json['bank_name'],
-      createdAt: json['created_at'],
-      updatedAt: json['updated_at'],
+      bankAccountNumber: json['bank_account_number'] ?? '',
+      bankAccountName: json['bank_account_name'] ?? '',
+      bankName: json['bank_name'] ?? '',
+      notes: json['notes'],
+      rejectionReason: json['rejection_reason'],
+      createdAt: DateTime.parse(json['created_at']),
+      updatedAt: DateTime.parse(json['updated_at']),
     );
-
-    // Dapatkan informasi tambahan jika ada
-    if (json['sla_period'] != null) {
-      refund.slaPeriod = json['sla_period'];
-    }
-
-    if (json['requires_manual_process'] != null) {
-      refund.requiresManualProcess = json['requires_manual_process'];
-    }
-
-    return refund;
   }
 
-  // Helper untuk mendapatkan status refund yang mudah dibaca
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'booking_id': bookingId,
+      'payment_id': paymentId,
+      'original_amount': originalAmount,
+      'refund_fee': refundFee,
+      'refund_percentage': refundPercentage,
+      'amount': amount,
+      'reason': reason,
+      'status': status,
+      'refund_method': refundMethod,
+      'transaction_id': transactionId,
+      'bank_account_number': bankAccountNumber,
+      'bank_account_name': bankAccountName,
+      'bank_name': bankName,
+      'notes': notes,
+      'rejection_reason': rejectionReason,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+    };
+  }
+
+  // Helper methods
   String get readableStatus {
     switch (status.toUpperCase()) {
       case 'PENDING':
-        return 'Sedang Diproses';
+        return 'Menunggu Persetujuan';
+      case 'APPROVED':
+        return 'Disetujui';
+      case 'REJECTED':
+        return 'Ditolak';
+      case 'COMPLETED':
+        return 'Selesai';
       case 'PROCESSING':
         return 'Sedang Diproses';
-      case 'SUCCESS':
-        return 'Berhasil';
-      case 'FAILED':
-        return 'Gagal';
       case 'CANCELLED':
         return 'Dibatalkan';
       default:
@@ -87,21 +107,68 @@ class Refund {
     }
   }
 
-  // Helper untuk mendapatkan deskripsi status refund berdasarkan SLA
+  String get formattedAmount {
+    final formatter = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    );
+    return formatter.format(amount);
+  }
+
+  String get formattedOriginalAmount {
+    final formatter = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    );
+    return formatter.format(originalAmount);
+  }
+
+  String get formattedRefundFee {
+    final formatter = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    );
+    return formatter.format(refundFee);
+  }
+
+  String get formattedCreatedDate {
+    return DateFormat('dd MMMM yyyy HH:mm', 'id_ID').format(createdAt);
+  }
+
+  int getStatusColor() {
+    switch (status.toUpperCase()) {
+      case 'PENDING':
+        return 0xFFFFA726; // Orange
+      case 'APPROVED':
+        return 0xFF2196F3; // Blue
+      case 'REJECTED':
+        return 0xFFEF5350; // Red
+      case 'COMPLETED':
+        return 0xFF66BB6A; // Green
+      case 'PROCESSING':
+        return 0xFF5C6BC0; // Indigo
+      case 'CANCELLED':
+        return 0xFF9E9E9E; // Grey
+      default:
+        return 0xFF9E9E9E;
+    }
+  }
+
   String getStatusDescription() {
     switch (status.toUpperCase()) {
-      case 'SUCCESS':
-        return 'Refund telah berhasil diproses dan dana telah dikembalikan';
       case 'PENDING':
-        if (requiresManualProcess) {
-          return 'Refund sedang diproses secara manual. Estimasi pengembalian dana ${slaPeriod ?? "3-14 hari kerja"}';
-        } else {
-          return 'Permintaan refund sedang dalam proses. Estimasi pengembalian dana ${slaPeriod ?? "3-14 hari kerja"}';
-        }
+        return 'Permintaan refund sedang menunggu persetujuan admin';
+      case 'APPROVED':
+        return 'Refund telah disetujui dan menunggu proses transfer';
+      case 'REJECTED':
+        return rejectionReason ?? 'Permintaan refund ditolak oleh admin';
+      case 'COMPLETED':
+        return 'Refund telah berhasil diproses dan dana telah dikembalikan';
       case 'PROCESSING':
-        return 'Permintaan refund sedang diproses oleh sistem pembayaran. Estimasi pengembalian dana ${slaPeriod ?? "3-14 hari kerja"}';
-      case 'FAILED':
-        return 'Refund gagal diproses, silakan hubungi customer service';
+        return 'Refund sedang dalam proses pengembalian dana';
       case 'CANCELLED':
         return 'Permintaan refund telah dibatalkan';
       default:
@@ -109,40 +176,26 @@ class Refund {
     }
   }
 
-  // Helper untuk mendapatkan warna status
-  int getStatusColor() {
-    switch (status.toUpperCase()) {
-      case 'SUCCESS':
-        return 0xFF4CAF50; // Colors.green
-      case 'PENDING':
-        return 0xFFFFA726; // Colors.orange
-      case 'FAILED':
-        return 0xFFE53935; // Colors.red
-      case 'CANCELLED':
-        return 0xFF9E9E9E; // Colors.grey
-      default:
-        return 0xFF9E9E9E; // Colors.grey
-    }
-  }
+  // Bank name mapping
+  static const Map<String, String> bankOptions = {
+    'BCA': 'Bank Central Asia',
+    'BNI': 'Bank Negara Indonesia',
+    'BRI': 'Bank Rakyat Indonesia',
+    'MANDIRI': 'Bank Mandiri',
+    'CIMB': 'CIMB Niaga',
+    'DANAMON': 'Bank Danamon',
+    'PERMATA': 'Bank Permata',
+    'BTN': 'Bank Tabungan Negara',
+    'OCBC': 'OCBC NISP',
+    'MAYBANK': 'Maybank Indonesia',
+    'PANIN': 'Bank Panin',
+    'BUKOPIN': 'Bank Bukopin',
+    'MEGA': 'Bank Mega',
+    'SINARMAS': 'Bank Sinarmas',
+    'OTHER': 'Bank Lainnya'
+  };
 
-  // Format uang
-  String get formattedAmount {
-    final currencyFormat = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: 'Rp ',
-      decimalDigits: 0,
-    );
-    return currencyFormat.format(amount);
-  }
-
-  // Format tanggal dibuat
-  String get formattedCreatedDate {
-    try {
-      final dateFormat = DateFormat('dd MMMM yyyy, HH:mm', 'id_ID');
-      final dateTime = DateTime.parse(createdAt);
-      return dateFormat.format(dateTime);
-    } catch (e) {
-      return createdAt;
-    }
+  String get bankNameLabel {
+    return bankOptions[bankName] ?? bankName;
   }
 }

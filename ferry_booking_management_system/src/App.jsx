@@ -41,6 +41,7 @@ import AdminBookingShow from './pages/admin/bookings/BookingShow';
 import AdminRefundList from './pages/admin/refunds/RefundsList';
 import AdminRefundCreate from './pages/admin/refunds/RefundCreate';
 import AdminRefundShow from './pages/admin/refunds/RefundShow';
+import RefundPolicySettings from './pages/admin/refunds/RefundPolicySettings';
 
 // Admin pages - Reports
 import AdminReportIndex from './pages/admin/reports/ReportIndex';
@@ -99,8 +100,8 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   // Redirect ke login jika tidak authenticated
   if (!isAuthenticated) {
     // Redirect ke login yang sesuai dengan role
-    const loginPath = location.pathname.startsWith('/operator') 
-      ? '/operator/login' 
+    const loginPath = location.pathname.startsWith('/operator')
+      ? '/operator/login'
       : '/admin/login';
     return <Navigate to={loginPath} state={{ from: location }} replace />;
   }
@@ -167,10 +168,12 @@ function App() {
           <Route path="bookings/:id/reschedule" element={<AdminBookingReschedule />} />
           <Route path="bookings/:id" element={<AdminBookingShow />} />
 
-          {/* Refunds management */}
+          {/* *** REFUNDS MANAGEMENT - FIXED ORDER *** */}
+          {/* IMPORTANT: Specific routes MUST come before parameterized routes */}
           <Route path="refunds" element={<AdminRefundList />} />
+          <Route path="refunds/settings" element={<RefundPolicySettings />} /> {/* This MUST come before refunds/:id */}
           <Route path="refunds/create/:bookingId" element={<AdminRefundCreate />} />
-          <Route path="refunds/:id" element={<AdminRefundShow />} />
+          <Route path="refunds/:id" element={<AdminRefundShow />} /> {/* This comes AFTER specific routes */}
 
           {/* Reports */}
           <Route path="reports" element={<AdminReportIndex />} />

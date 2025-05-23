@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   X, 
@@ -12,7 +12,11 @@ import {
   LineChart, 
   Shield, 
   LogOut, 
-  User 
+  User,
+  ChevronDown,
+  ChevronRight,
+  Settings,
+  List
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getAssetUrl } from '../../utils/api';
@@ -21,7 +25,14 @@ const Sidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
   const { user, logout } = useAuth();
   const isAdmin = user?.role === 'admin';
-  const isOperator = user?.role === 'operator';
+  const [expandedMenus, setExpandedMenus] = useState({});
+
+  const toggleMenu = (menuKey) => {
+    setExpandedMenus(prev => ({
+      ...prev,
+      [menuKey]: !prev[menuKey]
+    }));
+  };
 
   const adminNavItems = [
     { path: '/admin/dashboard', label: 'Beranda', icon: Home },
@@ -29,7 +40,16 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: '/admin/ferries', label: 'Data Kapal', icon: Ship },
     { path: '/admin/schedules', label: 'Jadwal Keberangkatan', icon: Calendar },
     { path: '/admin/bookings', label: 'Data Pemesanan', icon: Ticket },
-    { path: '/admin/refunds', label: 'Pengembalian Dana', icon: DollarSign },
+    { 
+      key: 'refunds',
+      label: 'Pengembalian Dana', 
+      icon: DollarSign,
+      hasSubmenu: true,
+      submenu: [
+        { path: '/admin/refunds/settings', label: 'Kebijakan Refund', icon: Settings },
+        { path: '/admin/refunds', label: 'Daftar Refund', icon: List }
+      ]
+    },
     { path: '/admin/users', label: 'Data Penumpang', icon: Users },
     { path: '/admin/reports', label: 'Laporan', icon: LineChart },
     { path: '/admin/operators', label: 'Data Operator', icon: Shield },
@@ -45,6 +65,9 @@ const Sidebar = ({ isOpen, onClose }) => {
   const navItems = isAdmin ? adminNavItems : operatorNavItems;
 
   const isActive = (path) => location.pathname === path;
+  const isSubmenuActive = (submenu) => {
+    return submenu.some(item => location.pathname === item.path);
+  };
 
   return (
     <>
@@ -75,20 +98,36 @@ const Sidebar = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        <SidebarContent navItems={navItems} isActive={isActive} user={user} logout={logout} />
+        <SidebarContent 
+          navItems={navItems} 
+          isActive={isActive} 
+          isSubmenuActive={isSubmenuActive}
+          user={user} 
+          logout={logout}
+          expandedMenus={expandedMenus}
+          toggleMenu={toggleMenu}
+        />
       </div>
 
       {/* Static sidebar for desktop */}
       <div className="hidden lg:flex lg:flex-shrink-0">
         <div className="flex flex-col w-64">
-          <SidebarContent navItems={navItems} isActive={isActive} user={user} logout={logout} />
+          <SidebarContent 
+            navItems={navItems} 
+            isActive={isActive} 
+            isSubmenuActive={isSubmenuActive}
+            user={user} 
+            logout={logout}
+            expandedMenus={expandedMenus}
+            toggleMenu={toggleMenu}
+          />
         </div>
       </div>
     </>
   );
 };
 
-const SidebarContent = ({ navItems, isActive, user, logout }) => {
+const SidebarContent = ({ navItems, isActive, isSubmenuActive, user, logout, expandedMenus, toggleMenu }) => {
   const isAdmin = user?.role === 'admin';
   const isOperator = user?.role === 'operator';
 
@@ -160,25 +199,84 @@ const SidebarContent = ({ navItems, isActive, user, logout }) => {
         <div className="mt-2 flex-1 flex flex-col overflow-y-auto px-2">
           <nav className="space-y-1">
             {navItems.map((item) => {
-              const Icon = item.icon;
-              const active = isActive(item.path);
-              
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`nav-item group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
-                    active
-                      ? 'bg-blue-800 text-white'
-                      : 'text-blue-100 hover:bg-blue-800 hover:text-white'
-                  }`}
-                >
-                  <div className="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
-                    <Icon className="h-4 w-4" />
+              if (item.hasSubmenu) {
+                const Icon = item.icon;
+                const isExpanded = expandedMenus[item.key];
+                const hasActiveSubmenu = isSubmenuActive(item.submenu);
+                
+                return (
+                  <div key={item.key}>
+                    {/* Parent menu item */}
+                    <button
+                      onClick={() => toggleMenu(item.key)}
+                      className={`nav-item group flex items-center w-full px-2 py-2 text-sm font-medium rounded-md transition-colors ${
+                        hasActiveSubmenu
+                          ? 'bg-blue-800 text-white'
+                          : 'text-blue-100 hover:bg-blue-800 hover:text-white'
+                      }`}
+                    >
+                      <div className="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <span className="flex-1 text-left">{item.label}</span>
+                      <div className="ml-2">
+                        {isExpanded ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                      </div>
+                    </button>
+
+                    {/* Submenu items */}
+                    {isExpanded && (
+                      <div className="ml-4 mt-1 space-y-1">
+                        {item.submenu.map((subItem) => {
+                          const SubIcon = subItem.icon;
+                          const active = isActive(subItem.path);
+                          
+                          return (
+                            <Link
+                              key={subItem.path}
+                              to={subItem.path}
+                              className={`nav-item group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
+                                active
+                                  ? 'bg-blue-800 text-white'
+                                  : 'text-blue-100 hover:bg-blue-800 hover:text-white'
+                              }`}
+                            >
+                              <div className="nav-icon mr-3 flex-shrink-0 h-5 w-5 flex items-center justify-center">
+                                <SubIcon className="h-3 w-3" />
+                              </div>
+                              <span>{subItem.label}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                  <span>{item.label}</span>
-                </Link>
-              );
+                );
+              } else {
+                const Icon = item.icon;
+                const active = isActive(item.path);
+                
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={`nav-item group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
+                      active
+                        ? 'bg-blue-800 text-white'
+                        : 'text-blue-100 hover:bg-blue-800 hover:text-white'
+                    }`}
+                  >
+                    <div className="nav-icon mr-3 flex-shrink-0 h-6 w-6 flex items-center justify-center">
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              }
             })}
           </nav>
         </div>

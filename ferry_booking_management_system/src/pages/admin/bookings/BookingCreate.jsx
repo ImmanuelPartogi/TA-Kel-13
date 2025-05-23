@@ -42,10 +42,16 @@ const BookingCreate = () => {
 
   const fetchRoutes = async () => {
     try {
-      const response = await api.get('/admin-panel/routes');
-      setRoutes(response.data.data);
+      const response = await api.get('/admin-panel/bookings/create');
+      if (response.data.success && response.data.data.routes) {
+        setRoutes(response.data.data.routes);
+      } else {
+        console.error('Invalid response structure:', response.data);
+        setRoutes([]);
+      }
     } catch (error) {
       console.error('Error fetching routes:', error);
+      setRoutes([]);
     }
   };
 

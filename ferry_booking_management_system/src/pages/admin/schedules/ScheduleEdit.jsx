@@ -570,7 +570,7 @@ const ScheduleEdit = () => {
       </div>
 
       {/* CSS for animations - sama dengan SchedulesList */}
-      <style jsx>{`
+      <style>{`
         @keyframes slideIn {
           0% {
             opacity: 0;

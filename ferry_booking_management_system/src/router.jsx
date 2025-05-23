@@ -26,44 +26,46 @@ import DailyReport from './pages/operator/reports/DailyReport';
 import MonthlyReport from './pages/operator/reports/MonthlyReport';
 import ReportIndex from './pages/operator/reports/ReportIndex';
 
-// Admin Pages - Components might need to be created
+// Admin Pages - Import actual components
+import AdminDashboard from './pages/admin/Dashboard';
+import AdminsList from './pages/admin/admins/AdminsList';
+import AdminCreate from './pages/admin/admins/AdminCreate';
+import AdminEdit from './pages/admin/admins/AdminEdit';
+import AdminShow from './pages/admin/admins/AdminShow';
+import AdminBookingList from './pages/admin/bookings/BookingsList';
+import AdminBookingShow from './pages/admin/bookings/BookingShow';
+import AdminReportIndex from './pages/admin/reports/ReportIndex';
+import BookingReport from './pages/admin/reports/BookingReport';
+import RevenueReport from './pages/admin/reports/RevenueReport';
+import ScheduleReport from './pages/admin/reports/ScheduleReport';
+import FerryList from './pages/admin/ferries/FerryList';
+import FerryCreate from './pages/admin/ferries/FerryCreate';
+import FerryEdit from './pages/admin/ferries/FerryEdit';
+import FerryShow from './pages/admin/ferries/FerryShow';
+import RouteList from './pages/admin/routes/RouteList';
+import RouteCreate from './pages/admin/routes/RouteCreate';
+import RouteEdit from './pages/admin/routes/RouteEdit';
+import RouteShow from './pages/admin/routes/RouteShow';
+import AdminScheduleList from './pages/admin/schedules/SchedulesList';
+import ScheduleCreate from './pages/admin/schedules/ScheduleCreate';
+import ScheduleEdit from './pages/admin/schedules/ScheduleEdit';
+import AdminScheduleShow from './pages/admin/schedules/ScheduleShow';
+import AdminScheduleDatesList from './pages/admin/schedules/ScheduleDatesList';
+import AdminScheduleCreateDate from './pages/admin/schedules/ScheduleCreateDate';
 
-// Dummy imports for now - replace with actual components
-const AdminDashboard = () => <div>Admin Dashboard</div>;
-const AdminsList = () => <div>Admins List</div>;
-const AdminCreate = () => <div>Admin Create</div>;
-const AdminEdit = () => <div>Admin Edit</div>;
-const AdminShow = () => <div>Admin Show</div>;
-const AdminBookingList = () => <div>Admin Booking List</div>;
-const AdminBookingShow = () => <div>Admin Booking Show</div>;
-const AdminReportIndex = () => <div>Admin Report Index</div>;
-const BookingReport = () => <div>Booking Report</div>;
-const RevenueReport = () => <div>Revenue Report</div>;
-const ScheduleReport = () => <div>Schedule Report</div>;
-const FerryList = () => <div>Ferry List</div>;
-const FerryCreate = () => <div>Ferry Create</div>;
-const FerryEdit = () => <div>Ferry Edit</div>;
-const FerryShow = () => <div>Ferry Show</div>;
-const RouteList = () => <div>Route List</div>;
-const RouteCreate = () => <div>Route Create</div>;
-const RouteEdit = () => <div>Route Edit</div>;
-const RouteShow = () => <div>Route Show</div>;
-const AdminScheduleList = () => <div>Admin Schedule List</div>;
-const ScheduleCreate = () => <div>Schedule Create</div>;
-const ScheduleEdit = () => <div>Schedule Edit</div>;
-const AdminScheduleShow = () => <div>Admin Schedule Show</div>;
-const AdminScheduleDatesList = () => <div>Admin Schedule Dates List</div>;
-const AdminScheduleCreateDate = () => <div>Admin Schedule Create Date</div>;
-const RefundsList = () => <div>Refunds List</div>;
-const RefundCreate = () => <div>Refund Create</div>;
-const RefundShow = () => <div>Refund Show</div>;
-const OperatorList = () => <div>Operator List</div>;
-const OperatorCreate = () => <div>Operator Create</div>;
-const OperatorEdit = () => <div>Operator Edit</div>;
-const OperatorShow = () => <div>Operator Show</div>;
-const UserList = () => <div>User List</div>;
-const UserShow = () => <div>User Show</div>;
-const UserEdit = () => <div>User Edit</div>;
+// Import Refund Components
+import RefundsList from './pages/admin/refunds/RefundsList';
+import RefundCreate from './pages/admin/refunds/RefundCreate';
+import RefundShow from './pages/admin/refunds/RefundShow';
+import RefundPolicySettings from './pages/admin/refunds/RefundPolicySettings';
+
+import OperatorList from './pages/admin/operators/OperatorList';
+import OperatorCreate from './pages/admin/operators/OperatorCreate';
+import OperatorEdit from './pages/admin/operators/OperatorEdit';
+import OperatorShow from './pages/admin/operators/OperatorShow';
+import UserList from './pages/admin/users/UsersList';
+import UserShow from './pages/admin/users/UserShow';
+import UserEdit from './pages/admin/users/UserEdit';
 
 // Protected Route Components
 const AdminProtectedRoute = ({ element }) => {
@@ -337,18 +339,23 @@ const router = createBrowserRouter([
         element: <ScheduleReport />
       },
       
-      // Refunds Management
+      // *** REFUNDS MANAGEMENT - FIXED ORDER ***
+      // IMPORTANT: Specific routes MUST come before parameterized routes
       {
         path: 'refunds',
         element: <RefundsList />
       },
       {
-        path: 'refunds/:id',
-        element: <RefundShow />
+        path: 'refunds/settings', // This MUST come before 'refunds/:id'
+        element: <RefundPolicySettings />
       },
       {
         path: 'bookings/:bookingId/refund/create',
         element: <RefundCreate />
+      },
+      {
+        path: 'refunds/:id', // This comes AFTER specific routes
+        element: <RefundShow />
       }
     ]
   },

@@ -4,197 +4,317 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
-use App\Models\Payment;
 use App\Models\Refund;
-use App\Models\BookingLog;
-use Carbon\Carbon;
+use App\Models\RefundPolicy;
+use App\Models\Payment;
+use App\Services\MidtransService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Carbon\Carbon;
 
 class RefundController extends Controller
 {
-    public function index(Request $request)
+    protected $midtransService;
+
+    public function __construct(MidtransService $midtransService)
     {
-        $query = Refund::with(['booking.user', 'payment']);
+        $this->midtransService = $midtransService;
+    }
+    /**
+     * Get refund policy settings
+     */
+    public function getPolicySettings()
+    {
+        try {
+            // FIXED: Ambil SEMUA kebijakan (aktif dan non-aktif)
+            $policies = RefundPolicy::orderBy('days_before_departure', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->get();
 
-        // Filter berdasarkan status
-        if ($request->has('status') && $request->status) {
-            $query->where('status', $request->status);
+            return response()->json([
+                'success' => true,
+                'message' => 'Kebijakan refund berhasil diambil',
+                'data' => $policies
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Error fetching refund policies', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil kebijakan refund',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        // Filter berdasarkan kode booking
-        if ($request->has('booking_code') && $request->booking_code) {
-            $query->whereHas('booking', function ($q) use ($request) {
-                $q->where('booking_code', 'like', '%' . $request->booking_code . '%');
-            });
-        }
-
-        // Filter berdasarkan tanggal
-        if ($request->has('date_from') && $request->date_from) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-
-        if ($request->has('date_to') && $request->date_to) {
-            $query->whereDate('created_at', '<=', $request->date_to);
-        }
-
-        $refunds = $query->orderBy('created_at', 'desc')->paginate($request->input('per_page', 10));
-
-        // Restructure response untuk frontend
-        return response()->json([
-            'success' => true,
-            'message' => 'Data refund berhasil diambil',
-            'data' => $refunds->items(), // Array data refund
-            'meta' => [
-                'current_page' => $refunds->currentPage(),
-                'last_page' => $refunds->lastPage(),
-                'per_page' => $refunds->perPage(),
-                'total' => $refunds->total(),
-                'from' => $refunds->firstItem(),
-                'to' => $refunds->lastItem(),
-                'has_more_pages' => $refunds->hasMorePages()
-            ]
-        ], 200);
     }
 
+    /**
+     * Update refund policy settings
+     */
+    public function updatePolicySettings(Request $request)
+    {
+        // FIXED: Validasi dengan deleted_policies
+        $validator = Validator::make($request->all(), [
+            'policies' => 'required|array',
+            'policies.*.id' => 'nullable|exists:refund_policies,id',
+            'policies.*.days_before_departure' => 'required|integer|min:0',
+            'policies.*.refund_percentage' => 'required|numeric|min:0|max:100',
+            'policies.*.min_fee' => 'nullable|numeric|min:0',
+            'policies.*.max_fee' => 'nullable|numeric|min:0',
+            'policies.*.description' => 'nullable|string|max:255',
+            'policies.*.is_active' => 'required|boolean',
+            'deleted_policies' => 'nullable|array',
+            'deleted_policies.*' => 'exists:refund_policies,id'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // FIXED: Hapus kebijakan yang benar-benar dihapus
+            if ($request->has('deleted_policies') && !empty($request->deleted_policies)) {
+                RefundPolicy::whereIn('id', $request->deleted_policies)->delete();
+            }
+
+            // FIXED: Simpan ID yang ada di request
+            $requestPolicyIds = collect($request->policies)
+                ->pluck('id')
+                ->filter()
+                ->toArray();
+
+            // Update atau buat kebijakan baru
+            foreach ($request->policies as $policyData) {
+                if (isset($policyData['id']) && !empty($policyData['id'])) {
+                    // Update existing
+                    $policy = RefundPolicy::find($policyData['id']);
+                    if ($policy) {
+                        $policy->update([
+                            'days_before_departure' => $policyData['days_before_departure'],
+                            'refund_percentage' => $policyData['refund_percentage'],
+                            'min_fee' => $policyData['min_fee'],
+                            'max_fee' => $policyData['max_fee'],
+                            'description' => $policyData['description'],
+                            'is_active' => $policyData['is_active']
+                        ]);
+                    }
+                } else {
+                    // Create new
+                    RefundPolicy::create([
+                        'days_before_departure' => $policyData['days_before_departure'],
+                        'refund_percentage' => $policyData['refund_percentage'],
+                        'min_fee' => $policyData['min_fee'],
+                        'max_fee' => $policyData['max_fee'],
+                        'description' => $policyData['description'],
+                        'is_active' => $policyData['is_active']
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Kebijakan refund berhasil diperbarui'
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Error updating refund policies', [
+                'error' => $e->getMessage(),
+                'data' => $request->all()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memperbarui kebijakan refund',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get list of refunds with filters
+     */
+    public function index(Request $request)
+    {
+        try {
+            $query = Refund::with([
+                'booking' => function ($q) {
+                    $q->with(['user', 'schedule.route']);
+                },
+                'payment',
+                'refundedBy'
+            ]);
+
+            // Apply filters
+            if ($request->has('status') && $request->status) {
+                $query->where('status', $request->status);
+            }
+
+            if ($request->has('booking_code') && $request->booking_code) {
+                $query->whereHas('booking', function ($q) use ($request) {
+                    $q->where('booking_code', 'like', '%' . $request->booking_code . '%');
+                });
+            }
+
+            if ($request->has('date_from') && $request->date_from) {
+                $query->whereDate('created_at', '>=', $request->date_from);
+            }
+
+            if ($request->has('date_to') && $request->date_to) {
+                $query->whereDate('created_at', '<=', $request->date_to);
+            }
+
+            $refunds = $query->orderBy('created_at', 'desc')
+                ->paginate($request->per_page ?? 15);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Daftar refund berhasil diambil',
+                'data' => $refunds
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Error fetching refunds list', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil daftar refund',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get refund details
+     */
     public function show($id)
     {
         try {
             $refund = Refund::with([
-                'booking.user',
-                'booking.schedule.route',
-                'booking.schedule.ferry',
-                'payment'
+                'booking' => function ($q) {
+                    $q->with(['user', 'schedule.route', 'schedule.ferry']);
+                },
+                'payment',
+                'refundedBy'
             ])->findOrFail($id);
+
+            // Check refund status with payment gateway if applicable
+            if (in_array($refund->status, ['PENDING', 'PROCESSING']) && $refund->transaction_id) {
+                $this->checkAndUpdateRefundStatus($refund);
+            }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Detail refund berhasil diambil',
                 'data' => $refund
             ], 200);
-
         } catch (\Exception $e) {
             Log::error('Error fetching refund details', [
-                'refund_id' => $id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'refund_id' => $id
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Refund tidak ditemukan'
-            ], 404);
+                'message' => 'Gagal mengambil detail refund',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
     /**
-     * Method untuk route GET /admin-panel/refunds/create/{bookingId}
+     * Get refund creation form data
      */
     public function create($bookingId)
     {
         try {
             $booking = Booking::with([
                 'user',
-                'schedule.route',
-                'schedule.ferry',
-                'payments' => function($query) {
-                    $query->where('status', 'SUCCESS');
+                'schedule' => function ($q) {
+                    $q->with(['route', 'ferry']);
                 },
-                'vehicles'
+                'payments' => function ($q) {
+                    $q->where('status', 'SUCCESS')->latest();
+                }
             ])->findOrFail($bookingId);
 
-            // Validasi booking yang bisa direfund
-            if (!in_array($booking->status, ['CONFIRMED', 'COMPLETED'])) {
+            $payment = $booking->payments->first();
+
+            if (!$payment) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Hanya booking dengan status CONFIRMED atau COMPLETED yang dapat direfund'
-                ], 422);
+                    'message' => 'Tidak ada pembayaran berhasil untuk booking ini'
+                ], 400);
             }
 
-            // Cek apakah sudah ada refund untuk booking ini
+            // Check if refund already exists
             $existingRefund = Refund::where('booking_id', $bookingId)
-                ->whereIn('status', ['PENDING', 'APPROVED', 'COMPLETED'])
+                ->whereIn('status', ['PENDING', 'PROCESSING', 'SUCCESS', 'COMPLETED'])
                 ->first();
 
             if ($existingRefund) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Sudah ada permintaan refund untuk booking ini',
-                    'existing_refund' => $existingRefund
-                ], 422);
+                    'message' => 'Sudah ada refund aktif untuk booking ini'
+                ], 400);
             }
 
-            $payment = $booking->payments()->where('status', 'SUCCESS')->first();
-            if (!$payment) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Tidak ditemukan pembayaran yang berhasil untuk booking ini'
-                ], 422);
-            }
-
-            // Hitung kebijakan refund berdasarkan tanggal keberangkatan
+            // Calculate refund policy
             $departureDate = Carbon::parse($booking->departure_date);
-            $today = Carbon::today();
-            $daysUntilDeparture = $today->diffInDays($departureDate, false);
+            $daysBeforeDeparture = now()->diffInDays($departureDate, false);
 
+            $policy = RefundPolicy::getApplicablePolicy($daysBeforeDeparture);
+            $refundPolicy = 'Tidak ada kebijakan refund yang berlaku';
+            $suggestedAmount = 0;
             $refundPercentage = 0;
-            $refundPolicy = '';
 
-            if ($daysUntilDeparture >= 7) {
-                $refundPercentage = 100;
-                $refundPolicy = 'Refund penuh (H-7 atau lebih)';
-            } elseif ($daysUntilDeparture >= 3) {
-                $refundPercentage = 75;
-                $refundPolicy = 'Refund 75% (H-3 sampai H-6)';
-            } elseif ($daysUntilDeparture >= 1) {
-                $refundPercentage = 50;
-                $refundPolicy = 'Refund 50% (H-1 sampai H-2)';
-            } else {
-                // Untuk admin, tetap bisa melakukan refund walaupun H-0
-                $refundPercentage = 25;
-                $refundPolicy = 'Refund darurat (H-0, kebijakan khusus admin)';
+            if ($policy) {
+                $refundCalculation = $policy->calculateRefundAmount($payment->amount);
+                $suggestedAmount = $refundCalculation['refund_amount'];
+                $refundPercentage = $policy->refund_percentage;
+                $refundPolicy = $policy->description;
             }
-
-            $suggestedRefundAmount = ($payment->amount * $refundPercentage) / 100;
 
             return response()->json([
                 'success' => true,
-                'message' => 'Data booking berhasil diambil',
+                'message' => 'Data form refund berhasil diambil',
                 'data' => [
                     'booking' => $booking,
                     'payment' => $payment,
+                    'suggested_refund_amount' => $suggestedAmount,
                     'refund_percentage' => $refundPercentage,
-                    'suggested_refund_amount' => $suggestedRefundAmount,
                     'refund_policy' => $refundPolicy,
-                    'days_until_departure' => $daysUntilDeparture
+                    'days_until_departure' => max(0, $daysBeforeDeparture)
                 ]
             ], 200);
-
         } catch (\Exception $e) {
-            Log::error('Error in AdminRefundController@create', [
-                'booking_id' => $bookingId,
-                'error' => $e->getMessage()
+            Log::error('Error getting refund form data', [
+                'error' => $e->getMessage(),
+                'booking_id' => $bookingId
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan saat mengambil data booking'
+                'message' => 'Gagal mengambil data form refund',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * Alias untuk create method (untuk backward compatibility)
-     */
-    public function getRefundForm($bookingId)
-    {
-        return $this->create($bookingId);
-    }
-
-    /**
-     * Method untuk route POST /admin-panel/refunds/store/{bookingId}
+     * Store new refund
      */
     public function store(Request $request, $bookingId)
     {
@@ -202,10 +322,10 @@ class RefundController extends Controller
             'amount' => 'required|numeric|min:0',
             'reason' => 'required|string|max:255',
             'refund_method' => 'required|in:ORIGINAL_PAYMENT_METHOD,BANK_TRANSFER,CASH',
-            'bank_name' => 'required_if:refund_method,BANK_TRANSFER|nullable|string|max:50',
-            'bank_account_number' => 'required_if:refund_method,BANK_TRANSFER|nullable|string|max:30',
-            'bank_account_name' => 'required_if:refund_method,BANK_TRANSFER|nullable|string|max:100',
-            'notes' => 'nullable|string|max:500'
+            'bank_name' => 'required_if:refund_method,BANK_TRANSFER',
+            'bank_account_number' => 'required_if:refund_method,BANK_TRANSFER',
+            'bank_account_name' => 'required_if:refund_method,BANK_TRANSFER',
+            'notes' => 'nullable|string'
         ]);
 
         if ($validator->fails()) {
@@ -217,48 +337,60 @@ class RefundController extends Controller
         }
 
         try {
+            DB::beginTransaction();
+
             $booking = Booking::findOrFail($bookingId);
-            $payment = $booking->payments()->where('status', 'SUCCESS')->first();
+            $payment = $booking->payments()
+                ->where('status', 'SUCCESS')
+                ->latest()
+                ->first();
 
             if (!$payment) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Pembayaran tidak ditemukan'
-                ], 422);
+                    'message' => 'Tidak ada pembayaran berhasil untuk booking ini'
+                ], 400);
             }
 
-            // Validasi jumlah refund
-            if ($request->amount > $booking->total_amount) {
+            // Check if refund already exists
+            $existingRefund = Refund::where('booking_id', $bookingId)
+                ->whereIn('status', ['PENDING', 'PROCESSING', 'SUCCESS', 'COMPLETED'])
+                ->first();
+
+            if ($existingRefund) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Jumlah refund tidak boleh melebihi total pembayaran'
-                ], 422);
+                    'message' => 'Sudah ada refund aktif untuk booking ini'
+                ], 400);
             }
 
-            DB::beginTransaction();
+            // Calculate refund fee
+            $originalAmount = $payment->amount;
+            $refundAmount = $request->amount;
+            $refundFee = $originalAmount - $refundAmount;
+            $refundPercentage = ($refundAmount / $originalAmount) * 100;
 
-            // Buat refund
+            // Create refund
             $refund = new Refund([
-                'booking_id' => $booking->id,
+                'booking_id' => $bookingId,
                 'payment_id' => $payment->id,
-                'amount' => $request->amount,
+                'original_amount' => $originalAmount,
+                'refund_fee' => $refundFee,
+                'refund_percentage' => $refundPercentage,
+                'amount' => $refundAmount,
                 'reason' => $request->reason,
                 'status' => 'PENDING',
-                'refunded_by' => Auth::id(),
                 'refund_method' => $request->refund_method,
-                'notes' => $request->notes
+                'bank_account_number' => $request->bank_account_number,
+                'bank_account_name' => $request->bank_account_name,
+                'bank_name' => $request->bank_name,
+                'notes' => $request->notes,
+                'refunded_by' => optional(auth())->id()
             ]);
-
-            // Tambahkan info bank jika metode refund adalah transfer bank
-            if ($request->refund_method === 'BANK_TRANSFER') {
-                $refund->bank_name = $request->bank_name;
-                $refund->bank_account_number = $request->bank_account_number;
-                $refund->bank_account_name = $request->bank_account_name;
-            }
 
             $refund->save();
 
-            // Update status booking
+            // Update booking status
             $booking->status = 'REFUND_PENDING';
             $booking->save();
 
@@ -266,29 +398,33 @@ class RefundController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Permohonan refund berhasil dibuat',
-                'data' => $refund->fresh(['booking', 'payment'])
+                'message' => 'Refund berhasil dibuat',
+                'data' => $refund->load(['booking.user', 'payment'])
             ], 201);
-
         } catch (\Exception $e) {
             DB::rollBack();
 
             Log::error('Error creating refund', [
+                'error' => $e->getMessage(),
                 'booking_id' => $bookingId,
-                'error' => $e->getMessage()
+                'data' => $request->all()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                'message' => 'Gagal membuat refund',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
 
+    /**
+     * Approve refund
+     */
     public function approve(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
-            'notes' => 'nullable|string|max:500'
+            'notes' => 'nullable|string'
         ]);
 
         if ($validator->fails()) {
@@ -300,43 +436,181 @@ class RefundController extends Controller
         }
 
         try {
-            $refund = Refund::findOrFail($id);
+            DB::beginTransaction();
+
+            $refund = Refund::with(['booking', 'payment'])->findOrFail($id);
 
             if ($refund->status !== 'PENDING') {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Hanya refund dengan status PENDING yang bisa diproses'
-                ], 422);
+                    'message' => 'Refund hanya dapat disetujui jika status PENDING'
+                ], 400);
             }
 
-            DB::beginTransaction();
+            // Check if can process automatic refund
+            $canAutoRefund = $this->midtransService->isRefundable(
+                $refund->payment->payment_method,
+                $refund->payment->payment_channel
+            );
 
-            // Update status refund
-            $refund->status = 'APPROVED';
+            if ($canAutoRefund) {
+                try {
+                    $refundResponse = $this->midtransService->requestRefund(
+                        $refund->payment->transaction_id,
+                        $refund->amount,
+                        $refund->reason
+                    );
+
+                    $refund->transaction_id = $refundResponse['refund_key'] ?? null;
+                    $refund->status = 'PROCESSING';
+                } catch (\Exception $e) {
+                    Log::warning('Midtrans refund failed, marked as approved for manual process', [
+                        'refund_id' => $refund->id,
+                        'error' => $e->getMessage()
+                    ]);
+                    $refund->status = 'APPROVED';
+                }
+            } else {
+                $refund->status = 'APPROVED';
+            }
+
             if ($request->notes) {
-                $refund->notes = $refund->notes . "\nAdmin Notes: " . $request->notes;
+                $refund->notes = ($refund->notes ? $refund->notes . "\n" : '') .
+                    "[APPROVED] " . $request->notes;
             }
+
             $refund->save();
 
-            // Update status booking menjadi REFUNDED
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Refund berhasil disetujui',
+                'data' => $refund
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Error approving refund', [
+                'error' => $e->getMessage(),
+                'refund_id' => $id
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menyetujui refund',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Reject refund
+     */
+    public function reject(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'rejection_reason' => 'required|string|max:255'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $refund = Refund::with('booking')->findOrFail($id);
+
+            if ($refund->status !== 'PENDING') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Refund hanya dapat ditolak jika status PENDING'
+                ], 400);
+            }
+
+            $refund->status = 'REJECTED';
+            $refund->rejection_reason = $request->rejection_reason;
+            $refund->save();
+
+            // Update booking status back to confirmed
             $booking = $refund->booking;
-            $previousStatus = $booking->status;
+            $booking->status = 'CONFIRMED';
+            $booking->save();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Refund berhasil ditolak',
+                'data' => $refund
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Error rejecting refund', [
+                'error' => $e->getMessage(),
+                'refund_id' => $id
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menolak refund',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Complete refund
+     */
+    public function complete(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'transaction_id' => 'required|string',
+            'notes' => 'nullable|string'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $refund = Refund::with(['booking', 'payment'])->findOrFail($id);
+
+            if (!in_array($refund->status, ['APPROVED', 'PROCESSING'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Refund hanya dapat diselesaikan jika status APPROVED atau PROCESSING'
+                ], 400);
+            }
+
+            $refund->status = 'COMPLETED';
+            $refund->transaction_id = $request->transaction_id;
+
+            if ($request->notes) {
+                $refund->notes = ($refund->notes ? $refund->notes . "\n" : '') .
+                    "[COMPLETED] " . $request->notes;
+            }
+
+            $refund->save();
+
+            // Update booking status
+            $booking = $refund->booking;
             $booking->status = 'REFUNDED';
             $booking->save();
 
-            // Create booking log
-            $bookingLog = new BookingLog([
-                'booking_id' => $booking->id,
-                'previous_status' => $previousStatus,
-                'new_status' => 'REFUNDED',
-                'changed_by_type' => 'ADMIN',
-                'changed_by_id' => Auth::id(),
-                'notes' => 'Refund disetujui: ' . $refund->reason,
-                'ip_address' => $request->ip(),
-            ]);
-            $bookingLog->save();
-
-            // Update payment status dan jumlah refund
+            // Update payment
             $payment = $refund->payment;
             $payment->status = 'REFUNDED';
             $payment->refund_amount = $refund->amount;
@@ -347,163 +621,79 @@ class RefundController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Refund berhasil disetujui',
-                'data' => $refund->fresh(['booking', 'payment'])
-            ], 200);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            Log::error('Error approving refund', [
-                'refund_id' => $id,
-                'error' => $e->getMessage()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    public function reject(Request $request, $id)
-    {
-        $validator = Validator::make($request->all(), [
-            'rejection_reason' => 'required|string|max:255',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validasi gagal',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        try {
-            $refund = Refund::findOrFail($id);
-
-            if ($refund->status !== 'PENDING') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Hanya refund dengan status PENDING yang bisa diproses'
-                ], 422);
-            }
-
-            DB::beginTransaction();
-
-            // Update status refund
-            $refund->status = 'REJECTED';
-            $refund->reason .= ' | Ditolak: ' . $request->rejection_reason;
-            $refund->save();
-
-            // Kembalikan status booking ke CONFIRMED
-            $booking = $refund->booking;
-            $booking->status = 'CONFIRMED';
-            $booking->save();
-
-            // Create booking log
-            $bookingLog = new BookingLog([
-                'booking_id' => $refund->booking_id,
-                'previous_status' => 'REFUND_PENDING',
-                'new_status' => 'CONFIRMED',
-                'changed_by_type' => 'ADMIN',
-                'changed_by_id' => Auth::id(),
-                'notes' => 'Refund ditolak: ' . $request->rejection_reason,
-                'ip_address' => $request->ip(),
-            ]);
-            $bookingLog->save();
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Refund berhasil ditolak',
-                'data' => $refund->fresh()
-            ], 200);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            Log::error('Error rejecting refund', [
-                'refund_id' => $id,
-                'error' => $e->getMessage()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    public function complete(Request $request, $id)
-    {
-        $validator = Validator::make($request->all(), [
-            'transaction_id' => 'required|string|max:100',
-            'notes' => 'nullable|string|max:500'
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validasi gagal',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        try {
-            $refund = Refund::findOrFail($id);
-
-            if ($refund->status !== 'APPROVED') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Hanya refund dengan status APPROVED yang bisa diselesaikan'
-                ], 422);
-            }
-
-            DB::beginTransaction();
-
-            // Update status refund
-            $refund->status = 'COMPLETED';
-            $refund->transaction_id = $request->transaction_id;
-            if ($request->notes) {
-                $refund->notes = $refund->notes . "\nCompletion Notes: " . $request->notes;
-            }
-            $refund->save();
-
-            // Create booking log
-            $bookingLog = new BookingLog([
-                'booking_id' => $refund->booking_id,
-                'previous_status' => 'REFUNDED',
-                'new_status' => 'REFUNDED',
-                'changed_by_type' => 'ADMIN',
-                'changed_by_id' => Auth::id(),
-                'notes' => 'Refund selesai dengan ID transaksi: ' . $request->transaction_id,
-                'ip_address' => $request->ip(),
-            ]);
-            $bookingLog->save();
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
                 'message' => 'Refund berhasil diselesaikan',
-                'data' => $refund->fresh()
+                'data' => $refund
             ], 200);
-
         } catch (\Exception $e) {
             DB::rollBack();
 
             Log::error('Error completing refund', [
-                'refund_id' => $id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'refund_id' => $id
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                'message' => 'Gagal menyelesaikan refund',
+                'error' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Check and update refund status from payment gateway
+     */
+    private function checkAndUpdateRefundStatus($refund)
+    {
+        try {
+            $refundStatus = $this->midtransService->checkRefundStatus($refund->transaction_id);
+
+            if ($refundStatus && isset($refundStatus['status_code'])) {
+                $newStatus = $this->mapMidtransRefundStatus($refundStatus['status_code']);
+
+                if ($refund->status != $newStatus) {
+                    $refund->status = $newStatus;
+                    $refund->save();
+
+                    if ($refund->status === 'SUCCESS' || $refund->status === 'COMPLETED') {
+                        $booking = $refund->booking;
+                        $booking->status = 'REFUNDED';
+                        $booking->save();
+
+                        $payment = $refund->payment;
+                        if ($payment) {
+                            $payment->status = 'REFUNDED';
+                            $payment->refund_amount = $refund->amount;
+                            $payment->refund_date = now();
+                            $payment->save();
+                        }
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Error checking refund status', [
+                'refund_id' => $refund->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Map Midtrans status code to our status
+     */
+    private function mapMidtransRefundStatus($statusCode)
+    {
+        switch ($statusCode) {
+            case '200':
+                return 'SUCCESS';
+            case '201':
+            case '202':
+                return 'PROCESSING';
+            case '412':
+            case '500':
+                return 'FAILED';
+            default:
+                return 'PENDING';
         }
     }
 }

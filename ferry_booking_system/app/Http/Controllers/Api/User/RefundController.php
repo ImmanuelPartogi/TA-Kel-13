@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Payment;
 use App\Models\Refund;
+use App\Models\RefundPolicy;
 use App\Services\MidtransService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +24,100 @@ class RefundController extends Controller
     }
 
     /**
+     * Check refund eligibility for a booking
+     */
+    public function checkRefundEligibility($bookingId)
+    {
+        $user = request()->user();
+        $booking = Booking::where('id', $bookingId)
+            ->where('user_id', $user->id)
+            ->with('payments')
+            ->first();
+
+        if (!$booking) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Booking tidak ditemukan'
+            ], 404);
+        }
+
+        $payment = $booking->payments()
+            ->where('status', 'SUCCESS')
+            ->latest()
+            ->first();
+
+        if (!$payment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak ada pembayaran berhasil yang ditemukan',
+                'eligible' => false
+            ], 200);
+        }
+
+        // Cek apakah sudah ada refund
+        $existingRefund = Refund::where('booking_id', $booking->id)
+            ->whereIn('status', ['PENDING', 'PROCESSING', 'SUCCESS', 'COMPLETED'])
+            ->first();
+
+        if ($existingRefund) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Sudah ada permintaan refund untuk booking ini',
+                'eligible' => false,
+                'existing_refund' => $existingRefund
+            ], 200);
+        }
+
+        // Calculate days before departure
+        $departureDate = Carbon::parse($booking->departure_date);
+        $daysBeforeDeparture = now()->diffInDays($departureDate, false);
+
+        // Get applicable refund policy
+        $policy = RefundPolicy::getApplicablePolicy($daysBeforeDeparture);
+
+        if (!$policy || $policy->refund_percentage == 0) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Periode refund untuk booking ini telah berakhir',
+                'eligible' => false,
+                'days_before_departure' => $daysBeforeDeparture
+            ], 200);
+        }
+
+        // Calculate refund amount
+        $refundCalculation = $policy->calculateRefundAmount($payment->amount);
+
+        $canAutoRefund = $this->midtransService->isRefundable(
+            $payment->payment_method,
+            $payment->payment_channel
+        );
+
+        $slaPeriod = $this->midtransService->getRefundSLA(
+            $payment->payment_method,
+            $payment->payment_channel
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Booking eligible untuk refund',
+            'eligible' => true,
+            'can_auto_refund' => $canAutoRefund,
+            'sla_period' => $slaPeriod,
+            'payment_method' => $payment->payment_method,
+            'payment_channel' => $payment->payment_channel,
+            'payment_date' => $payment->payment_date,
+            'days_before_departure' => $daysBeforeDeparture,
+            'refund_policy' => [
+                'description' => $policy->description,
+                'percentage' => $policy->refund_percentage,
+                'original_amount' => $refundCalculation['original_amount'],
+                'refund_fee' => $refundCalculation['refund_fee'],
+                'refund_amount' => $refundCalculation['refund_amount']
+            ]
+        ], 200);
+    }
+
+    /**
      * Request a refund for a booking
      */
     public function requestRefund(Request $request)
@@ -33,7 +128,7 @@ class RefundController extends Controller
             'reason' => 'required|string|max:255',
             'bank_account_number' => 'required|string|max:30',
             'bank_account_name' => 'required|string|max:100',
-            'bank_name' => 'required|string|max:50',
+            'bank_name' => 'required|string|in:BCA,BNI,BRI,MANDIRI,CIMB,DANAMON,PERMATA,BTN,OCBC,MAYBANK,PANIN,BUKOPIN,MEGA,SINARMAS,OTHER',
         ]);
 
         if ($validator->fails()) {
@@ -60,7 +155,7 @@ class RefundController extends Controller
 
             // Cek apakah sudah ada refund untuk booking ini
             $existingRefund = Refund::where('booking_id', $booking->id)
-                ->whereIn('status', ['PENDING', 'PROCESSING', 'SUCCESS'])
+                ->whereIn('status', ['PENDING', 'PROCESSING', 'SUCCESS', 'COMPLETED'])
                 ->first();
 
             if ($existingRefund) {
@@ -82,6 +177,23 @@ class RefundController extends Controller
                 ], 400);
             }
 
+            // Calculate days before departure
+            $departureDate = Carbon::parse($booking->departure_date);
+            $daysBeforeDeparture = now()->diffInDays($departureDate, false);
+
+            // Get applicable refund policy
+            $policy = RefundPolicy::getApplicablePolicy($daysBeforeDeparture);
+
+            if (!$policy || $policy->refund_percentage == 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Periode refund untuk booking ini telah berakhir'
+                ], 400);
+            }
+
+            // Calculate refund amount
+            $refundCalculation = $policy->calculateRefundAmount($payment->amount);
+
             // Cek apakah metode pembayaran dapat di-refund otomatis
             $canAutoRefund = $this->midtransService->isRefundable(
                 $payment->payment_method,
@@ -94,25 +206,11 @@ class RefundController extends Controller
             $slaPeriod = '3-14 hari kerja'; // Default SLA
 
             if ($canAutoRefund) {
-                // Validasi periode refund untuk refund otomatis
-                $refundPeriod = $this->midtransService->getRefundPeriod(
-                    $payment->payment_method,
-                    $payment->payment_channel,
-                    $payment->payment_date
-                );
-
-                if ($refundPeriod === false) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Periode refund untuk transaksi ini telah berakhir'
-                    ], 400);
-                }
-
                 // Coba buat refund via Midtrans
                 try {
                     $refundResponse = $this->midtransService->requestRefund(
                         $payment->transaction_id,
-                        $payment->amount,
+                        $refundCalculation['refund_amount'], // Use calculated amount
                         $request->reason
                     );
 
@@ -137,7 +235,10 @@ class RefundController extends Controller
             $refund = new Refund([
                 'booking_id' => $booking->id,
                 'payment_id' => $payment->id,
-                'amount' => $payment->amount,
+                'original_amount' => $refundCalculation['original_amount'],
+                'refund_fee' => $refundCalculation['refund_fee'],
+                'refund_percentage' => $refundCalculation['refund_percentage'],
+                'amount' => $refundCalculation['refund_amount'],
                 'reason' => $request->reason,
                 'status' => $refundStatus,
                 'refund_method' => 'BANK_TRANSFER',
@@ -156,20 +257,22 @@ class RefundController extends Controller
             DB::commit();
 
             // Pesan yang informatif berdasarkan jenis proses refund
-            if ($requiresManualProcess) {
-                $message = $canAutoRefund
-                    ? "Permintaan refund berhasil dibuat dan akan diproses secara manual dalam $slaPeriod"
-                    : "Permintaan refund berhasil dibuat. Karena metode pembayaran Anda adalah " .
-                      ucwords(str_replace('_', ' ', $payment->payment_method)) .
-                      ", refund akan diproses secara manual oleh tim kami dalam $slaPeriod";
-            } else {
-                $message = "Permintaan refund berhasil dibuat dan sedang diproses otomatis. Dana akan dikembalikan dalam $slaPeriod";
-            }
+            $message = sprintf(
+                "Permintaan refund berhasil dibuat. Jumlah yang akan dikembalikan: %s (dari total %s dengan potongan biaya %s atau %s%%). Dana akan diproses dalam %s.",
+                formatCurrency($refundCalculation['refund_amount']),
+                formatCurrency($refundCalculation['original_amount']),
+                formatCurrency($refundCalculation['refund_fee']),
+                number_format(100 - $refundCalculation['refund_percentage'], 0),
+                $slaPeriod
+            );
 
             return response()->json([
                 'success' => true,
                 'message' => $message,
-                'data' => $refund,
+                'data' => array_merge($refund->toArray(), [
+                    'refund_calculation' => $refundCalculation,
+                    'policy_description' => $policy->description
+                ]),
                 'sla_period' => $slaPeriod,
                 'requires_manual_process' => $requiresManualProcess,
                 'can_auto_refund' => $canAutoRefund
@@ -195,7 +298,7 @@ class RefundController extends Controller
     /**
      * Get refund details for a booking
      */
-    public function getRefundDetails($bookingId)
+    public function getRefundDetailsByBookingId($bookingId)
     {
         $user = request()->user();
         $refund = Refund::where('booking_id', $bookingId)
@@ -250,22 +353,19 @@ class RefundController extends Controller
             }
         }
 
-        // Tambahkan SLA informasi
-        $payment = $refund->payment;
-        $slaPeriod = null;
-
-        if ($payment) {
-            $slaPeriod = $this->midtransService->getRefundSLA(
-                $payment->payment_method,
-                $payment->payment_channel
-            );
-        }
+        // Tambahkan informasi refund calculation
+        $refundData = $refund->toArray();
+        $refundData['refund_calculation'] = [
+            'original_amount' => $refund->original_amount,
+            'refund_fee' => $refund->refund_fee,
+            'refund_percentage' => $refund->refund_percentage,
+            'refund_amount' => $refund->amount
+        ];
 
         return response()->json([
             'success' => true,
             'message' => 'Detail refund berhasil diambil',
-            'data' => $refund,
-            'sla_period' => $slaPeriod
+            'data' => $refundData
         ], 200);
     }
 
@@ -363,81 +463,11 @@ class RefundController extends Controller
                 return 'PENDING';
         }
     }
+}
 
-    /**
-     * Check refund eligibility for a booking
-     */
-    public function checkRefundEligibility($bookingId)
-    {
-        $user = request()->user();
-        $booking = Booking::where('id', $bookingId)
-            ->where('user_id', $user->id)
-            ->with('payments')
-            ->first();
-
-        if (!$booking) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Booking tidak ditemukan'
-            ], 404);
-        }
-
-        $payment = $booking->payments()
-            ->where('status', 'SUCCESS')
-            ->latest()
-            ->first();
-
-        if (!$payment) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Tidak ada pembayaran berhasil yang ditemukan',
-                'eligible' => false
-            ], 200);
-        }
-
-        // Cek apakah sudah ada refund
-        $existingRefund = Refund::where('booking_id', $booking->id)
-            ->whereIn('status', ['PENDING', 'PROCESSING', 'SUCCESS'])
-            ->first();
-
-        if ($existingRefund) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Sudah ada permintaan refund untuk booking ini',
-                'eligible' => false,
-                'existing_refund' => $existingRefund
-            ], 200);
-        }
-
-        $canAutoRefund = $this->midtransService->isRefundable(
-            $payment->payment_method,
-            $payment->payment_channel
-        );
-
-        $refundPeriod = null;
-        if ($canAutoRefund) {
-            $refundPeriod = $this->midtransService->getRefundPeriod(
-                $payment->payment_method,
-                $payment->payment_channel,
-                $payment->payment_date
-            );
-        }
-
-        $slaPeriod = $this->midtransService->getRefundSLA(
-            $payment->payment_method,
-            $payment->payment_channel
-        );
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Informasi kelayakan refund berhasil diambil',
-            'eligible' => true,
-            'can_auto_refund' => $canAutoRefund,
-            'refund_period_days' => $refundPeriod,
-            'sla_period' => $slaPeriod,
-            'payment_method' => $payment->payment_method,
-            'payment_channel' => $payment->payment_channel,
-            'payment_date' => $payment->payment_date
-        ], 200);
+// Helper function for currency formatting
+if (!function_exists('formatCurrency')) {
+    function formatCurrency($amount) {
+        return 'Rp ' . number_format($amount, 0, ',', '.');
     }
 }

@@ -49,6 +49,27 @@ class RefundController extends Controller
 
             // Ambil data booking dan payment
             $booking = Booking::findOrFail($request->booking_id);
+
+            // Cek apakah user memiliki akses ke booking ini
+            if ($booking->user_id !== request()->user()->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki akses ke booking ini'
+                ], 403);
+            }
+
+            // Cek apakah sudah ada refund untuk booking ini
+            $existingRefund = Refund::where('booking_id', $booking->id)
+                ->whereIn('status', ['PENDING', 'PROCESSING', 'SUCCESS'])
+                ->first();
+
+            if ($existingRefund) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Permintaan refund untuk booking ini sudah ada'
+                ], 400);
+            }
+
             $payment = $booking->payments()
                 ->where('status', 'SUCCESS')
                 ->latest()
@@ -61,38 +82,56 @@ class RefundController extends Controller
                 ], 400);
             }
 
-            // Validasi metode pembayaran dapat di-refund
-            if (!$this->midtransService->isRefundable($payment->payment_method, $payment->payment_channel)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Metode pembayaran ini tidak mendukung refund otomatis. Silakan hubungi customer service.'
-                ], 400);
-            }
-
-            // Validasi periode refund
-            $refundPeriod = $this->midtransService->getRefundPeriod(
+            // Cek apakah metode pembayaran dapat di-refund otomatis
+            $canAutoRefund = $this->midtransService->isRefundable(
                 $payment->payment_method,
-                $payment->payment_channel,
-                $payment->payment_date
+                $payment->payment_channel
             );
 
-            if ($refundPeriod === false) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Periode refund untuk transaksi ini telah berakhir'
-                ], 400);
+            $refundStatus = 'PENDING';
+            $requiresManualProcess = true;
+            $refundResponse = null;
+            $slaPeriod = '3-14 hari kerja'; // Default SLA
+
+            if ($canAutoRefund) {
+                // Validasi periode refund untuk refund otomatis
+                $refundPeriod = $this->midtransService->getRefundPeriod(
+                    $payment->payment_method,
+                    $payment->payment_channel,
+                    $payment->payment_date
+                );
+
+                if ($refundPeriod === false) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Periode refund untuk transaksi ini telah berakhir'
+                    ], 400);
+                }
+
+                // Coba buat refund via Midtrans
+                try {
+                    $refundResponse = $this->midtransService->requestRefund(
+                        $payment->transaction_id,
+                        $payment->amount,
+                        $request->reason
+                    );
+
+                    $requiresManualProcess = $refundResponse['requires_manual_process'] ?? false;
+                    $refundStatus = $requiresManualProcess ? 'PENDING' : 'PROCESSING';
+                    $slaPeriod = $this->midtransService->getRefundSLA(
+                        $payment->payment_method,
+                        $payment->payment_channel
+                    );
+                } catch (\Exception $e) {
+                    Log::warning('Midtrans refund request failed, fallback to manual process', [
+                        'payment_id' => $payment->id,
+                        'error' => $e->getMessage()
+                    ]);
+                    // Jika gagal, fallback ke proses manual
+                    $requiresManualProcess = true;
+                    $refundStatus = 'PENDING';
+                }
             }
-
-            // Coba buat refund via Midtrans
-            $refundResponse = $this->midtransService->requestRefund(
-                $payment->transaction_id,
-                $payment->amount,
-                $request->reason
-            );
-
-            // Cek apakah perlu proses manual (untuk virtual account dll)
-            $requiresManualProcess = $refundResponse['requires_manual_process'] ?? false;
-            $refundStatus = $requiresManualProcess ? 'PENDING' : 'PROCESSING';
 
             // Buat record refund
             $refund = new Refund([
@@ -101,7 +140,7 @@ class RefundController extends Controller
                 'amount' => $payment->amount,
                 'reason' => $request->reason,
                 'status' => $refundStatus,
-                'refund_method' => 'BANK_TRANSFER', // Sesuai enum di database
+                'refund_method' => 'BANK_TRANSFER',
                 'transaction_id' => $refundResponse['refund_key'] ?? null,
                 'bank_account_number' => $request->bank_account_number,
                 'bank_account_name' => $request->bank_account_name,
@@ -116,30 +155,33 @@ class RefundController extends Controller
 
             DB::commit();
 
-            // Ambil perkiraan SLA untuk respons
-            $slaPeriod = $this->midtransService->getRefundSLA(
-                $payment->payment_method,
-                $payment->payment_channel
-            );
-
             // Pesan yang informatif berdasarkan jenis proses refund
-            $message = $requiresManualProcess
-                ? "Permintaan refund berhasil dibuat dan akan diproses secara manual dalam $slaPeriod"
-                : "Permintaan refund berhasil dibuat dan sedang diproses. Dana akan dikembalikan dalam $slaPeriod";
+            if ($requiresManualProcess) {
+                $message = $canAutoRefund
+                    ? "Permintaan refund berhasil dibuat dan akan diproses secara manual dalam $slaPeriod"
+                    : "Permintaan refund berhasil dibuat. Karena metode pembayaran Anda adalah " .
+                      ucwords(str_replace('_', ' ', $payment->payment_method)) .
+                      ", refund akan diproses secara manual oleh tim kami dalam $slaPeriod";
+            } else {
+                $message = "Permintaan refund berhasil dibuat dan sedang diproses otomatis. Dana akan dikembalikan dalam $slaPeriod";
+            }
 
             return response()->json([
                 'success' => true,
                 'message' => $message,
                 'data' => $refund,
                 'sla_period' => $slaPeriod,
-                'requires_manual_process' => $requiresManualProcess
+                'requires_manual_process' => $requiresManualProcess,
+                'can_auto_refund' => $canAutoRefund
             ], 201);
+
         } catch (\Exception $e) {
             DB::rollBack();
 
             Log::error('Error creating refund request', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->all()
             ]);
 
             return response()->json([
@@ -258,7 +300,16 @@ class RefundController extends Controller
 
             // Cancel refund di Midtrans jika ada transaction_id
             if ($refund->transaction_id) {
-                $this->midtransService->cancelRefund($refund->transaction_id);
+                try {
+                    $this->midtransService->cancelRefund($refund->transaction_id);
+                } catch (\Exception $e) {
+                    Log::warning('Failed to cancel refund in Midtrans', [
+                        'refund_id' => $refund->id,
+                        'transaction_id' => $refund->transaction_id,
+                        'error' => $e->getMessage()
+                    ]);
+                    // Lanjutkan proses meskipun gagal cancel di Midtrans
+                }
             }
 
             // Update status refund
@@ -277,6 +328,7 @@ class RefundController extends Controller
                 'message' => 'Permintaan refund berhasil dibatalkan',
                 'data' => $refund
             ], 200);
+
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -310,5 +362,82 @@ class RefundController extends Controller
             default:
                 return 'PENDING';
         }
+    }
+
+    /**
+     * Check refund eligibility for a booking
+     */
+    public function checkRefundEligibility($bookingId)
+    {
+        $user = request()->user();
+        $booking = Booking::where('id', $bookingId)
+            ->where('user_id', $user->id)
+            ->with('payments')
+            ->first();
+
+        if (!$booking) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Booking tidak ditemukan'
+            ], 404);
+        }
+
+        $payment = $booking->payments()
+            ->where('status', 'SUCCESS')
+            ->latest()
+            ->first();
+
+        if (!$payment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak ada pembayaran berhasil yang ditemukan',
+                'eligible' => false
+            ], 200);
+        }
+
+        // Cek apakah sudah ada refund
+        $existingRefund = Refund::where('booking_id', $booking->id)
+            ->whereIn('status', ['PENDING', 'PROCESSING', 'SUCCESS'])
+            ->first();
+
+        if ($existingRefund) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Sudah ada permintaan refund untuk booking ini',
+                'eligible' => false,
+                'existing_refund' => $existingRefund
+            ], 200);
+        }
+
+        $canAutoRefund = $this->midtransService->isRefundable(
+            $payment->payment_method,
+            $payment->payment_channel
+        );
+
+        $refundPeriod = null;
+        if ($canAutoRefund) {
+            $refundPeriod = $this->midtransService->getRefundPeriod(
+                $payment->payment_method,
+                $payment->payment_channel,
+                $payment->payment_date
+            );
+        }
+
+        $slaPeriod = $this->midtransService->getRefundSLA(
+            $payment->payment_method,
+            $payment->payment_channel
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Informasi kelayakan refund berhasil diambil',
+            'eligible' => true,
+            'can_auto_refund' => $canAutoRefund,
+            'refund_period_days' => $refundPeriod,
+            'sla_period' => $slaPeriod,
+            'payment_method' => $payment->payment_method,
+            'payment_channel' => $payment->payment_channel,
+            'payment_date' => $payment->payment_date
+        ], 200);
     }
 }

@@ -25,8 +25,6 @@ class AppServiceProvider extends ServiceProvider
         // Daftarkan command
         if ($this->app->runningInConsole()) {
             $this->commands([
-                \App\Console\Commands\CheckPendingPayments::class,
-                \App\Console\Commands\UpdateExpiredTickets::class,
             ]);
         }
     }

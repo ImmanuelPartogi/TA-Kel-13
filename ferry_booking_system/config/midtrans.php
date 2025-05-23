@@ -10,7 +10,8 @@ return [
         : 'https://api.sandbox.midtrans.com',
     'notification_url' => env('APP_MIDTRANS_CALLBACK_URL', env('APP_URL', 'http://localhost') . '/api/payments/notification'),
     'finish_url' => env('APP_URL', 'http://localhost') . '/payment/finish',
-    'expiry_duration' => env('MIDTRANS_EXPIRY_DURATION', 24),
+    'expiry_duration' => env('MIDTRANS_EXPIRY_DURATION', 5),
+    'ewallet_expiry_duration' => env('MIDTRANS_EWALLET_EXPIRY_DURATION', 5),
     'is_3ds' => true,
     'is_sanitized' => true,
 

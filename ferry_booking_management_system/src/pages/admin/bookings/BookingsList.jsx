@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { api } from '../../../services/api';
 
 const BookingsList = () => {
-  const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [routes, setRoutes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,8 +22,6 @@ const BookingsList = () => {
   });
   const [alert, setAlert] = useState({ show: false, type: '', message: '' });
   const [viewMode, setViewMode] = useState('table'); // table or grid
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [selectedBooking, setSelectedBooking] = useState(null);
 
   useEffect(() => {
     fetchBookings();
@@ -107,11 +104,6 @@ const BookingsList = () => {
     });
     // Fetch bookings with reset filters
     setTimeout(() => fetchBookings(1), 0);
-  };
-
-  const viewBookingDetail = (booking) => {
-    setSelectedBooking(booking);
-    setShowDetailModal(true);
   };
 
   const getStatusConfig = (status) => {
@@ -249,11 +241,12 @@ const BookingsList = () => {
             </div>
             
             <div>
-              <button
-                onClick={() => setAlert({ show: true, type: 'success', message: 'Fitur ekspor data booking dalam pengembangan' })}
-                className="inline-flex items-center px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-white/20 shadow-sm">
-                <i className="fas fa-file-export mr-2"></i> Ekspor Data
-              </button>
+              <Link
+                to="/admin/bookings/create"
+                className="inline-flex items-center px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-white/20 shadow-sm"
+              >
+                <i className="fas fa-plus mr-2"></i> Buat Booking Baru
+              </Link>
             </div>
           </div>
           
@@ -526,11 +519,20 @@ const BookingsList = () => {
             </div>
             <h3 className="text-xl font-semibold text-gray-800 mb-2">Belum Ada Data Booking</h3>
             <p className="text-gray-600 mb-6">Belum ada booking yang ditemukan atau sesuai dengan filter yang Anda pilih</p>
-            <button 
-              onClick={handleReset}
-              className="inline-flex items-center px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-sm">
-              <i className="fas fa-sync-alt mr-2"></i> Reset Filter
-            </button>
+            <div className="flex justify-center space-x-3">
+              <button 
+                onClick={handleReset}
+                className="inline-flex items-center px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-sm"
+              >
+                <i className="fas fa-sync-alt mr-2"></i> Reset Filter
+              </button>
+              <Link
+                to="/admin/bookings/create"
+                className="inline-flex items-center px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-sm"
+              >
+                <i className="fas fa-plus mr-2"></i> Buat Booking Baru
+              </Link>
+            </div>
           </div>
         )}
 
@@ -622,23 +624,28 @@ const BookingsList = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex justify-end space-x-2">
-                            <button
-                              onClick={() => viewBookingDetail(booking)}
+                            <Link
+                              to={`/admin/bookings/${booking.id}`}
                               className="btn-icon bg-blue-50 hover:bg-blue-100 text-blue-600 p-2 rounded-lg transition-colors"
                               title="Detail">
                               <i className="fas fa-eye"></i>
-                            </button>
-                            <Link to={`/admin/bookings/${booking.id}/edit`}
-                              className="btn-icon bg-amber-50 hover:bg-amber-100 text-amber-600 p-2 rounded-lg transition-colors"
-                              title="Edit">
-                              <i className="fas fa-edit"></i>
                             </Link>
-                            <button
-                              onClick={() => navigate(`/admin/bookings/${booking.id}`)}
-                              className="btn-icon bg-purple-50 hover:bg-purple-100 text-purple-600 p-2 rounded-lg transition-colors"
-                              title="Manage">
-                              <i className="fas fa-cog"></i>
-                            </button>
+                            {booking.status === 'CONFIRMED' && (
+                              <Link 
+                                to={`/admin/bookings/${booking.id}/reschedule`}
+                                className="btn-icon bg-purple-50 hover:bg-purple-100 text-purple-600 p-2 rounded-lg transition-colors"
+                                title="Reschedule">
+                                <i className="fas fa-calendar-alt"></i>
+                              </Link>
+                            )}
+                            {['CONFIRMED', 'COMPLETED'].includes(booking.status) && (
+                              <Link
+                                to={`/admin/refunds/create/${booking.id}`}
+                                className="btn-icon bg-amber-50 hover:bg-amber-100 text-amber-600 p-2 rounded-lg transition-colors"
+                                title="Refund">
+                                <i className="fas fa-hand-holding-usd"></i>
+                              </Link>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -728,21 +735,31 @@ const BookingsList = () => {
                     </div>
                     
                     <div className="flex justify-between border-t border-gray-100 pt-4">
-                      <button
-                        onClick={() => viewBookingDetail(booking)}
+                      <Link
+                        to={`/admin/bookings/${booking.id}`}
                         className="btn-icon bg-blue-50 hover:bg-blue-100 text-blue-600 p-2 rounded-lg transition-colors"
+                        title="Detail"
                       >
                         <i className="fas fa-eye"></i>
-                      </button>
-                      <Link to={`/admin/bookings/${booking.id}/edit`} className="btn-icon bg-amber-50 hover:bg-amber-100 text-amber-600 p-2 rounded-lg transition-colors">
-                        <i className="fas fa-edit"></i>
                       </Link>
-                      <button
-                        onClick={() => navigate(`/admin/bookings/${booking.id}`)}
-                        className="btn-icon bg-purple-50 hover:bg-purple-100 text-purple-600 p-2 rounded-lg transition-colors"
-                      >
-                        <i className="fas fa-cog"></i>
-                      </button>
+                      {booking.status === 'CONFIRMED' && (
+                        <Link 
+                          to={`/admin/bookings/${booking.id}/reschedule`}
+                          className="btn-icon bg-purple-50 hover:bg-purple-100 text-purple-600 p-2 rounded-lg transition-colors"
+                          title="Reschedule"
+                        >
+                          <i className="fas fa-calendar-alt"></i>
+                        </Link>
+                      )}
+                      {['CONFIRMED', 'COMPLETED'].includes(booking.status) && (
+                        <Link
+                          to={`/admin/refunds/create/${booking.id}`}
+                          className="btn-icon bg-amber-50 hover:bg-amber-100 text-amber-600 p-2 rounded-lg transition-colors"
+                          title="Refund"
+                        >
+                          <i className="fas fa-hand-holding-usd"></i>
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -825,179 +842,8 @@ const BookingsList = () => {
         )}
       </div>
 
-      {/* Booking Detail Modal */}
-      {showDetailModal && selectedBooking && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl transform transition-all animate-modal-in">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                <i className="fas fa-ticket-alt text-blue-500 mr-2"></i>
-                Detail Booking <span className="text-blue-600 ml-2">#{selectedBooking.booking_code}</span>
-              </h3>
-              <button
-                onClick={() => setShowDetailModal(false)}
-                className="text-gray-400 hover:text-gray-500"
-              >
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-1">Informasi Booking</h4>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm text-gray-600">Status:</span>
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusConfig(selectedBooking.status).bg} ${getStatusConfig(selectedBooking.status).text}`}>
-                          {getStatusConfig(selectedBooking.status).label}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm text-gray-600">Tanggal Booking:</span>
-                        <span className="text-sm font-medium">{formatDate(selectedBooking.created_at, true)}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Total Pembayaran:</span>
-                        <span className="text-sm font-bold text-green-600">{formatCurrency(selectedBooking.total_amount || 0)}</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-1">Informasi Pengguna</h4>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="flex items-center mb-3">
-                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 mr-3">
-                          <i className="fas fa-user"></i>
-                        </div>
-                        <div>
-                          <div className="font-medium">{selectedBooking.user?.name || 'N/A'}</div>
-                          <div className="text-sm text-gray-500">{selectedBooking.user?.email || 'N/A'}</div>
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm text-gray-600">Telepon:</span>
-                        <span className="text-sm font-medium">{selectedBooking.user?.phone || 'N/A'}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-1">Detail Perjalanan</h4>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="mb-3">
-                        <span className="text-sm text-gray-600">Rute:</span>
-                        <div className="font-medium mt-1">
-                          {selectedBooking.schedule?.route ? 
-                            `${selectedBooking.schedule.route.origin} - ${selectedBooking.schedule.route.destination}` : 
-                            'N/A'
-                          }
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm text-gray-600">Tanggal Keberangkatan:</span>
-                        <span className="text-sm font-medium">{formatDate(selectedBooking.departure_date)}</span>
-                      </div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm text-gray-600">Waktu Keberangkatan:</span>
-                        <span className="text-sm font-medium">
-                          {selectedBooking.schedule?.departure_time ? 
-                            new Date(selectedBooking.schedule.departure_time).toLocaleTimeString('id-ID', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                              hour12: false
-                            }) : 
-                            'N/A'
-                          }
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Nama Kapal:</span>
-                        <span className="text-sm font-medium">{selectedBooking.schedule?.ferry?.name || 'N/A'}</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-1">Detail Penumpang & Kendaraan</h4>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="grid grid-cols-2 gap-3 mb-3">
-                        <div className="bg-blue-50 p-3 rounded-lg text-center">
-                          <div className="text-xs text-blue-600 mb-1">Jumlah Penumpang</div>
-                          <div className="flex items-center justify-center">
-                            <i className="fas fa-users text-blue-400 mr-1"></i>
-                            <span className="text-lg font-semibold text-blue-700">{selectedBooking.passenger_count || 0}</span>
-                          </div>
-                        </div>
-                        
-                        <div className="bg-emerald-50 p-3 rounded-lg text-center">
-                          <div className="text-xs text-emerald-600 mb-1">Jumlah Kendaraan</div>
-                          <div className="flex items-center justify-center">
-                            <i className="fas fa-car text-emerald-400 mr-1"></i>
-                            <span className="text-lg font-semibold text-emerald-700">{selectedBooking.vehicle_count || 0}</span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="text-xs text-gray-500 mb-1">Detail Kendaraan:</div>
-                      {selectedBooking.vehicle_count > 0 ? (
-                        <div className="space-y-2">
-                          {/* Placeholder for vehicle details */}
-                          <div className="flex justify-between items-center p-2 bg-white rounded border border-gray-200">
-                            <span className="flex items-center">
-                              <i className="fas fa-car text-gray-400 mr-2"></i>
-                              <span className="text-sm">Mobil Penumpang</span>
-                            </span>
-                            <span className="text-xs bg-gray-100 px-2 py-1 rounded">B 1234 XYZ</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-sm text-gray-500 italic">Tidak ada kendaraan</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mt-6 flex justify-between">
-                <button
-                  onClick={() => setShowDetailModal(false)}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg bg-white text-gray-700 hover:bg-gray-50"
-                >
-                  <i className="fas fa-times mr-2"></i> Tutup
-                </button>
-                
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => {
-                      setShowDetailModal(false);
-                      navigate(`/admin/bookings/${selectedBooking.id}/edit`);
-                    }}
-                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700"
-                  >
-                    <i className="fas fa-edit mr-2"></i> Edit
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowDetailModal(false);
-                      navigate(`/admin/bookings/${selectedBooking.id}`);
-                    }}
-                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg bg-purple-600 text-white hover:bg-purple-700"
-                  >
-                    <i className="fas fa-cog mr-2"></i> Kelola
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* CSS for animations and button styling */}
-      <style jsx>{`
+      <style>{`
         .btn-icon {
           width: 36px;
           height: 36px;
@@ -1010,21 +856,6 @@ const BookingsList = () => {
         
         .btn-icon:hover {
           transform: translateY(-2px);
-        }
-        
-        @keyframes modal-in {
-          0% {
-            opacity: 0;
-            transform: scale(0.95) translateY(10px);
-          }
-          100% {
-            opacity: 1;
-            transform: scale(1) translateY(0);
-          }
-        }
-        
-        .animate-modal-in {
-          animation: modal-in 0.3s ease-out forwards;
         }
         
         @keyframes slideIn {

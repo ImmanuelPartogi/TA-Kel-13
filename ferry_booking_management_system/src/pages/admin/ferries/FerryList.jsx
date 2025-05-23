@@ -708,7 +708,7 @@ const FerryList = () => {
       )}
 
       {/* CSS for animations and button styling */}
-      <style jsx>{`
+      <style>{`
         .btn-icon {
           width: 36px;
           height: 36px;

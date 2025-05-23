@@ -671,7 +671,7 @@ const FerryShow = () => {
       )}
 
       {/* CSS for modern animations and transitions */}
-      <style jsx>{`
+      <style>{`
         .card-3d {
           transform-style: preserve-3d;
           perspective: 1000px;

@@ -43,7 +43,7 @@ const OperatorEdit = () => {
       const operatorResponse = await adminOperatorService.getOperatorWithRoutes(id);
       console.log('Operator response:', operatorResponse);
       
-      const { operator: operatorData, routes: assignedRoutes } = operatorResponse;
+      const { operator: operatorData } = operatorResponse;
       
       // Fetch semua routes yang tersedia
       const allRoutesResponse = await adminOperatorService.getRoutes();

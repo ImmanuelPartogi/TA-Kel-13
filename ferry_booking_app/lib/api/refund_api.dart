@@ -5,71 +5,55 @@ import 'package:ferry_booking_app/services/api_service.dart';
 class RefundApi {
   final ApiService _apiService = ApiService();
 
-  // Request refund dengan informasi tambahan untuk check payment method
-  Future<Refund> requestRefund(Map<String, dynamic> refundData) async {
+  // Check refund eligibility
+  Future<Map<String, dynamic>> checkRefundEligibility(int bookingId) async {
     try {
-      final response = await _apiService.post('refunds/request', refundData);
-
-      if (response['success']) {
-        final refund = Refund.fromJson(response['data']);
-        
-        // Perbarui bahwa SLA periode bisa berbeda-beda
-        if (response['sla_period'] != null) {
-          refund.slaPeriod = response['sla_period'];
-        }
-        
-        // Informasi jika refund memerlukan proses manual
-        if (response['requires_manual_process'] != null) {
-          refund.requiresManualProcess = response['requires_manual_process'];
-        }
-        
-        return refund;
-      } else {
-        throw Exception(response['message']);
-      }
+      final response = await _apiService.get('refunds/eligibility/$bookingId');
+      return response;
     } catch (e) {
-      print('Error requesting refund: $e');
-      throw Exception('Terjadi kesalahan saat meminta refund: ${e.toString()}');
+      print('Error checking refund eligibility: $e');
+      throw Exception('Terjadi kesalahan saat memeriksa kelayakan refund: ${e.toString()}');
     }
   }
 
-  // Get refund details for a booking dengan informasi tambahan
-  Future<Refund?> getRefundDetailsByBookingId(int bookingId) async {
+  // Request refund dengan penanganan response yang lebih baik
+  Future<Map<String, dynamic>> requestRefund(Map<String, dynamic> refundData) async {
+    try {
+      final response = await _apiService.post('refunds/request', refundData);
+      return response;
+    } catch (e) {
+      print('Error requesting refund: $e');
+      
+      // Re-throw the original exception untuk mempertahankan error message yang tepat
+      rethrow;
+    }
+  }
+
+  // Get refund details for a booking
+  Future<Map<String, dynamic>> getRefundDetailsByBookingId(int bookingId) async {
     try {
       final response = await _apiService.get('refunds/booking/$bookingId');
-
-      if (response['success']) {
-        final refund = Refund.fromJson(response['data']);
-        
-        // Perbarui bahwa SLA periode bisa berbeda-beda
-        if (response['sla_period'] != null) {
-          refund.slaPeriod = response['sla_period'];
-        }
-        
-        return refund;
-      } else {
-        // Jika tidak ada refund, return null
-        return null;
-      }
+      return response;
     } catch (e) {
       print('Error getting refund details: $e');
+      
       if (e.toString().contains('not found') || e.toString().contains('404')) {
-        return null;
+        return {
+          'success': false,
+          'message': 'Data refund tidak ditemukan',
+          'data': null
+        };
       }
+      
       throw Exception('Terjadi kesalahan saat mengambil detail refund: ${e.toString()}');
     }
   }
 
   // Cancel refund
-  Future<Refund> cancelRefund(int refundId) async {
+  Future<Map<String, dynamic>> cancelRefund(int refundId) async {
     try {
       final response = await _apiService.post('refunds/$refundId/cancel', {});
-
-      if (response['success']) {
-        return Refund.fromJson(response['data']);
-      } else {
-        throw Exception(response['message']);
-      }
+      return response;
     } catch (e) {
       print('Error cancelling refund: $e');
       throw Exception('Terjadi kesalahan saat membatalkan refund: ${e.toString()}');

@@ -1,4 +1,3 @@
-// src/pages/admin/bookings/BookingReschedule.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../../services/api';
@@ -34,11 +33,13 @@ const BookingReschedule = () => {
   const fetchBooking = async () => {
     try {
       const response = await api.get(`/admin-panel/bookings/${id}`);
-      setBooking(response.data.data);
-      setFormData({
-        ...formData,
-        route_id: response.data.data.schedule.route_id
-      });
+      if (response.data.success) {
+        setBooking(response.data.data);
+        setFormData({
+          ...formData,
+          route_id: response.data.data.schedule.route_id
+        });
+      }
     } catch (error) {
       console.error('Error fetching booking:', error);
     } finally {
@@ -49,9 +50,16 @@ const BookingReschedule = () => {
   const fetchRoutes = async () => {
     try {
       const response = await api.get('/admin-panel/routes');
-      setRoutes(response.data.data);
+      if (response.data.success) {
+        // Pastikan data berupa array
+        const routesData = Array.isArray(response.data.data) ? response.data.data : [];
+        setRoutes(routesData);
+      } else {
+        setRoutes([]);
+      }
     } catch (error) {
       console.error('Error fetching routes:', error);
+      setRoutes([]); // Set sebagai array kosong jika error
     }
   };
 
@@ -71,9 +79,9 @@ const BookingReschedule = () => {
       });
 
       if (response.data.success) {
-        setScheduleResults(response.data.data);
+        setScheduleResults(response.data.data || []);
         setShowScheduleResults(true);
-        setNoSchedulesFound(response.data.data.length === 0);
+        setNoSchedulesFound((response.data.data || []).length === 0);
       }
     } catch (error) {
       console.error('Error checking schedules:', error);
@@ -99,7 +107,7 @@ const BookingReschedule = () => {
       if (response.data.success) {
         if (response.data.nearest_date && response.data.nearest_schedules) {
           setNearestDate(response.data.nearest_date);
-          setNearestSchedules(response.data.nearest_schedules);
+          setNearestSchedules(response.data.nearest_schedules || []);
           setShowNearestResults(true);
         } else {
           alert('Tidak ditemukan jadwal terdekat dalam 7 hari ke depan');
@@ -112,7 +120,7 @@ const BookingReschedule = () => {
   };
 
   const getVehicleCounts = () => {
-    if (!booking) return {};
+    if (!booking || !booking.vehicles) return {};
     
     const counts = {
       MOTORCYCLE: 0,
@@ -122,7 +130,9 @@ const BookingReschedule = () => {
     };
 
     booking.vehicles.forEach(vehicle => {
-      counts[vehicle.type]++;
+      if (Object.prototype.hasOwnProperty.call(counts, vehicle.type)) {
+        counts[vehicle.type]++;
+      }
     });
 
     return counts;
@@ -267,7 +277,7 @@ const BookingReschedule = () => {
                       required
                     >
                       <option value="">Pilih Rute</option>
-                      {routes.map(route => (
+                      {routes && Array.isArray(routes) && routes.map(route => (
                         <option key={route.id} value={route.id}>
                           {route.origin} - {route.destination}
                         </option>
@@ -368,8 +378,8 @@ const BookingReschedule = () => {
                               </div>
                             </div>
                             <div className="text-sm text-gray-600 space-y-1">
-                              <div>Kapal: <span className="font-medium">{schedule.ferry.name}</span></div>
-                              <div>Kapasitas: {schedule.available_passenger} penumpang tersedia</div>
+                              <div>Kapal: <span className="font-medium">{schedule.ferry && schedule.ferry.name ? schedule.ferry.name : 'N/A'}</span></div>
+                              <div>Kapasitas: {schedule.available_passenger || 0} penumpang tersedia</div>
                               {!schedule.is_available && schedule.reason && (
                                 <div className="text-red-500 font-medium mt-2">{schedule.reason}</div>
                               )}
@@ -452,42 +462,56 @@ const BookingReschedule = () => {
                 </div>
                 <div className="py-3 flex justify-between">
                   <dt className="text-sm font-medium text-gray-500">Pengguna</dt>
-                  <dd className="text-sm text-gray-900">{booking.user.name}</dd>
+                  <dd className="text-sm text-gray-900">{booking.user && booking.user.name ? booking.user.name : 'N/A'}</dd>
                 </div>
                 <div className="py-3 flex justify-between">
                   <dt className="text-sm font-medium text-gray-500">Rute</dt>
                   <dd className="text-sm text-gray-900">
-                    {booking.schedule.route.origin} - {booking.schedule.route.destination}
+                    {booking.schedule && booking.schedule.route ? 
+                      `${booking.schedule.route.origin} - ${booking.schedule.route.destination}` : 
+                      'N/A'
+                    }
                   </dd>
                 </div>
                 <div className="py-3 flex justify-between">
                   <dt className="text-sm font-medium text-gray-500">Tanggal</dt>
                   <dd className="text-sm text-gray-900">
-                    {new Date(booking.departure_date).toLocaleDateString('id-ID', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric'
-                    })}
+                    {booking.departure_date ? 
+                      new Date(booking.departure_date).toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      }) : 
+                      'N/A'
+                    }
                   </dd>
                 </div>
                 <div className="py-3 flex justify-between">
                   <dt className="text-sm font-medium text-gray-500">Jadwal</dt>
                   <dd className="text-sm text-gray-900">
-                    {booking.schedule.departure_time} - {booking.schedule.arrival_time}
+                    {booking.schedule ? 
+                      `${booking.schedule.departure_time || 'N/A'} - ${booking.schedule.arrival_time || 'N/A'}` : 
+                      'N/A'
+                    }
                   </dd>
                 </div>
                 <div className="py-3 flex justify-between">
                   <dt className="text-sm font-medium text-gray-500">Kapal</dt>
-                  <dd className="text-sm text-gray-900">{booking.schedule.ferry.name}</dd>
+                  <dd className="text-sm text-gray-900">
+                    {booking.schedule && booking.schedule.ferry && booking.schedule.ferry.name ? 
+                      booking.schedule.ferry.name : 
+                      'N/A'
+                    }
+                  </dd>
                 </div>
                 <div className="py-3 flex justify-between">
                   <dt className="text-sm font-medium text-gray-500">Penumpang</dt>
-                  <dd className="text-sm text-gray-900">{booking.passenger_count} orang</dd>
+                  <dd className="text-sm text-gray-900">{booking.passenger_count || 0} orang</dd>
                 </div>
                 <div className="py-3 flex justify-between">
                   <dt className="text-sm font-medium text-gray-500">Kendaraan</dt>
                   <dd className="text-sm text-gray-900">
-                    {booking.vehicle_count > 0 ? (
+                    {booking.vehicle_count > 0 && booking.vehicles && Array.isArray(booking.vehicles) ? (
                       <div>
                         {booking.vehicles.map(vehicle => {
                           const types = {
@@ -496,7 +520,7 @@ const BookingReschedule = () => {
                             'BUS': 'Bus',
                             'TRUCK': 'Truk'
                           };
-                          return types[vehicle.type];
+                          return types[vehicle.type] || vehicle.type;
                         }).join(', ')}
                       </div>
                     ) : (
@@ -507,7 +531,7 @@ const BookingReschedule = () => {
                 <div className="py-3 flex justify-between">
                   <dt className="text-sm font-medium text-gray-500">Total</dt>
                   <dd className="text-sm font-bold text-blue-600">
-                    Rp {booking.total_amount.toLocaleString('id-ID')}
+                    Rp {booking.total_amount ? booking.total_amount.toLocaleString('id-ID') : '0'}
                   </dd>
                 </div>
               </dl>

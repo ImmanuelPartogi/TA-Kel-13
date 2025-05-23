@@ -8,7 +8,7 @@ const BookingShow = () => {
   const navigate = useNavigate();
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showStatusUpdate, setShowStatusUpdate] = useState(false);
+  const [, setShowStatusUpdate] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState('');
   const [cancellationReason, setCancellationReason] = useState('');
   const [statusNotes, setStatusNotes] = useState('');

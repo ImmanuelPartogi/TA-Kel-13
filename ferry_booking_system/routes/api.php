@@ -155,10 +155,13 @@ Route::middleware('auth:sanctum')->group(function () {
     // Chatbot Authenticated Routes
     Route::get('/chatbot/conversations', [ChatbotController::class, 'getUserConversations']);
 
-    // Refund Routes
-    Route::post('/refunds/request', [RefundController::class, 'requestRefund']);
-    Route::get('/refunds/booking/{bookingId}', [RefundController::class, 'getRefundDetails']);
-    Route::post('/refunds/{refundId}/cancel', [RefundController::class, 'cancelRefund']);
+    // User Refund Routes
+    Route::prefix('refunds')->group(function () {
+        Route::get('/eligibility/{bookingId}', [RefundController::class, 'checkRefundEligibility']);
+        Route::post('/request', [RefundController::class, 'requestRefund']);
+        Route::get('/booking/{bookingId}', [RefundController::class, 'getRefundDetailsByBookingId']);
+        Route::post('/{refundId}/cancel', [RefundController::class, 'cancelRefund']);
+    });
 
     // Notifications
     Route::prefix('notifications')->group(function () {
@@ -184,7 +187,8 @@ Route::middleware('auth:sanctum')->group(function () {
 | Rute API untuk panel admin, diproteksi dengan auth:sanctum dan role admin
 |
 */
-Route::prefix('admin-panel')->middleware(['auth:sanctum'])->group(function () {    // Dashboard    // Dashboard
+Route::prefix('admin-panel')->middleware(['auth:sanctum'])->group(function () {
+    // Dashboard
     Route::get('/dashboard/stats', [AdminDashboardController::class, 'getStats']);
     Route::get('/dashboard/summary', [AdminDashboardController::class, 'getSummary']);
 
@@ -200,7 +204,7 @@ Route::prefix('admin-panel')->middleware(['auth:sanctum'])->group(function () { 
     // Operators Management
     Route::prefix('operators')->group(function () {
         Route::get('/', [OperatorController::class, 'index']);
-        Route::get('/routes', [OperatorController::class, 'getRoutes']); // Tambahkan ini
+        Route::get('/routes', [OperatorController::class, 'getRoutes']);
         Route::get('/{id}', [OperatorController::class, 'show']);
         Route::post('/', [OperatorController::class, 'store']);
         Route::put('/{id}', [OperatorController::class, 'update']);
@@ -249,7 +253,7 @@ Route::prefix('admin-panel')->middleware(['auth:sanctum'])->group(function () { 
         Route::get('/', [AdminBookingController::class, 'index']);
         Route::get('/create', [AdminBookingController::class, 'create']);
         Route::post('/', [AdminBookingController::class, 'store']);
-        Route::get('/get-schedules', [AdminBookingController::class, 'getSchedulesForBooking']); // Tambahkan ini
+        Route::get('/get-schedules', [AdminBookingController::class, 'getSchedulesForBooking']);
         Route::get('/search-users', [AdminBookingController::class, 'searchUsers']);
         Route::get('/{id}', [AdminBookingController::class, 'show']);
         Route::put('/{id}/status', [AdminBookingController::class, 'updateStatus']);
@@ -258,6 +262,10 @@ Route::prefix('admin-panel')->middleware(['auth:sanctum'])->group(function () { 
         Route::get('/{id}/reschedule', [AdminBookingController::class, 'rescheduleForm']);
         Route::post('/get-available-schedules', [AdminBookingController::class, 'getAvailableSchedules']);
         Route::post('/{id}/process-reschedule', [AdminBookingController::class, 'processReschedule']);
+
+        // Refund Creation Routes (these should be here to avoid conflicts)
+        Route::get('/{bookingId}/refund/create', [AdminRefundController::class, 'create']);
+        Route::post('/{bookingId}/refund', [AdminRefundController::class, 'store']);
     });
 
     // Users Management
@@ -278,12 +286,15 @@ Route::prefix('admin-panel')->middleware(['auth:sanctum'])->group(function () { 
         Route::get('/revenue/export', [AdminReportController::class, 'exportRevenueReport']);
     });
 
-    // Refunds
+    // FIXED: Refunds Management
     Route::prefix('refunds')->group(function () {
+        // IMPORTANT: Specific routes MUST come before parameterized routes
+        Route::get('/policy/settings', [AdminRefundController::class, 'getPolicySettings']);
+        Route::post('/policy/update', [AdminRefundController::class, 'updatePolicySettings']);
+
+        // List & Basic Operations
         Route::get('/', [AdminRefundController::class, 'index']);
         Route::get('/{id}', [AdminRefundController::class, 'show']);
-        Route::get('/create/{bookingId}', [AdminRefundController::class, 'create']);
-        Route::post('/store/{bookingId}', [AdminRefundController::class, 'store']);
         Route::post('/{id}/approve', [AdminRefundController::class, 'approve']);
         Route::post('/{id}/reject', [AdminRefundController::class, 'reject']);
         Route::post('/{id}/complete', [AdminRefundController::class, 'complete']);
@@ -299,7 +310,8 @@ Route::prefix('admin-panel')->middleware(['auth:sanctum'])->group(function () { 
 |
 */
 
-Route::prefix('operator-panel')->middleware(['auth:sanctum'])->group(function () {    // Dashboard
+Route::prefix('operator-panel')->middleware(['auth:sanctum'])->group(function () {
+    // Dashboard
     Route::get('/dashboard/stats', [OperatorDashboardController::class, 'getStats']);
     Route::get('/dashboard/summary', [OperatorDashboardController::class, 'getSummary']);
 

@@ -11,15 +11,17 @@ return new class extends Migration
         Schema::create('booking_logs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('booking_id')->constrained()->onDelete('cascade');
-            $table->string('previous_status', 50);
+            $table->string('previous_status', 50)->nullable();
             $table->string('new_status', 50);
-            $table->enum('changed_by_type', ['USER', 'ADMIN', 'SYSTEM', 'OPERATOR']);
+            $table->enum('changed_by_type', ['USER', 'ADMIN', 'SYSTEM'])->default('SYSTEM');
             $table->unsignedBigInteger('changed_by_id')->nullable();
             $table->text('notes')->nullable();
             $table->string('ip_address', 45)->nullable();
-            $table->text('device_info')->nullable()->comment('Informasi perangkat yang melakukan perubahan');
-            $table->string('location', 191)->nullable()->comment('Lokasi geografis perubahan');
-            $table->timestamp('created_at')->useCurrent();
+            $table->text('user_agent')->nullable();
+            $table->timestamps();
+
+            $table->index(['booking_id', 'created_at']);
+            $table->index(['changed_by_type', 'changed_by_id']);
         });
     }
 

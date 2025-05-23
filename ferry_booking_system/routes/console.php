@@ -15,44 +15,30 @@ use Illuminate\Support\Facades\Schedule;
 |
 */
 
-// Definisi command biasa
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
-
-// Command untuk testing manual
-Artisan::command('test:payment-polling', function () {
-    $this->info('Testing payment polling...');
-    $this->call('payments:check-pending');
-})->purpose('Test the payment polling system');
-
-Schedule::command('tickets:update-expired')
+Schedule::command('tickets:manage-statuses')
     ->everyMinute()
     ->withoutOverlapping()
-    ->appendOutputTo(storage_path('logs/ticket-updates.log'));
+    ->appendOutputTo(storage_path('logs/ticket-status-management.log'));
 
-Schedule::command('payments:check-pending')
+// Command terpadu untuk notifikasi
+Schedule::command('notifications:manage')
     ->everyMinute()
     ->withoutOverlapping()
-    ->appendOutputTo(storage_path('logs/payment-polling.log'));
+    ->appendOutputTo(storage_path('logs/notification-management.log'));
 
-Schedule::command('schedules:update-expired')->everyMinute();
-Schedule::command('schedules:update-expired-statuses')->everyMinute();
-
-Schedule::command('payment:check-status')
+// Command terpadu untuk jadwal
+Schedule::command('schedules:manage-statuses')
     ->everyMinute()
     ->withoutOverlapping()
-    ->appendOutputTo(storage_path('logs/payment-check.log'));
+    ->appendOutputTo(storage_path('logs/schedule-status-management.log'));
 
-Schedule::command('notifications:send-boarding-reminders')
+Schedule::command('payments:check-expiry')
     ->everyMinute()
     ->withoutOverlapping()
-    ->appendOutputTo(storage_path('logs/notification-boarding.log'));
+    ->appendOutputTo(storage_path('logs/payment-expiry.log'));
 
-// Tambahkan jadwal untuk pengiriman ulang notifikasi gagal
-Schedule::command('notifications:resend-failed')
-    ->everyThirtyMinutes()
-    ->withoutOverlapping()
-    ->appendOutputTo(storage_path('logs/notification-retry.log'));
 
-Schedule::command('bookings:sync-status')->everyMinute();
+// Schedule untuk pembersihan notifikasi (perlu dijalankan terpisah dan jarang)
+Schedule::command('notifications:manage --action=cleanup')
+    ->daily()
+    ->appendOutputTo(storage_path('logs/notification-cleanup.log'));

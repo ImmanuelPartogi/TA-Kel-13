@@ -3,6 +3,7 @@
 // database/seeders/DatabaseSeeder.php
 namespace Database\Seeders;
 
+use App\Models\RefundPolicy;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -19,7 +20,8 @@ class DatabaseSeeder extends Seeder
             FerrySeeder::class,
             ScheduleSeeder::class,
             UserSeeder::class,
-            ChatbotSeeder::class
+            ChatbotSeeder::class,
+            RefundPolicySeeder::class,
         ]);
     }
 }

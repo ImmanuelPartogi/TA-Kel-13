@@ -23,9 +23,8 @@ const UserList = () => {
   });
   const [alert, setAlert] = useState({ show: false, type: '', message: '' });
   const [viewMode, setViewMode] = useState('table'); // table or grid
-  const [showUserModal, setShowUserModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
 
   useEffect(() => {
     fetchUsers();
@@ -154,11 +153,6 @@ const UserList = () => {
     }
   };
 
-  const viewUserDetail = (user) => {
-    setSelectedUser(user);
-    setShowUserModal(true);
-  };
-
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('id-ID', {
@@ -220,13 +214,6 @@ const UserList = () => {
                 <h1 className="text-3xl font-bold">Manajemen Pengguna</h1>
                 <p className="mt-1 text-blue-100">Kelola seluruh pengguna dalam sistem</p>
               </div>
-            </div>
-            
-            <div>
-              <Link to="/admin/users/create"
-                className="inline-flex items-center px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-white/20 shadow-sm">
-                <i className="fas fa-user-plus mr-2"></i> Tambah Pengguna
-              </Link>
             </div>
           </div>
           
@@ -501,12 +488,12 @@ const UserList = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
-                          <button
-                            onClick={() => viewUserDetail(user)}
+                          <Link
+                            to={`/admin/users/${user.id}`}
                             className="btn-icon bg-blue-50 hover:bg-blue-100 text-blue-600 p-2 rounded-lg transition-colors"
                             title="Detail">
                             <i className="fas fa-eye"></i>
-                          </button>
+                          </Link>
                           <Link to={`/admin/users/${user.id}/edit`}
                             className="btn-icon bg-amber-50 hover:bg-amber-100 text-amber-600 p-2 rounded-lg transition-colors"
                             title="Edit">
@@ -589,12 +576,12 @@ const UserList = () => {
                   </div>
                   
                   <div className="flex justify-between border-t border-gray-100 pt-4">
-                    <button
-                      onClick={() => viewUserDetail(user)}
+                    <Link
+                      to={`/admin/users/${user.id}`}
                       className="btn-icon bg-blue-50 hover:bg-blue-100 text-blue-600 p-2 rounded-lg transition-colors"
                     >
                       <i className="fas fa-eye"></i>
-                    </button>
+                    </Link>
                     <Link to={`/admin/users/${user.id}/edit`} className="btn-icon bg-amber-50 hover:bg-amber-100 text-amber-600 p-2 rounded-lg transition-colors">
                       <i className="fas fa-edit"></i>
                     </Link>
@@ -684,135 +671,6 @@ const UserList = () => {
           </div>
         )}
       </div>
-
-      {/* User Detail Modal */}
-      {showUserModal && selectedUser && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl transform transition-all animate-modal-in">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                <i className="fas fa-user text-blue-500 mr-2"></i>
-                Detail Pengguna
-              </h3>
-              <button
-                onClick={() => setShowUserModal(false)}
-                className="text-gray-400 hover:text-gray-500"
-              >
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-1">Informasi Pengguna</h4>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="flex items-center mb-4">
-                        <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 mr-4">
-                          <i className="fas fa-user text-2xl"></i>
-                        </div>
-                        <div>
-                          <h2 className="text-xl font-bold text-gray-800">{selectedUser.name}</h2>
-                          <p className="text-gray-500">{selectedUser.email}</p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs text-gray-500">ID Pengguna</p>
-                          <p className="text-sm font-medium">{selectedUser.id}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500">Status</p>
-                          <div className="mt-1">{getUserStatusBadge(selectedUser)}</div>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500">Tanggal Daftar</p>
-                          <p className="text-sm font-medium">{formatDate(selectedUser.created_at)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500">Telepon</p>
-                          <p className="text-sm font-medium">{selectedUser.phone || 'N/A'}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-1">Alamat</h4>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <p className="text-sm text-gray-600">
-                        {selectedUser.address || 'Alamat tidak tersedia'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-1">Statistik Booking</h4>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="grid grid-cols-2 gap-3 mb-3">
-                        <div className="bg-blue-50 p-3 rounded-lg text-center">
-                          <p className="text-xs text-blue-600 mb-1">Total Booking</p>
-                          <p className="text-2xl font-bold text-blue-700">{selectedUser.total_bookings || 0}</p>
-                        </div>
-                        <div className="bg-emerald-50 p-3 rounded-lg text-center">
-                          <p className="text-xs text-emerald-600 mb-1">Booking Terakhir</p>
-                          <p className="text-sm font-medium text-emerald-700">
-                            {selectedUser.last_booking_date ? formatDate(selectedUser.last_booking_date) : 'N/A'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-1">Catatan</h4>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <p className="text-sm text-gray-600">
-                        {selectedUser.notes || 'Tidak ada catatan untuk pengguna ini'}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-1">Tindakan Cepat</h4>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="grid grid-cols-2 gap-3">
-                        <Link 
-                          to={`/admin/users/${selectedUser.id}/edit`}
-                          className="inline-flex items-center justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700"
-                          onClick={() => setShowUserModal(false)}
-                        >
-                          <i className="fas fa-edit mr-2"></i> Edit Pengguna
-                        </Link>
-                        <button
-                          onClick={() => {
-                            setShowUserModal(false);
-                            confirmDelete(selectedUser);
-                          }}
-                          className="inline-flex items-center justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700"
-                        >
-                          <i className="fas fa-trash mr-2"></i> Hapus Pengguna
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mt-6 flex justify-end">
-                <button
-                  onClick={() => setShowUserModal(false)}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg bg-white text-gray-700 hover:bg-gray-50"
-                >
-                  <i className="fas fa-times mr-2"></i> Tutup
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && selectedUser && (

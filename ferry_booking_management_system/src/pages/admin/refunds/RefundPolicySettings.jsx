@@ -196,7 +196,7 @@ const RefundPolicySettings = () => {
   if (loading) {
     return (
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-        <div className="bg-gradient-to-br from-indigo-800 via-indigo-600 to-indigo-500 p-8 text-white">
+      <div className="bg-gradient-to-br from-blue-800 via-blue-600 to-blue-500 p-8 text-white relative">
           <div className="flex items-start">
             <div className="bg-white/20 backdrop-blur-sm p-3 rounded-lg mr-4">
               <i className="fas fa-cog text-2xl"></i>
@@ -222,7 +222,7 @@ const RefundPolicySettings = () => {
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden">
       {/* Modern Header with Decorative Background */}
-      <div className="bg-gradient-to-br from-indigo-800 via-indigo-600 to-indigo-500 p-8 text-white relative">
+      <div className="bg-gradient-to-br from-blue-800 via-blue-600 to-blue-500 p-8 text-white relative">
         <div className="absolute inset-0 opacity-20">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" className="w-full h-full">
             <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"

@@ -52,6 +52,10 @@ import ScheduleEdit from './pages/admin/schedules/ScheduleEdit';
 import AdminScheduleShow from './pages/admin/schedules/ScheduleShow';
 import AdminScheduleDatesList from './pages/admin/schedules/ScheduleDatesList';
 import AdminScheduleCreateDate from './pages/admin/schedules/ScheduleCreateDate';
+import VehicleCategoriesList from './pages/admin/vehicleCategories/VehicleCategoriesList';
+import VehicleCategoriesCreate from './pages/admin/vehicleCategories/VehicleCategoriesCreate';
+import VehicleCategoriesEdit from './pages/admin/vehicleCategories/VehicleCategoriesEdit';
+import VehicleCategoriesShow from './pages/admin/vehicleCategories/VehicleCategoriesShow';
 
 // Import Refund Components
 import RefundsList from './pages/admin/refunds/RefundsList';
@@ -98,7 +102,7 @@ const router = createBrowserRouter([
     path: '/',
     element: <WelcomePage />
   },
-  
+
   // Auth Routes
   {
     path: '/',
@@ -114,7 +118,7 @@ const router = createBrowserRouter([
       }
     ]
   },
-  
+
   // Operator Routes (Protected)
   {
     path: '/operator',
@@ -128,7 +132,7 @@ const router = createBrowserRouter([
         path: 'dashboard',
         element: <OperatorDashboard />
       },
-      
+
       // Bookings
       {
         path: 'bookings',
@@ -142,7 +146,7 @@ const router = createBrowserRouter([
         path: 'bookings/check-in',
         element: <BookingCheckIn />
       },
-      
+
       // Schedules
       {
         path: 'schedules',
@@ -164,7 +168,7 @@ const router = createBrowserRouter([
         path: 'schedules/:scheduleId/dates/:dateId/edit',
         element: <ScheduleEditDate />
       },
-      
+
       // Reports
       {
         path: 'reports',
@@ -180,7 +184,7 @@ const router = createBrowserRouter([
       }
     ]
   },
-  
+
   // Admin Routes (Protected)
   {
     path: '/admin',
@@ -194,7 +198,7 @@ const router = createBrowserRouter([
         path: 'dashboard',
         element: <AdminDashboard />
       },
-      
+
       // Admin Management
       {
         path: 'admins',
@@ -212,7 +216,7 @@ const router = createBrowserRouter([
         path: 'admins/:id/edit',
         element: <AdminEdit />
       },
-      
+
       // User Management
       {
         path: 'users',
@@ -226,7 +230,7 @@ const router = createBrowserRouter([
         path: 'users/:id/edit',
         element: <UserEdit />
       },
-      
+
       // Operator Management
       {
         path: 'operators',
@@ -244,7 +248,7 @@ const router = createBrowserRouter([
         path: 'operators/:id/edit',
         element: <OperatorEdit />
       },
-      
+
       // Routes Management
       {
         path: 'routes',
@@ -262,7 +266,7 @@ const router = createBrowserRouter([
         path: 'routes/:id/edit',
         element: <RouteEdit />
       },
-      
+
       // Ferries Management
       {
         path: 'ferries',
@@ -280,7 +284,7 @@ const router = createBrowserRouter([
         path: 'ferries/:id/edit',
         element: <FerryEdit />
       },
-      
+
       // Schedules Management
       {
         path: 'schedules',
@@ -306,7 +310,7 @@ const router = createBrowserRouter([
         path: 'schedules/:id/dates/create',
         element: <AdminScheduleCreateDate />
       },
-      
+
       // Bookings Management
       {
         path: 'bookings',
@@ -320,8 +324,8 @@ const router = createBrowserRouter([
         path: 'bookings/:id/reschedule',
         element: <Navigate to="/admin/bookings/:id" replace />
       },
-      
-      // Reports
+
+      // Reports Management
       {
         path: 'reports',
         element: <AdminReportIndex />
@@ -338,15 +342,14 @@ const router = createBrowserRouter([
         path: 'reports/schedule',
         element: <ScheduleReport />
       },
-      
-      // *** REFUNDS MANAGEMENT - FIXED ORDER ***
-      // IMPORTANT: Specific routes MUST come before parameterized routes
+
+      // Refunds Management
       {
         path: 'refunds',
         element: <RefundsList />
       },
       {
-        path: 'refunds/settings', // This MUST come before 'refunds/:id'
+        path: 'refunds/settings',
         element: <RefundPolicySettings />
       },
       {
@@ -354,12 +357,30 @@ const router = createBrowserRouter([
         element: <RefundCreate />
       },
       {
-        path: 'refunds/:id', // This comes AFTER specific routes
+        path: 'refunds/:id',
         element: <RefundShow />
+      },
+
+      // Vehicle Categories Management
+      {
+        path: 'vehicle-categories',
+        element: <VehicleCategoriesList />
+      },
+      {
+        path: 'vehicle-categories/create',
+        element: <VehicleCategoriesCreate />
+      },
+      {
+        path: 'vehicle-categories/:id',
+        element: <VehicleCategoriesShow />
+      },
+      {
+        path: 'vehicle-categories/:id/edit',
+        element: <VehicleCategoriesEdit />
       }
     ]
   },
-  
+
   // Fallback Route
   {
     path: '*',

@@ -5,7 +5,7 @@ import { useLocation } from 'react-router-dom';
 
 const Header = ({ onMenuClick }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [notificationOpen, setNotificationOpen] = useState(false);
+  // const [notificationOpen, setNotificationOpen] = useState(false);
   const { user } = useAuth();
   const location = useLocation();
 
@@ -111,7 +111,7 @@ const Header = ({ onMenuClick }) => {
               <span>{formatFullDate(currentTime)}</span>
             </div>
 
-            {/* Notifications dropdown */}
+            {/* Notifications dropdown
             <div className="relative">
               <button
                 onClick={() => setNotificationOpen(!notificationOpen)}
@@ -152,7 +152,7 @@ const Header = ({ onMenuClick }) => {
                   </div>
                 </div>
               )}
-            </div>
+            </div> */}
 
             {/* Profile dropdown - visible only on mobile */}
             <div className="md:hidden flex items-center ml-3">

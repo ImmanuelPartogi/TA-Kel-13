@@ -60,6 +60,12 @@ import AdminUsersList from './pages/admin/users/UsersList';
 import AdminUsersEdit from './pages/admin/users/UserEdit';
 import AdminUsersShow from './pages/admin/users/UserShow';
 
+// Admin pages - Vehicle Categories
+import VehicleCategoriesList from './pages/admin/vehicleCategories/VehicleCategoriesList';
+import VehicleCategoriesCreate from './pages/admin/vehicleCategories/VehicleCategoriesCreate';
+import VehicleCategoriesEdit from './pages/admin/vehicleCategories/VehicleCategoriesEdit';
+import VehicleCategoriesShow from './pages/admin/vehicleCategories/VehicleCategoriesShow';
+
 // Admin pages - Other
 import AdminDashboard from './pages/admin/Dashboard';
 
@@ -191,6 +197,12 @@ function App() {
           <Route path="users" element={<AdminUsersList />} />
           <Route path="users/:id/edit" element={<AdminUsersEdit />} />
           <Route path="users/:id" element={<AdminUsersShow />} />
+
+          {/* Vehicle Categories management */}
+          <Route path="vehicleCategories" element={<VehicleCategoriesList />} />
+          <Route path="vehicleCategories/create" element={<VehicleCategoriesCreate />} />
+          <Route path="vehicleCategories/:id" element={<VehicleCategoriesShow />} />
+          <Route path="vehicleCategories/:id/edit" element={<VehicleCategoriesEdit />} />
         </Route>
 
         {/* Operator routes - Fixed to use OperatorLayout */}

@@ -12,7 +12,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('booking_id')->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->enum('type', ['MOTORCYCLE', 'CAR', 'BUS', 'TRUCK']);
+            $table->enum('type', ['MOTORCYCLE', 'CAR', 'BUS', 'TRUCK', 'PICKUP', 'TRONTON']);
+            $table->foreignId('vehicle_category_id')->constrained('vehicle_categories');
             $table->string('license_plate', 20);
             $table->string('brand', 100)->nullable();
             $table->string('model', 100)->nullable();

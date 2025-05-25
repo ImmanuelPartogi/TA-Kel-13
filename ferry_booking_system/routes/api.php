@@ -47,6 +47,7 @@ use App\Http\Controllers\Api\Admin\BookingController as AdminBookingController;
 use App\Http\Controllers\Api\Admin\ReportController as AdminReportController;
 use App\Http\Controllers\Api\Admin\RefundController as AdminRefundController;
 use App\Http\Controllers\Api\Admin\UserController;
+use App\Http\Controllers\Api\Admin\VehicleCategoryController as AdminVehicleCategoryController;
 
 /*
 |--------------------------------------------------------------------------
@@ -298,6 +299,16 @@ Route::prefix('admin-panel')->middleware(['auth:sanctum'])->group(function () {
         Route::post('/{id}/approve', [AdminRefundController::class, 'approve']);
         Route::post('/{id}/reject', [AdminRefundController::class, 'reject']);
         Route::post('/{id}/complete', [AdminRefundController::class, 'complete']);
+    });
+
+    Route::prefix('vehicleCategories')->group(function () {
+        Route::get('/', [AdminVehicleCategoryController::class, 'index']);
+        Route::post('/', [AdminVehicleCategoryController::class, 'store']);
+        Route::get('/{vehicleCategory}', [AdminVehicleCategoryController::class, 'show']);
+        Route::put('/{vehicleCategory}', [AdminVehicleCategoryController::class, 'update']);
+        Route::delete('/{vehicleCategory}', [AdminVehicleCategoryController::class, 'destroy']);
+        Route::put('/{vehicleCategory}/status', [AdminVehicleCategoryController::class, 'toggleStatus']);
+        Route::get('/by-type', [AdminVehicleCategoryController::class, 'getCategoriesByType'])->withoutMiddleware(['auth:sanctum']);
     });
 });
 

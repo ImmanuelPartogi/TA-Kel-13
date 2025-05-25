@@ -176,17 +176,17 @@ const ScheduleDatesList = () => {
 
   const getStatusBadge = (status) => {
     const badges = {
-      'ACTIVE': { class: 'bg-green-100 text-green-800', text: 'Tersedia' },
-      'INACTIVE': { class: 'bg-red-100 text-red-800', text: 'Tidak Tersedia' },
-      'FULL': { class: 'bg-yellow-100 text-yellow-800', text: 'Penuh' },
-      'CANCELLED': { class: 'bg-red-100 text-red-800', text: 'Dibatalkan' },
-      'WEATHER_ISSUE': { class: 'bg-blue-100 text-blue-800', text: 'Masalah Cuaca' },
+      'ACTIVE': { class: 'bg-gradient-to-r from-green-100 to-green-200 text-green-800 border-green-300', text: 'Tersedia' },
+      'INACTIVE': { class: 'bg-gradient-to-r from-red-100 to-red-200 text-red-800 border-red-300', text: 'Tidak Tersedia' },
+      'FULL': { class: 'bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 border-yellow-300', text: 'Penuh' },
+      'CANCELLED': { class: 'bg-gradient-to-r from-red-100 to-red-200 text-red-800 border-red-300', text: 'Dibatalkan' },
+      'WEATHER_ISSUE': { class: 'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border-blue-300', text: 'Masalah Cuaca' },
     };
 
-    const badge = badges[status] || { class: 'bg-gray-100 text-gray-800', text: status };
+    const badge = badges[status] || { class: 'bg-gradient-to-r from-slate-100 to-slate-200 text-slate-800 border-slate-300', text: status };
 
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badge.class}`}>
+      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border shadow-md ${badge.class}`}>
         {badge.text}
       </span>
     );
@@ -194,8 +194,14 @@ const ScheduleDatesList = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600"></div>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="flex flex-col items-center">
+          <div className="relative">
+            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-600"></div>
+            <div className="animate-ping absolute top-0 left-0 rounded-full h-16 w-16 border-2 border-blue-600 opacity-30"></div>
+          </div>
+          <p className="mt-4 text-lg text-gray-600 font-medium">Memuat daftar tanggal jadwal...</p>
+        </div>
       </div>
     );
   }
@@ -214,334 +220,364 @@ const ScheduleDatesList = () => {
   const ferry = schedule?.ferry || {};
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header dengan gradient background */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl shadow-lg mb-8 p-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-white bg-opacity-30 rounded-lg">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Modern Header with Graphic Banner */}
+        <div className="bg-gradient-to-br from-blue-800 via-blue-600 to-blue-500 rounded-2xl shadow-xl text-white p-8 mb-8 relative overflow-hidden">
+          <div className="absolute inset-0 opacity-20">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" className="w-full h-full">
+              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
+                    fill="#fff" opacity="0.2" />
+              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
+                    fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
+            </svg>
+          </div>
+          
+          <div className="relative z-10">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+              <div className="flex items-start">
+                <div className="bg-white/20 backdrop-blur-sm p-3 rounded-lg mr-4">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold">Tanggal Jadwal</h1>
+                  <p className="mt-1 text-blue-100">{origin} - {destination} • {departureTime}</p>
+                </div>
+              </div>
+              
+              <div className="flex space-x-3">
+                <Link
+                  to={`/operator/schedules/${id}`}
+                  className="inline-flex items-center px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-white/20 shadow-sm"
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                  Detail Jadwal
+                </Link>
+                <Link
+                  to={`/operator/schedules/${id}/dates/create`}
+                  className="inline-flex items-center px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-white/20 shadow-sm"
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Tambah Tanggal
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {schedule && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            {/* Jadwal Info Card */}
+            <div className="lg:col-span-3 bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 hover:shadow-2xl transition-all duration-300">
+              <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center">
+                <svg className="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h2 className="text-lg font-semibold text-gray-800">Informasi Jadwal</h2>
+              </div>
+              <div className="p-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200 shadow-sm">
+                    <p className="text-xs text-gray-500 mb-1">ID Jadwal</p>
+                    <p className="text-lg font-semibold text-gray-800">{scheduleId}</p>
+                  </div>
+                  <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200 shadow-sm">
+                    <p className="text-xs text-gray-500 mb-1">Status</p>
+                    {status === 'ACTIVE' || status === 'active' ? (
+                      <p className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-green-100 to-green-200 text-green-800 border border-green-300 shadow-md">
+                        Aktif
+                      </p>
+                    ) : (
+                      <p className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-red-100 to-red-200 text-red-800 border border-red-300 shadow-md">
+                        Tidak Aktif
+                      </p>
+                    )}
+                  </div>
+                  <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200 shadow-sm">
+                    <p className="text-xs text-gray-500 mb-1">Waktu Keberangkatan</p>
+                    <p className="text-lg font-semibold text-gray-800">{departureTime}</p>
+                  </div>
+                  <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200 shadow-sm">
+                    <p className="text-xs text-gray-500 mb-1">Waktu Kedatangan</p>
+                    <p className="text-lg font-semibold text-gray-800">{arrivalTime}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200 shadow-sm">
+                  <p className="text-xs text-gray-500 mb-1">Hari Operasi</p>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {getDayNames().map((day, index) => (
+                      <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300 shadow-sm">
+                        {day}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tanggal Jadwal Table */}
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 hover:shadow-2xl transition-all duration-300">
+          <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
+              <h2 className="text-lg font-semibold text-gray-800">Tanggal Jadwal yang Tersedia</h2>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">Tanggal Jadwal</h1>
-              <p className="text-blue-100 mt-1">{origin} - {destination} • {departureTime}</p>
-            </div>
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300 shadow-sm">
+              Total: {pagination.total || dates.length} tanggal
+            </span>
           </div>
-          <div className="mt-4 md:mt-0 flex flex-col sm:flex-row gap-3">
-            <Link
-              to={`/operator/schedules/${id}`}
-              className="inline-flex items-center px-4 py-2 bg-white text-blue-700 text-sm font-medium rounded-lg shadow-sm hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-              </svg>
-              Detail Jadwal
-            </Link>
-            <Link
-              to={`/operator/schedules/${id}/dates/create`}
-              className="inline-flex items-center justify-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Tambah Tanggal
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {schedule && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          {/* Jadwal Info Card */}
-          <div className="lg:col-span-3 bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
-            <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <h2 className="text-lg font-semibold text-gray-800">Informasi Jadwal</h2>
-            </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                  <p className="text-xs text-gray-500 mb-1">ID Jadwal</p>
-                  <p className="text-lg font-semibold text-gray-800">{scheduleId}</p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                  <p className="text-xs text-gray-500 mb-1">Status</p>
-                  {status === 'ACTIVE' || status === 'active' ? (
-                    <p className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      Aktif
-                    </p>
-                  ) : (
-                    <p className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                      Tidak Aktif
-                    </p>
-                  )}
-                </div>
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                  <p className="text-xs text-gray-500 mb-1">Waktu Keberangkatan</p>
-                  <p className="text-lg font-semibold text-gray-800">{departureTime}</p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                  <p className="text-xs text-gray-500 mb-1">Waktu Kedatangan</p>
-                  <p className="text-lg font-semibold text-gray-800">{arrivalTime}</p>
-                </div>
-              </div>
-
-              <div className="mt-4 bg-gray-50 rounded-lg p-4 border border-gray-100">
-                <p className="text-xs text-gray-500 mb-1">Hari Operasi</p>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {getDayNames().map((day, index) => (
-                    <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {day}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Tanggal Jadwal Table */}
-      <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
-        <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <div className="flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <h2 className="text-lg font-semibold text-gray-800">Tanggal Jadwal yang Tersedia</h2>
-          </div>
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-            Total: {pagination.total || dates.length} tanggal
-          </span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tanggal
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Alasan Status
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Kapasitas Tersisa
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Penumpang
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Kendaraan
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Aksi
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {dates.length > 0 ? (
-                dates.map((date) => {
-                  const passengerCapacity = ferry?.capacity_passenger || 0;
-                  const passengerPercentage = passengerCapacity > 0
-                    ? 100 - ((date.passenger_count || 0) / passengerCapacity) * 100
-                    : 0;
-
-                  return (
-                    <tr key={date.id} className="hover:bg-gray-50 transition-colors duration-150">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="text-sm font-medium text-gray-900">
-                            {formatDate(date.date)}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(date.status)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{date.status_reason || '-'}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
-                          <div
-                            className="bg-blue-600 h-2.5 rounded-full"
-                            style={{ width: `${passengerPercentage}%` }}
-                          ></div>
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {passengerCapacity - (date.passenger_count || 0)} dari {passengerCapacity} kursi tersedia
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 text-blue-800 font-semibold">
-                          {date.passenger_count || 0}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-xs text-gray-500 space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span>Motor:</span>
-                            <span className="font-semibold">{date.motorcycle_count || 0}</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span>Mobil:</span>
-                            <span className="font-semibold">{date.car_count || 0}</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span>Bus:</span>
-                            <span className="font-semibold">{date.bus_count || 0}</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span>Truk:</span>
-                            <span className="font-semibold">{date.truck_count || 0}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-y-2">
-                        <button
-                          type="button"
-                          onClick={() => openUpdateStatusModal(date.id)}
-                          className="flex w-full items-center justify-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                          Update Status
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteDate(date.id, formatDate(date.date))}
-                          className="flex w-full items-center justify-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                          Hapus
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
                 <tr>
-                  <td colSpan="7" className="px-6 py-4 text-sm text-gray-500 text-center">
-                    Tidak ada data tanggal jadwal. 
-                    <div className="mt-2">
-                      <Link
-                        to={`/operator/schedules/${id}/dates/create`}
-                        className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Tambah tanggal jadwal sekarang
-                      </Link>
-                    </div>
-                  </td>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Tanggal
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Alasan Status
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Kapasitas Tersisa
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Penumpang
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Kendaraan
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Aksi
+                  </th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {dates.length > 0 ? (
+                  dates.map((date) => {
+                    const passengerCapacity = ferry?.capacity_passenger || 0;
+                    const passengerPercentage = passengerCapacity > 0
+                      ? 100 - ((date.passenger_count || 0) / passengerCapacity) * 100
+                      : 0;
 
-      {/* Modal Update Status */}
-      {selectedDateId && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-xl max-w-lg w-full mx-4 shadow-2xl transform transition-all">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-lg font-medium text-gray-900">
-                Update Status Tanggal
-              </h3>
-              <button
-                type="button"
-                className="text-gray-400 hover:text-gray-500"
-                onClick={closeModal}
-              >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <form onSubmit={handleUpdateStatus}>
-              <div className="px-6 py-4">
-                <div className="mb-4">
-                  <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
-                    Status:
-                  </label>
-                  <select
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
-                    id="status"
-                    name="status"
-                    value={updateFormData.status}
-                    onChange={(e) => setUpdateFormData({ ...updateFormData, status: e.target.value })}
-                    required
-                  >
-                    <option value="ACTIVE">Tersedia</option>
-                    <option value="INACTIVE">Tidak Tersedia</option>
-                    <option value="CANCELLED">Dibatalkan</option>
-                    <option value="FULL">Penuh</option>
-                    <option value="WEATHER_ISSUE">Masalah Cuaca</option>
-                  </select>
-                </div>
-                <div className="mb-4">
-                  <label htmlFor="status_reason" className="block text-sm font-medium text-gray-700 mb-1">
-                    Alasan Status (Opsional):
-                  </label>
-                  <textarea
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
-                    id="status_reason"
-                    name="status_reason"
-                    rows="3"
-                    value={updateFormData.status_reason}
-                    onChange={(e) => setUpdateFormData({ ...updateFormData, status_reason: e.target.value })}
-                  />
-                </div>
+                    return (
+                      <tr key={date.id} className="hover:bg-gray-50 transition-colors duration-150">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="text-sm font-medium text-gray-900">
+                              {formatDate(date.date)}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {getStatusBadge(date.status)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-500">{date.status_reason || '-'}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
+                            <div
+                              className="bg-blue-600 h-2.5 rounded-full"
+                              style={{ width: `${passengerPercentage}%` }}
+                            ></div>
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {passengerCapacity - (date.passenger_count || 0)} dari {passengerCapacity} kursi tersedia
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 font-semibold border border-blue-300 shadow-sm">
+                            {date.passenger_count || 0}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-xs text-gray-500 space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span>Motor:</span>
+                              <span className="font-semibold">{date.motorcycle_count || 0}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span>Mobil:</span>
+                              <span className="font-semibold">{date.car_count || 0}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span>Bus:</span>
+                              <span className="font-semibold">{date.bus_count || 0}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span>Truk:</span>
+                              <span className="font-semibold">{date.truck_count || 0}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-y-2">
+                          <button
+                            type="button"
+                            onClick={() => openUpdateStatusModal(date.id)}
+                            className="flex w-full items-center justify-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150 shadow-sm"
+                          >
+                            <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Update Status
+                          </button>
 
-                {updateFormData.status === 'WEATHER_ISSUE' && (
-                  <div className="mb-4">
-                    <label htmlFor="status_expiry_date" className="block text-sm font-medium text-gray-700 mb-1">
-                      Tanggal & Waktu Berakhir Status:
-                    </label>
-                    <input
-                      type="datetime-local"
-                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
-                      id="status_expiry_date"
-                      name="status_expiry_date"
-                      value={updateFormData.status_expiry_date}
-                      onChange={(e) => setUpdateFormData({ ...updateFormData, status_expiry_date: e.target.value })}
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Format: Tanggal dan Waktu (yyyy-mm-dd HH:MM)</p>
-                  </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteDate(date.id, formatDate(date.date))}
+                            className="flex w-full items-center justify-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150 shadow-sm"
+                          >
+                            <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Hapus
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan="7" className="px-6 py-4 text-sm text-gray-500 text-center">
+                      Tidak ada data tanggal jadwal. 
+                      <div className="mt-2">
+                        <Link
+                          to={`/operator/schedules/${id}/dates/create`}
+                          className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800"
+                        >
+                          <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                          </svg>
+                          Tambah tanggal jadwal sekarang
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
                 )}
-              </div>
-              <div className="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Modal Update Status */}
+        {selectedDateId && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+            <div className="bg-white rounded-2xl max-w-lg w-full mx-4 shadow-2xl transform transition-all animate-fade-in">
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Update Status Tanggal
+                </h3>
                 <button
                   type="button"
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition duration-150"
+                  className="text-gray-400 hover:text-gray-500"
                   onClick={closeModal}
                 >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150"
-                >
-                  Simpan Perubahan
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
-            </form>
+              <form onSubmit={handleUpdateStatus}>
+                <div className="px-6 py-4">
+                  <div className="mb-4">
+                    <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+                      Status:
+                    </label>
+                    <select
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+                      id="status"
+                      name="status"
+                      value={updateFormData.status}
+                      onChange={(e) => setUpdateFormData({ ...updateFormData, status: e.target.value })}
+                      required
+                    >
+                      <option value="ACTIVE">Tersedia</option>
+                      <option value="INACTIVE">Tidak Tersedia</option>
+                      <option value="CANCELLED">Dibatalkan</option>
+                      <option value="FULL">Penuh</option>
+                      <option value="WEATHER_ISSUE">Masalah Cuaca</option>
+                    </select>
+                  </div>
+                  <div className="mb-4">
+                    <label htmlFor="status_reason" className="block text-sm font-medium text-gray-700 mb-1">
+                      Alasan Status (Opsional):
+                    </label>
+                    <textarea
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+                      id="status_reason"
+                      name="status_reason"
+                      rows="3"
+                      value={updateFormData.status_reason}
+                      onChange={(e) => setUpdateFormData({ ...updateFormData, status_reason: e.target.value })}
+                    />
+                  </div>
+
+                  {updateFormData.status === 'WEATHER_ISSUE' && (
+                    <div className="mb-4">
+                      <label htmlFor="status_expiry_date" className="block text-sm font-medium text-gray-700 mb-1">
+                        Tanggal & Waktu Berakhir Status:
+                      </label>
+                      <input
+                        type="datetime-local"
+                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+                        id="status_expiry_date"
+                        name="status_expiry_date"
+                        value={updateFormData.status_expiry_date}
+                        onChange={(e) => setUpdateFormData({ ...updateFormData, status_expiry_date: e.target.value })}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Format: Tanggal dan Waktu (yyyy-mm-dd HH:MM)</p>
+                    </div>
+                  )}
+                </div>
+                <div className="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition duration-150"
+                    onClick={closeModal}
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150"
+                  >
+                    Simpan Perubahan
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* CSS for animations */}
+        <style>{`
+          @keyframes fadeIn {
+            0% {
+              opacity: 0;
+            }
+            100% {
+              opacity: 1;
+            }
+          }
+          
+          .animate-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+          }
+        `}</style>
+      </div>
     </div>
   );
 };

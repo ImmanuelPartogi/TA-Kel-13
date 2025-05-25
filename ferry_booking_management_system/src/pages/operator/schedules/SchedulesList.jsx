@@ -115,258 +115,349 @@ const SchedulesList = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        {/* Modern Header */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 mb-8">
-          {/* <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Jadwal Kapal</h1>
-              <p className="text-gray-600">Kelola dan pantau jadwal keberangkatan kapal</p>
-            </div>
-            <div className="mt-4 md:mt-0">
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                </svg>
-                <span>Update terakhir: {new Date().toLocaleTimeString('id-ID')}</span>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Modern Header with Graphic Banner */}
+        <div className="bg-gradient-to-br from-blue-800 via-blue-600 to-blue-500 rounded-2xl shadow-xl text-white p-8 mb-8 relative overflow-hidden">
+          <div className="absolute inset-0 opacity-20">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" className="w-full h-full">
+              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
+                    fill="#fff" opacity="0.2" />
+              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
+                    fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
+            </svg>
+          </div>
+          
+          <div className="relative z-10">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+              <div className="flex items-start">
+                <div className="bg-white/20 backdrop-blur-sm p-3 rounded-lg mr-4">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold">Jadwal Kapal</h1>
+                  <p className="mt-1 text-blue-100">Kelola dan pantau jadwal keberangkatan kapal</p>
+                </div>
+              </div>
+              
+              <div>
+                <div className="inline-flex items-center px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-white/20 shadow-sm">
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Update: {new Date().toLocaleTimeString('id-ID')}
+                </div>
               </div>
             </div>
-          </div> */}
-
-          {/* Modern Filter Section */}
-          <form onSubmit={handleFilter} className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="space-y-2">
-              <label htmlFor="route_id" className="block text-sm font-medium text-gray-700">
-                Rute Perjalanan
-              </label>
-              <select
-                id="route_id"
-                name="route_id"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900"
-                value={filters.route_id}
-                onChange={handleFilterChange}
-              >
-                <option value="">Semua Rute</option>
-                {routes.map((route) => (
-                  <option key={route.id} value={route.id}>
-                    {route.origin} → {route.destination}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="date" className="block text-sm font-medium text-gray-700">
-                Tanggal Keberangkatan
-              </label>
-              <input
-                type="date"
-                id="date"
-                name="date"
-                value={filters.date}
-                onChange={handleFilterChange}
-                min={new Date().toISOString().split('T')[0]}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900"
-              />
-            </div>
-
-            <div className="flex items-end space-x-3">
-              <button
-                type="submit"
-                className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-xl font-medium hover:from-blue-700 hover:to-blue-800 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center"
-              >
-                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-                </svg>
-                Filter
-              </button>
-              <button
-                type="button"
-                onClick={handleReset}
-                className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200"
-              >
-                Reset
-              </button>
-            </div>
-          </form>
-        </div>
-
-        {/* Modern Schedules Grid */}
-        {loading ? (
-          <div className="flex items-center justify-center h-96">
-            <div className="relative">
-              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="animate-ping rounded-full h-8 w-8 bg-blue-600 opacity-20"></div>
+            
+            {/* Quick Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+                <p className="text-blue-100 text-sm">Total Jadwal</p>
+                <div className="flex items-center mt-1">
+                  <svg className="w-5 h-5 mr-2 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-2xl font-bold">
+                    {schedules.length}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+                <p className="text-blue-100 text-sm">Rute Aktif</p>
+                <div className="flex items-center mt-1">
+                  <svg className="w-5 h-5 mr-2 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                  </svg>
+                  <span className="text-2xl font-bold">
+                    {routes.length}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+                <p className="text-blue-100 text-sm">Jadwal Hari Ini</p>
+                <div className="flex items-center mt-1">
+                  <svg className="w-5 h-5 mr-2 text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-2xl font-bold">
+                    {schedules.filter(schedule => {
+                      const today = new Date().getDay().toString();
+                      return schedule.days && schedule.days.split(',').includes(today);
+                    }).length}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+                <p className="text-blue-100 text-sm">Keberangkatan Terjadwal</p>
+                <div className="flex items-center mt-1">
+                  <svg className="w-5 h-5 mr-2 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  <span className="text-2xl font-bold">
+                    {schedules.reduce((acc, schedule) => {
+                      const daysCount = schedule.days ? schedule.days.split(',').length : 0;
+                      return acc + daysCount;
+                    }, 0)}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {schedules.length > 0 ? (
-              schedules.map((schedule) => (
-                <div
-                  key={schedule.id}
-                  className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group"
-                >
-                  {/* Modern Card Header */}
-                  <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white relative overflow-hidden">
-                    <div className="absolute inset-0 bg-black opacity-10"></div>
-                    <div className="relative z-10">
-                      <div className="flex justify-between items-start mb-2">
-                        <h3 className="text-xl font-bold">
-                          {schedule.route?.origin || 'Unknown'} → {schedule.route?.destination || 'Unknown'}
-                        </h3>
-                        <span className="bg-white text-blue-700 text-xs font-medium px-3 py-1 rounded-full shadow-sm">
-                          {schedule.route?.route_code || 'N/A'}
-                        </span>
-                      </div>
-                      <div className="flex items-center mt-3">
-                        <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
-                        </svg>
-                        <span className="text-sm opacity-90">{schedule.ferry?.name || 'Ferry Tidak Diketahui'}</span>
-                      </div>
+        </div>
+
+        {/* Modern Filter Card */}
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 mb-8 overflow-hidden hover:shadow-2xl transition-shadow duration-300">
+          <div className="bg-gray-50 px-6 py-4 border-b border-gray-100">
+            <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+              <svg className="w-5 h-5 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              Filter & Pencarian
+            </h2>
+          </div>
+          
+          <div className="p-6 bg-white">
+            <form onSubmit={handleFilter} className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div>
+                  <label htmlFor="route_id" className="block text-sm font-medium text-gray-700 mb-1">Rute Perjalanan</label>
+                  <div className="relative rounded-md shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                      </svg>
                     </div>
-                  </div>
-
-                  {/* Modern Card Body */}
-                  <div className="p-6">
-                    {/* Time Display */}
-                    <div className="flex items-center justify-between mb-6 bg-gray-50 rounded-xl p-4">
-                      <div className="text-center">
-                        <p className="text-sm text-gray-600 mb-1">Berangkat</p>
-                        <p className="text-sm font-bold text-gray-900">
-                          {schedule.departure_time
-                            ? new Date(schedule.departure_time).toLocaleString('id-ID', {
-                              weekday: 'long',
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })
-                            : 'N/A'}
-                        </p>
-                      </div>
-
-                      <div className="flex-1 mx-4">
-                        <div className="relative">
-                          <div className="absolute inset-0 flex items-center">
-                            <div className="h-1 w-full bg-gradient-to-r from-blue-200 via-blue-400 to-blue-200 rounded-full"></div>
-                          </div>
-                          <div className="relative flex justify-between">
-                            <div className="h-4 w-4 rounded-full bg-blue-600 border-3 border-white shadow-sm"></div>
-                            <div className="absolute left-1/2 transform -translate-x-1/2 bg-white px-3 py-1 rounded-full shadow-sm">
-                              <span className="text-xs font-medium text-gray-700">
-                                {formatDuration(schedule.route?.duration || 0)}
-                              </span>
-                            </div>
-                            <div className="h-4 w-4 rounded-full bg-blue-600 border-3 border-white shadow-sm"></div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="text-center">
-                        <p className="text-sm text-gray-600 mb-1">Tiba</p>
-                        <p className="text-sm font-bold text-gray-900">
-                          {schedule.arrival_time
-                            ? new Date(schedule.arrival_time).toLocaleString('id-ID', {
-                              weekday: 'long',
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })
-                            : 'N/A'}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Modern Details */}
-                    <div className="flex items-start justify-between gap-4 text-gray-600">
-                      {/* Kapasitas */}
-                      <div className="flex items-center">
-                        <div className="w-8 h-8 bg-blue-100 rounded-md flex items-center justify-center mr-2">
-                          <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
-                          </svg>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500">Kapasitas</p>
-                          <p className="text-sm font-medium">{schedule.ferry?.capacity_passenger || 0} Penumpang</p>
-                        </div>
-                      </div>
-
-                      {/* Jadwal Operasi */}
-                      <div className="flex items-center">
-                        <div className="w-8 h-8 bg-green-100 rounded-md flex items-center justify-center mr-2">
-                          <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 011-1 1 1 0 110 2H6a1 1 0 010-2zm0 4a1 1 0 011-1 1 1 0 110 2H6a1 1 0 010-2z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500">Jadwal Operasi</p>
-                          <p className="text-sm font-medium">{getDayNames(schedule.days).join(', ')}</p>
-                        </div>
-                      </div>
-                    </div>
-
-
-                    {/* Modern Action Buttons */}
-                    <div className="flex space-x-3 mt-6">
-                      <Link
-                        to={`/operator/schedules/${schedule.id}`}
-                        className="flex-1 bg-blue-50 text-blue-700 px-4 py-3 rounded-xl font-medium hover:bg-blue-100 transition-all duration-200 text-center group"
-                      >
-                        <span className="flex items-center justify-center">
-                          <svg className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform duration-200" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                            <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                          </svg>
-                          Detail
-                        </span>
-                      </Link>
-                      <Link
-                        to={`/operator/schedules/${schedule.id}/dates`}
-                        className="flex-1 bg-green-50 text-green-700 px-4 py-3 rounded-xl font-medium hover:bg-green-100 transition-all duration-200 text-center group"
-                      >
-                        <span className="flex items-center justify-center">
-                          <svg className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform duration-200" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                          </svg>
-                          Tanggal
-                        </span>
-                      </Link>
-                    </div>
+                    <select
+                      id="route_id"
+                      name="route_id"
+                      value={filters.route_id}
+                      onChange={handleFilterChange}
+                      className="block w-full pl-10 pr-3 py-2.5 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    >
+                      <option value="">Semua Rute</option>
+                      {routes.map((route) => (
+                        <option key={route.id} value={route.id}>
+                          {route.origin} → {route.destination}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="col-span-full">
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <svg className="w-10 h-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
+
+                <div>
+                  <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">Tanggal Keberangkatan</label>
+                  <div className="relative rounded-md shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <input
+                      type="date"
+                      id="date"
+                      name="date"
+                      value={filters.date}
+                      onChange={handleFilterChange}
+                      min={new Date().toISOString().split('T')[0]}
+                      className="block w-full pl-10 pr-3 py-2.5 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    />
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">Tidak ada jadwal tersedia</h3>
-                  <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                    Tidak ada jadwal yang sesuai dengan filter Anda. Coba ubah kriteria pencarian atau reset filter.
-                  </p>
+                </div>
+
+                <div className="flex items-end space-x-3">
                   <button
-                    onClick={handleReset}
-                    className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-xl font-medium hover:from-blue-700 hover:to-blue-800 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md"
+                    type="submit"
+                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                   >
-                    Reset Filter
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                    Filter
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+                  >
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Reset
                   </button>
                 </div>
               </div>
-            )}
+            </form>
           </div>
+        </div>
+
+        {/* Schedules Display */}
+        {loading ? (
+          <div className="flex justify-center items-center h-96">
+            <div className="relative">
+              <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-600"></div>
+              <div className="animate-ping absolute top-0 left-0 rounded-full h-16 w-16 border-2 border-blue-600 opacity-30"></div>
+            </div>
+            <p className="ml-4 text-lg text-gray-600 font-medium">Memuat jadwal...</p>
+          </div>
+        ) : (
+          <>
+            {schedules.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {schedules.map((schedule) => (
+                  <div
+                    key={schedule.id}
+                    className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.01]"
+                  >
+                    {/* Card Header */}
+                    <div className="bg-gradient-to-r from-blue-600 to-blue-800 px-6 py-5 text-white relative overflow-hidden">
+                      <div className="absolute inset-0 opacity-10">
+                        <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                          <path d="M0,0 L100,0 L100,100 Z" fill="#fff" />
+                        </svg>
+                      </div>
+                      <div className="relative z-10">
+                        <div className="flex justify-between items-start">
+                          <h3 className="text-xl font-bold">
+                            {schedule.route?.origin || 'Unknown'} → {schedule.route?.destination || 'Unknown'}
+                          </h3>
+                          <span className="bg-white text-blue-700 text-xs font-medium px-3 py-1 rounded-full shadow-sm">
+                            {schedule.route?.route_code || 'N/A'}
+                          </span>
+                        </div>
+                        <div className="flex items-center mt-3">
+                          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                          </svg>
+                          <span className="text-sm opacity-90">{schedule.ferry?.name || 'Ferry Tidak Diketahui'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Card Body */}
+                    <div className="p-6">
+                      {/* Time Display */}
+                      <div className="flex items-center justify-between mb-6 bg-gradient-to-r from-gray-50 to-white rounded-xl p-4 border border-gray-100 shadow-sm">
+                        <div className="text-center">
+                          <p className="text-xs text-gray-500 mb-1">Berangkat</p>
+                          <p className="text-sm font-bold text-gray-900">
+                            {schedule.departure_time || 'N/A'}
+                          </p>
+                        </div>
+
+                        <div className="flex-1 mx-4">
+                          <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                              <div className="h-1 w-full bg-gradient-to-r from-blue-200 via-blue-400 to-blue-200 rounded-full"></div>
+                            </div>
+                            <div className="relative flex justify-between">
+                              <div className="h-4 w-4 rounded-full bg-blue-600 border-3 border-white shadow-sm"></div>
+                              <div className="absolute left-1/2 transform -translate-x-1/2 bg-white px-3 py-1 rounded-full shadow-sm">
+                                <span className="text-xs font-medium text-gray-700">
+                                  {formatDuration(schedule.route?.duration || 0)}
+                                </span>
+                              </div>
+                              <div className="h-4 w-4 rounded-full bg-blue-600 border-3 border-white shadow-sm"></div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="text-center">
+                          <p className="text-xs text-gray-500 mb-1">Tiba</p>
+                          <p className="text-sm font-bold text-gray-900">
+                            {schedule.arrival_time || 'N/A'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Schedule Details */}
+                      <div className="grid grid-cols-2 gap-4 mb-6">
+                        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-3 border border-blue-200 shadow-sm">
+                          <p className="text-xs text-blue-700 font-semibold mb-1">Hari Operasi</p>
+                          <p className="text-sm font-medium text-blue-900">
+                            {getDayNames(schedule.days).join(', ') || 'Tidak Ada'}
+                          </p>
+                        </div>
+                        
+                        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-3 border border-purple-200 shadow-sm">
+                          <p className="text-xs text-purple-700 font-semibold mb-1">Kapasitas</p>
+                          <p className="text-sm font-medium text-purple-900">
+                            {schedule.ferry?.capacity_passenger || 0} Penumpang
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Modern Action Buttons */}
+                      <div className="flex space-x-3 mt-6">
+                        <Link
+                          to={`/operator/schedules/${schedule.id}`}
+                          className="flex-1 bg-blue-50 text-blue-700 px-4 py-2.5 rounded-lg font-medium hover:bg-blue-100 transition-all duration-200 text-center shadow-sm hover:shadow-md flex items-center justify-center"
+                        >
+                          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          Detail
+                        </Link>
+                        <Link
+                          to={`/operator/schedules/${schedule.id}/dates`}
+                          className="flex-1 bg-green-50 text-green-700 px-4 py-2.5 rounded-lg font-medium hover:bg-green-100 transition-all duration-200 text-center shadow-sm hover:shadow-md flex items-center justify-center"
+                        >
+                          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          Tanggal
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-12 text-center">
+                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Tidak ada jadwal tersedia</h3>
+                <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                  Tidak ada jadwal yang sesuai dengan filter Anda. Coba ubah kriteria pencarian atau reset filter.
+                </p>
+                <button
+                  onClick={handleReset}
+                  className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-xl shadow-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform hover:scale-105 transition-all duration-200"
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Reset Filter
+                </button>
+              </div>
+            )}
+          </>
         )}
+
+        {/* CSS for animations */}
+        <style>{`
+          @keyframes fadeIn {
+            0% {
+              opacity: 0;
+            }
+            100% {
+              opacity: 1;
+            }
+          }
+          
+          .animate-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+          }
+        `}</style>
       </div>
     </div>
   );

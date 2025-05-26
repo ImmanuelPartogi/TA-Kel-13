@@ -333,7 +333,9 @@ class TicketCard extends StatelessWidget {
   Widget _buildBody(BuildContext context, _DateInfo dateInfo) {
     final departureTime =
         booking.schedule?.departureTime != null
-            ? booking.schedule?.departureTime?.substring(11, 16)
+            ? (booking.schedule!.departureTime.contains(":")
+                ? booking.schedule!.departureTime
+                : '--:--')
             : '--:--';
 
     return Container(

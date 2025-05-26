@@ -38,7 +38,8 @@ const RefundCreate = () => {
   const fetchBookingDetails = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/admin-panel/refunds/create/${bookingId}`);
+      // Perbaikan URL API - Menggunakan endpoint yang benar sesuai dengan route di backend
+      const response = await api.get(`/admin-panel/bookings/${bookingId}/refund/create`);
       
       console.log('Booking details response:', response.data); // Debugging
       
@@ -133,7 +134,8 @@ const RefundCreate = () => {
     setAlert({ show: false, type: '', message: '' });
 
     try {
-      const response = await api.post(`/admin-panel/refunds/store/${bookingId}`, formData);
+      // Perbaikan URL API - Menggunakan endpoint yang benar sesuai dengan route di backend
+      const response = await api.post(`/admin-panel/bookings/${bookingId}/refund`, formData);
       
       console.log('Create refund response:', response.data); // Debugging
       

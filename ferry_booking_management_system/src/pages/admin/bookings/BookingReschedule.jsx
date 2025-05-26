@@ -1,5 +1,6 @@
+// src/pages/admin/bookings/BookingReschedule.jsx
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../../../services/api';
 
 const BookingReschedule = () => {
@@ -214,34 +215,6 @@ const BookingReschedule = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center">
-          <i className="fas fa-spinner fa-spin text-5xl text-blue-500 mb-4"></i>
-          <p className="text-gray-600">Memuat data...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!booking) {
-    return (
-      <div className="container mx-auto px-4 py-6">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center">
-          <i className="fas fa-exclamation-triangle text-5xl text-red-400 mb-4"></i>
-          <p className="text-red-700 font-medium">Booking tidak ditemukan</p>
-          <button
-            onClick={() => navigate('/admin/bookings')}
-            className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
-          >
-            Kembali ke Daftar Booking
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return new Intl.DateTimeFormat('id-ID', {
@@ -279,41 +252,148 @@ const BookingReschedule = () => {
     'TRUCK': 'Truk'
   };
 
+  // Helper function to format currency
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0
+    }).format(amount);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex justify-center items-center">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-md p-8 text-center">
+          <div className="inline-block relative">
+            <div className="h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-500 animate-spin"></div>
+            <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-200 animate-spin" style={{animationDirection: 'reverse', animationDuration: '1.5s'}}></div>
+          </div>
+          <p className="mt-4 text-gray-600">Memuat data booking...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!booking) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex justify-center items-center p-4">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-md p-8 text-center max-w-md w-full">
+          <div className="bg-red-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <i className="fas fa-exclamation-triangle text-red-400 text-4xl"></i>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-800 mb-2">Booking Tidak Ditemukan</h3>
+          <p className="text-gray-600 mb-6">Booking yang Anda cari tidak dapat ditemukan atau telah dihapus</p>
+          <button
+            onClick={() => navigate('/admin/bookings')}
+            className="inline-flex items-center px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-sm"
+          >
+            <i className="fas fa-arrow-left mr-2"></i> Kembali ke Daftar Booking
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Jadwalkan Ulang Booking</h1>
-              <p className="mt-2 text-gray-600">
-                <span className="font-medium">Kode Booking:</span>{' '}
-                <span className="text-blue-600 font-semibold">{booking.booking_code}</span>
-              </p>
+    <div className="bg-gray-50 min-h-screen">
+      {/* Modern Header */}
+      <div className="bg-gradient-to-br from-blue-800 via-blue-600 to-blue-500 p-8 text-white relative">
+        <div className="absolute inset-0 opacity-20">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" className="w-full h-full">
+            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
+                  fill="#fff" opacity="0.2" />
+            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
+                  fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
+          </svg>
+        </div>
+        
+        <div className="relative z-10">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+            <div className="flex items-start">
+              <div className="bg-white/20 backdrop-blur-sm p-3 rounded-lg mr-4">
+                <i className="fas fa-calendar-alt text-2xl"></i>
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold">Jadwalkan Ulang Booking</h1>
+                <p className="mt-1 text-blue-100">Kode: <span className="font-medium">{booking.booking_code}</span></p>
+              </div>
             </div>
-            <button
-              onClick={() => navigate(`/admin/bookings/${id}`)}
-              className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-colors"
-            >
-              <i className="fas fa-arrow-left mr-2"></i> Kembali
-            </button>
+            
+            <div>
+              <button
+                onClick={() => navigate(`/admin/bookings/${id}`)}
+                className="inline-flex items-center px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-white/20 shadow-sm"
+              >
+                <i className="fas fa-arrow-left mr-2"></i> Kembali
+              </button>
+            </div>
+          </div>
+          
+          {/* Quick Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+              <p className="text-blue-100 text-sm">Rute Saat Ini</p>
+              <div className="flex items-center mt-1">
+                <i className="fas fa-route mr-2 text-blue-100"></i>
+                <span className="text-lg font-bold">
+                  {booking.schedule?.route?.origin || 'N/A'} - {booking.schedule?.route?.destination || 'N/A'}
+                </span>
+              </div>
+            </div>
+            
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+              <p className="text-blue-100 text-sm">Tanggal Keberangkatan</p>
+              <div className="flex items-center mt-1">
+                <i className="fas fa-calendar-day mr-2 text-blue-100"></i>
+                <span className="text-lg font-bold">
+                  {booking.departure_date ? formatDate(booking.departure_date).split(',')[1].trim() : 'N/A'}
+                </span>
+              </div>
+            </div>
+            
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+              <p className="text-blue-100 text-sm">Jumlah Penumpang</p>
+              <div className="flex items-center mt-1">
+                <i className="fas fa-users mr-2 text-blue-100"></i>
+                <span className="text-lg font-bold">
+                  {booking.passenger_count || 0} orang
+                </span>
+              </div>
+            </div>
+            
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+              <p className="text-blue-100 text-sm">Jumlah Kendaraan</p>
+              <div className="flex items-center mt-1">
+                <i className="fas fa-car mr-2 text-blue-100"></i>
+                <span className="text-lg font-bold">
+                  {booking.vehicle_count || 0} kendaraan
+                </span>
+              </div>
+            </div>
           </div>
         </div>
+      </div>
 
+      <div className="container mx-auto px-4 py-8">
         {/* Error Messages */}
         {errors.length > 0 && (
-          <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
-            <div className="flex">
-              <i className="fas fa-exclamation-circle text-red-500 mr-3 mt-0.5"></i>
-              <div>
-                <h3 className="text-red-800 font-medium">Terjadi kesalahan:</h3>
-                <ul className="mt-2 text-sm text-red-700 space-y-1">
-                  {errors.map((error, index) => (
-                    <li key={index}>• {error}</li>
-                  ))}
-                </ul>
+          <div className="mb-6 rounded-lg shadow-lg overflow-hidden animate-slideIn">
+            <div className="bg-red-500 px-4 py-2 text-white flex items-center justify-between">
+              <div className="flex items-center">
+                <i className="fas fa-exclamation-circle mr-2"></i>
+                <span className="font-medium">Error</span>
               </div>
+              <button onClick={() => setErrors([])} className="text-white/80 hover:text-white">
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="bg-red-50 border-red-100 text-red-700 px-4 py-3 border-t">
+              <ul className="list-disc list-inside">
+                {errors.map((error, index) => (
+                  <li key={index}>{error}</li>
+                ))}
+              </ul>
             </div>
           </div>
         )}
@@ -321,9 +401,12 @@ const BookingReschedule = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Form */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
               <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
-                <h2 className="text-xl font-semibold text-white">Pilih Jadwal Baru</h2>
+                <h2 className="text-xl font-semibold text-white flex items-center">
+                  <i className="fas fa-exchange-alt mr-2"></i>
+                  Pilih Jadwal Baru
+                </h2>
                 <p className="text-blue-100 text-sm mt-1">Pilih rute dan tanggal untuk menjadwalkan ulang booking</p>
               </div>
 
@@ -333,20 +416,25 @@ const BookingReschedule = () => {
                   <label htmlFor="route_id" className="block text-sm font-medium text-gray-700 mb-2">
                     Rute Perjalanan <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    id="route_id"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    value={formData.route_id}
-                    onChange={(e) => setFormData({ ...formData, route_id: e.target.value })}
-                    required
-                  >
-                    <option value="">Pilih Rute</option>
-                    {Array.isArray(routes) && routes.map(route => (
-                      <option key={route.id} value={route.id}>
-                        {route.origin} → {route.destination}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative rounded-md shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <i className="fas fa-route text-gray-400"></i>
+                    </div>
+                    <select
+                      id="route_id"
+                      className="block w-full pl-10 pr-3 py-2.5 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
+                      value={formData.route_id}
+                      onChange={(e) => setFormData({ ...formData, route_id: e.target.value })}
+                      required
+                    >
+                      <option value="">Pilih Rute</option>
+                      {Array.isArray(routes) && routes.map(route => (
+                        <option key={route.id} value={route.id}>
+                          {route.origin} → {route.destination}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 {/* Date Selection */}
@@ -354,15 +442,20 @@ const BookingReschedule = () => {
                   <label htmlFor="departure_date" className="block text-sm font-medium text-gray-700 mb-2">
                     Tanggal Keberangkatan Baru <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="date"
-                    id="departure_date"
-                    value={formData.departure_date}
-                    onChange={(e) => setFormData({ ...formData, departure_date: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    min={new Date().toISOString().split('T')[0]}
-                    required
-                  />
+                  <div className="relative rounded-md shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <i className="fas fa-calendar-alt text-gray-400"></i>
+                    </div>
+                    <input
+                      type="date"
+                      id="departure_date"
+                      value={formData.departure_date}
+                      onChange={(e) => setFormData({ ...formData, departure_date: e.target.value })}
+                      className="block w-full pl-10 pr-3 py-2.5 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
+                      min={new Date().toISOString().split('T')[0]}
+                      required
+                    />
+                  </div>
                   {formData.departure_date && (
                     <p className="mt-2 text-sm text-gray-600">
                       {formatDate(formData.departure_date)}
@@ -376,7 +469,7 @@ const BookingReschedule = () => {
                     type="button"
                     onClick={checkSchedules}
                     disabled={searchingSchedules}
-                    className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-md transition-all disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    className="flex-1 flex items-center justify-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-md transition-all disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
                     {searchingSchedules ? (
                       <><i className="fas fa-spinner fa-spin mr-2"></i> Mencari...</>
@@ -388,7 +481,7 @@ const BookingReschedule = () => {
                     type="button"
                     onClick={findNearestSchedules}
                     disabled={searchingSchedules}
-                    className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg shadow-md transition-all disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    className="flex-1 flex items-center justify-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg shadow-md transition-all disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
                     <i className="fas fa-calendar-check mr-2"></i> Cari Jadwal Terdekat
                   </button>
@@ -396,8 +489,8 @@ const BookingReschedule = () => {
 
                 {/* Nearest Schedule Results */}
                 {showNearestResults && nearestSchedules.length > 0 && (
-                  <div className="bg-green-50 border border-green-200 rounded-xl p-6">
-                    <h3 className="text-lg font-semibold text-green-800 mb-3">
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-6 animate-slideIn">
+                    <h3 className="text-lg font-semibold text-green-800 mb-3 flex items-center">
                       <i className="fas fa-lightbulb mr-2"></i>
                       Jadwal Terdekat Tersedia
                     </h3>
@@ -408,7 +501,7 @@ const BookingReschedule = () => {
                       {nearestSchedules.map((schedule, index) => (
                         <div
                           key={index}
-                          className="bg-white border border-green-300 rounded-lg p-4 hover:shadow-md transition-all cursor-pointer"
+                          className="bg-white border border-green-300 rounded-lg p-4 hover:shadow-md transition-all cursor-pointer transform hover:-translate-y-1"
                           onClick={() => selectNearestSchedule(schedule)}
                         >
                           <div className="flex items-center justify-between">
@@ -437,8 +530,9 @@ const BookingReschedule = () => {
 
                 {/* Schedule Results */}
                 {showScheduleResults && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                  <div className="animate-slideIn">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                      <i className="fas fa-list-alt mr-2 text-blue-500"></i>
                       Jadwal Tersedia untuk {formatDate(formData.departure_date)}
                     </h3>
                     {scheduleResults.length > 0 ? (
@@ -449,7 +543,7 @@ const BookingReschedule = () => {
                             data-schedule-id={schedule.id}
                             className={`border-2 rounded-xl p-5 transition-all ${
                               schedule.is_available 
-                                ? 'bg-white hover:shadow-md cursor-pointer border-gray-200' 
+                                ? 'bg-white hover:shadow-md cursor-pointer border-gray-200 hover:border-blue-300' 
                                 : 'bg-gray-50 opacity-60 border-gray-200 cursor-not-allowed'
                             }`}
                             onClick={() => schedule.is_available && selectSchedule(schedule)}
@@ -462,31 +556,33 @@ const BookingReschedule = () => {
                                     {formatTime(schedule.departure_time)} - {formatTime(schedule.arrival_time)}
                                   </p>
                                   {schedule.is_available ? (
-                                    <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                                    <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full border border-green-200">
+                                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5 inline-block"></span>
                                       Tersedia
                                     </span>
                                   ) : (
-                                    <span className="px-3 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">
+                                    <span className="px-3 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full border border-red-200">
+                                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full mr-1.5 inline-block"></span>
                                       Tidak Tersedia
                                     </span>
                                   )}
                                 </div>
                                 <div className="grid grid-cols-2 gap-4 text-sm">
                                   <div>
-                                    <p className="text-gray-600">
-                                      <i className="fas fa-ship mr-2"></i>
+                                    <p className="text-gray-600 flex items-center">
+                                      <i className="fas fa-ship mr-2 text-gray-400"></i>
                                       {schedule.ferry?.name || 'N/A'}
                                     </p>
                                   </div>
                                   <div>
-                                    <p className="text-gray-600">
-                                      <i className="fas fa-users mr-2"></i>
+                                    <p className="text-gray-600 flex items-center">
+                                      <i className="fas fa-users mr-2 text-gray-400"></i>
                                       {schedule.available_passenger || 0} kursi tersedia
                                     </p>
                                   </div>
                                 </div>
                                 {!schedule.is_available && schedule.reason && (
-                                  <p className="mt-3 text-sm text-red-600 font-medium">
+                                  <p className="mt-3 text-sm text-red-600 font-medium flex items-center">
                                     <i className="fas fa-info-circle mr-1"></i>
                                     {schedule.reason}
                                   </p>
@@ -520,14 +616,19 @@ const BookingReschedule = () => {
                   <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
                     Catatan / Alasan Reschedule
                   </label>
-                  <textarea
-                    id="notes"
-                    rows="4"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
-                    placeholder="Tambahkan catatan atau alasan reschedule (opsional)"
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  />
+                  <div className="relative rounded-md shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 pt-3 pointer-events-none">
+                      <i className="fas fa-sticky-note text-gray-400"></i>
+                    </div>
+                    <textarea
+                      id="notes"
+                      rows="4"
+                      className="block w-full pl-10 pr-3 py-2.5 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all resize-none"
+                      placeholder="Tambahkan catatan atau alasan reschedule (opsional)"
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    />
+                  </div>
                 </div>
 
                 {/* Submit Button */}
@@ -535,7 +636,7 @@ const BookingReschedule = () => {
                   <button
                     type="submit"
                     disabled={!formData.schedule_id || submitting}
-                    className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg shadow-lg transition-all disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed"
+                    className="w-full flex items-center justify-center py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg shadow-lg transition-all disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed"
                   >
                     {submitting ? (
                       <><i className="fas fa-spinner fa-spin mr-2"></i> Memproses Reschedule...</>
@@ -550,9 +651,12 @@ const BookingReschedule = () => {
 
           {/* Sidebar - Current Booking Info */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-lg overflow-hidden sticky top-6">
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden sticky top-6 hover:shadow-xl transition-shadow duration-300">
               <div className="bg-gradient-to-r from-gray-700 to-gray-800 px-6 py-4">
-                <h3 className="text-lg font-semibold text-white">Informasi Booking Saat Ini</h3>
+                <h3 className="text-lg font-semibold text-white flex items-center">
+                  <i className="fas fa-info-circle mr-2"></i>
+                  Informasi Booking Saat Ini
+                </h3>
               </div>
 
               <div className="p-6 space-y-4">
@@ -579,11 +683,11 @@ const BookingReschedule = () => {
                   <p className="font-semibold text-gray-900">
                     {booking.departure_date ? formatDate(booking.departure_date) : 'N/A'}
                   </p>
-                  <p className="text-gray-700 mt-1">
+                  <p className="text-gray-700 mt-1 flex items-center">
                     <i className="fas fa-clock mr-2 text-gray-400"></i>
                     {formatTime(booking.schedule?.departure_time)} - {formatTime(booking.schedule?.arrival_time)}
                   </p>
-                  <p className="text-gray-700 mt-1">
+                  <p className="text-gray-700 mt-1 flex items-center">
                     <i className="fas fa-ship mr-2 text-gray-400"></i>
                     {booking.schedule?.ferry?.name || 'N/A'}
                   </p>
@@ -594,7 +698,7 @@ const BookingReschedule = () => {
                   <p className="text-sm text-gray-600 mb-3">Detail Booking</p>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-700">
+                      <span className="text-gray-700 flex items-center">
                         <i className="fas fa-users mr-2 text-gray-400"></i>
                         Penumpang
                       </span>
@@ -621,7 +725,7 @@ const BookingReschedule = () => {
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Total Pembayaran</p>
                   <p className="text-2xl font-bold text-blue-600">
-                    Rp {booking.total_amount?.toLocaleString('id-ID') || '0'}
+                    {formatCurrency(booking.total_amount || 0)}
                   </p>
                 </div>
               </div>
@@ -629,6 +733,38 @@ const BookingReschedule = () => {
           </div>
         </div>
       </div>
+
+      {/* CSS for animations and button styling */}
+      <style>{`
+        .btn-icon {
+          width: 36px;
+          height: 36px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 8px;
+          transition: all 0.2s ease;
+        }
+        
+        .btn-icon:hover {
+          transform: translateY(-2px);
+        }
+        
+        @keyframes slideIn {
+          0% {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-slideIn {
+          animation: slideIn 0.4s ease-out forwards;
+        }
+      `}</style>
     </div>
   );
 };

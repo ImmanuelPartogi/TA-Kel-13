@@ -389,12 +389,29 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
     final departureTimeString = booking.schedule?.departureTime ?? '';
     DateTime? departureDateTime;
     try {
-      // Mencoba parse departureTime jika formatnya ISO
       if (departureTimeString.isNotEmpty) {
-        departureDateTime = DateTime.parse(departureTimeString).toLocal();
+        // Periksa format waktu
+        if (departureTimeString.contains("T") ||
+            departureTimeString.contains(" ")) {
+          // Format ISO atau datetime lengkap
+          departureDateTime = DateTime.parse(departureTimeString).toLocal();
+        } else {
+          // Format waktu saja (HH:MM:SS)
+          final parts = departureTimeString.split(':');
+          if (parts.length >= 2) {
+            final hour = int.tryParse(parts[0]) ?? 0;
+            final minute = int.tryParse(parts[1]) ?? 0;
+            departureDateTime = DateTime(
+              DateTime.now().year,
+              DateTime.now().month,
+              DateTime.now().day,
+              hour,
+              minute,
+            );
+          }
+        }
       }
     } catch (e) {
-      // Jika gagal parsing, gunakan string asli
       print("Error parsing departureTime: $e");
     }
 

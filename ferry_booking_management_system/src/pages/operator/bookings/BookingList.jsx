@@ -38,13 +38,13 @@ const BookingList = () => {
     try {
       console.log("Fetching with filters:", filters);
       const response = await operatorBookingsService.getAll(filters);
-      
+
       console.log("API Response:", response);
 
       if (response.data && response.data.status === 'success') {
         const bookingsData = response.data.data.bookings.data || [];
         const routesData = response.data.data.routes || {};
-        
+
         const paginationData = {
           current_page: response.data.data.bookings.current_page || 1,
           last_page: response.data.data.bookings.last_page || 1,
@@ -115,7 +115,7 @@ const BookingList = () => {
 
   const handlePageChange = (page) => {
     setFilters(prev => ({ ...prev, page }));
-    
+
     const queryParams = new URLSearchParams(searchParams);
     queryParams.set('page', page);
     setSearchParams(queryParams);
@@ -150,7 +150,7 @@ const BookingList = () => {
 
   const getFirstItem = () => ((pagination.current_page - 1) * pagination.per_page) + 1;
   const getLastItem = () => Math.min(pagination.current_page * pagination.per_page, pagination.total);
-  
+
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -166,13 +166,13 @@ const BookingList = () => {
         <div className="bg-gradient-to-br from-blue-800 via-blue-600 to-blue-500 rounded-2xl shadow-xl text-white p-8 mb-8 relative overflow-hidden">
           <div className="absolute inset-0 opacity-20">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" className="w-full h-full">
-              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                    fill="#fff" opacity="0.2" />
-              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                    fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
+              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+                fill="#fff" opacity="0.2" />
+              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+                fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
             </svg>
           </div>
-          
+
           <div className="relative z-10">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
               <div className="flex items-start">
@@ -186,7 +186,7 @@ const BookingList = () => {
                   <p className="mt-1 text-blue-100">Kelola dan pantau status booking penumpang</p>
                 </div>
               </div>
-              
+
               <div>
                 <div className="inline-flex items-center px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-white/20 shadow-sm">
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -196,7 +196,7 @@ const BookingList = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Quick Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-8">
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
@@ -210,7 +210,7 @@ const BookingList = () => {
                   </span>
                 </div>
               </div>
-              
+
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
                 <p className="text-blue-100 text-sm">Dikonfirmasi</p>
                 <div className="flex items-center mt-1">
@@ -222,7 +222,7 @@ const BookingList = () => {
                   </span>
                 </div>
               </div>
-              
+
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
                 <p className="text-blue-100 text-sm">Selesai</p>
                 <div className="flex items-center mt-1">
@@ -234,7 +234,7 @@ const BookingList = () => {
                   </span>
                 </div>
               </div>
-              
+
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
                 <p className="text-blue-100 text-sm">Dibatalkan</p>
                 <div className="flex items-center mt-1">
@@ -277,7 +277,7 @@ const BookingList = () => {
               Filter & Pencarian
             </h2>
           </div>
-          
+
           <div className="p-6 bg-white">
             <form onSubmit={handleFilter} className="space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -437,16 +437,16 @@ const BookingList = () => {
           <p className="text-sm text-gray-600">
             {pagination.total > 0 ? (
               <>
-                Menampilkan <span className="font-medium">{getFirstItem()}</span> - 
-                <span className="font-medium"> {getLastItem()}</span> dari 
+                Menampilkan <span className="font-medium">{getFirstItem()}</span> -
+                <span className="font-medium"> {getLastItem()}</span> dari
                 <span className="font-medium"> {pagination.total}</span> booking
               </>
             ) : null}
           </p>
-          
+
           <div className="flex items-center space-x-2">
             <div className="p-1 bg-gray-100 rounded-lg flex">
-              <button 
+              <button
                 onClick={() => setViewMode('table')}
                 className={`px-3 py-1 rounded ${viewMode === 'table' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-800'}`}
               >
@@ -454,7 +454,7 @@ const BookingList = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                 </svg>
               </button>
-              <button 
+              <button
                 onClick={() => setViewMode('grid')}
                 className={`px-3 py-1 rounded ${viewMode === 'grid' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-800'}`}
               >
@@ -564,14 +564,17 @@ const BookingList = () => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm text-gray-900">
-                                {booking.booking_date ? new Date(booking.booking_date).toLocaleDateString('id-ID', {
+                                {booking?.schedule?.departure_time ? new Date(booking.schedule.departure_time).toLocaleString('id-ID', {
                                   day: 'numeric',
                                   month: 'short',
-                                  year: 'numeric'
-                                }) : '-'}
+                                  year: 'numeric',
+                                }) : ''}
                               </div>
                               <div className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded text-center mt-1">
-                                {booking.schedule?.departure_time || ''} - {booking.schedule?.arrival_time || ''}
+                                {booking?.schedule?.arrival_time ? new Date(booking.schedule.departure_time).toLocaleString('id-ID', {
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                }) : ''}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -650,18 +653,18 @@ const BookingList = () => {
                                 </span>
                               </div>
                             </div>
-                            
+
                             <div className="p-4">
                               <div className="mb-4">
                                 <div className="text-xs text-gray-500 mb-1">Rute</div>
                                 <div className="text-sm font-medium text-gray-800">
-                                  {booking.schedule?.route ? 
-                                    `${booking.schedule.route.origin} - ${booking.schedule.route.destination}` : 
+                                  {booking.schedule?.route ?
+                                    `${booking.schedule.route.origin} - ${booking.schedule.route.destination}` :
                                     'Rute Tidak Ditemukan'
                                   }
                                 </div>
                               </div>
-                              
+
                               <div className="grid grid-cols-2 gap-2 mb-4">
                                 <div className="bg-blue-50 p-2 rounded-lg text-center">
                                   <p className="text-xs text-blue-600 mb-1">Tanggal Keberangkatan</p>
@@ -670,15 +673,15 @@ const BookingList = () => {
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                     </svg>
                                     <span className="text-sm font-semibold text-blue-700">
-                                      {new Date(booking.booking_date).toLocaleDateString('id-ID', {
+                                      {booking?.schedule?.departure_time ? new Date(booking.schedule.departure_time).toLocaleString('id-ID', {
                                         day: 'numeric',
                                         month: 'short',
-                                        year: 'numeric'
-                                      })}
+                                        year: 'numeric',
+                                      }) : ''}
                                     </span>
                                   </div>
                                 </div>
-                                
+
                                 <div className="bg-emerald-50 p-2 rounded-lg text-center">
                                   <p className="text-xs text-emerald-600 mb-1">Total</p>
                                   <div className="flex items-center justify-center">
@@ -691,7 +694,7 @@ const BookingList = () => {
                                   </div>
                                 </div>
                               </div>
-                              
+
                               <div className="bg-purple-50 p-3 rounded-lg mb-4 flex justify-between">
                                 <div className="text-center flex-1">
                                   <p className="text-xs text-purple-600 mb-1">Penumpang</p>
@@ -702,7 +705,7 @@ const BookingList = () => {
                                     <span className="text-lg font-semibold text-purple-700">{booking.passenger_count || 0}</span>
                                   </div>
                                 </div>
-                                
+
                                 <div className="text-center flex-1 border-l border-purple-100">
                                   <p className="text-xs text-purple-600 mb-1">Kendaraan</p>
                                   <div className="flex items-center justify-center">
@@ -713,7 +716,7 @@ const BookingList = () => {
                                   </div>
                                 </div>
                               </div>
-                              
+
                               <div className="flex justify-center border-t border-gray-100 pt-4">
                                 <Link
                                   to={`/operator/bookings/${booking.id}`}
@@ -747,12 +750,12 @@ const BookingList = () => {
               {pagination && pagination.last_page > 1 && (
                 <div className="flex flex-col md:flex-row justify-between items-center bg-gray-50 px-6 py-4 border-t border-gray-100">
                   <div className="text-sm text-gray-600 mb-4 md:mb-0">
-                    Menampilkan <span className="font-medium">{getFirstItem()}</span> - 
-                    <span className="font-medium"> {getLastItem()}</span> dari 
+                    Menampilkan <span className="font-medium">{getFirstItem()}</span> -
+                    <span className="font-medium"> {getLastItem()}</span> dari
                     <span className="font-medium"> {pagination.total}</span> booking
                   </div>
                   <div className="flex space-x-1">
-                    <button 
+                    <button
                       onClick={() => handlePageChange(1)}
                       disabled={pagination.current_page === 1}
                       className="px-3 py-1 rounded-md bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
@@ -761,7 +764,7 @@ const BookingList = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
                       </svg>
                     </button>
-                    <button 
+                    <button
                       onClick={() => handlePageChange(pagination.current_page - 1)}
                       disabled={pagination.current_page === 1}
                       className="px-3 py-1 rounded-md bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
@@ -770,7 +773,7 @@ const BookingList = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
                       </svg>
                     </button>
-                    
+
                     {/* Page numbers */}
                     <div className="flex space-x-1">
                       {Array.from({ length: Math.min(5, pagination.last_page) }, (_, i) => {
@@ -788,7 +791,7 @@ const BookingList = () => {
                           // Middle cases
                           pageNum = pagination.current_page - 2 + i;
                         }
-                        
+
                         return (
                           <button
                             key={i}
@@ -801,8 +804,8 @@ const BookingList = () => {
                         );
                       })}
                     </div>
-                    
-                    <button 
+
+                    <button
                       onClick={() => handlePageChange(pagination.current_page + 1)}
                       disabled={pagination.current_page === pagination.last_page}
                       className="px-3 py-1 rounded-md bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
@@ -811,7 +814,7 @@ const BookingList = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                       </svg>
                     </button>
-                    <button 
+                    <button
                       onClick={() => handlePageChange(pagination.last_page)}
                       disabled={pagination.current_page === pagination.last_page}
                       className="px-3 py-1 rounded-md bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"

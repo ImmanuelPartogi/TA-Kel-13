@@ -38,7 +38,8 @@ class adminRefundService {
    */
   async getRefundForm(bookingId) {
     try {
-      const response = await api.get(`/admin-panel/refunds/create/${bookingId}`);
+      // URL yang benar sesuai dengan route backend
+      const response = await api.get(`/admin-panel/bookings/${bookingId}/refund/create`);
       return response.data;
     } catch (error) {
       console.error('Error fetching refund form:', error);
@@ -54,7 +55,8 @@ class adminRefundService {
    */
   async createRefund(bookingId, data) {
     try {
-      const response = await api.post(`/admin-panel/refunds/store/${bookingId}`, data);
+      // URL yang benar sesuai dengan route backend
+      const response = await api.post(`/admin-panel/bookings/${bookingId}/refund`, data);
       return response.data;
     } catch (error) {
       console.error('Error creating refund:', error);
@@ -67,9 +69,9 @@ class adminRefundService {
    * @param {number} id - Refund ID
    * @returns {Promise}
    */
-  async approveRefund(id) {
+  async approveRefund(id, data = {}) {
     try {
-      const response = await api.post(`/admin-panel/refunds/${id}/approve`);
+      const response = await api.post(`/admin-panel/refunds/${id}/approve`, data);
       return response.data;
     } catch (error) {
       console.error('Error approving refund:', error);

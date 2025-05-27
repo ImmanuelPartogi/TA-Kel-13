@@ -97,11 +97,22 @@ const VehicleCategoriesShow = () => {
 
       // Refresh data
       const response = await AdminVehicleCategoriesService.getCategoryDetail(id);
-      setCategory(response.data);
+      
+      // Periksa dan sesuaikan cara mengakses data (sama seperti di useEffect)
+      let categoryData;
+      if (response.data) {
+        categoryData = response.data;
+        setCategory(response.data);
+      } else if (response && typeof response === 'object') {
+        categoryData = response;
+        setCategory(response);
+      } else {
+        throw new Error('Format respons tidak valid');
+      }
 
       setNotification({
         show: true,
-        message: `Kategori kendaraan berhasil ${response.data.is_active ? 'diaktifkan' : 'dinonaktifkan'}`,
+        message: `Kategori kendaraan berhasil ${categoryData.is_active ? 'diaktifkan' : 'dinonaktifkan'}`,
         type: 'success'
       });
     } catch (err) {
@@ -114,48 +125,87 @@ const VehicleCategoriesShow = () => {
     }
   };
 
+  // Mendapatkan ikon yang sesuai dengan tipe kendaraan
+  const getVehicleTypeIcon = (type) => {
+    const icons = {
+      'MOTORCYCLE': 'fa-motorcycle',
+      'CAR': 'fa-car',
+      'BUS': 'fa-bus',
+      'TRUCK': 'fa-truck',
+      'PICKUP': 'fa-truck-pickup',
+      'TRONTON': 'fa-truck-moving'
+    };
+    return icons[type] || 'fa-truck';
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-      {/* Modern Header */}
-      <div className="bg-gradient-to-br from-blue-800 via-blue-600 to-blue-500 p-8 text-white relative">
-        <div className="absolute inset-0 opacity-20">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" className="w-full h-full">
-            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
-              fill="#fff" opacity="0.2" />
-            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
-              fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
-          </svg>
-        </div>
+      {/* Modern Header - Hanya ditampilkan jika category sudah ada */}
+      {!loading && category && (
+        <div className="bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 p-8 text-white relative overflow-hidden">
+          {/* Background pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <svg viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+              <defs>
+                <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="1"/>
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#grid)" />
+              <circle cx="500" cy="500" r="300" fill="none" stroke="white" strokeWidth="2" opacity="0.3" />
+              <circle cx="500" cy="500" r="200" fill="none" stroke="white" strokeWidth="2" opacity="0.3" />
+            </svg>
+          </div>
 
-        <div className="relative z-10">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-            <div className="flex items-start">
-              <div className="bg-white/20 backdrop-blur-sm p-3 rounded-lg mr-4">
-                <i className="fas fa-eye text-2xl"></i>
+          {/* Floating elements */}
+          <div className="absolute -right-20 -top-20 w-64 h-64 bg-blue-500 rounded-full opacity-20 animate-pulse"></div>
+          <div className="absolute -left-10 bottom-0 w-40 h-40 bg-indigo-500 rounded-full opacity-20 animate-pulse" style={{animationDelay: '1s'}}></div>
+
+          <div className="relative z-10">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+              <div className="flex items-start">
+                {/* Category Icon Badge */}
+                <div className="rounded-lg mr-4 w-16 h-16 flex items-center justify-center bg-gradient-to-br from-blue-400 to-indigo-500 shadow-lg">
+                  <i className={`fas ${getVehicleTypeIcon(category.vehicle_type)} text-2xl`}></i>
+                </div>
+                <div>
+                  <div className="flex items-center mb-1">
+                    <h2 className="text-3xl font-bold tracking-tight">{category.code}</h2>
+                    <span className={`ml-3 px-2.5 py-1 text-xs font-semibold rounded-full ${
+                      category.is_active 
+                        ? 'bg-emerald-100 text-emerald-800' 
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {AdminVehicleCategoriesService.getStatusText(category.is_active)}
+                    </span>
+                  </div>
+                  <p className="text-blue-100 text-lg">{category.name}</p>
+                  <p className="text-blue-200 text-sm mt-1">
+                    <i className="fas fa-tag mr-1"></i>
+                    {AdminVehicleCategoriesService.getVehicleTypeText(category.vehicle_type)} • 
+                    <span className="ml-1 font-medium">{AdminVehicleCategoriesService.formatPrice(category.base_price)}</span>
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-2xl font-bold">{category.code}</h2>
-                <p className="text-blue-100">{category.name}</p>
+              <div className="flex items-center gap-3">
+                <Link
+                  to="/admin/vehicleCategories"
+                  className="inline-flex items-center px-4 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 rounded-lg text-white transition-all duration-200 transform hover:-translate-y-1"
+                >
+                  <i className="fas fa-arrow-left mr-2"></i>
+                  Kembali ke Daftar
+                </Link>
               </div>
-            </div>
-            <div>
-              <Link
-                to="/admin/vehicleCategories"
-                className="inline-flex items-center px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 rounded-lg text-white transition-colors"
-              >
-                <i className="fas fa-arrow-left mr-2"></i>
-                Kembali ke Daftar
-              </Link>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="p-8">
         {/* Alert Messages */}
         {notification.show && (
           <div className={`mb-6 rounded-lg shadow-lg overflow-hidden animate-slideIn`}>
-            <div className={`${notification.type === 'success' ? 'bg-emerald-500' : 'bg-red-500'} px-4 py-2 text-white flex items-center justify-between`}>
+            <div className={`${notification.type === 'success' ? 'bg-emerald-500' : 'bg-red-500'} px-4 py-2.5 text-white flex items-center justify-between`}>
               <div className="flex items-center">
                 <i className={`fas ${notification.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-2`}></i>
                 <span className="font-medium">{notification.type === 'success' ? 'Sukses' : 'Error'}</span>
@@ -172,40 +222,52 @@ const VehicleCategoriesShow = () => {
 
         {/* Loading State */}
         {loading ? (
-          <div className="bg-white rounded-xl border border-gray-100 shadow-md p-8 text-center">
-            <div className="inline-block relative">
-              <div className="h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-500 animate-spin"></div>
-              <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-200 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
+          <div className="bg-white rounded-xl border border-gray-100 shadow-md p-12 text-center">
+            <div className="relative inline-flex">
+              <div className="w-16 h-16 rounded-full border-4 border-blue-100"></div>
+              <div className="w-16 h-16 rounded-full border-4 border-t-blue-500 border-r-transparent border-b-transparent border-l-transparent absolute top-0 left-0 animate-spin"></div>
+              <div className="w-16 h-16 rounded-full border-4 border-t-transparent border-r-blue-300 border-b-transparent border-l-transparent absolute top-0 left-0 animate-spin" style={{animationDirection: 'reverse', animationDuration: '1.2s'}}></div>
             </div>
-            <p className="mt-4 text-gray-600">Memuat data kategori kendaraan...</p>
+            <p className="mt-6 text-gray-600 font-medium">Memuat data kategori kendaraan...</p>
+            <p className="mt-2 text-gray-500 text-sm">Mohon tunggu sebentar</p>
           </div>
         ) : error ? (
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r mb-6">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <i className="fas fa-exclamation-circle text-red-500"></i>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-red-700">{error}</p>
-                <div className="mt-2">
-                  <Link to="/admin/vehicleCategories" className="inline-flex items-center text-sm text-red-700 hover:text-red-900 underline">
-                    <i className="fas fa-arrow-left mr-1"></i> Kembali ke daftar
+          <div className="bg-white rounded-xl shadow-md overflow-hidden">
+            <div className="bg-red-500 h-2"></div>
+            <div className="p-6">
+              <div className="flex items-start">
+                <div className="bg-red-100 rounded-full p-3 mr-4">
+                  <i className="fas fa-exclamation-triangle text-red-500 text-xl"></i>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Terjadi Kesalahan</h3>
+                  <p className="text-gray-700 mb-4">{error}</p>
+                  <Link 
+                    to="/admin/vehicleCategories" 
+                    className="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg transition-colors"
+                  >
+                    <i className="fas fa-arrow-left mr-2"></i> Kembali ke daftar
                   </Link>
                 </div>
               </div>
             </div>
           </div>
         ) : !category ? (
-          <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-r mb-6">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <i className="fas fa-exclamation-triangle text-yellow-500"></i>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-yellow-700">Kategori kendaraan tidak ditemukan</p>
-                <div className="mt-2">
-                  <Link to="/admin/vehicleCategories" className="inline-flex items-center text-sm text-yellow-700 hover:text-yellow-900 underline">
-                    <i className="fas fa-arrow-left mr-1"></i> Kembali ke daftar
+          <div className="bg-white rounded-xl shadow-md overflow-hidden">
+            <div className="bg-yellow-500 h-2"></div>
+            <div className="p-6">
+              <div className="flex items-start">
+                <div className="bg-yellow-100 rounded-full p-3 mr-4">
+                  <i className="fas fa-search text-yellow-600 text-xl"></i>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Data Tidak Ditemukan</h3>
+                  <p className="text-gray-700 mb-4">Kategori kendaraan yang Anda cari tidak ditemukan dalam sistem.</p>
+                  <Link 
+                    to="/admin/vehicleCategories" 
+                    className="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg transition-colors"
+                  >
+                    <i className="fas fa-arrow-left mr-2"></i> Kembali ke daftar
                   </Link>
                 </div>
               </div>
@@ -215,185 +277,203 @@ const VehicleCategoriesShow = () => {
           <>
             {/* Detail Content */}
             <div className="mb-6">
-              {/* Header Card */}
-              <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-lg transition-shadow duration-300">
-                <div className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Informasi Detail */}
-                    <div className="bg-gray-50 rounded-xl p-6">
-                      <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                        <i className="fas fa-info-circle text-blue-500 mr-2"></i>
-                        Informasi Dasar
-                      </h3>
-
-                      <div className="space-y-4">
-                        <div className="flex border-b border-gray-200 pb-3">
-                          <div className="w-36 text-sm font-medium text-gray-600">Kode Golongan</div>
-                          <div className="flex-1 text-sm font-semibold text-gray-900">{category.code}</div>
-                        </div>
-
-                        <div className="flex border-b border-gray-200 pb-3">
-                          <div className="w-36 text-sm font-medium text-gray-600">Nama Golongan</div>
-                          <div className="flex-1 text-sm font-semibold text-gray-900">{category.name}</div>
-                        </div>
-
-                        <div className="flex border-b border-gray-200 pb-3">
-                          <div className="w-36 text-sm font-medium text-gray-600">Tipe Kendaraan</div>
-                          <div className="flex-1 text-sm font-semibold text-gray-900">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              {AdminVehicleCategoriesService.getVehicleTypeText(category.vehicle_type)}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex border-b border-gray-200 pb-3">
-                          <div className="w-36 text-sm font-medium text-gray-600">Harga Dasar</div>
-                          <div className="flex-1 text-sm font-semibold text-gray-900">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                              {AdminVehicleCategoriesService.formatPrice(category.base_price)}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex border-b border-gray-200 pb-3">
-                          <div className="w-36 text-sm font-medium text-gray-600">Status</div>
-                          <div className="flex-1">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${category.is_active ?
-                              'bg-emerald-100 text-emerald-800 border border-emerald-200' :
-                              'bg-gray-100 text-gray-800 border border-gray-200'
-                              }`}>
-                              <span className={`w-1.5 h-1.5 ${category.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-gray-500'
-                                } rounded-full mr-1.5`}></span>
-                              {AdminVehicleCategoriesService.getStatusText(category.is_active)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Informasi Tambahan */}
-                    <div className="bg-gray-50 rounded-xl p-6">
-                      <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                        <i className="fas fa-clock text-blue-500 mr-2"></i>
-                        Informasi Tambahan
-                      </h3>
-
-                      <div className="space-y-4">
-                        <div className="flex border-b border-gray-200 pb-3">
-                          <div className="w-36 text-sm font-medium text-gray-600">Dibuat Pada</div>
-                          <div className="flex-1 text-sm font-semibold text-gray-900">
-                            {category.created_at ?
-                              AdminVehicleCategoriesService.formatDateTime(category.created_at) :
-                              'N/A'
-                            }
-                          </div>
-                        </div>
-
-                        <div className="flex border-b border-gray-200 pb-3">
-                          <div className="w-36 text-sm font-medium text-gray-600">Diperbarui Pada</div>
-                          <div className="flex-1 text-sm font-semibold text-gray-900">
-                            {category.updated_at ?
-                              AdminVehicleCategoriesService.formatDateTime(category.updated_at) :
-                              'N/A'
-                            }
-                          </div>
-                        </div>
-
-                        <div>
-                          <div className="w-full text-sm font-medium text-gray-600 mb-2">Deskripsi</div>
-                          <div className="w-full bg-white p-3 rounded-lg border border-gray-200 text-sm text-gray-800 min-h-[100px]">
-                            {category.description || 'Tidak ada deskripsi'}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+              {/* Info Cards */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                {/* Card 1: Informasi Dasar */}
+                <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-lg transition-all duration-300">
+                  <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-3 text-white">
+                    <h3 className="text-lg font-semibold flex items-center">
+                      <i className="fas fa-info-circle mr-2"></i>
+                      Informasi Dasar
+                    </h3>
                   </div>
-
-                  {/* Statistik */}
-                  {category.vehicles_count !== undefined && (
-                    <div className="mt-6">
-                      <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                        <i className="fas fa-chart-bar text-blue-500 mr-2"></i>
-                        Statistik Penggunaan
-                      </h3>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-                          <div className="flex items-center justify-between mb-3">
-                            <p className="text-xs font-medium text-blue-600">Total Kendaraan</p>
-                            <div className="bg-blue-100 w-8 h-8 rounded-full flex items-center justify-center">
-                              <i className="fas fa-car text-blue-500"></i>
-                            </div>
-                          </div>
-                          <p className="text-2xl font-bold text-blue-700">{category.vehicles_count || 0}</p>
+                  <div className="p-5">
+                    <ul className="space-y-3">
+                      <li className="flex items-start border-b border-gray-100 pb-3">
+                        <div className="w-32 text-sm font-medium text-gray-500">Kode Golongan</div>
+                        <div className="flex-1 font-semibold text-gray-900">{category.code}</div>
+                      </li>
+                      <li className="flex items-start border-b border-gray-100 pb-3">
+                        <div className="w-32 text-sm font-medium text-gray-500">Nama Golongan</div>
+                        <div className="flex-1 font-semibold text-gray-900">{category.name}</div>
+                      </li>
+                      <li className="flex items-start border-b border-gray-100 pb-3">
+                        <div className="w-32 text-sm font-medium text-gray-500">Tipe Kendaraan</div>
+                        <div className="flex-1">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            <i className={`fas ${getVehicleTypeIcon(category.vehicle_type)} mr-1`}></i>
+                            {AdminVehicleCategoriesService.getVehicleTypeText(category.vehicle_type)}
+                          </span>
                         </div>
-
-                        <div className="bg-emerald-50 rounded-lg p-4 border border-emerald-100">
-                          <div className="flex items-center justify-between mb-3">
-                            <p className="text-xs font-medium text-emerald-600">Kendaraan Aktif</p>
-                            <div className="bg-emerald-100 w-8 h-8 rounded-full flex items-center justify-center">
-                              <i className="fas fa-car-side text-emerald-500"></i>
-                            </div>
-                          </div>
-                          <p className="text-2xl font-bold text-emerald-700">{category.active_vehicles_count || 0}</p>
+                      </li>
+                      <li className="flex items-start border-b border-gray-100 pb-3">
+                        <div className="w-32 text-sm font-medium text-gray-500">Harga Dasar</div>
+                        <div className="flex-1 font-semibold text-emerald-600">
+                          {AdminVehicleCategoriesService.formatPrice(category.base_price)}
                         </div>
-
-                        <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
-                          <div className="flex items-center justify-between mb-3">
-                            <p className="text-xs font-medium text-amber-600">Total Tiket</p>
-                            <div className="bg-amber-100 w-8 h-8 rounded-full flex items-center justify-center">
-                              <i className="fas fa-ticket-alt text-amber-500"></i>
-                            </div>
-                          </div>
-                          <p className="text-2xl font-bold text-amber-700">{category.tickets_count || 0}</p>
+                      </li>
+                      <li className="flex items-start">
+                        <div className="w-32 text-sm font-medium text-gray-500">Status</div>
+                        <div className="flex-1">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                            category.is_active 
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                              : 'bg-gray-100 text-gray-800 border border-gray-200'
+                            }`}>
+                            <span className={`w-1.5 h-1.5 ${
+                              category.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-gray-500'
+                              } rounded-full mr-1.5`}></span>
+                            {AdminVehicleCategoriesService.getStatusText(category.is_active)}
+                          </span>
                         </div>
-
-                        <div className="bg-purple-50 rounded-lg p-4 border border-purple-100">
-                          <div className="flex items-center justify-between mb-3">
-                            <p className="text-xs font-medium text-purple-600">Total Pendapatan</p>
-                            <div className="bg-purple-100 w-8 h-8 rounded-full flex items-center justify-center">
-                              <i className="fas fa-money-bill text-purple-500"></i>
-                            </div>
-                          </div>
-                          <p className="text-2xl font-bold text-purple-700">
-                            {AdminVehicleCategoriesService.formatPrice(category.total_revenue || 0)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                      </li>
+                    </ul>
+                  </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="border-t border-gray-100 p-6 bg-gray-50">
-                  <div className="flex flex-col sm:flex-row sm:justify-end gap-3">
-                    <button
-                      onClick={handleToggleStatus}
-                      className={`inline-flex items-center justify-center px-4 py-2 border rounded-lg text-sm font-medium shadow-sm ${category.is_active ?
-                        'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100' :
-                        'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                        }`}
-                    >
-                      <i className={`fas ${category.is_active ? 'fa-toggle-off' : 'fa-toggle-on'} mr-2`}></i>
-                      {category.is_active ? 'Nonaktifkan' : 'Aktifkan'}
-                    </button>
-
-                    <Link
-                      to={`/admin/vehicleCategories/${id}/edit`}
-                      className="inline-flex items-center justify-center px-4 py-2 border border-yellow-300 rounded-lg text-sm font-medium bg-yellow-50 text-yellow-700 hover:bg-yellow-100 shadow-sm"
-                    >
-                      <i className="fas fa-edit mr-2"></i>
-                      Edit
-                    </Link>
-
-                    <button
-                      onClick={confirmDelete}
-                      className="inline-flex items-center justify-center px-4 py-2 border border-red-300 rounded-lg text-sm font-medium bg-red-50 text-red-700 hover:bg-red-100 shadow-sm"
-                    >
-                      <i className="fas fa-trash mr-2"></i>
-                      Hapus
-                    </button>
+                {/* Card 2: Deskripsi */}
+                <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-lg transition-all duration-300">
+                  <div className="bg-gradient-to-r from-indigo-600 to-indigo-500 px-4 py-3 text-white">
+                    <h3 className="text-lg font-semibold flex items-center">
+                      <i className="fas fa-align-left mr-2"></i>
+                      Deskripsi
+                    </h3>
                   </div>
+                  <div className="p-5">
+                    <div className="bg-gray-50 rounded-lg p-4 min-h-[150px] border border-gray-100 text-gray-700">
+                      {category.description || (
+                        <div className="flex flex-col items-center justify-center h-full text-center text-gray-400">
+                          <i className="fas fa-file-alt text-2xl mb-2"></i>
+                          <p>Tidak ada deskripsi untuk kategori ini</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card 3: Informasi Tambahan */}
+                <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-lg transition-all duration-300">
+                  <div className="bg-gradient-to-r from-purple-600 to-purple-500 px-4 py-3 text-white">
+                    <h3 className="text-lg font-semibold flex items-center">
+                      <i className="fas fa-clock mr-2"></i>
+                      Informasi Tambahan
+                    </h3>
+                  </div>
+                  <div className="p-5">
+                    <ul className="space-y-3">
+                      <li className="flex items-start border-b border-gray-100 pb-3">
+                        <div className="w-32 text-sm font-medium text-gray-500">Dibuat Pada</div>
+                        <div className="flex-1 text-sm text-gray-700">
+                          {category.created_at ? (
+                            <div className="flex items-center">
+                              <i className="fas fa-calendar-alt text-gray-400 mr-2"></i>
+                              {AdminVehicleCategoriesService.formatDateTime(category.created_at)}
+                            </div>
+                          ) : 'N/A'}
+                        </div>
+                      </li>
+                      <li className="flex items-start border-b border-gray-100 pb-3">
+                        <div className="w-32 text-sm font-medium text-gray-500">Diperbarui</div>
+                        <div className="flex-1 text-sm text-gray-700">
+                          {category.updated_at ? (
+                            <div className="flex items-center">
+                              <i className="fas fa-edit text-gray-400 mr-2"></i>
+                              {AdminVehicleCategoriesService.formatDateTime(category.updated_at)}
+                            </div>
+                          ) : 'N/A'}
+                        </div>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Statistik */}
+              {category.vehicles_count !== undefined && (
+                <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-lg transition-all duration-300 mb-6">
+                  <div className="bg-gradient-to-r from-gray-700 to-gray-800 px-4 py-3 text-white">
+                    <h3 className="text-lg font-semibold flex items-center">
+                      <i className="fas fa-chart-bar mr-2"></i>
+                      Statistik Penggunaan
+                    </h3>
+                  </div>
+                  <div className="p-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {/* Total Kendaraan */}
+                      <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200 relative overflow-hidden group hover:shadow-md transition-all">
+                        <div className="absolute -right-4 -bottom-4 text-blue-200 text-6xl opacity-30 group-hover:opacity-50 transition-opacity">
+                          <i className="fas fa-car"></i>
+                        </div>
+                        <h4 className="text-xs font-medium text-blue-700 uppercase tracking-wider mb-1">Total Kendaraan</h4>
+                        <p className="text-3xl font-bold text-blue-700">{category.vehicles_count || 0}</p>
+                        <p className="text-blue-600 text-xs mt-1 opacity-75">Jumlah keseluruhan kendaraan</p>
+                      </div>
+
+                      {/* Kendaraan Aktif */}
+                      <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg p-4 border border-emerald-200 relative overflow-hidden group hover:shadow-md transition-all">
+                        <div className="absolute -right-4 -bottom-4 text-emerald-200 text-6xl opacity-30 group-hover:opacity-50 transition-opacity">
+                          <i className="fas fa-car-side"></i>
+                        </div>
+                        <h4 className="text-xs font-medium text-emerald-700 uppercase tracking-wider mb-1">Kendaraan Aktif</h4>
+                        <p className="text-3xl font-bold text-emerald-700">{category.active_vehicles_count || 0}</p>
+                        <p className="text-emerald-600 text-xs mt-1 opacity-75">Kendaraan dengan status aktif</p>
+                      </div>
+
+                      {/* Total Tiket */}
+                      <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg p-4 border border-amber-200 relative overflow-hidden group hover:shadow-md transition-all">
+                        <div className="absolute -right-4 -bottom-4 text-amber-200 text-6xl opacity-30 group-hover:opacity-50 transition-opacity">
+                          <i className="fas fa-ticket-alt"></i>
+                        </div>
+                        <h4 className="text-xs font-medium text-amber-700 uppercase tracking-wider mb-1">Total Tiket</h4>
+                        <p className="text-3xl font-bold text-amber-700">{category.tickets_count || 0}</p>
+                        <p className="text-amber-600 text-xs mt-1 opacity-75">Tiket yang terjual</p>
+                      </div>
+
+                      {/* Total Pendapatan */}
+                      <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200 relative overflow-hidden group hover:shadow-md transition-all">
+                        <div className="absolute -right-4 -bottom-4 text-purple-200 text-6xl opacity-30 group-hover:opacity-50 transition-opacity">
+                          <i className="fas fa-money-bill-wave"></i>
+                        </div>
+                        <h4 className="text-xs font-medium text-purple-700 uppercase tracking-wider mb-1">Total Pendapatan</h4>
+                        <p className="text-3xl font-bold text-purple-700">
+                          {AdminVehicleCategoriesService.formatPrice(category.total_revenue || 0)}
+                        </p>
+                        <p className="text-purple-600 text-xs mt-1 opacity-75">Pendapatan dari tiket</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+                <div className="p-5 flex flex-wrap justify-end gap-3">
+                  <button
+                    onClick={handleToggleStatus}
+                    className={`inline-flex items-center justify-center px-4 py-2.5 border rounded-lg text-sm font-medium shadow-sm transition-all hover:-translate-y-1 ${category.is_active ?
+                      'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100' :
+                      'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                      }`}
+                  >
+                    <i className={`fas ${category.is_active ? 'fa-toggle-off' : 'fa-toggle-on'} mr-2`}></i>
+                    {category.is_active ? 'Nonaktifkan' : 'Aktifkan'}
+                  </button>
+
+                  <Link
+                    to={`/admin/vehicleCategories/${id}/edit`}
+                    className="inline-flex items-center justify-center px-4 py-2.5 border border-yellow-300 rounded-lg text-sm font-medium bg-yellow-50 text-yellow-700 hover:bg-yellow-100 shadow-sm transition-all hover:-translate-y-1"
+                  >
+                    <i className="fas fa-edit mr-2"></i>
+                    Edit
+                  </Link>
+
+                  <button
+                    onClick={confirmDelete}
+                    className="inline-flex items-center justify-center px-4 py-2.5 border border-red-300 rounded-lg text-sm font-medium bg-red-50 text-red-700 hover:bg-red-100 shadow-sm transition-all hover:-translate-y-1"
+                  >
+                    <i className="fas fa-trash mr-2"></i>
+                    Hapus
+                  </button>
                 </div>
               </div>
             </div>
@@ -404,18 +484,36 @@ const VehicleCategoriesShow = () => {
       {/* Delete Confirmation Modal */}
       {isDeleting && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all animate-modal-in">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-modal-in">
+            <div className="bg-gradient-to-r from-red-600 to-red-500 px-4 py-3 text-white">
+              <h3 className="text-lg font-semibold flex items-center">
+                <i className="fas fa-exclamation-triangle mr-2"></i>
+                Konfirmasi Hapus
+              </h3>
+            </div>
+            
             <div className="p-6">
-              <div className="text-center mb-5">
-                <div className="w-20 h-20 bg-red-100 rounded-full mx-auto mb-4 flex items-center justify-center">
-                  <i className="fas fa-exclamation-triangle text-red-500 text-4xl"></i>
+              <div className="flex items-center justify-center mb-5">
+                <div className="bg-red-100 w-20 h-20 rounded-full flex items-center justify-center">
+                  <i className="fas fa-trash text-red-500 text-3xl"></i>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900">Konfirmasi Hapus</h3>
-                <p className="text-gray-600 mt-2">Apakah Anda yakin ingin menghapus kategori kendaraan ini?</p>
+              </div>
+              
+              <div className="text-center mb-6">
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Apakah Anda yakin?</h3>
+                <p className="text-gray-600">Tindakan ini akan menghapus kategori kendaraan dan tidak dapat dibatalkan.</p>
+                
                 {category && (
-                  <div className="bg-gray-50 rounded-lg p-3 mt-3 border border-gray-200">
-                    <p className="font-semibold text-lg text-gray-800">{category.code}</p>
-                    <p className="text-gray-600">{category.name}</p>
+                  <div className="mt-4 bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div className="flex justify-center items-center space-x-3">
+                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                        <i className={`fas ${getVehicleTypeIcon(category.vehicle_type)} text-blue-500`}></i>
+                      </div>
+                      <div className="text-left">
+                        <p className="font-semibold text-gray-800">{category.code}</p>
+                        <p className="text-sm text-gray-600">{category.name}</p>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -427,7 +525,7 @@ const VehicleCategoriesShow = () => {
                   </div>
                   <div className="ml-3">
                     <p className="text-sm">
-                      Menghapus kategori kendaraan akan menghapus semua data terkait. Tindakan ini tidak dapat dibatalkan.
+                      Menghapus kategori kendaraan akan menghapus semua data terkait dan dapat memengaruhi tiket yang sudah diterbitkan.
                     </p>
                   </div>
                 </div>
@@ -436,13 +534,13 @@ const VehicleCategoriesShow = () => {
               <div className="flex space-x-3">
                 <button
                   onClick={() => setIsDeleting(false)}
-                  className="w-full py-3 px-4 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-gray-200 transition-colors"
+                  className="w-full py-3 px-4 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-gray-200 transition-all transform hover:-translate-y-1"
                 >
-                  Batal
+                  <i className="fas fa-times mr-2"></i> Batal
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="w-full py-3 px-4 bg-red-500 rounded-lg text-white font-medium hover:bg-red-600 focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                  className="w-full py-3 px-4 bg-gradient-to-r from-red-600 to-red-500 rounded-lg text-white font-medium hover:from-red-700 hover:to-red-600 focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all transform hover:-translate-y-1"
                 >
                   <i className="fas fa-trash mr-2"></i> Hapus Kategori
                 </button>

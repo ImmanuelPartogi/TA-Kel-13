@@ -13,8 +13,7 @@ const RefundsList = () => {
   });
   const [alert, setAlert] = useState({ show: false, type: '', message: '' });
   const [viewMode, setViewMode] = useState('table'); // table or grid
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [selectedRefund, setSelectedRefund] = useState(null);
+  // Modal detail dihapus, kita akan menggunakan RefundShow sebagai halaman detail
   const [pagination, setPagination] = useState({
     current_page: 1,
     last_page: 1,
@@ -137,10 +136,7 @@ const RefundsList = () => {
     setTimeout(() => fetchRefunds(1), 0);
   };
 
-  const viewRefundDetail = (refund) => {
-    setSelectedRefund(refund);
-    setShowDetailModal(true);
-  };
+  // Menghapus viewRefundDetail yang membuka modal dan menggantinya dengan link ke halaman detail
 
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > pagination.last_page) return;
@@ -281,11 +277,17 @@ const RefundsList = () => {
             </div>
 
             <div>
-              <Link 
-                to="/admin/refunds/settings"
+              <Link
+                to="/admin/refunds"
                 className="inline-flex items-center px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-white/20 shadow-sm"
               >
                 <i className="fas fa-cog mr-2"></i> Kebijakan Refund
+              </Link>
+              <Link
+                to="/admin/bookings"
+                className="inline-flex items-center px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-white/20 shadow-sm ml-2"
+              >
+                <i className="fas fa-plus-circle mr-2"></i> Buat Refund
               </Link>
             </div>
           </div>
@@ -599,12 +601,12 @@ const RefundsList = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex justify-end space-x-2">
-                            <button
-                              onClick={() => viewRefundDetail(refund)}
+                            <Link
+                              to={`/admin/refunds/${refund.id}`}
                               className="btn-icon bg-blue-50 hover:bg-blue-100 text-blue-600 p-2 rounded-lg transition-colors"
                               title="Detail">
                               <i className="fas fa-eye"></i>
-                            </button>
+                            </Link>
                             {refund.status === 'PENDING' && (
                               <>
                                 <button
@@ -701,12 +703,12 @@ const RefundsList = () => {
                     </div>
 
                     <div className="flex justify-between border-t border-gray-100 pt-4">
-                      <button
-                        onClick={() => viewRefundDetail(refund)}
+                      <Link
+                        to={`/admin/refunds/${refund.id}`}
                         className="btn-icon bg-blue-50 hover:bg-blue-100 text-blue-600 p-2 rounded-lg transition-colors"
                       >
                         <i className="fas fa-eye"></i>
-                      </button>
+                      </Link>
 
                       {refund.status === 'PENDING' ? (
                         <>
@@ -812,170 +814,7 @@ const RefundsList = () => {
         )}
       </div>
 
-      {/* Refund Detail Modal */}
-      {showDetailModal && selectedRefund && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl transform transition-all animate-modal-in">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                <i className="fas fa-hand-holding-usd text-blue-500 mr-2"></i>
-                Detail Refund <span className="text-blue-600 ml-2">#{selectedRefund.id}</span>
-              </h3>
-              <button
-                onClick={() => setShowDetailModal(false)}
-                className="text-gray-400 hover:text-gray-500"
-              >
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-1">Informasi Refund</h4>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm text-gray-600">Status:</span>
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusConfig(selectedRefund.status).bg} ${getStatusConfig(selectedRefund.status).text}`}>
-                          {getStatusConfig(selectedRefund.status).label}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm text-gray-600">Tanggal Pengajuan:</span>
-                        <span className="text-sm font-medium">{formatDate(selectedRefund.created_at, true)}</span>
-                      </div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm text-gray-600">Jumlah Refund:</span>
-                        <span className="text-sm font-bold text-emerald-600">{formatCurrency(selectedRefund.amount || 0)}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Metode Refund:</span>
-                        <span className="text-sm font-medium">{getRefundMethodText(selectedRefund.refund_method)}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-1">Informasi Pengguna</h4>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="flex items-center mb-3">
-                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 mr-3">
-                          <i className="fas fa-user"></i>
-                        </div>
-                        <div>
-                          <div className="font-medium">{selectedRefund.booking?.user?.name || 'N/A'}</div>
-                          <div className="text-sm text-gray-500">{selectedRefund.booking?.user?.email || 'N/A'}</div>
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm text-gray-600">Telepon:</span>
-                        <span className="text-sm font-medium">{selectedRefund.booking?.user?.phone || 'N/A'}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-1">Detail Booking</h4>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="mb-3">
-                        <span className="text-sm text-gray-600">Kode Booking:</span>
-                        <div className="font-medium text-blue-600 mt-1">
-                          {selectedRefund.booking?.booking_code || 'N/A'}
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm text-gray-600">Rute:</span>
-                        <span className="text-sm font-medium">
-                          {selectedRefund.booking?.schedule?.route ?
-                            `${selectedRefund.booking.schedule.route.origin} - ${selectedRefund.booking.schedule.route.destination}` :
-                            'N/A'
-                          }
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm text-gray-600">Tanggal Keberangkatan:</span>
-                        <span className="text-sm font-medium">
-                          {selectedRefund.booking?.departure_date ?
-                            formatDate(selectedRefund.booking.departure_date) :
-                            'N/A'
-                          }
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Total Booking:</span>
-                        <span className="text-sm font-medium">
-                          {selectedRefund.booking?.total_amount ?
-                            formatCurrency(selectedRefund.booking.total_amount) :
-                            'N/A'
-                          }
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-1">Alasan Refund</h4>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <p className="text-sm text-gray-700">
-                        {selectedRefund.reason || 'Tidak ada alasan yang dicantumkan'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {selectedRefund.status === 'PENDING' && (
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500 mb-1">Tindakan</h4>
-                      <div className="bg-gray-50 rounded-lg p-4">
-                        <div className="grid grid-cols-2 gap-3">
-                          <button
-                            onClick={() => {
-                              setShowDetailModal(false);
-                              setAlert({ show: true, type: 'success', message: 'Refund telah disetujui' });
-                            }}
-                            className="flex items-center justify-center py-2 px-4 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
-                          >
-                            <i className="fas fa-check mr-2"></i> Setujui
-                          </button>
-                          <button
-                            onClick={() => {
-                              setShowDetailModal(false);
-                              setAlert({ show: true, type: 'error', message: 'Refund telah ditolak' });
-                            }}
-                            className="flex items-center justify-center py-2 px-4 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                          >
-                            <i className="fas fa-times mr-2"></i> Tolak
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="mt-6 flex justify-between">
-                <button
-                  onClick={() => setShowDetailModal(false)}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg bg-white text-gray-700 hover:bg-gray-50"
-                >
-                  <i className="fas fa-times mr-2"></i> Tutup
-                </button>
-
-                <div className="flex space-x-2">
-                  <Link
-                    to={`/admin/refunds/${selectedRefund.id}`}
-                    onClick={() => setShowDetailModal(false)}
-                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700"
-                  >
-                    <i className="fas fa-external-link-alt mr-2"></i> Lihat Detail Lengkap
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal dihapus karena menggunakan halaman detail RefundShow */}
 
       {/* CSS for animations and button styling */}
       <style>{`

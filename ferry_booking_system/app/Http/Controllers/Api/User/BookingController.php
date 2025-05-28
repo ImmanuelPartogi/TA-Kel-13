@@ -10,6 +10,7 @@ use Carbon\Carbon;
 use App\Models\ScheduleDate;
 use App\Models\Ticket;
 use App\Models\Vehicle;
+use App\Models\VehicleCategory;
 use App\Services\MidtransService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -328,19 +329,27 @@ class BookingController extends Controller
 
         if ($request->vehicle_count > 0 && isset($request->vehicles)) {
             foreach ($request->vehicles as $vehicle) {
-                switch ($vehicle['type']) {
-                    case 'MOTORCYCLE':
-                        $vehiclePrice += $schedule->route->motorcycle_price;
-                        break;
-                    case 'CAR':
-                        $vehiclePrice += $schedule->route->car_price;
-                        break;
-                    case 'BUS':
-                        $vehiclePrice += $schedule->route->bus_price;
-                        break;
-                    case 'TRUCK':
-                        $vehiclePrice += $schedule->route->truck_price;
-                        break;
+                // Dapatkan harga berdasarkan kategori kendaraan
+                $category = VehicleCategory::find($vehicle['vehicle_category_id']);
+                if ($category) {
+                    $vehiclePrice += $category->base_price;
+                } else {
+                    // Fallback ke cara lama jika kategori tidak ditemukan
+                    switch ($vehicle['type']) {
+                        case 'MOTORCYCLE':
+                            $vehiclePrice += $schedule->route->motorcycle_price;
+                            break;
+                        case 'CAR':
+                            $vehiclePrice += $schedule->route->car_price;
+                            break;
+                        case 'BUS':
+                            $vehiclePrice += $schedule->route->bus_price;
+                            break;
+                        case 'TRUCK':
+                        case 'PICKUP': // Tipe PICKUP dihandle sebagai TRUCK
+                            $vehiclePrice += $schedule->route->truck_price;
+                            break;
+                    }
                 }
             }
         }
@@ -410,6 +419,8 @@ class BookingController extends Controller
                         'license_plate' => $vehicleData['license_plate'],
                         'brand' => $vehicleData['brand'] ?? null,
                         'model' => $vehicleData['model'] ?? null,
+                        'vehicle_category_id' => $vehicleData['vehicle_category_id'],
+                        'weight' => $vehicleData['weight'] ?? null,
                     ]);
 
                     $vehicle->save();

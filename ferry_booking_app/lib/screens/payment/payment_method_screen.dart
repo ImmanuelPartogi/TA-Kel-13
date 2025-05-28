@@ -82,17 +82,14 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
   @override
   void initState() {
     super.initState();
-    
+
     // Setup animasi untuk fade-in effect
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 500),
       vsync: this,
     );
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeIn,
-      ),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
     );
     _animationController.forward();
 
@@ -247,9 +244,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
         ),
         backgroundColor: Colors.red.shade800,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         margin: EdgeInsets.only(
           bottom: MediaQuery.of(context).size.height - 150,
           left: 16,
@@ -272,10 +267,8 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.red.shade800,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        behavior: SnackBarBehavior.floating, // Ubah behavior menjadi floating
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         margin: EdgeInsets.only(
           bottom: MediaQuery.of(context).size.height - 150,
           left: 16,
@@ -291,18 +284,15 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
     final bookingProvider = Provider.of<BookingProvider>(context);
     final primaryColor = Theme.of(context).primaryColor;
     final accentColor = Theme.of(context).colorScheme.secondary;
-    
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         elevation: 0,
         backgroundColor: primaryColor,
         title: const Text(
-          'Pilih Metode Pembayaran', 
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 20,
-          ),
+          'Pilih Metode Pembayaran',
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20),
         ),
         centerTitle: true,
         leading: IconButton(
@@ -327,16 +317,17 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
           ),
         ),
       ),
-      body: _isLoading || _isCreatingBooking
-          ? _buildLoadingState()
-          : _buildContent(bookingProvider),
+      body:
+          _isLoading || _isCreatingBooking
+              ? _buildLoadingState()
+              : _buildContent(bookingProvider),
       bottomNavigationBar: _buildBottomBar(bookingProvider),
     );
   }
 
   Widget _buildLoadingState() {
     final primaryColor = Theme.of(context).primaryColor;
-    
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -418,7 +409,10 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).primaryColor,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 32),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 15,
+                      horizontal: 32,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
@@ -426,10 +420,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
                   ),
                   child: const Text(
                     'Kembali ke Pemesanan',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
@@ -463,7 +454,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
               ),
             ),
           ),
-          
+
           // Progress Indicator
           Positioned(
             top: 0,
@@ -485,7 +476,10 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
                   ),
                   const SizedBox(height: 20),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
@@ -499,12 +493,19 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                        const Icon(
+                          Icons.info_outline,
+                          color: Colors.blue,
+                          size: 20,
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             'Pilih metode pembayaran untuk menyelesaikan transaksi Anda',
-                            style: TextStyle(color: Colors.grey[700], fontSize: 14),
+                            style: TextStyle(
+                              color: Colors.grey[700],
+                              fontSize: 14,
+                            ),
                           ),
                         ),
                       ],
@@ -514,10 +515,12 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
               ),
             ),
           ),
-          
+
           // Main Payment Methods List
           Padding(
-            padding: const EdgeInsets.only(top: 140), // Make room for the stepper
+            padding: const EdgeInsets.only(
+              top: 140,
+            ), // Make room for the stepper
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               physics: const BouncingScrollPhysics(),
@@ -527,7 +530,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
                     _paymentMethods.entries.map((entry) {
                       final sectionTitle = entry.key;
                       final methods = entry.value;
-                      
+
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -537,15 +540,14 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
                             methods.length,
                             (index) => TweenAnimationBuilder<double>(
                               tween: Tween<double>(begin: 0.0, end: 1.0),
-                              duration: Duration(milliseconds: 400 + (index * 100)),
+                              duration: Duration(
+                                milliseconds: 400 + (index * 100),
+                              ),
                               curve: Curves.easeOutCubic,
                               builder: (context, value, child) {
                                 return Transform.translate(
                                   offset: Offset(0, 30 * (1 - value)),
-                                  child: Opacity(
-                                    opacity: value,
-                                    child: child,
-                                  ),
+                                  child: Opacity(opacity: value, child: child),
                                 );
                               },
                               child: _buildPaymentMethodCard(methods[index]),
@@ -565,7 +567,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
 
   Widget _buildStepCircle(int step, bool isActive, String label) {
     final primaryColor = Theme.of(context).primaryColor;
-    
+
     return Expanded(
       child: Column(
         children: [
@@ -575,13 +577,16 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
             decoration: BoxDecoration(
               color: isActive ? primaryColor : Colors.grey[300],
               shape: BoxShape.circle,
-              boxShadow: isActive ? [
-                BoxShadow(
-                  color: primaryColor.withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ] : null,
+              boxShadow:
+                  isActive
+                      ? [
+                        BoxShadow(
+                          color: primaryColor.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ]
+                      : null,
             ),
             child: Center(
               child: Text(
@@ -609,7 +614,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
 
   Widget _buildStepLine(bool isActive) {
     final primaryColor = Theme.of(context).primaryColor;
-    
+
     return Container(
       width: 30,
       height: 2,
@@ -659,18 +664,17 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: isSelected
-                ? methodColor.withOpacity(0.25)
-                : Colors.black.withOpacity(0.05),
+            color:
+                isSelected
+                    ? methodColor.withOpacity(0.25)
+                    : Colors.black.withOpacity(0.05),
             blurRadius: isSelected ? 16 : 5,
             offset: const Offset(0, 3),
             spreadRadius: isSelected ? 1 : 0,
           ),
         ],
         border: Border.all(
-          color: isSelected
-              ? methodColor
-              : Colors.grey.withOpacity(0.15),
+          color: isSelected ? methodColor : Colors.grey.withOpacity(0.15),
           width: isSelected ? 2 : 1,
         ),
       ),
@@ -838,7 +842,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
 
   Widget _buildBottomBar(BookingProvider bookingProvider) {
     final primaryColor = Theme.of(context).primaryColor;
-    
+
     // Jika tidak ada booking, tampilkan pesan
     if (!bookingProvider.hasActiveBooking) {
       return Container(
@@ -934,10 +938,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
                   decoration: BoxDecoration(
                     color: Colors.grey[100],
                     borderRadius: BorderRadius.circular(30),
-                    border: Border.all(
-                      color: Colors.grey[300]!,
-                      width: 1,
-                    ),
+                    border: Border.all(color: Colors.grey[300]!, width: 1),
                   ),
                   child: Text(
                     'ID: ${bookingProvider.currentBooking?.bookingCode ?? ""}',
@@ -956,9 +957,11 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
               duration: const Duration(milliseconds: 300),
               height: 54,
               child: ElevatedButton(
-                onPressed: _selectedPaymentMethod != null
-                    ? () => _createBookingAndProceed(context, bookingProvider)
-                    : null,
+                onPressed:
+                    _selectedPaymentMethod != null
+                        ? () =>
+                            _createBookingAndProceed(context, bookingProvider)
+                        : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,
                   foregroundColor: Colors.white,
@@ -967,34 +970,38 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
                     borderRadius: BorderRadius.circular(16),
                   ),
                   elevation: _selectedPaymentMethod != null ? 2 : 0,
-                  shadowColor: _selectedPaymentMethod != null
-                      ? primaryColor.withOpacity(0.3)
-                      : Colors.transparent,
+                  shadowColor:
+                      _selectedPaymentMethod != null
+                          ? primaryColor.withOpacity(0.3)
+                          : Colors.transparent,
                 ),
-                child: _isLoading
-                    ? SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Lanjutkan ke Pembayaran',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.2,
+                child:
+                    _isLoading
+                        ? SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
                             ),
+                            strokeWidth: 2,
                           ),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.arrow_forward, size: 18),
-                        ],
-                      ),
+                        )
+                        : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Lanjutkan ke Pembayaran',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.arrow_forward, size: 18),
+                          ],
+                        ),
               ),
             ),
           ],
@@ -1004,7 +1011,10 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
   }
 
   // Metode untuk membuat booking setelah memilih metode pembayaran
-  Future<void> _createBookingAndProceed(BuildContext context, BookingProvider bookingProvider) async {
+  Future<void> _createBookingAndProceed(
+    BuildContext context,
+    BookingProvider bookingProvider,
+  ) async {
     if (_selectedPaymentMethod == null || _selectedPaymentType == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1030,7 +1040,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
 
     try {
       developer.log('Memanggil submitBookingWithPayment');
-      
+
       // Kirim data booking dengan metode pembayaran yang dipilih ke server
       final success = await bookingProvider.submitBookingWithPayment(
         _selectedPaymentMethod!,
@@ -1039,10 +1049,10 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
 
       if (success) {
         developer.log('Submit booking berhasil');
-        
+
         // Jika sukses, dapatkan booking code untuk diproses
         final bookingCode = bookingProvider.currentBooking!.bookingCode;
-        
+
         // Proses pembayaran dengan metode yang dipilih
         final paymentSuccess = await bookingProvider.processPayment(
           bookingCode,
@@ -1066,7 +1076,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
           );
         } else {
           _showErrorMessage(
-            bookingProvider.errorMessage ?? 'Gagal memproses pembayaran'
+            bookingProvider.errorMessage ?? 'Gagal memproses pembayaran',
           );
         }
       } else {
@@ -1074,7 +1084,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
           _isLoading = false;
         });
         _showErrorMessage(
-          bookingProvider.errorMessage ?? 'Gagal membuat pemesanan'
+          bookingProvider.errorMessage ?? 'Gagal membuat pemesanan',
         );
       }
     } catch (e) {

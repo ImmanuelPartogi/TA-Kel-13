@@ -159,6 +159,7 @@ class BookingService
                         'booking_id' => $booking->id,
                         'user_id' => $user->id,
                         'type' => $vehicleData['type'],
+                        'vehicle_category_id' => $vehicleData['vehicle_category_id'], // Tambahkan ini
                         'license_plate' => $vehicleData['license_plate'],
                         'brand' => $vehicleData['brand'] ?? null,
                         'model' => $vehicleData['model'] ?? null,

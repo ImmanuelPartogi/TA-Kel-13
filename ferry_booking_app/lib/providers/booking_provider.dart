@@ -90,9 +90,11 @@ class BookingProvider extends ChangeNotifier {
       // Cara 1: Gunakan vehicle_category_id untuk mendapatkan harga dari kategori
       final category = _vehicleCategories.firstWhere(
         (cat) => cat.id == vehicle.vehicle_category_id,
-        orElse: () => _vehicleCategories.isNotEmpty
-            ? _vehicleCategories.first
-            : throw Exception('No VehicleCategory found'),
+        orElse:
+            () =>
+                _vehicleCategories.isNotEmpty
+                    ? _vehicleCategories.first
+                    : throw Exception('No VehicleCategory found'),
       );
 
       if (category != null) {
@@ -181,6 +183,19 @@ class BookingProvider extends ChangeNotifier {
 
     // Default ID (sebaiknya sesuaikan dengan data Anda)
     return 1;
+  }
+
+  String _getValidVehicleType(String originalType) {
+    final validTypes = {
+      'MOTORCYCLE': 'MOTORCYCLE',
+      'CAR': 'CAR',
+      'BUS': 'BUS',
+      'TRUCK': 'TRUCK',
+      // Ubah PICKUP menjadi TRUCK karena server tidak menerima PICKUP
+      'PICKUP': 'TRUCK',
+      'TRONTON': 'TRONTON',
+    };
+    return validTypes[originalType] ?? 'MOTORCYCLE';
   }
 
   void createTemporaryBooking() {
@@ -567,10 +582,10 @@ class BookingProvider extends ChangeNotifier {
           _vehicles
               .map(
                 (vehicle) => {
-                  'type': vehicle.type,
-                  'vehicle_category_id':
-                      vehicle
-                          .vehicle_category_id, // Tambahkan vehicle_category_id
+                  'type': _getValidVehicleType(
+                    vehicle.type,
+                  ), // Gunakan fungsi validasi
+                  'vehicle_category_id': vehicle.vehicle_category_id,
                   'license_plate': vehicle.licensePlate,
                   'brand': vehicle.brand,
                   'model': vehicle.model,

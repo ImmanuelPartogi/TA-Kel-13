@@ -1,3 +1,5 @@
+import 'package:ferry_booking_app/models/vehicle_category.dart';
+
 class FerryRoute {
   final int id;
   final String origin;
@@ -6,12 +8,9 @@ class FerryRoute {
   final double? distance;
   final int duration;
   final double basePrice;
-  final double motorcyclePrice;
-  final double carPrice;
-  final double busPrice;
-  final double truckPrice;
   final String status;
   final String? statusReason;
+  final List<VehicleCategory>? vehicleCategories;
 
   FerryRoute({
     required this.id,
@@ -21,18 +20,18 @@ class FerryRoute {
     this.distance,
     required this.duration,
     required this.basePrice,
-    required this.motorcyclePrice,
-    required this.carPrice,
-    required this.busPrice,
-    required this.truckPrice,
     required this.status,
     this.statusReason,
+    this.vehicleCategories,
   });
 
   factory FerryRoute.fromJson(Map<String, dynamic> json) {
-    // Hapus token dari json jika ada (ini menghindari konflik dengan proses deserialisasi)
-    if (json.containsKey('token')) {
-      json.remove('token');
+    List<VehicleCategory>? vehicleCategories;
+    if (json.containsKey('vehicle_categories')) {
+      vehicleCategories =
+          (json['vehicle_categories'] as List)
+              .map((item) => VehicleCategory.fromJson(item))
+              .toList();
     }
 
     return FerryRoute(
@@ -46,12 +45,29 @@ class FerryRoute {
               : null,
       duration: int.parse(json['duration'].toString()),
       basePrice: double.parse(json['base_price'].toString()),
-      motorcyclePrice: double.parse(json['motorcycle_price'].toString()),
-      carPrice: double.parse(json['car_price'].toString()),
-      busPrice: double.parse(json['bus_price'].toString()),
-      truckPrice: double.parse(json['truck_price'].toString()),
       status: json['status'],
       statusReason: json['status_reason'],
+      vehicleCategories: vehicleCategories,
     );
+  }
+
+  // Helper method untuk mendapatkan harga kendaraan dari kategori
+  double getVehiclePriceByType(String vehicleType) {
+    if (vehicleCategories == null) return 0;
+
+    final category = vehicleCategories!.firstWhere(
+      (cat) => cat.vehicleType == vehicleType,
+      orElse:
+          () => VehicleCategory(
+            id: 0,
+            code: '',
+            name: '',
+            vehicleType: vehicleType,
+            basePrice: 0,
+            isActive: false,
+          ),
+    );
+
+    return category.basePrice;
   }
 }

@@ -33,13 +33,18 @@ class ApiService {
     try {
       final headers = await _getHeaders();
 
-      print('GET Request to: $baseUrl/$endpoint');
+      // Perbaikan format URL: menghapus / berlebih
+      String url;
+      if (endpoint.startsWith('/')) {
+        url = '$baseUrl${endpoint}'; // Jika endpoint sudah memiliki / di awal
+      } else {
+        url = '$baseUrl/$endpoint'; // Jika endpoint tidak memiliki / di awal
+      }
+
+      print('GET Request to: $url');
       print('Headers: $headers');
 
-      final response = await http.get(
-        Uri.parse('$baseUrl/$endpoint'),
-        headers: headers,
-      );
+      final response = await http.get(Uri.parse(url), headers: headers);
 
       print('Response status: ${response.statusCode}');
       print('Response body: ${response.body}');

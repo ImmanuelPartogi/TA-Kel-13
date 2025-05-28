@@ -3,6 +3,7 @@ class Vehicle {
   final int bookingId;
   final int userId;
   final String type;
+  final int vehicle_category_id; // Tambahkan field ini
   final String licensePlate;
   final String? brand;
   final String? model;
@@ -15,6 +16,7 @@ class Vehicle {
     required this.bookingId,
     required this.userId,
     required this.type,
+    required this.vehicle_category_id, // Tambahkan parameter wajib
     required this.licensePlate,
     this.brand,
     this.model,
@@ -29,6 +31,7 @@ class Vehicle {
       bookingId: json['booking_id'],
       userId: json['user_id'],
       type: json['type'],
+      vehicle_category_id: json['vehicle_category_id'], // Parse dari JSON
       licensePlate: json['license_plate'],
       brand: json['brand'],
       model: json['model'],
@@ -38,5 +41,22 @@ class Vehicle {
       createdAt: json['created_at'],
       updatedAt: json['updated_at'],
     );
+  }
+  
+  // Opsional: Tambahkan toJson() untuk memudahkan ketika mengirim data ke API
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'booking_id': bookingId,
+      'user_id': userId,
+      'type': type,
+      'vehicle_category_id': vehicle_category_id,
+      'license_plate': licensePlate,
+      'brand': brand,
+      'model': model,
+      'weight': weight,
+      'created_at': createdAt,
+      'updated_at': updatedAt,
+    };
   }
 }

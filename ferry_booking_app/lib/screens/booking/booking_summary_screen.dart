@@ -1,3 +1,4 @@
+import 'package:ferry_booking_app/models/vehicle_category.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -18,33 +19,32 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: const CustomAppBar(
         title: 'Ringkasan Pemesanan',
         showBackButton: true,
       ),
-      body: _isLoading
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(
-                    color: theme.primaryColor,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Memproses pemesanan...',
-                    style: TextStyle(
-                      color: Colors.grey.shade700,
-                      fontSize: 14,
+      body:
+          _isLoading
+              ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(color: theme.primaryColor),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Memproses pemesanan...',
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontSize: 14,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            )
-          : _buildContent(),
+                  ],
+                ),
+              )
+              : _buildContent(),
     );
   }
 
@@ -70,18 +70,12 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
             const SizedBox(height: 16),
             const Text(
               'Data pemesanan tidak lengkap',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
               'Silakan lengkapi data pemesanan Anda',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade600,
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
@@ -133,7 +127,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
           children: [
             // Status Pemesanan
             _buildBookingStatus(),
-            
+
             // Informasi Rute & Jadwal
             _buildRouteInfoSection(
               theme,
@@ -145,7 +139,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
               selectedSchedule,
               bookingProvider,
             ),
-            
+
             // Detail Penumpang
             _buildPassengerSection(
               theme,
@@ -153,20 +147,16 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
               selectedRoute,
               currencyFormat,
             ),
-            
+
             // Rincian Biaya
-            _buildPriceSummarySection(
-              theme,
-              bookingProvider,
-              currencyFormat,
-            ),
-            
+            _buildPriceSummarySection(theme, bookingProvider, currencyFormat),
+
             // Tombol Aksi
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: _buildActionButtons(context),
             ),
-            
+
             // Kebijakan
             _buildPolicyInfo(theme),
           ],
@@ -177,31 +167,23 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
 
   Widget _buildBookingStatus() {
     final isActive = !_isSuccessful; // Status aktif jika belum sukses
-    
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: BoxDecoration(
-        color: isActive 
-            ? Colors.blue.shade50 
-            : Colors.green.shade50,
+        color: isActive ? Colors.blue.shade50 : Colors.green.shade50,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isActive 
-              ? Colors.blue.shade200 
-              : Colors.green.shade200,
+          color: isActive ? Colors.blue.shade200 : Colors.green.shade200,
           width: 1,
         ),
       ),
       child: Row(
         children: [
           Icon(
-            isActive 
-                ? Icons.info_outline 
-                : Icons.check_circle_outline,
-            color: isActive 
-                ? Colors.blue.shade700 
-                : Colors.green.shade700,
+            isActive ? Icons.info_outline : Icons.check_circle_outline,
+            color: isActive ? Colors.blue.shade700 : Colors.green.shade700,
             size: 20,
           ),
           const SizedBox(width: 12),
@@ -212,9 +194,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                   : 'Pemesanan berhasil disiapkan, lanjutkan ke pembayaran',
               style: TextStyle(
                 fontSize: 13,
-                color: isActive
-                    ? Colors.blue.shade700
-                    : Colors.green.shade700,
+                color: isActive ? Colors.blue.shade700 : Colors.green.shade700,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -265,7 +245,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Jadwal Ferry dengan Visual Timeline
             Container(
               padding: const EdgeInsets.all(16),
@@ -303,7 +283,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                           ],
                         ),
                       ),
-                      
+
                       // Timeline
                       Column(
                         children: [
@@ -343,7 +323,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                           ),
                         ],
                       ),
-                      
+
                       // Arrival
                       Expanded(
                         child: Column(
@@ -374,26 +354,26 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Tanggal, Kode Rute, dan Kapal dalam format list dengan icon
             _buildInfoRow(
               Icons.calendar_today,
               'Tanggal Keberangkatan',
               dateFormat.format(bookingProvider.selectedDate!),
             ),
-            
+
             const Divider(height: 24),
-            
+
             _buildInfoRow(
               Icons.qr_code,
               'Kode Rute',
               selectedRoute.routeCode ?? 'N/A',
             ),
-            
+
             const Divider(height: 24),
-            
+
             _buildInfoRow(
               Icons.directions_boat_filled,
               'Nama Kapal',
@@ -408,26 +388,16 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(
       children: [
-        Icon(
-          icon,
-          size: 18,
-          color: Colors.grey.shade600,
-        ),
+        Icon(icon, size: 18, color: Colors.grey.shade600),
         const SizedBox(width: 8),
         Text(
           label,
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey.shade800,
-          ),
+          style: TextStyle(fontSize: 14, color: Colors.grey.shade800),
         ),
         const Spacer(),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ],
     );
@@ -470,13 +440,10 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Header Penumpang
             Container(
-              padding: const EdgeInsets.symmetric(
-                vertical: 8,
-                horizontal: 12,
-              ),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
               decoration: BoxDecoration(
                 color: Colors.grey.shade100,
                 borderRadius: BorderRadius.circular(6),
@@ -576,7 +543,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
             // Daftar Kendaraan jika ada
             if (bookingProvider.vehicles.isNotEmpty) ...[
               const SizedBox(height: 24),
-              
+
               // Header Kendaraan
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -633,23 +600,38 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                 separatorBuilder: (context, index) => const Divider(height: 1),
                 itemBuilder: (context, index) {
                   final vehicle = bookingProvider.vehicles[index];
+
                   double price;
 
-                  switch (vehicle.type) {
-                    case 'MOTORCYCLE':
-                      price = selectedRoute.motorcyclePrice;
-                      break;
-                    case 'CAR':
-                      price = selectedRoute.carPrice;
-                      break;
-                    case 'BUS':
-                      price = selectedRoute.busPrice;
-                      break;
-                    case 'TRUCK':
-                      price = selectedRoute.truckPrice;
-                      break;
-                    default:
-                      price = 0;
+                  // Dapatkan kategori kendaraan berdasarkan vehicle_category_id
+                  final vehicleCategories = bookingProvider.vehicleCategories;
+                  VehicleCategory? category;
+
+                  if (vehicleCategories.isNotEmpty) {
+                    // Cari kategori yang sesuai dengan vehicle_category_id
+                    for (var cat in vehicleCategories) {
+                      if (cat.id == vehicle.vehicle_category_id) {
+                        category = cat;
+                        break;
+                      }
+                    }
+
+                    // Jika tidak ditemukan, gunakan kategori pertama sebagai fallback
+                    if (category == null) {
+                      category = vehicleCategories.first;
+                    }
+                  }
+
+                  if (category != null) {
+                    price = category.basePrice;
+                    print(
+                      'Found price for ${vehicle.licensePlate}: ${category.basePrice} from category ${category.code}',
+                    );
+                  } else {
+                    price = selectedRoute.getVehiclePriceByType(vehicle.type);
+                    print(
+                      'Using fallback price for ${vehicle.licensePlate}: $price',
+                    );
                   }
 
                   final brand = vehicle.brand ?? '';
@@ -719,9 +701,9 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                   );
                 },
               ),
-              
+
               const Divider(height: 24),
-              
+
               // Total Kendaraan
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -753,7 +735,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
   Widget _buildVehicleIcon(String type) {
     IconData icon;
     Color color;
-    
+
     switch (type) {
       case 'MOTORCYCLE':
         icon = Icons.motorcycle;
@@ -775,18 +757,14 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
         icon = Icons.directions_car;
         color = Colors.blue;
     }
-    
+
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Icon(
-        icon,
-        size: 14,
-        color: color,
-      ),
+      child: Icon(icon, size: 14, color: color),
     );
   }
 
@@ -826,7 +804,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // List pembayaran dengan tampilan yang lebih rapi
             Column(
               children: [
@@ -835,7 +813,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                   'Penumpang (${bookingProvider.totalPassengers} orang)',
                   currencyFormat.format(bookingProvider.passengerCost),
                 ),
-                
+
                 // Biaya Kendaraan
                 if (bookingProvider.vehicles.isNotEmpty) ...[
                   const SizedBox(height: 8),
@@ -846,31 +824,26 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                 ],
               ],
             ),
-            
+
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
               child: Divider(height: 1),
             ),
-            
+
             // Total dengan highlight
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: theme.primaryColor.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: theme.primaryColor.withOpacity(0.2),
-                ),
+                border: Border.all(color: theme.primaryColor.withOpacity(0.2)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
                     'Total Pembayaran',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                   ),
                   Text(
                     currencyFormat.format(bookingProvider.totalCost),
@@ -895,17 +868,11 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
       children: [
         Text(
           label,
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey.shade800,
-          ),
+          style: TextStyle(fontSize: 14, color: Colors.grey.shade800),
         ),
         Text(
           value,
-          style: const TextStyle(
-            fontWeight: FontWeight.w500,
-            fontSize: 14,
-          ),
+          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
         ),
       ],
     );
@@ -925,11 +892,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
         children: [
           Row(
             children: [
-              Icon(
-                Icons.info_outline,
-                size: 16,
-                color: theme.primaryColor,
-              ),
+              Icon(Icons.info_outline, size: 16, color: theme.primaryColor),
               const SizedBox(width: 8),
               Text(
                 'Informasi Penting',
@@ -942,12 +905,8 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          _buildPolicyItem(
-            'Harap datang 30 menit sebelum keberangkatan',
-          ),
-          _buildPolicyItem(
-            'Harga tiket sudah termasuk asuransi perjalanan',
-          ),
+          _buildPolicyItem('Harap datang 30 menit sebelum keberangkatan'),
+          _buildPolicyItem('Harga tiket sudah termasuk asuransi perjalanan'),
           _buildPolicyItem(
             'Pembatalan tiket dapat dilakukan 24 jam sebelum keberangkatan',
           ),
@@ -974,10 +933,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
           Expanded(
             child: Text(
               text,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey.shade700,
-              ),
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
             ),
           ),
         ],
@@ -1011,10 +967,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                 ),
                 Text(
                   subtitle,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
               ],
             ),
@@ -1022,10 +975,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
           Expanded(
             flex: 3,
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                vertical: 4,
-                horizontal: 8,
-              ),
+              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
               decoration: BoxDecoration(
                 color: Colors.grey.shade100,
                 borderRadius: BorderRadius.circular(4),
@@ -1059,16 +1009,17 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
 
   Widget _buildActionButtons(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Column(
       children: [
         // Pesan Tiket
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: _isLoading || _isSuccessful
-                ? null
-                : () => _prepareBookingAndNavigate(context),
+            onPressed:
+                _isLoading || _isSuccessful
+                    ? null
+                    : () => _prepareBookingAndNavigate(context),
             style: ButtonStyle(
               padding: MaterialStateProperty.all(
                 const EdgeInsets.symmetric(vertical: 16),
@@ -1080,9 +1031,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                 return theme.primaryColor;
               }),
               shape: MaterialStateProperty.all(
-                RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
               elevation: MaterialStateProperty.all(0),
             ),
@@ -1100,33 +1049,28 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Icon(
-                  Icons.payment_rounded,
-                  size: 20,
-                ),
+                const Icon(Icons.payment_rounded, size: 20),
               ],
             ),
           ),
         ),
         const SizedBox(height: 12),
-        
+
         // Ubah Data
         SizedBox(
           width: double.infinity,
           child: OutlinedButton(
-            onPressed: _isLoading || _isSuccessful
-                ? null
-                : () => Navigator.of(context).pop(),
+            onPressed:
+                _isLoading || _isSuccessful
+                    ? null
+                    : () => Navigator.of(context).pop(),
             style: ButtonStyle(
               padding: MaterialStateProperty.all(
                 const EdgeInsets.symmetric(vertical: 16),
               ),
               side: MaterialStateProperty.resolveWith((states) {
                 if (states.contains(MaterialState.pressed)) {
-                  return BorderSide(
-                    color: theme.primaryColor,
-                    width: 2,
-                  );
+                  return BorderSide(color: theme.primaryColor, width: 2);
                 }
                 return BorderSide(
                   color: theme.primaryColor.withOpacity(0.7),
@@ -1134,9 +1078,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                 );
               }),
               shape: MaterialStateProperty.all(
-                RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
             ),
             child: Text(

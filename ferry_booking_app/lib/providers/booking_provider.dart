@@ -7,13 +7,16 @@ import '../models/ferry.dart';
 import '../models/route.dart';
 import '../models/schedule.dart';
 import '../models/vehicle.dart';
+import '../models/vehicle_category.dart';
 import '../models/payment.dart';
+import '../services/api_service.dart';
 import 'dart:developer' as developer;
 
 class BookingProvider extends ChangeNotifier {
   final BookingApi _bookingApi = BookingApi();
   final PaymentApi _paymentApi = PaymentApi();
   final PaymentPollingService _paymentPollingService = PaymentPollingService();
+  final ApiService _apiService = ApiService();
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -32,6 +35,10 @@ class BookingProvider extends ChangeNotifier {
   List<Booking>? _bookings;
   Booking? _currentBooking;
 
+  // Tambahkan property untuk menyimpan kategori kendaraan
+  List<VehicleCategory> _vehicleCategories = [];
+  List<VehicleCategory> get vehicleCategories => _vehicleCategories;
+
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
@@ -44,6 +51,11 @@ class BookingProvider extends ChangeNotifier {
 
   List<Booking>? get bookings => _bookings;
   Booking? get currentBooking => _currentBooking;
+
+  // Constructor - Fetch kategori kendaraan saat provider dibuat
+  BookingProvider() {
+    fetchVehicleCategories();
+  }
 
   // Menghitung total penumpang dari semua kategori
   int get totalPassengers {
@@ -75,27 +87,101 @@ class BookingProvider extends ChangeNotifier {
 
     double total = 0.0;
     for (var vehicle in _vehicles) {
-      switch (vehicle.type) {
-        case 'MOTORCYCLE':
-          total += _selectedRoute!.motorcyclePrice;
-          break;
-        case 'CAR':
-          total += _selectedRoute!.carPrice;
-          break;
-        case 'BUS':
-          total += _selectedRoute!.busPrice;
-          break;
-        case 'TRUCK':
-          total += _selectedRoute!.truckPrice;
-          break;
+      // Cara 1: Gunakan vehicle_category_id untuk mendapatkan harga dari kategori
+      final category = _vehicleCategories.firstWhere(
+        (cat) => cat.id == vehicle.vehicle_category_id,
+        orElse: () => _vehicleCategories.isNotEmpty
+            ? _vehicleCategories.first
+            : throw Exception('No VehicleCategory found'),
+      );
+
+      if (category != null) {
+        total += category.basePrice;
+        print(
+          'Calculating price for vehicle ${vehicle.licensePlate}: ${category.basePrice}',
+        );
+      } else {
+        // Cara 2: Fallback ke getVehiclePriceByType jika kategori tidak ditemukan
+        double price = _selectedRoute!.getVehiclePriceByType(vehicle.type);
+        total += price;
+        print('Fallback price for vehicle ${vehicle.licensePlate}: $price');
       }
     }
+    print('Total vehicle cost: $total');
     return total;
   }
 
   double get totalCost => passengerCost + vehicleCost;
 
   bool get hasActiveBooking => _currentBooking != null;
+
+  // Metode untuk mengambil data kategori kendaraan dari API
+  Future<void> fetchVehicleCategories() async {
+    try {
+      final response = await _apiService.get('vehicle-categories');
+
+      if (response['success'] == true && response['data'] != null) {
+        final List<dynamic> categoriesData = response['data'];
+        _vehicleCategories.clear();
+        _vehicleCategories.addAll(
+          categoriesData.map((data) => VehicleCategory.fromJson(data)).toList(),
+        );
+        developer.log(
+          'Fetched ${_vehicleCategories.length} vehicle categories',
+        );
+        notifyListeners();
+      } else {
+        developer.log(
+          'Failed to fetch vehicle categories: ${response['message']}',
+        );
+      }
+    } catch (e) {
+      developer.log('Error fetching vehicle categories: $e');
+    }
+  }
+
+  // Metode helper untuk mendapatkan kategori berdasarkan tipe
+  VehicleCategory? _getCategoryByType(String type) {
+    try {
+      // Coba temukan kategori aktif dengan tipe yang sesuai
+      return _vehicleCategories.firstWhere(
+        (category) => category.vehicleType == type && category.isActive,
+      );
+    } catch (e) {
+      // Jika tidak ditemukan kategori aktif, coba kategori apa saja dengan tipe yang sama
+      try {
+        return _vehicleCategories.firstWhere(
+          (category) => category.vehicleType == type,
+        );
+      } catch (e) {
+        // Jika masih tidak ditemukan, gunakan kategori pertama yang aktif
+        try {
+          return _vehicleCategories.firstWhere((category) => category.isActive);
+        } catch (e) {
+          // Jika tidak ada kategori yang aktif, gunakan kategori pertama saja
+          return _vehicleCategories.isNotEmpty
+              ? _vehicleCategories.first
+              : null;
+        }
+      }
+    }
+  }
+
+  // Mendapatkan ID kategori kendaraan berdasarkan tipe
+  int getVehicleCategoryIdByType(String type) {
+    final category = _getCategoryByType(type);
+    if (category != null) {
+      return category.id;
+    }
+
+    // Jika kategori kosong, coba fetch data
+    if (_vehicleCategories.isEmpty) {
+      fetchVehicleCategories();
+    }
+
+    // Default ID (sebaiknya sesuaikan dengan data Anda)
+    return 1;
+  }
 
   void createTemporaryBooking() {
     if (_currentBooking == null &&
@@ -127,6 +213,19 @@ class BookingProvider extends ChangeNotifier {
   // Set selected route
   void setSelectedRoute(FerryRoute route) {
     _selectedRoute = route;
+
+    // Load vehicle categories dari rute jika tersedia
+    if (route.vehicleCategories != null &&
+        route.vehicleCategories!.isNotEmpty) {
+      _vehicleCategories = route.vehicleCategories!;
+      print(
+        'Loaded ${_vehicleCategories.length} vehicle categories from route',
+      );
+    } else if (_vehicleCategories.isEmpty) {
+      // Jika tidak ada, fetch dari API
+      fetchVehicleCategories();
+    }
+
     notifyListeners();
   }
 
@@ -209,13 +308,35 @@ class BookingProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Backward compatibility
+  // Backward compatibility - DIPERBARUI untuk menambahkan vehicle_category_id
   void addVehicleFromMap(Map<String, dynamic> vehicleData) {
+    // Tipe default MOTORCYCLE
+    final String type = vehicleData['type'] ?? 'MOTORCYCLE';
+
+    // Cari kategori yang sesuai berdasarkan tipe
+    final VehicleCategory? category = _getCategoryByType(type);
+
+    // Jika kategori tidak ditemukan dan daftar kategori kosong, fetch data kategori
+    if (category == null && _vehicleCategories.isEmpty) {
+      fetchVehicleCategories().then((_) {
+        // Coba lagi setelah fetch
+        addVehicleFromMap(vehicleData);
+      });
+      return;
+    }
+
+    // Gunakan kategori ID dari data, atau dari kategori yang ditemukan, atau default
+    final int categoryId =
+        vehicleData['vehicle_category_id'] ??
+        category?.id ??
+        getVehicleCategoryIdByType(type);
+
     final vehicle = Vehicle(
       id: -1,
       bookingId: -1,
       userId: -1,
-      type: vehicleData['type'] ?? 'MOTORCYCLE',
+      type: type,
+      vehicle_category_id: categoryId, // Gunakan ID kategori
       licensePlate: vehicleData['license_plate'] ?? '',
       brand: vehicleData['brand'],
       model: vehicleData['model'],
@@ -239,19 +360,30 @@ class BookingProvider extends ChangeNotifier {
     }
   }
 
-  // Backward compatibility
+  // Backward compatibility - DIPERBARUI untuk menambahkan vehicle_category_id
   void updateVehicleFromMap(int index, Map<String, dynamic> vehicleData) {
     if (index >= 0 && index < _vehicles.length) {
       final currentVehicle = _vehicles[index];
+
+      // Gunakan type yang baru jika ada, atau yang saat ini jika tidak ada
+      final String type = vehicleData['type'] ?? currentVehicle.type;
+
+      // Gunakan category_id dari data jika ada
+      // Jika tidak, gunakan yang saat ini, atau dapatkan dari kategori berdasarkan tipe
+      final int categoryId =
+          vehicleData['vehicle_category_id'] ??
+          currentVehicle.vehicle_category_id;
+
       final updatedVehicle = Vehicle(
         id: currentVehicle.id,
         bookingId: currentVehicle.bookingId,
         userId: currentVehicle.userId,
-        type: vehicleData['type'] ?? currentVehicle.type,
+        type: type,
+        vehicle_category_id: categoryId, // Gunakan ID kategori
         licensePlate:
             vehicleData['license_plate'] ?? currentVehicle.licensePlate,
-        brand: vehicleData['brand'],
-        model: vehicleData['model'],
+        brand: vehicleData['brand'] ?? currentVehicle.brand,
+        model: vehicleData['model'] ?? currentVehicle.model,
         weight:
             vehicleData['weight'] != null
                 ? double.tryParse(vehicleData['weight'].toString())
@@ -373,6 +505,9 @@ class BookingProvider extends ChangeNotifier {
               .map(
                 (vehicle) => {
                   'type': vehicle.type,
+                  'vehicle_category_id':
+                      vehicle
+                          .vehicle_category_id, // Tambahkan vehicle_category_id
                   'license_plate': vehicle.licensePlate,
                   'brand': vehicle.brand,
                   'model': vehicle.model,
@@ -433,6 +568,9 @@ class BookingProvider extends ChangeNotifier {
               .map(
                 (vehicle) => {
                   'type': vehicle.type,
+                  'vehicle_category_id':
+                      vehicle
+                          .vehicle_category_id, // Tambahkan vehicle_category_id
                   'license_plate': vehicle.licensePlate,
                   'brand': vehicle.brand,
                   'model': vehicle.model,

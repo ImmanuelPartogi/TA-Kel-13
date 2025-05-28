@@ -9,6 +9,8 @@ const ScheduleCreate = () => {
   const [ferries, setFerries] = useState([]);
   const [errors, setErrors] = useState({});
   const [currentStep, setCurrentStep] = useState(1);
+  const [isDataLoading, setIsDataLoading] = useState(true);
+  const [isArrivalTimeAuto, setIsArrivalTimeAuto] = useState(false);
   
   const [formData, setFormData] = useState({
     route_id: '',
@@ -31,55 +33,75 @@ const ScheduleCreate = () => {
   }, []);
 
   const fetchData = async () => {
+    setIsDataLoading(true);
     try {
       const [routesRes, ferriesRes] = await Promise.all([
         adminScheduleService.get('/admin-panel/routes'),
         adminScheduleService.get('/admin-panel/ferries')
       ]);
       
-      // Debug response struktur
-      console.log('Routes Response:', routesRes.data);
-      console.log('Ferries Response:', ferriesRes.data);
+      // Log respons untuk debugging
+      console.log('Routes response:', routesRes);
       
-      // Berbagai kemungkinan struktur response
+      // Extract routes array dengan berbagai kemungkinan struktur
       const routesData = routesRes.data.data || routesRes.data;
       const ferriesData = ferriesRes.data.data || ferriesRes.data;
       
-      // Extract routes array dengan berbagai kemungkinan struktur
+      let extractedRoutes = [];
+      
       if (Array.isArray(routesData)) {
-        setRoutes(routesData);
-      } else if (routesData.routes) {
-        setRoutes(routesData.routes);
-      } else if (routesData.data) {
-        setRoutes(routesData.data);
+        extractedRoutes = routesData;
+      } else if (routesData.routes && Array.isArray(routesData.routes)) {
+        extractedRoutes = routesData.routes;
+      } else if (routesData.data && Array.isArray(routesData.data)) {
+        extractedRoutes = routesData.data;
       } else {
         console.error('Unexpected routes data structure:', routesData);
-        setRoutes([]);
+        extractedRoutes = [];
       }
       
-      // Extract ferries array dengan berbagai kemungkinan struktur
+      // Verifikasi apakah setiap rute memiliki properti duration
+      const routesWithDuration = extractedRoutes.map(route => {
+        if (route.duration === undefined || route.duration === null) {
+          console.warn(`Rute ${route.id} (${route.origin} - ${route.destination}) tidak memiliki durasi!`);
+          // Opsional: Tambahkan durasi default jika perlu
+          return { ...route, duration: 0 };
+        }
+        
+        // Pastikan durasi adalah angka
+        const duration = parseInt(route.duration, 10);
+        if (isNaN(duration)) {
+          console.warn(`Rute ${route.id} memiliki durasi yang bukan angka: ${route.duration}`);
+          return { ...route, duration: 0 };
+        }
+        
+        return route;
+      });
+      
+      console.log('Routes dengan durasi:', routesWithDuration);
+      setRoutes(routesWithDuration);
+      
+      // Proses data kapal seperti biasa
+      let extractedFerries = [];
       if (Array.isArray(ferriesData)) {
-        setFerries(ferriesData);
-      } else if (ferriesData.ferries) {
-        setFerries(ferriesData.ferries);
-      } else if (ferriesData.data) {
-        setFerries(ferriesData.data);
+        extractedFerries = ferriesData;
+      } else if (ferriesData.ferries && Array.isArray(ferriesData.ferries)) {
+        extractedFerries = ferriesData.ferries;
+      } else if (ferriesData.data && Array.isArray(ferriesData.data)) {
+        extractedFerries = ferriesData.data;
       } else {
         console.error('Unexpected ferries data structure:', ferriesData);
-        setFerries([]);
+        extractedFerries = [];
       }
       
+      setFerries(extractedFerries);
     } catch (error) {
       console.error('Error fetching data:', error);
       console.error('Error details:', error.response);
+    } finally {
+      setIsDataLoading(false);
     }
   };
-
-  // Debug state changes
-  useEffect(() => {
-    console.log('Routes state:', routes);
-    console.log('Ferries state:', ferries);
-  }, [routes, ferries]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -90,19 +112,54 @@ const ScheduleCreate = () => {
         ? [...formData.days, numValue]
         : formData.days.filter(day => day !== numValue);
       setFormData({ ...formData, days: newDays });
+    } else if (name === 'departure_time' || name === 'arrival_time') {
+      // Khusus untuk input waktu, hanya update langsung
+      // Pemformatan akan dilakukan di onBlur
+      setFormData({ ...formData, [name]: value });
+      
+      // Jika pengguna mengubah waktu kedatangan secara manual, tandai bahwa ini bukan hasil otomatis
+      if (name === 'arrival_time') {
+        setIsArrivalTimeAuto(false);
+      }
     } else {
       setFormData({ ...formData, [name]: value });
     }
   };
 
   const calculateArrivalTime = () => {
-    if (!formData.departure_time || !formData.route_id) return;
+    if (!formData.departure_time || !formData.route_id) {
+      console.log('Tidak dapat menghitung waktu kedatangan: waktu keberangkatan atau rute belum dipilih');
+      return;
+    }
     
     const route = routes.find(r => r.id === parseInt(formData.route_id));
-    if (!route) return;
+    if (!route || !route.duration) {
+      console.warn('Durasi rute tidak ditemukan atau tidak valid:', route);
+      return;
+    }
     
-    const [hours, minutes] = formData.departure_time.split(':').map(Number);
-    const duration = route.duration || 0;
+    // Parse departure time
+    const parts = formData.departure_time.split(':');
+    if (parts.length !== 2) {
+      console.warn('Format waktu keberangkatan tidak valid:', formData.departure_time);
+      return;
+    }
+    
+    const hours = parseInt(parts[0], 10);
+    const minutes = parseInt(parts[1], 10);
+    
+    if (isNaN(hours) || isNaN(minutes)) {
+      console.warn('Jam atau menit tidak valid:', hours, minutes);
+      return;
+    }
+    
+    const duration = parseInt(route.duration, 10);
+    if (isNaN(duration)) {
+      console.warn('Durasi rute bukan angka valid:', route.duration);
+      return;
+    }
+    
+    console.log(`Menghitung waktu kedatangan: ${hours}:${minutes} + ${duration} menit`);
     
     let totalMinutes = hours * 60 + minutes + duration;
     const arrivalHours = Math.floor(totalMinutes / 60) % 24;
@@ -111,10 +168,15 @@ const ScheduleCreate = () => {
     const formattedHours = arrivalHours.toString().padStart(2, '0');
     const formattedMinutes = arrivalMinutes.toString().padStart(2, '0');
     
+    const newArrivalTime = `${formattedHours}:${formattedMinutes}`;
+    console.log(`Waktu kedatangan yang dihitung: ${newArrivalTime}`);
+    
+    // Update arrival_time dan tandai bahwa ini hasil otomatis
     setFormData(prev => ({
       ...prev,
-      arrival_time: `${formattedHours}:${formattedMinutes}`
+      arrival_time: newArrivalTime
     }));
+    setIsArrivalTimeAuto(true);
   };
 
   const validateForm = () => {
@@ -122,8 +184,19 @@ const ScheduleCreate = () => {
     
     if (!formData.route_id) newErrors.route_id = 'Rute harus dipilih';
     if (!formData.ferry_id) newErrors.ferry_id = 'Kapal harus dipilih';
-    if (!formData.departure_time) newErrors.departure_time = 'Waktu keberangkatan harus diisi';
-    if (!formData.arrival_time) newErrors.arrival_time = 'Waktu kedatangan harus diisi';
+    
+    if (!formData.departure_time) {
+      newErrors.departure_time = 'Waktu keberangkatan harus diisi';
+    } else if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(formData.departure_time)) {
+      newErrors.departure_time = 'Pilih jam dan menit keberangkatan';
+    }
+    
+    if (!formData.arrival_time) {
+      newErrors.arrival_time = 'Waktu kedatangan harus diisi';
+    } else if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(formData.arrival_time)) {
+      newErrors.arrival_time = 'Pilih jam dan menit kedatangan';
+    }
+    
     if (formData.days.length === 0) newErrors.days = 'Pilih minimal satu hari operasional';
     
     setErrors(newErrors);
@@ -141,12 +214,16 @@ const ScheduleCreate = () => {
       }
       
       setCurrentStep(2);
+      // Scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
   const handlePrev = () => {
     if (currentStep === 2) {
       setCurrentStep(1);
+      // Scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -159,354 +236,872 @@ const ScheduleCreate = () => {
     try {
       await adminScheduleService.post('/admin-panel/schedules', {
         ...formData,
-        days: formData.days  // Kirim sebagai array, bukan string
+        days: formData.days
       });
-      navigate('/admin/schedules');
+      
+      // Success notification
+      const notification = document.getElementById('notification');
+      if (notification) {
+        notification.classList.remove('opacity-0');
+        notification.classList.add('opacity-100');
+        
+        setTimeout(() => {
+          notification.classList.remove('opacity-100');
+          notification.classList.add('opacity-0');
+          
+          setTimeout(() => {
+            navigate('/admin/schedules');
+          }, 300);
+        }, 1500);
+      } else {
+        navigate('/admin/schedules');
+      }
     } catch (error) {
       console.error('Submit error:', error.response?.data);
       if (error.response?.data?.errors) {
         setErrors(error.response.data.errors);
       }
-    } finally {
       setLoading(false);
     }
   };
 
+  // Menentukan durasi rute yang dipilih
+  const getSelectedRouteDuration = () => {
+    if (!formData.route_id) return null;
+    const route = routes.find(r => r.id === parseInt(formData.route_id));
+    return route?.duration || null;
+  };
+
+  // Mengubah menit ke format jam:menit
+  const formatDuration = (minutes) => {
+    if (!minutes) return "-";
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}j ${mins}m`;
+  };
+
+  // Cek apakah rute yang dipilih memiliki durasi
+  const selectedRoute = formData.route_id ? routes.find(r => r.id === parseInt(formData.route_id)) : null;
+  const isDurationAvailable = selectedRoute && selectedRoute.duration > 0;
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <div className="bg-white shadow-lg rounded-xl overflow-hidden mb-6">
-        <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 p-6 text-white relative">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 relative">
+      {/* Success Notification */}
+      <div id="notification" className="fixed top-4 right-4 bg-green-50 border-l-4 border-green-500 p-4 shadow-2xl rounded-r-lg transition-opacity duration-300 opacity-0 z-50 flex items-center">
+        <div className="text-green-500 mr-3">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+        </div>
+        <div>
+          <p className="font-medium text-green-800">Jadwal berhasil disimpan!</p>
+          <p className="text-sm text-green-700">Mengalihkan ke daftar jadwal...</p>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl overflow-hidden shadow-xl border border-gray-100 mb-6 transition-all duration-300 hover:shadow-2xl">
+        <div className="bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 p-6 text-white relative overflow-hidden">
+          {/* Background Pattern */}
+          <div className="absolute top-0 left-0 right-0 bottom-0 opacity-10">
+            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <pattern id="smallGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+                  <path d="M 20 0 L 0 0 0 20" fill="none" stroke="white" strokeWidth="0.5"/>
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#smallGrid)" />
+            </svg>
+          </div>
+          
           <div className="flex justify-between items-center relative z-10">
             <h1 className="text-2xl font-bold flex items-center">
-              <i className="fas fa-plus-circle mr-3 text-blue-200"></i> Tambah Jadwal Baru
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 mr-3 text-blue-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Tambah Jadwal Baru
             </h1>
             <Link to="/admin/schedules" 
-              className="inline-flex items-center px-4 py-2 bg-gray-600 rounded-md font-semibold text-xs text-white uppercase hover:bg-gray-700">
+              className="inline-flex items-center px-4 py-2 bg-black/20 backdrop-blur-sm rounded-lg font-medium text-sm text-white hover:bg-black/30 transition-all duration-200">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
               Kembali
             </Link>
           </div>
+          
+          {/* Breadcrumb */}
+          <div className="mt-2 flex items-center text-sm text-blue-100/80">
+            <Link to="/admin/dashboard" className="hover:text-white">Dashboard</Link>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mx-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+            </svg>
+            <Link to="/admin/schedules" className="hover:text-white">Jadwal</Link>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mx-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+            </svg>
+            <span>Tambah Jadwal</span>
+          </div>
         </div>
 
-        <div className="p-6">
-
-          {/* Progress Steps */}
-          <div className="mb-8">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-              <div className="flex-1 mb-4 md:mb-0">
-                <div className="flex items-center">
-                  <div className={`${currentStep >= 1 ? 'bg-blue-500' : 'bg-gray-300'} text-white rounded-full h-10 w-10 flex items-center justify-center font-bold shadow-md`}>
-                    1
-                  </div>
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-gray-900">Informasi Dasar</p>
-                    <p className="text-xs text-gray-500">Detail jadwal utama</p>
+        {isDataLoading ? (
+          <div className="flex flex-col items-center justify-center p-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+            <p className="text-gray-600">Memuat data rute dan kapal...</p>
+          </div>
+        ) : (
+          <div className="p-6">
+            {/* Progress Steps */}
+            <div className="mb-8">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                <div className="flex-1 mb-4 md:mb-0">
+                  <div className="flex items-center">
+                    <div className={`${currentStep >= 1 ? 'bg-blue-600' : 'bg-gray-300'} text-white rounded-full h-12 w-12 flex items-center justify-center font-bold shadow-lg transition-all duration-300 transform ${currentStep >= 1 ? 'scale-100' : 'scale-95'}`}>
+                      1
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-base font-semibold text-gray-900">Informasi Dasar</p>
+                      <p className="text-sm text-gray-500">Detail jadwal utama</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="w-full mx-4 h-2 bg-gray-200 rounded-full hidden md:block">
-                <div className="h-2 bg-blue-500 rounded-full" style={{ width: currentStep === 2 ? '100%' : '50%' }}></div>
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center">
-                  <div className={`${currentStep >= 2 ? 'bg-blue-500' : 'bg-gray-300'} text-${currentStep >= 2 ? 'white' : 'gray-700'} rounded-full h-10 w-10 flex items-center justify-center font-bold shadow-sm`}>
-                    2
-                  </div>
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-gray-700">Hari Operasional</p>
-                    <p className="text-xs text-gray-500">Jadwal mingguan</p>
+                <div className="w-full mx-6 h-2 bg-gray-200 rounded-full hidden md:block relative">
+                  <div className="h-2 bg-blue-600 rounded-full transition-all duration-500 ease-in-out" style={{ width: currentStep === 2 ? '100%' : '50%' }}></div>
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-blue-600 rounded-full"></div>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center">
+                    <div className={`${currentStep >= 2 ? 'bg-blue-600' : 'bg-gray-300'} text-white rounded-full h-12 w-12 flex items-center justify-center font-bold shadow-lg transition-all duration-300 transform ${currentStep >= 2 ? 'scale-100' : 'scale-95'}`}>
+                      2
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-base font-semibold text-gray-900">Hari Operasional</p>
+                      <p className="text-sm text-gray-500">Jadwal mingguan</p>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} noValidate className="space-y-6">
-            {/* Step 1: Basic Info */}
-            {currentStep === 1 && (
-              <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 shadow-sm">
-                <h2 className="text-lg font-semibold mb-4 text-gray-800 flex items-center border-b pb-3">
-                  <i className="fas fa-info-circle mr-2 text-blue-500"></i> Informasi Dasar Jadwal
-                </h2>
+            {/* Form */}
+            <form onSubmit={handleSubmit} noValidate className="space-y-6">
+              {/* Step 1: Basic Info */}
+              {currentStep === 1 && (
+                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm transition-all duration-300 hover:shadow-md">
+                  <h2 className="text-xl font-semibold mb-6 text-gray-800 flex items-center border-b pb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Informasi Dasar Jadwal
+                  </h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label htmlFor="route_id" className="block text-sm font-medium text-gray-700 mb-1">
-                      Rute <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <i className="fas fa-map-marked-alt text-gray-400"></i>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Column 1 */}
+                    <div className="space-y-6">
+                      <div>
+                        <label htmlFor="route_id" className="block text-sm font-medium text-gray-700 mb-1">
+                          Rute <span className="text-red-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                            </svg>
+                          </div>
+                          <select
+                            className={`pl-10 bg-white border ${errors.route_id ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-300'} rounded-lg text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm transition-all duration-200`}
+                            id="route_id" 
+                            name="route_id" 
+                            value={formData.route_id}
+                            onChange={(e) => {
+                              handleInputChange(e);
+                              // Gunakan setTimeout untuk memastikan formData terupdate
+                              setTimeout(() => {
+                                calculateArrivalTime();
+                              }, 100);
+                            }}
+                            required
+                          >
+                            <option value="">-- Pilih Rute --</option>
+                            {routes.map(route => (
+                              <option key={route.id} value={route.id} data-duration={route.duration}>
+                                {route.origin} - {route.destination} ({route.route_code || 'N/A'})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        {errors.route_id && (
+                          <p className="mt-1 text-sm text-red-600 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            {errors.route_id}
+                          </p>
+                        )}
                       </div>
-                      <select
-                        className={`pl-10 bg-white border ${errors.route_id ? 'border-red-300' : 'border-gray-300'} rounded-lg text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm`}
-                        id="route_id" 
-                        name="route_id" 
-                        value={formData.route_id}
-                        onChange={(e) => {
-                          handleInputChange(e);
-                          setTimeout(calculateArrivalTime, 100);
-                        }}
-                        required
-                      >
-                        <option value="">-- Pilih Rute --</option>
-                        {routes.map(route => (
-                          <option key={route.id} value={route.id} data-duration={route.duration}>
-                            {route.origin} - {route.destination} ({route.route_code || 'N/A'})
-                          </option>
-                        ))}
-                      </select>
+
+                      <div>
+                        <label htmlFor="departure_time" className="block text-sm font-medium text-gray-700 mb-1">
+                          Waktu Keberangkatan <span className="text-red-500">*</span>
+                        </label>
+                        <div className="flex space-x-2">
+                          <div className="relative flex-1">
+                            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            </div>
+                            <select
+                              className={`block w-full pl-10 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg shadow-sm transition-all duration-200 ${errors.departure_time ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-300 hover:border-gray-400'} appearance-none bg-white`}
+                              id="departure_hour"
+                              name="departure_hour"
+                              value={formData.departure_time ? formData.departure_time.split(':')[0] : ''}
+                              onChange={(e) => {
+                                const hour = e.target.value;
+                                const minute = formData.departure_time ? formData.departure_time.split(':')[1] || '00' : '00';
+                                const newTime = `${hour}:${minute}`;
+                                setFormData({...formData, departure_time: newTime});
+                                setTimeout(() => {
+                                  calculateArrivalTime();
+                                }, 100);
+                              }}
+                              required
+                            >
+                              <option value="">Jam</option>
+                              {Array.from({ length: 24 }, (_, i) => {
+                                const hour = i.toString().padStart(2, '0');
+                                return (
+                                  <option key={hour} value={hour}>
+                                    {hour}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </div>
+                            <div className="absolute top-0 right-0 px-2 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-bl-lg rounded-tr-lg">
+                              Jam
+                            </div>
+                          </div>
+                          
+                          <div className="relative flex-1">
+                            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6h4" />
+                              </svg>
+                            </div>
+                            <select
+                              className={`block w-full pl-10 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg shadow-sm transition-all duration-200 ${errors.departure_time ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-300 hover:border-gray-400'} appearance-none bg-white`}
+                              id="departure_minute"
+                              name="departure_minute"
+                              value={formData.departure_time ? formData.departure_time.split(':')[1] || '' : ''}
+                              onChange={(e) => {
+                                const minute = e.target.value;
+                                const hour = formData.departure_time ? formData.departure_time.split(':')[0] || '00' : '00';
+                                const newTime = `${hour}:${minute}`;
+                                setFormData({...formData, departure_time: newTime});
+                                setTimeout(() => {
+                                  calculateArrivalTime();
+                                }, 100);
+                              }}
+                              required
+                            >
+                              <option value="">Menit</option>
+                              {Array.from({ length: 12 }, (_, i) => {
+                                const minute = (i * 5).toString().padStart(2, '0');
+                                return (
+                                  <option key={minute} value={minute}>
+                                    {minute}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </div>
+                            <div className="absolute top-0 right-0 px-2 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-bl-lg rounded-tr-lg">
+                              Menit
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Selected Time Display */}
+                        {formData.departure_time && formData.departure_time.includes(':') && (
+                          <div className="mt-2 flex items-center text-sm text-blue-700 font-medium">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Waktu keberangkatan: {formData.departure_time}
+                          </div>
+                        )}
+                        
+                        {errors.departure_time && (
+                          <p className="mt-1 text-sm text-red-600 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            {errors.departure_time}
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+                          Status <span className="text-red-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </div>
+                          <select
+                            className="pl-10 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm transition-all duration-200"
+                            id="status" 
+                            name="status" 
+                            value={formData.status}
+                            onChange={handleInputChange}
+                            required
+                          >
+                            <option value="ACTIVE">Aktif</option>
+                            <option value="INACTIVE">Tidak Aktif</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {formData.status !== 'ACTIVE' && (
+                        <div className="animate-fadeIn">
+                          <label htmlFor="status_reason" className="block text-sm font-medium text-gray-700 mb-1">
+                            Alasan Status <span className="text-red-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </div>
+                            <input 
+                              type="text"
+                              className="pl-10 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm"
+                              id="status_reason" 
+                              name="status_reason" 
+                              value={formData.status_reason}
+                              onChange={handleInputChange}
+                              placeholder="Mis. Cuaca buruk, Pemeliharaan kapal"
+                              required={formData.status !== 'ACTIVE'}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    {errors.route_id && <p className="mt-1 text-sm text-red-600">{errors.route_id}</p>}
-                    {routes.length === 0 && <p className="mt-1 text-sm text-yellow-600">Loading routes...</p>}
+
+                    {/* Column 2 */}
+                    <div className="space-y-6">
+                      <div>
+                        <label htmlFor="ferry_id" className="block text-sm font-medium text-gray-700 mb-1">
+                          Kapal <span className="text-red-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                          </div>
+                          <select
+                            className={`pl-10 bg-white border ${errors.ferry_id ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-300'} rounded-lg text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm transition-all duration-200`}
+                            id="ferry_id" 
+                            name="ferry_id" 
+                            value={formData.ferry_id}
+                            onChange={handleInputChange}
+                            required
+                          >
+                            <option value="">-- Pilih Kapal --</option>
+                            {ferries.map(ferry => (
+                              <option key={ferry.id} value={ferry.id}>
+                                {ferry.name} ({ferry.registration_number || 'N/A'})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        {errors.ferry_id && (
+                          <p className="mt-1 text-sm text-red-600 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            {errors.ferry_id}
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label htmlFor="arrival_time" className="block text-sm font-medium text-gray-700 mb-1">
+                          Waktu Kedatangan <span className="text-red-500">*</span>
+                          {isArrivalTimeAuto && isDurationAvailable && (
+                            <span className="ml-2 text-xs font-normal text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                              Otomatis Dihitung
+                            </span>
+                          )}
+                        </label>
+                        <div className="flex space-x-2">
+                          <div className="relative flex-1">
+                            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            </div>
+                            <select
+                              className={`block w-full pl-10 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg shadow-sm transition-all duration-200 ${errors.arrival_time ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-300 hover:border-gray-400'} appearance-none bg-white`}
+                              id="arrival_hour"
+                              name="arrival_hour"
+                              value={formData.arrival_time ? formData.arrival_time.split(':')[0] : ''}
+                              onChange={(e) => {
+                                const hour = e.target.value;
+                                const minute = formData.arrival_time ? formData.arrival_time.split(':')[1] || '00' : '00';
+                                const newTime = `${hour}:${minute}`;
+                                setFormData({...formData, arrival_time: newTime});
+                                // Pengguna mengubah nilai secara manual
+                                setIsArrivalTimeAuto(false);
+                              }}
+                              required
+                            >
+                              <option value="">Jam</option>
+                              {Array.from({ length: 24 }, (_, i) => {
+                                const hour = i.toString().padStart(2, '0');
+                                return (
+                                  <option key={hour} value={hour}>
+                                    {hour}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </div>
+                            <div className="absolute top-0 right-0 px-2 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-bl-lg rounded-tr-lg">
+                              Jam
+                            </div>
+                          </div>
+                          
+                          <div className="relative flex-1">
+                            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6h4" />
+                              </svg>
+                            </div>
+                            <select
+                              className={`block w-full pl-10 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg shadow-sm transition-all duration-200 ${errors.arrival_time ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-300 hover:border-gray-400'} appearance-none bg-white`}
+                              id="arrival_minute"
+                              name="arrival_minute"
+                              value={formData.arrival_time ? formData.arrival_time.split(':')[1] || '' : ''}
+                              onChange={(e) => {
+                                const minute = e.target.value;
+                                const hour = formData.arrival_time ? formData.arrival_time.split(':')[0] || '00' : '00';
+                                const newTime = `${hour}:${minute}`;
+                                setFormData({...formData, arrival_time: newTime});
+                                // Pengguna mengubah nilai secara manual
+                                setIsArrivalTimeAuto(false);
+                              }}
+                              required
+                            >
+                              <option value="">Menit</option>
+                              {Array.from({ length: 12 }, (_, i) => {
+                                const minute = (i * 5).toString().padStart(2, '0');
+                                return (
+                                  <option key={minute} value={minute}>
+                                    {minute}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </div>
+                            <div className="absolute top-0 right-0 px-2 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-bl-lg rounded-tr-lg">
+                              Menit
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {isArrivalTimeAuto && isDurationAvailable && (
+                          <div className="mt-2 flex items-center text-sm text-blue-700 font-medium bg-blue-50 p-2 rounded">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Waktu kedatangan dihitung otomatis berdasarkan durasi rute ({formatDuration(selectedRoute.duration)})
+                          </div>
+                        )}
+                        
+                        {!isArrivalTimeAuto && isDurationAvailable && (
+                          <div className="mt-2 text-xs">
+                            <button 
+                              type="button"
+                              onClick={calculateArrivalTime}
+                              className="text-blue-600 bg-blue-50 px-2 py-1 rounded hover:bg-blue-100 transition-colors"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
+                              Hitung otomatis berdasarkan durasi rute
+                            </button>
+                          </div>
+                        )}
+                        
+                        {/* Selected Time Display */}
+                        {formData.arrival_time && formData.arrival_time.includes(':') && (
+                          <div className="mt-2 flex items-center text-sm text-blue-700 font-medium">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Waktu kedatangan: {formData.arrival_time}
+                          </div>
+                        )}
+                        
+                        {errors.arrival_time && (
+                          <p className="mt-1 text-sm text-red-600 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            {errors.arrival_time}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Route Information Card */}
+                      {formData.route_id && (
+                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 shadow-sm mt-4 transition-all duration-300 animate-fadeIn">
+                          <h3 className="text-sm font-semibold text-blue-800 mb-2 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Informasi Rute
+                          </h3>
+                          <div className="space-y-2">
+                            <p className="text-sm text-gray-700 flex justify-between">
+                              <span className="font-medium">Durasi Perjalanan:</span>
+                              <span className="text-blue-700 font-medium">{formatDuration(getSelectedRouteDuration())}</span>
+                            </p>
+                            <p className="text-sm text-gray-700 flex justify-between">
+                              <span className="font-medium">Rute:</span>
+                              <span className="text-blue-700">
+                                {formData.route_id && routes.find(r => r.id === parseInt(formData.route_id))
+                                  ? `${routes.find(r => r.id === parseInt(formData.route_id))?.origin} - ${routes.find(r => r.id === parseInt(formData.route_id))?.destination}`
+                                  : '-'}
+                              </span>
+                            </p>
+                            {formData.route_id && routes.find(r => r.id === parseInt(formData.route_id))?.route_code && (
+                              <p className="text-sm text-gray-700 flex justify-between">
+                                <span className="font-medium">Kode Rute:</span>
+                                <span className="text-blue-700">{routes.find(r => r.id === parseInt(formData.route_id))?.route_code}</span>
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  <div>
-                    <label htmlFor="ferry_id" className="block text-sm font-medium text-gray-700 mb-1">
-                      Kapal <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <i className="fas fa-ship text-gray-400"></i>
-                      </div>
-                      <select
-                        className={`pl-10 bg-white border ${errors.ferry_id ? 'border-red-300' : 'border-gray-300'} rounded-lg text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm`}
-                        id="ferry_id" 
-                        name="ferry_id" 
-                        value={formData.ferry_id}
-                        onChange={handleInputChange}
-                        required
-                      >
-                        <option value="">-- Pilih Kapal --</option>
-                        {ferries.map(ferry => (
-                          <option key={ferry.id} value={ferry.id}>
-                            {ferry.name} ({ferry.registration_number || 'N/A'})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    {errors.ferry_id && <p className="mt-1 text-sm text-red-600">{errors.ferry_id}</p>}
-                    {ferries.length === 0 && <p className="mt-1 text-sm text-yellow-600">Loading ferries...</p>}
+                  {/* Tips Card */}
+                  <div className="mt-8 bg-yellow-50 p-4 rounded-lg border border-yellow-100">
+                    <h3 className="text-sm font-semibold text-yellow-800 mb-2 flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Tips
+                    </h3>
+                    <ul className="text-sm text-gray-700 space-y-1 ml-6 list-disc">
+                      <li>Pilih jam dan menit untuk waktu keberangkatan dalam format 24 jam</li>
+                      <li>Waktu kedatangan akan dihitung otomatis berdasarkan durasi rute yang dipilih</li>
+                      <li>Anda dapat menyesuaikan waktu kedatangan jika diperlukan</li>
+                      <li>Pastikan semua informasi yang dimasukkan sudah benar sebelum melanjutkan</li>
+                    </ul>
                   </div>
                 </div>
+              )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                  <div>
-                    <label htmlFor="departure_time" className="block text-sm font-medium text-gray-700 mb-1">
-                      Waktu Keberangkatan <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <i className="fas fa-clock text-gray-400"></i>
-                      </div>
-                      <input 
-                        type="time"
-                        className={`pl-10 bg-white border ${errors.departure_time ? 'border-red-300' : 'border-gray-300'} rounded-lg text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm`}
-                        id="departure_time" 
-                        name="departure_time" 
-                        value={formData.departure_time}
-                        onChange={(e) => {
-                          handleInputChange(e);
-                          setTimeout(calculateArrivalTime, 100);
-                        }}
-                        required
-                      />
-                    </div>
-                    {errors.departure_time && <p className="mt-1 text-sm text-red-600">{errors.departure_time}</p>}
-                  </div>
+              {/* Step 2: Operating Days */}
+              {currentStep === 2 && (
+                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm transition-all duration-300 hover:shadow-md">
+                  <h2 className="text-xl font-semibold mb-6 text-gray-800 flex items-center border-b pb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Hari Operasional
+                  </h2>
 
-                  <div>
-                    <label htmlFor="arrival_time" className="block text-sm font-medium text-gray-700 mb-1">
-                      Waktu Kedatangan <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <i className="fas fa-clock text-gray-400"></i>
-                      </div>
-                      <input 
-                        type="time"
-                        className={`pl-10 bg-white border ${errors.arrival_time ? 'border-red-300' : 'border-gray-300'} rounded-lg text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm`}
-                        id="arrival_time" 
-                        name="arrival_time" 
-                        value={formData.arrival_time}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    {errors.arrival_time && <p className="mt-1 text-sm text-red-600">{errors.arrival_time}</p>}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                  <div>
-                    <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
-                      Status <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
-                      id="status" 
-                      name="status" 
-                      value={formData.status}
-                      onChange={handleInputChange}
-                      required
-                    >
-                      <option value="ACTIVE">Aktif</option>
-                      <option value="INACTIVE">Tidak Aktif</option>
-                    </select>
-                  </div>
-
-                  {formData.status !== 'ACTIVE' && (
-                    <div>
-                      <label htmlFor="status_reason" className="block text-sm font-medium text-gray-700 mb-1">
-                        Alasan Status
-                      </label>
-                      <input 
-                        type="text"
-                        className="pl-10 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm"
-                        id="status_reason" 
-                        name="status_reason" 
-                        value={formData.status_reason}
-                        onChange={handleInputChange}
-                        placeholder="Mis. Cuaca buruk, Pemeliharaan kapal"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Step 2: Operating Days */}
-            {currentStep === 2 && (
-              <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 shadow-sm">
-                <h2 className="text-lg font-semibold mb-4 text-gray-800 flex items-center border-b pb-3">
-                  <i className="fas fa-calendar-alt mr-2 text-blue-500"></i> Hari Operasional
-                </h2>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="md:col-span-2">
-                    <p className="mb-3 text-sm text-gray-700">Pilih hari-hari di mana jadwal ini beroperasi:</p>
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                  <div className="mb-8">
+                    <p className="mb-4 text-gray-700">Pilih hari-hari di mana jadwal ini beroperasi:</p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
                       {Object.entries(dayNames).map(([value, name]) => {
                         const numValue = parseInt(value);
+                        const isChecked = formData.days.includes(numValue);
                         return (
-                          <div key={value} className="flex items-center p-3 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-blue-50 transition-colors">
+                          <div 
+                            key={value} 
+                            className={`relative flex items-center p-4 ${isChecked ? 'bg-blue-50 border-blue-300' : 'bg-white border-gray-200'} border rounded-lg shadow-sm hover:shadow-md transition-all duration-200 group cursor-pointer`}
+                            onClick={() => {
+                              const e = {
+                                target: {
+                                  type: 'checkbox',
+                                  name: 'days',
+                                  value,
+                                  checked: !isChecked
+                                }
+                              };
+                              handleInputChange(e);
+                            }}
+                          >
                             <input 
                               type="checkbox" 
                               id={`day_${value}`}
                               name="days"
                               value={value}
-                              checked={formData.days.includes(numValue)}
+                              checked={isChecked}
                               onChange={handleInputChange}
-                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                              className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
                             />
-                            <label htmlFor={`day_${value}`} className="ml-2 text-sm font-medium text-gray-900 cursor-pointer select-none">
+                            <label htmlFor={`day_${value}`} className="ml-3 text-base font-medium text-gray-900 cursor-pointer select-none">
                               {name}
                             </label>
+                            {isChecked && (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500 absolute top-1 right-1 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            )}
                           </div>
                         );
                       })}
                     </div>
-                    {errors.days && <p className="mt-1 text-sm text-red-600">{errors.days}</p>}
+                    {errors.days && (
+                      <p className="mt-2 text-sm text-red-600 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        {errors.days}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Schedule Summary Card */}
+                  <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-lg shadow-sm animate-fadeIn">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                      Ringkasan Jadwal
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="bg-white p-4 rounded-lg border border-blue-100 shadow-sm hover:shadow-md transition-all duration-200">
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Rute:</p>
+                        <p className="font-medium text-gray-900 flex items-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                          </svg>
+                          <span>
+                            {formData.route_id 
+                              ? routes.find(r => r.id === parseInt(formData.route_id))?.origin + ' → ' + 
+                                routes.find(r => r.id === parseInt(formData.route_id))?.destination
+                              : '-'}
+                          </span>
+                        </p>
+                        <p className="text-sm text-gray-600 mt-1 ml-7">
+                          {formData.route_id && routes.find(r => r.id === parseInt(formData.route_id))?.route_code 
+                            ? `Kode Rute: ${routes.find(r => r.id === parseInt(formData.route_id))?.route_code}`
+                            : ''}
+                        </p>
+                      </div>
+                      
+                      <div className="bg-white p-4 rounded-lg border border-blue-100 shadow-sm hover:shadow-md transition-all duration-200">
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Kapal:</p>
+                        <p className="font-medium text-gray-900 flex items-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                          </svg>
+                          <span>
+                            {formData.ferry_id
+                              ? ferries.find(f => f.id === parseInt(formData.ferry_id))?.name
+                              : '-'}
+                          </span>
+                        </p>
+                        <p className="text-sm text-gray-600 mt-1 ml-7">
+                          {formData.ferry_id && ferries.find(f => f.id === parseInt(formData.ferry_id))?.registration_number 
+                            ? `Nomor Registrasi: ${ferries.find(f => f.id === parseInt(formData.ferry_id))?.registration_number}`
+                            : ''}
+                        </p>
+                      </div>
+                      
+                      <div className="bg-white p-4 rounded-lg border border-blue-100 shadow-sm hover:shadow-md transition-all duration-200">
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Waktu:</p>
+                        <p className="font-medium text-gray-900 flex items-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <span>
+                            {formData.departure_time && formData.arrival_time
+                              ? `${formData.departure_time} → ${formData.arrival_time}`
+                              : '-'}
+                          </span>
+                        </p>
+                        <p className="text-sm text-gray-600 mt-1 ml-7">
+                          {getSelectedRouteDuration() 
+                            ? `Durasi: ${formatDuration(getSelectedRouteDuration())}`
+                            : ''}
+                        </p>
+                      </div>
+                      
+                      <div className="bg-white p-4 rounded-lg border border-blue-100 shadow-sm hover:shadow-md transition-all duration-200">
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Hari Operasional:</p>
+                        <p className="font-medium text-gray-900 flex items-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          <span>
+                            {formData.days.length > 0
+                              ? formData.days.map(day => dayNames[day]).join(', ')
+                              : '-'}
+                          </span>
+                        </p>
+                        <p className="text-sm text-gray-600 mt-1 ml-7">
+                          {formData.status === 'ACTIVE' 
+                            ? 'Status: Aktif' 
+                            : `Status: Tidak Aktif (${formData.status_reason || 'Tidak ada alasan'})`}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
-
-                {/* Schedule Summary Card */}
-                <div className="mt-6 p-5 bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
-                  <h3 className="text-md font-semibold text-gray-800 mb-3 flex items-center">
-                    <i className="fas fa-clipboard-list mr-2 text-blue-500"></i> Ringkasan Jadwal
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Rute:</p>
-                      <p className="font-medium text-gray-900 flex items-center">
-                        <i className="fas fa-route mr-2 text-blue-500"></i>
-                        <span>
-                          {formData.route_id 
-                            ? routes.find(r => r.id === parseInt(formData.route_id))?.origin + ' - ' + 
-                              routes.find(r => r.id === parseInt(formData.route_id))?.destination
-                            : '-'}
-                        </span>
-                      </p>
-                    </div>
-                    <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Kapal:</p>
-                      <p className="font-medium text-gray-900 flex items-center">
-                        <i className="fas fa-ship mr-2 text-blue-500"></i>
-                        <span>
-                          {formData.ferry_id
-                            ? ferries.find(f => f.id === parseInt(formData.ferry_id))?.name
-                            : '-'}
-                        </span>
-                      </p>
-                    </div>
-                    <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Waktu:</p>
-                      <p className="font-medium text-gray-900 flex items-center">
-                        <i className="fas fa-clock mr-2 text-blue-500"></i>
-                        <span>
-                          {formData.departure_time && formData.arrival_time
-                            ? `${formData.departure_time} - ${formData.arrival_time}`
-                            : '-'}
-                        </span>
-                      </p>
-                    </div>
-                    <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Hari Operasional:</p>
-                      <p className="font-medium text-gray-900 flex items-center">
-                        <i className="fas fa-calendar-day mr-2 text-blue-500"></i>
-                        <span>
-                          {formData.days.length > 0
-                            ? formData.days.map(day => dayNames[day]).join(', ')
-                            : '-'}
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Form Actions */}
-            <div className="flex justify-between mt-6">
-              {currentStep === 2 && (
-                <button 
-                  type="button" 
-                  onClick={handlePrev}
-                  className="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2.5 px-5 rounded-lg transition-colors shadow-sm flex items-center"
-                >
-                  <i className="fas fa-arrow-left mr-2"></i> Kembali
-                </button>
               )}
 
-              <div className="flex space-x-3">
-                <Link to="/admin/schedules"
-                  className="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2.5 px-5 rounded-lg transition-colors shadow-sm flex items-center">
-                  <i className="fas fa-times mr-2"></i> Batal
-                </Link>
-                
-                {currentStep === 1 ? (
+              {/* Form Actions */}
+              <div className="flex justify-between mt-8">
+                {currentStep === 2 ? (
                   <button 
                     type="button" 
-                    onClick={handleNext}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-5 rounded-lg transition-colors shadow-sm flex items-center"
+                    onClick={handlePrev}
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-2.5 px-5 rounded-lg transition-all duration-200 shadow-sm flex items-center border border-gray-300"
                   >
-                    <span>Lanjut</span> <i className="fas fa-arrow-right ml-2"></i>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Kembali
                   </button>
                 ) : (
-                  <button 
-                    type="submit"
-                    disabled={loading}
-                    className="bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-5 rounded-lg transition-colors shadow-sm flex items-center disabled:opacity-50"
-                  >
-                    <i className="fas fa-save mr-2"></i> {loading ? 'Menyimpan...' : 'Simpan'}
-                  </button>
+                  <div></div> // Empty div to maintain the spacing
                 )}
+
+                <div className="flex space-x-3">
+                  <Link to="/admin/schedules"
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-2.5 px-5 rounded-lg transition-all duration-200 shadow-sm flex items-center border border-gray-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Batal
+                  </Link>
+                  
+                  {currentStep === 1 ? (
+                    <button 
+                      type="button" 
+                      onClick={handleNext}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-6 rounded-lg transition-all duration-200 shadow-md flex items-center group"
+                    >
+                      <span>Lanjut</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2 transform group-hover:translate-x-1 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  ) : (
+                    <button 
+                      type="submit"
+                      disabled={loading}
+                      className="bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-6 rounded-lg transition-all duration-200 shadow-md flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loading ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Menyimpan...
+                        </>
+                      ) : (
+                        <>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                          </svg>
+                          Simpan
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
+
+      {/* Helper Card */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 mb-6">
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+          <h2 className="text-gray-800 font-semibold">Panduan Singkat</h2>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-start">
+              <div className="flex-shrink-0 mt-0.5">
+                <div className="flex items-center justify-center h-8 w-8 rounded-full bg-blue-100 text-blue-600">
+                  <span className="text-lg font-bold">1</span>
+                </div>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-semibold text-gray-900">Pilih Rute dan Kapal</h3>
+                <p className="mt-1 text-sm text-gray-600">Pilih rute dan kapal dari daftar yang tersedia.</p>
               </div>
             </div>
-          </form>
+            
+            <div className="flex items-start">
+              <div className="flex-shrink-0 mt-0.5">
+                <div className="flex items-center justify-center h-8 w-8 rounded-full bg-blue-100 text-blue-600">
+                  <span className="text-lg font-bold">2</span>
+                </div>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-semibold text-gray-900">Atur Waktu</h3>
+                <p className="mt-1 text-sm text-gray-600">Tentukan waktu keberangkatan. Waktu kedatangan akan dihitung otomatis dari durasi rute.</p>
+              </div>
+            </div>
+            
+            <div className="flex items-start">
+              <div className="flex-shrink-0 mt-0.5">
+                <div className="flex items-center justify-center h-8 w-8 rounded-full bg-blue-100 text-blue-600">
+                  <span className="text-lg font-bold">3</span>
+                </div>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-semibold text-gray-900">Pilih Hari Operasional</h3>
+                <p className="mt-1 text-sm text-gray-600">Tentukan hari apa saja jadwal ini beroperasi.</p>
+              </div>
+            </div>
+            
+            <div className="flex items-start">
+              <div className="flex-shrink-0 mt-0.5">
+                <div className="flex items-center justify-center h-8 w-8 rounded-full bg-blue-100 text-blue-600">
+                  <span className="text-lg font-bold">4</span>
+                </div>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-semibold text-gray-900">Simpan Jadwal</h3>
+                <p className="mt-1 text-sm text-gray-600">Periksa ringkasan jadwal dan simpan perubahan.</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -94,6 +94,28 @@ export class adminRouteService {
   }
 
   /**
+ * Mendapatkan daftar kategori kendaraan
+ * @param {Object} params - Filter parameters
+ * @returns {Promise}
+ */
+  async getVehicleCategories(params = {}) {
+    try {
+      const response = await api.get('/admin-panel/vehicle-categories', { params });
+
+      console.log('Raw API response:', response);
+
+      // Perbaikan: Respons HTTP 200 berarti success, terlepas dari struktur data
+      return {
+        status: 'success',  // Tetapkan 'success' langsung karena HTTP 200
+        data: response.data.data || []  // Ambil array data dari response.data.data (Laravel pagination)
+      };
+    } catch (error) {
+      console.error('Error fetching vehicle categories:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Format currency
    * @param {number} amount - Amount
    * @returns {string}
@@ -123,7 +145,7 @@ export class adminRouteService {
   formatDuration(duration) {
     const hours = Math.floor(duration / 60);
     const minutes = duration % 60;
-    
+
     if (hours > 0 && minutes > 0) {
       return `${hours} jam ${minutes} menit`;
     } else if (hours > 0) {
@@ -173,16 +195,50 @@ export class adminRouteService {
   /**
    * Get price list
    * @param {Object} route - Route object
+   * @param {Array} vehicleCategories - Vehicle categories
    * @returns {Array}
    */
-  getPriceList(route) {
-    return [
-      { type: 'Tiket', price: route.base_price, icon: 'ticket' },
-      { type: 'Motor', price: route.motorcycle_price, icon: 'motorcycle' },
-      { type: 'Mobil', price: route.car_price, icon: 'car' },
-      { type: 'Bus', price: route.bus_price, icon: 'bus' },
-      { type: 'Truk', price: route.truck_price, icon: 'truck' }
+  getPriceList(route, vehicleCategories = []) {
+    // Mulai dengan harga dasar tiket penumpang
+    const priceList = [
+      { type: 'Tiket', price: route.base_price, icon: 'ticket' }
     ];
+
+    // Tambahkan harga kendaraan dari vehicleCategories jika tersedia
+    if (vehicleCategories && vehicleCategories.length > 0) {
+      // Map tipe kendaraan ke icon
+      const typeToIcon = {
+        'MOTORCYCLE': 'motorcycle',
+        'CAR': 'car',
+        'BUS': 'bus',
+        'TRUCK': 'truck',
+        'PICKUP': 'pickup-truck',
+        'TRONTON': 'truck-moving'
+      };
+
+      // Map tipe kendaraan ke nama yang lebih user-friendly
+      const typeToName = {
+        'MOTORCYCLE': 'Motor',
+        'CAR': 'Mobil',
+        'BUS': 'Bus',
+        'TRUCK': 'Truk',
+        'PICKUP': 'Pickup',
+        'TRONTON': 'Tronton'
+      };
+
+      // Tambahkan setiap kategori kendaraan
+      vehicleCategories.forEach(category => {
+        priceList.push({
+          type: typeToName[category.vehicle_type] || category.name,
+          price: category.base_price,
+          icon: typeToIcon[category.vehicle_type] || 'car',
+          code: category.code,
+          id: category.id
+        });
+      });
+    }
+
+    return priceList;
   }
 
   /**
@@ -217,22 +273,6 @@ export class adminRouteService {
       errors.base_price = 'Harga tiket tidak boleh negatif';
     }
 
-    if (!formData.motorcycle_price || formData.motorcycle_price < 0) {
-      errors.motorcycle_price = 'Harga motor tidak boleh negatif';
-    }
-
-    if (!formData.car_price || formData.car_price < 0) {
-      errors.car_price = 'Harga mobil tidak boleh negatif';
-    }
-
-    if (!formData.bus_price || formData.bus_price < 0) {
-      errors.bus_price = 'Harga bus tidak boleh negatif';
-    }
-
-    if (!formData.truck_price || formData.truck_price < 0) {
-      errors.truck_price = 'Harga truk tidak boleh negatif';
-    }
-
     if (!formData.status) {
       errors.status = 'Status harus dipilih';
     }
@@ -258,7 +298,7 @@ export class adminRouteService {
     if (formData.status === 'WEATHER_ISSUE' && formData.status_expiry_date) {
       const expiryDate = new Date(formData.status_expiry_date);
       const now = new Date();
-      
+
       if (expiryDate <= now) {
         errors.status_expiry_date = 'Tanggal kedaluwarsa harus setelah hari ini';
       }
@@ -299,6 +339,39 @@ export class adminRouteService {
     }
 
     return params;
+  }
+
+  /**
+   * Get vehicle price by type from categories
+   * @param {Array} vehicleCategories - List of vehicle categories
+   * @param {String} vehicleType - Type of vehicle
+   * @returns {Number}
+   */
+  getVehiclePriceByType(vehicleCategories, vehicleType) {
+    if (!vehicleCategories || !vehicleCategories.length) {
+      return 0;
+    }
+
+    const category = vehicleCategories.find(cat => cat.vehicle_type === vehicleType);
+    return category ? category.base_price : 0;
+  }
+
+  /**
+   * Format vehicle type to human readable name
+   * @param {String} type - Vehicle type
+   * @returns {String}
+   */
+  formatVehicleType(type) {
+    const types = {
+      'MOTORCYCLE': 'Motor',
+      'CAR': 'Mobil',
+      'BUS': 'Bus',
+      'TRUCK': 'Truk',
+      'PICKUP': 'Pickup',
+      'TRONTON': 'Tronton'
+    };
+
+    return types[type] || type;
   }
 }
 

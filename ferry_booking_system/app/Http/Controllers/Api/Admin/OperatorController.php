@@ -29,6 +29,11 @@ class OperatorController extends Controller
             });
         }
 
+        // Filter berdasarkan status
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+
         // Check if pagination is requested
         if ($request->has('per_page')) {
             $operators = $query->paginate($request->input('per_page', 10));
@@ -62,6 +67,7 @@ class OperatorController extends Controller
             'company_address' => 'required|string',
             'password' => 'required|string|min:8|confirmed',
             'assigned_routes' => 'nullable|array',
+            'status' => ['nullable', Rule::in(['ACTIVE', 'INACTIVE', 'SUSPENDED'])],
         ]);
 
         $operator = new Operator([
@@ -73,6 +79,7 @@ class OperatorController extends Controller
             'company_address' => $validated['company_address'],
             'password' => Hash::make($validated['password']),
             'assigned_routes' => $validated['assigned_routes'] ?? null,
+            'status' => $validated['status'] ?? 'ACTIVE',
         ]);
 
         $operator->save();
@@ -102,6 +109,7 @@ class OperatorController extends Controller
             'company_address' => 'required|string',
             'password' => 'nullable|string|min:8|confirmed',
             'assigned_routes' => 'nullable|array',
+            'status' => ['nullable', Rule::in(['ACTIVE', 'INACTIVE', 'SUSPENDED'])],
         ]);
 
         $operator->company_name = $validated['company_name'];
@@ -111,6 +119,10 @@ class OperatorController extends Controller
         $operator->fleet_size = $validated['fleet_size'] ?? 0;
         $operator->company_address = $validated['company_address'];
         $operator->assigned_routes = $validated['assigned_routes'] ?? null;
+
+        if ($request->filled('status')) {
+            $operator->status = $validated['status'];
+        }
 
         if ($request->filled('password')) {
             $operator->password = Hash::make($validated['password']);
@@ -139,6 +151,23 @@ class OperatorController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    public function toggleStatus(Request $request, $id)
+    {
+        $operator = Operator::findOrFail($id);
+
+        $request->validate([
+            'status' => ['required', Rule::in(['ACTIVE', 'INACTIVE', 'SUSPENDED'])],
+        ]);
+
+        $operator->status = $request->status;
+        $operator->save();
+
+        return response()->json([
+            'message' => 'Status operator berhasil diperbarui',
+            'operator' => $operator
+        ]);
     }
 
     public function checkEmailAvailability(Request $request)

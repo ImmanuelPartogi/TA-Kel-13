@@ -10,11 +10,33 @@ const RouteShow = () => {
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [vehicleCategories, setVehicleCategories] = useState([]);
 
   useEffect(() => {
     fetchRoute();
     fetchSchedules();
+    fetchVehicleCategories();
   }, [id]);
+
+ const fetchVehicleCategories = async () => {
+  try {
+    const response = await adminRouteService.getVehicleCategories();
+    // Tambahkan console.log untuk melihat respons lengkap
+    console.log('Vehicle Categories API Response:', response);
+    
+    if (response.status === 'success') {
+      // Tambahkan console.log untuk melihat data yang diambil
+      console.log('Vehicle Categories Data:', response.data);
+      setVehicleCategories(response.data || []);
+    } else {
+      console.warn('API berhasil tetapi status bukan success:', response.status);
+      setVehicleCategories([]);
+    }
+  } catch (error) {
+    console.error('Error fetching vehicle categories:', error);
+    setVehicleCategories([]);
+  }
+};
 
   const fetchRoute = async () => {
     try {
@@ -109,6 +131,11 @@ const RouteShow = () => {
     };
     const dayArray = typeof days === 'string' ? days.split(',') : [days];
     return dayArray.map(day => dayNames[day] || day);
+  };
+
+  // Get vehicle categories by type
+  const getVehicleCategoriesByType = (type) => {
+    return vehicleCategories.filter(category => category.vehicle_type === type);
   };
 
   if (loading) return (
@@ -413,75 +440,148 @@ const RouteShow = () => {
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden transition-all duration-200 hover:shadow">
-                  <div className="flex items-center justify-between p-4 hover:bg-blue-50">
-                    <div className="flex items-center">
-                      <div className="w-9 h-9 flex items-center justify-center bg-blue-100 text-blue-600 rounded-lg mr-3">
-                        <i className="fas fa-motorcycle"></i>
+              {/* Tampilkan kategori kendaraan jika tersedia */}
+              {vehicleCategories.length > 0 ? (
+                <div className="space-y-4">
+                  {/* Motor */}
+                  {getVehicleCategoriesByType('MOTORCYCLE').length > 0 && (
+                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden transition-all duration-200 hover:shadow">
+                      <div className="flex items-center justify-between p-4 hover:bg-blue-50">
+                        <div className="flex items-center">
+                          <div className="w-9 h-9 flex items-center justify-center bg-orange-100 text-orange-600 rounded-lg mr-3">
+                            <i className="fas fa-motorcycle"></i>
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-gray-700">Motor</div>
+                            <div className="text-xs text-gray-500">{getVehicleCategoriesByType('MOTORCYCLE').length} kategori</div>
+                          </div>
+                        </div>
+                        <i className="fas fa-chevron-right text-gray-400"></i>
                       </div>
-                      <div>
-                        <div className="text-sm font-medium text-gray-700">Motor</div>
-                        <div className="text-xs text-gray-500">Kategori kendaraan kecil</div>
+                      {/* Sub items - motorcycle categories */}
+                      <div className="border-t border-gray-100">
+                        {getVehicleCategoriesByType('MOTORCYCLE').map(category => (
+                          <div key={category.id} className="flex items-center justify-between p-3 pl-16 hover:bg-gray-50 border-b border-gray-100 last:border-b-0">
+                            <div>
+                              <div className="text-sm text-gray-700">{category.name}</div>
+                              <div className="text-xs text-gray-500">{category.code}</div>
+                            </div>
+                            <div className="font-bold text-gray-800">
+                              Rp {formatPrice(category.base_price)}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    <div className="font-bold text-gray-800">
-                      Rp {formatPrice(route.motorcycle_price)}
-                    </div>
-                  </div>
-                </div>
+                  )}
 
-                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden transition-all duration-200 hover:shadow">
-                  <div className="flex items-center justify-between p-4 hover:bg-indigo-50">
-                    <div className="flex items-center">
-                      <div className="w-9 h-9 flex items-center justify-center bg-indigo-100 text-indigo-600 rounded-lg mr-3">
-                        <i className="fas fa-car"></i>
+                  {/* Mobil */}
+                  {getVehicleCategoriesByType('CAR').length > 0 && (
+                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden transition-all duration-200 hover:shadow">
+                      <div className="flex items-center justify-between p-4 hover:bg-indigo-50">
+                        <div className="flex items-center">
+                          <div className="w-9 h-9 flex items-center justify-center bg-indigo-100 text-indigo-600 rounded-lg mr-3">
+                            <i className="fas fa-car"></i>
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-gray-700">Mobil</div>
+                            <div className="text-xs text-gray-500">{getVehicleCategoriesByType('CAR').length} kategori</div>
+                          </div>
+                        </div>
+                        <i className="fas fa-chevron-right text-gray-400"></i>
                       </div>
-                      <div>
-                        <div className="text-sm font-medium text-gray-700">Mobil</div>
-                        <div className="text-xs text-gray-500">Kategori kendaraan sedang</div>
+                      {/* Sub items - car categories */}
+                      <div className="border-t border-gray-100">
+                        {getVehicleCategoriesByType('CAR').map(category => (
+                          <div key={category.id} className="flex items-center justify-between p-3 pl-16 hover:bg-gray-50 border-b border-gray-100 last:border-b-0">
+                            <div>
+                              <div className="text-sm text-gray-700">{category.name}</div>
+                              <div className="text-xs text-gray-500">{category.code}</div>
+                            </div>
+                            <div className="font-bold text-gray-800">
+                              Rp {formatPrice(category.base_price)}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    <div className="font-bold text-gray-800">
-                      Rp {formatPrice(route.car_price)}
-                    </div>
-                  </div>
-                </div>
+                  )}
 
-                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden transition-all duration-200 hover:shadow">
-                  <div className="flex items-center justify-between p-4 hover:bg-purple-50">
-                    <div className="flex items-center">
-                      <div className="w-9 h-9 flex items-center justify-center bg-purple-100 text-purple-600 rounded-lg mr-3">
-                        <i className="fas fa-bus"></i>
+                  {/* Bus */}
+                  {getVehicleCategoriesByType('BUS').length > 0 && (
+                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden transition-all duration-200 hover:shadow">
+                      <div className="flex items-center justify-between p-4 hover:bg-purple-50">
+                        <div className="flex items-center">
+                          <div className="w-9 h-9 flex items-center justify-center bg-purple-100 text-purple-600 rounded-lg mr-3">
+                            <i className="fas fa-bus"></i>
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-gray-700">Bus</div>
+                            <div className="text-xs text-gray-500">{getVehicleCategoriesByType('BUS').length} kategori</div>
+                          </div>
+                        </div>
+                        <i className="fas fa-chevron-right text-gray-400"></i>
                       </div>
-                      <div>
-                        <div className="text-sm font-medium text-gray-700">Bus</div>
-                        <div className="text-xs text-gray-500">Kategori kendaraan besar</div>
+                      {/* Sub items - bus categories */}
+                      <div className="border-t border-gray-100">
+                        {getVehicleCategoriesByType('BUS').map(category => (
+                          <div key={category.id} className="flex items-center justify-between p-3 pl-16 hover:bg-gray-50 border-b border-gray-100 last:border-b-0">
+                            <div>
+                              <div className="text-sm text-gray-700">{category.name}</div>
+                              <div className="text-xs text-gray-500">{category.code}</div>
+                            </div>
+                            <div className="font-bold text-gray-800">
+                              Rp {formatPrice(category.base_price)}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    <div className="font-bold text-gray-800">
-                      Rp {formatPrice(route.bus_price)}
-                    </div>
-                  </div>
-                </div>
+                  )}
 
-                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden transition-all duration-200 hover:shadow">
-                  <div className="flex items-center justify-between p-4 hover:bg-yellow-50">
-                    <div className="flex items-center">
-                      <div className="w-9 h-9 flex items-center justify-center bg-yellow-100 text-yellow-600 rounded-lg mr-3">
-                        <i className="fas fa-truck"></i>
+                  {/* Truck */}
+                  {getVehicleCategoriesByType('TRUCK').length > 0 && (
+                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden transition-all duration-200 hover:shadow">
+                      <div className="flex items-center justify-between p-4 hover:bg-yellow-50">
+                        <div className="flex items-center">
+                          <div className="w-9 h-9 flex items-center justify-center bg-yellow-100 text-yellow-600 rounded-lg mr-3">
+                            <i className="fas fa-truck"></i>
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-gray-700">Truk</div>
+                            <div className="text-xs text-gray-500">{getVehicleCategoriesByType('TRUCK').length} kategori</div>
+                          </div>
+                        </div>
+                        <i className="fas fa-chevron-right text-gray-400"></i>
                       </div>
-                      <div>
-                        <div className="text-sm font-medium text-gray-700">Truk</div>
-                        <div className="text-xs text-gray-500">Kategori kendaraan angkutan</div>
+                      {/* Sub items - truck categories */}
+                      <div className="border-t border-gray-100">
+                        {getVehicleCategoriesByType('TRUCK').map(category => (
+                          <div key={category.id} className="flex items-center justify-between p-3 pl-16 hover:bg-gray-50 border-b border-gray-100 last:border-b-0">
+                            <div>
+                              <div className="text-sm text-gray-700">{category.name}</div>
+                              <div className="text-xs text-gray-500">{category.code}</div>
+                            </div>
+                            <div className="font-bold text-gray-800">
+                              Rp {formatPrice(category.base_price)}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    <div className="font-bold text-gray-800">
-                      Rp {formatPrice(route.truck_price)}
-                    </div>
-                  </div>
+                  )}
                 </div>
-              </div>
+              ) : (
+                // Tampilkan pesan jika vehicle categories tidak tersedia
+                <div className="text-center py-6 bg-gray-50 rounded-lg">
+                  <div className="mx-auto w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-4">
+                    <i className="fas fa-info text-gray-400 text-xl"></i>
+                  </div>
+                  <p className="text-gray-500">Belum ada kategori kendaraan yang tersedia</p>
+                  <p className="text-sm text-gray-400 mt-2">Hubungi administrator untuk menambahkan kategori kendaraan</p>
+                </div>
+              )}
+
             </div>
           </div>
         </div>

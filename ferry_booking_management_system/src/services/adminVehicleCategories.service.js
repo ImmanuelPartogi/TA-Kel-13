@@ -8,7 +8,8 @@ class AdminVehicleCategoriesService {
    */
   async getCategories(params = {}) {
     try {
-      const response = await api.get('/admin-panel/vehicleCategories', { params });
+      // Ubah vehicleCategories menjadi vehicle-categories
+      const response = await api.get('/admin-panel/vehicle-categories', { params });
       return response.data;
     } catch (error) {
       console.error('Error fetching vehicle categories:', error);
@@ -23,7 +24,7 @@ class AdminVehicleCategoriesService {
    */
   async getCategoryDetail(id) {
     try {
-      const response = await api.get(`/admin-panel/vehicleCategories/${id}`);
+      const response = await api.get(`/admin-panel/vehicle-categories/${id}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching category detail:', error);
@@ -38,7 +39,7 @@ class AdminVehicleCategoriesService {
    */
   async createCategory(data) {
     try {
-      const response = await api.post('/admin-panel/vehicleCategories', data);
+      const response = await api.post('/admin-panel/vehicle-categories', data);
       return response.data;
     } catch (error) {
       console.error('Error creating vehicle category:', error);
@@ -54,7 +55,7 @@ class AdminVehicleCategoriesService {
    */
   async updateCategory(id, data) {
     try {
-      const response = await api.put(`/admin-panel/vehicleCategories/${id}`, data);
+      const response = await api.put(`/admin-panel/vehicle-categories/${id}`, data);
       return response.data;
     } catch (error) {
       console.error('Error updating vehicle category:', error);
@@ -69,7 +70,7 @@ class AdminVehicleCategoriesService {
    */
   async deleteCategory(id) {
     try {
-      const response = await api.delete(`/admin-panel/vehicleCategories/${id}`);
+      const response = await api.delete(`/admin-panel/vehicle-categories/${id}`);
       return response.data;
     } catch (error) {
       console.error('Error deleting vehicle category:', error);
@@ -84,7 +85,7 @@ class AdminVehicleCategoriesService {
    */
   async toggleCategoryStatus(id) {
     try {
-      const response = await api.put(`/admin-panel/vehicleCategories/${id}/status`);
+      const response = await api.put(`/admin-panel/vehicle-categories/${id}/status`);
       return response.data;
     } catch (error) {
       console.error('Error toggling category status:', error);
@@ -99,7 +100,7 @@ class AdminVehicleCategoriesService {
    */
   async getCategoriesByType(type) {
     try {
-      const response = await api.get(`/admin-panel/vehicleCategories/by-type`, {
+      const response = await api.get(`/admin-panel/vehicle-categories/by-type`, {
         params: { type }
       });
       return response.data;
@@ -116,7 +117,7 @@ class AdminVehicleCategoriesService {
    */
   formatPrice(price) {
     if (!price && price !== 0) return '-';
-    
+
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',

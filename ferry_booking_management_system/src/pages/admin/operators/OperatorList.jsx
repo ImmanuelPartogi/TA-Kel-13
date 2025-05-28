@@ -21,11 +21,11 @@ const OperatorList = () => {
 
   useEffect(() => {
     fetchOperators();
-    
+
     // Auto-hide alert after 5 seconds
     if (alert.show) {
       const timer = setTimeout(() => {
-        setAlert({...alert, show: false});
+        setAlert({ ...alert, show: false });
       }, 5000);
       return () => clearTimeout(timer);
     }
@@ -59,19 +59,21 @@ const OperatorList = () => {
       }
 
       setOriginalOperators(operatorData);
-      
+
       // Calculate stats
-      const activeOps = operatorData.filter(op => op.status === 'active').length;
-      const inactiveOps = operatorData.filter(op => op.status === 'inactive').length;
+      // Calculate stats
+      const activeOps = operatorData.filter(op => (op.status || '').toLowerCase() === 'active').length;
+      const inactiveOps = operatorData.filter(op => (op.status || '').toLowerCase() === 'inactive').length;
+      const suspendedOps = operatorData.filter(op => (op.status || '').toLowerCase() === 'suspended').length;
       const totalFleet = operatorData.reduce((sum, op) => sum + (op.fleet_size || 0), 0);
-      
+
       setStats({
         totalOperators: operatorData.length,
         activeOperators: activeOps,
-        inactiveOperators: inactiveOps,
+        inactiveOperators: inactiveOps + suspendedOps, // Sementara gabungkan dalam statistik
         totalFleetSize: totalFleet
       });
-      
+
       filterAndSortOperators(operatorData);
     } catch (error) {
       console.error('Error fetching operators:', error);
@@ -102,7 +104,9 @@ const OperatorList = () => {
 
     // Apply status filter
     if (statusFilter) {
-      filtered = filtered.filter(operator => operator.status === statusFilter);
+      filtered = filtered.filter(operator =>
+        (operator.status || '').toLowerCase() === statusFilter.toLowerCase()
+      );
     }
 
     // Apply sorting
@@ -159,11 +163,20 @@ const OperatorList = () => {
   };
 
   const getStatusBadge = (status) => {
-    if (status === 'active') {
+    const statusLower = (status || '').toLowerCase();
+
+    if (statusLower === 'active') {
       return (
         <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
           <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5 animate-pulse"></span>
           Aktif
+        </span>
+      );
+    } else if (statusLower === 'suspended') {
+      return (
+        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+          <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mr-1.5"></span>
+          Ditangguhkan
         </span>
       );
     } else {
@@ -175,17 +188,17 @@ const OperatorList = () => {
       );
     }
   };
-  
+
   const formatDate = (dateString) => {
     if (!dateString) return 'Belum pernah login';
-    
+
     try {
-      return new Date(dateString).toLocaleDateString('id-ID', { 
-        day: '2-digit', 
-        month: '2-digit', 
-        year: 'numeric', 
-        hour: '2-digit', 
-        minute: '2-digit' 
+      return new Date(dateString).toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
       });
     } catch {
       return 'Format tanggal invalid';
@@ -198,13 +211,13 @@ const OperatorList = () => {
       <div className="bg-gradient-to-br from-blue-800 via-blue-600 to-blue-500 p-8 text-white relative">
         <div className="absolute inset-0 opacity-20">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" className="w-full h-full">
-            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                  fill="#fff" opacity="0.2" />
-            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                  fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
+            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+              fill="#fff" opacity="0.2" />
+            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+              fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
           </svg>
         </div>
-        
+
         <div className="relative z-10">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div className="flex items-start">
@@ -218,7 +231,7 @@ const OperatorList = () => {
                 <p className="mt-1 text-blue-100">Kelola seluruh operator dalam sistem</p>
               </div>
             </div>
-            
+
             <div>
               <Link to="/admin/operators/create"
                 className="inline-flex items-center px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-white/20 shadow-sm">
@@ -229,7 +242,7 @@ const OperatorList = () => {
               </Link>
             </div>
           </div>
-          
+
           {/* Quick Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-8">
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
@@ -241,7 +254,7 @@ const OperatorList = () => {
                 <span className="text-2xl font-bold">{stats.totalOperators}</span>
               </div>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Operator Aktif</p>
               <div className="flex items-center mt-1">
@@ -251,7 +264,7 @@ const OperatorList = () => {
                 <span className="text-2xl font-bold">{stats.activeOperators}</span>
               </div>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Operator Nonaktif</p>
               <div className="flex items-center mt-1">
@@ -261,7 +274,7 @@ const OperatorList = () => {
                 <span className="text-2xl font-bold">{stats.inactiveOperators}</span>
               </div>
             </div>
-          
+
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Total Armada</p>
               <div className="flex items-center mt-1">
@@ -283,14 +296,14 @@ const OperatorList = () => {
             <div className={`${alert.type === 'success' ? 'bg-emerald-500' : 'bg-red-500'} px-4 py-2 text-white flex items-center justify-between`}>
               <div className="flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  {alert.type === 'success' 
+                  {alert.type === 'success'
                     ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   }
                 </svg>
                 <span className="font-medium">{alert.type === 'success' ? 'Sukses' : 'Error'}</span>
               </div>
-              <button onClick={() => setAlert({...alert, show: false})} className="text-white/80 hover:text-white">
+              <button onClick={() => setAlert({ ...alert, show: false })} className="text-white/80 hover:text-white">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -312,7 +325,7 @@ const OperatorList = () => {
               Filter & Pencarian
             </h2>
           </div>
-          
+
           <div className="p-6 bg-white">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
@@ -351,6 +364,7 @@ const OperatorList = () => {
                     <option value="">Semua Status</option>
                     <option value="active">Aktif</option>
                     <option value="inactive">Nonaktif</option>
+                    <option value="suspended">Ditangguhkan</option>
                   </select>
                 </div>
               </div>
@@ -401,17 +415,17 @@ const OperatorList = () => {
           <p className="text-sm text-gray-600">
             {operators.length > 0 ? (
               <>
-                Menampilkan <span className="font-medium">{operators.length}</span> dari 
+                Menampilkan <span className="font-medium">{operators.length}</span> dari
                 <span className="font-medium"> {originalOperators.length}</span> operator
               </>
             ) : (
               <span>Tidak ada hasil yang ditemukan</span>
             )}
           </p>
-          
+
           <div className="flex items-center space-x-2">
             <div className="p-1 bg-gray-100 rounded-lg flex">
-              <button 
+              <button
                 onClick={() => setViewMode('table')}
                 className={`px-3 py-1 rounded ${viewMode === 'table' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-800'}`}
               >
@@ -419,7 +433,7 @@ const OperatorList = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                 </svg>
               </button>
-              <button 
+              <button
                 onClick={() => setViewMode('grid')}
                 className={`px-3 py-1 rounded ${viewMode === 'grid' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-800'}`}
               >
@@ -436,7 +450,7 @@ const OperatorList = () => {
           <div className="bg-white rounded-xl border border-gray-100 shadow-md p-8 text-center">
             <div className="inline-block relative">
               <div className="h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-500 animate-spin"></div>
-              <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-200 animate-spin" style={{animationDirection: 'reverse', animationDuration: '1.5s'}}></div>
+              <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-200 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
             </div>
             <p className="mt-4 text-gray-600">Memuat data operator...</p>
           </div>
@@ -458,7 +472,7 @@ const OperatorList = () => {
             </p>
             <div className="flex justify-center space-x-4">
               {searchText || statusFilter || sortOption !== 'id_asc' ? (
-                <button 
+                <button
                   onClick={handleReset}
                   className="inline-flex items-center px-5 py-2.5 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors shadow-sm">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -597,7 +611,7 @@ const OperatorList = () => {
                     {getStatusBadge(operator.status)}
                   </div>
                 </div>
-                
+
                 <div className="p-4">
                   <div className="grid grid-cols-2 gap-2 mb-4">
                     <div className="bg-blue-50 p-2 rounded-lg text-center">
@@ -611,7 +625,7 @@ const OperatorList = () => {
                         </span>
                       </div>
                     </div>
-                    
+
                     <div className="bg-emerald-50 p-2 rounded-lg text-center">
                       <p className="text-xs text-emerald-600 mb-1">Telepon</p>
                       <div className="flex items-center justify-center">
@@ -624,7 +638,7 @@ const OperatorList = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="bg-gray-50 p-3 rounded-lg mb-4">
                     <div className="grid grid-cols-2 gap-2">
                       <div>
@@ -645,7 +659,7 @@ const OperatorList = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="flex justify-between border-t border-gray-100 pt-4">
                     <Link to={`/admin/operators/${operator.id}`} className="btn-icon bg-blue-50 hover:bg-blue-100 text-blue-600 p-2 rounded-lg transition-colors">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

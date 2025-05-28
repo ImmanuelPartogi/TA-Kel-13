@@ -27,10 +27,10 @@ const OperatorEdit = () => {
 
   useEffect(() => {
     fetchOperatorAndRoutes();
-    
+
     if (alert.show) {
       const timer = setTimeout(() => {
-        setAlert({...alert, show: false});
+        setAlert({ ...alert, show: false });
       }, 5000);
       return () => clearTimeout(timer);
     }
@@ -41,12 +41,12 @@ const OperatorEdit = () => {
       setLoading(true);
       // Fetch operator dan routes yang sudah di-assign
       const operatorResponse = await adminOperatorService.getOperatorWithRoutes(id);
-      
+
       const { operator: operatorData } = operatorResponse;
-      
+
       // Fetch semua routes yang tersedia
       const allRoutesResponse = await adminOperatorService.getRoutes();
-      
+
       // Ensure routes is an array
       let allRoutes = [];
       if (Array.isArray(allRoutesResponse)) {
@@ -56,15 +56,15 @@ const OperatorEdit = () => {
       } else if (allRoutesResponse && Array.isArray(allRoutesResponse.routes)) {
         allRoutes = allRoutesResponse.routes;
       }
-      
+
       setOperator(operatorData);
       setRoutes(allRoutes);
-      
+
       // Ensure assigned_routes is an array
-      const assignedRouteIds = Array.isArray(operatorData.assigned_routes) 
-        ? operatorData.assigned_routes 
+      const assignedRouteIds = Array.isArray(operatorData.assigned_routes)
+        ? operatorData.assigned_routes
         : [];
-      
+
       // Set form data dengan data operator
       setFormData({
         company_name: operatorData.company_name || '',
@@ -98,13 +98,13 @@ const OperatorEdit = () => {
   const handleRouteChange = (routeId) => {
     const newRoutes = [...formData.assigned_routes];
     const index = newRoutes.indexOf(routeId);
-    
+
     if (index > -1) {
       newRoutes.splice(index, 1);
     } else {
       newRoutes.push(routeId);
     }
-    
+
     setFormData({ ...formData, assigned_routes: newRoutes });
   };
 
@@ -200,8 +200,8 @@ const OperatorEdit = () => {
   const strengthInfo = getPasswordStrengthText(passwordStrength);
 
   // Mengubah objek errors ke array untuk tampilan yang konsisten dengan FerryCreate
-  const errorMessages = errors.general 
-    ? [errors.general] 
+  const errorMessages = errors.general
+    ? [errors.general]
     : Object.values(errors).filter(error => error !== undefined);
 
   // Filter routes based on searchTerm
@@ -255,7 +255,7 @@ const OperatorEdit = () => {
                 <i className={`fas ${alert.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-2`}></i>
                 <span className="font-medium">{alert.type === 'success' ? 'Sukses' : 'Error'}</span>
               </div>
-              <button onClick={() => setAlert({...alert, show: false})} className="text-white/80 hover:text-white">
+              <button onClick={() => setAlert({ ...alert, show: false })} className="text-white/80 hover:text-white">
                 <i className="fas fa-times"></i>
               </button>
             </div>
@@ -290,11 +290,11 @@ const OperatorEdit = () => {
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i className="fas fa-building text-gray-400"></i>
                   </div>
-                  <input 
+                  <input
                     type="text"
                     className="pl-10 w-full rounded-lg border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    id="company_name" 
-                    name="company_name" 
+                    id="company_name"
+                    name="company_name"
                     value={formData.company_name}
                     onChange={handleChange}
                     required
@@ -303,7 +303,7 @@ const OperatorEdit = () => {
                 </div>
                 {errors.company_name && <p className="mt-1 text-xs text-red-600">{errors.company_name}</p>}
               </div>
-              
+
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                   Email <span className="text-red-500">*</span>
@@ -312,11 +312,11 @@ const OperatorEdit = () => {
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i className="fas fa-envelope text-gray-400"></i>
                   </div>
-                  <input 
+                  <input
                     type="email"
                     className="pl-10 w-full rounded-lg border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    id="email" 
-                    name="email" 
+                    id="email"
+                    name="email"
                     value={formData.email}
                     onChange={handleChange}
                     required
@@ -340,11 +340,11 @@ const OperatorEdit = () => {
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i className="fas fa-phone text-gray-400"></i>
                   </div>
-                  <input 
+                  <input
                     type="text"
                     className="pl-10 w-full rounded-lg border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    id="phone_number" 
-                    name="phone_number" 
+                    id="phone_number"
+                    name="phone_number"
                     value={formData.phone_number}
                     onChange={handleChange}
                     placeholder="+628123456789"
@@ -355,7 +355,7 @@ const OperatorEdit = () => {
                 {errors.phone_number && <p className="mt-1 text-xs text-red-600">{errors.phone_number}</p>}
                 <p className="mt-1 text-xs text-gray-500">Format: +62xxx atau 08xxx (10-15 digit)</p>
               </div>
-              
+
               <div>
                 <label htmlFor="license_number" className="block text-sm font-medium text-gray-700 mb-1">
                   Nomor Lisensi <span className="text-red-500">*</span>
@@ -364,11 +364,11 @@ const OperatorEdit = () => {
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i className="fas fa-id-card text-gray-400"></i>
                   </div>
-                  <input 
+                  <input
                     type="text"
                     className="pl-10 w-full rounded-lg border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    id="license_number" 
-                    name="license_number" 
+                    id="license_number"
+                    name="license_number"
                     value={formData.license_number}
                     onChange={handleChange}
                     required
@@ -388,11 +388,11 @@ const OperatorEdit = () => {
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i className="fas fa-ship text-gray-400"></i>
                   </div>
-                  <input 
+                  <input
                     type="number"
                     className="pl-10 w-full rounded-lg border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    id="fleet_size" 
-                    name="fleet_size" 
+                    id="fleet_size"
+                    name="fleet_size"
                     value={formData.fleet_size}
                     onChange={handleChange}
                     min="0"
@@ -401,7 +401,7 @@ const OperatorEdit = () => {
                 </div>
                 {errors.fleet_size && <p className="mt-1 text-xs text-red-600">{errors.fleet_size}</p>}
               </div>
-              
+
               <div>
                 <label htmlFor="company_address" className="block text-sm font-medium text-gray-700 mb-1">
                   Alamat Perusahaan <span className="text-red-500">*</span>
@@ -412,9 +412,9 @@ const OperatorEdit = () => {
                   </div>
                   <textarea
                     className="pl-10 w-full rounded-lg border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    id="company_address" 
-                    name="company_address" 
-                    rows="3" 
+                    id="company_address"
+                    name="company_address"
+                    rows="3"
                     value={formData.company_address}
                     onChange={handleChange}
                     required
@@ -438,17 +438,17 @@ const OperatorEdit = () => {
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i className="fas fa-lock text-gray-400"></i>
                   </div>
-                  <input 
+                  <input
                     type={showPassword ? "text" : "password"}
                     className="pl-10 w-full rounded-lg border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    id="password" 
-                    name="password" 
+                    id="password"
+                    name="password"
                     value={formData.password}
                     onChange={handleChange}
                     placeholder="••••••••"
                   />
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
                     onClick={() => setShowPassword(!showPassword)}
                   >
@@ -465,14 +465,13 @@ const OperatorEdit = () => {
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                       <div
-                        className={`h-2 rounded-full transition-all duration-300 ${
-                          passwordStrength < 50 ? 'bg-red-500' :
+                        className={`h-2 rounded-full transition-all duration-300 ${passwordStrength < 50 ? 'bg-red-500' :
                           passwordStrength < 75 ? 'bg-yellow-500' : 'bg-green-500'
-                        }`}
+                          }`}
                         style={{ width: `${passwordStrength}%` }}
                       />
                     </div>
-                    
+
                     {/* Password criteria */}
                     <div className="mt-2 grid grid-cols-2 gap-2">
                       <div className="flex items-center">
@@ -495,7 +494,7 @@ const OperatorEdit = () => {
                   </div>
                 )}
               </div>
-              
+
               <div>
                 <label htmlFor="password_confirmation" className="block text-sm font-medium text-gray-700 mb-1">
                   Konfirmasi Password
@@ -504,17 +503,17 @@ const OperatorEdit = () => {
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i className="fas fa-lock text-gray-400"></i>
                   </div>
-                  <input 
+                  <input
                     type={showConfirmPassword ? "text" : "password"}
                     className="pl-10 w-full rounded-lg border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    id="password_confirmation" 
-                    name="password_confirmation" 
+                    id="password_confirmation"
+                    name="password_confirmation"
                     value={formData.password_confirmation}
                     onChange={handleChange}
                     placeholder="••••••••"
                   />
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
@@ -540,26 +539,58 @@ const OperatorEdit = () => {
             </div>
           </div>
 
+          {/* Status Operator */}
+          <div className="mb-6 p-5 rounded-lg border border-gray-200 shadow-sm">
+            <h2 className="text-lg font-semibold text-blue-600 mb-4">Status Operator</h2>
+            <div>
+              <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+                Status <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <i className="fas fa-user-shield text-gray-400"></i>
+                </div>
+                <select
+                  id="status"
+                  name="status"
+                  value={formData.status || 'ACTIVE'}
+                  onChange={handleChange}
+                  className="pl-10 w-full rounded-lg border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                >
+                  <option value="ACTIVE">Aktif</option>
+                  <option value="INACTIVE">Nonaktif</option>
+                  <option value="SUSPENDED">Ditangguhkan</option>
+                </select>
+              </div>
+              {errors.status && <p className="mt-1 text-xs text-red-600">{errors.status}</p>}
+              <p className="mt-2 text-sm text-gray-500">
+                <i className="fas fa-info-circle mr-1"></i>
+                Operator dengan status Nonaktif atau Ditangguhkan tidak dapat login ke sistem.
+              </p>
+            </div>
+          </div>
+
           {/* Rute */}
           <div className="mb-6 p-5 rounded-lg border border-gray-200 shadow-sm">
             <h2 className="text-lg font-semibold text-blue-600 mb-4">Rute yang Dikelola</h2>
-            
+
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 space-y-3 md:space-y-0">
               {/* Search Input */}
               <div className="relative w-full md:w-1/2">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <i className="fas fa-search text-gray-400"></i>
                 </div>
-                <input 
-                  type="text" 
-                  id="route-search" 
+                <input
+                  type="text"
+                  id="route-search"
                   placeholder="Cari rute..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 w-full rounded-lg border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 {searchTerm && (
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setSearchTerm('')}
                     className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
@@ -568,19 +599,19 @@ const OperatorEdit = () => {
                   </button>
                 )}
               </div>
-              
+
               {/* Action Buttons */}
               <div className="flex space-x-3">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={selectAllRoutes}
                   className="px-4 py-2 bg-blue-100 text-blue-700 text-sm font-medium rounded-lg hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition duration-150 flex items-center shadow-sm"
                 >
                   <i className="fas fa-check-square mr-2"></i>
                   Pilih Semua
                 </button>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={clearAllRoutes}
                   className="px-4 py-2 bg-red-100 text-red-700 text-sm font-medium rounded-lg hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 transition duration-150 flex items-center shadow-sm"
                 >
@@ -596,19 +627,18 @@ const OperatorEdit = () => {
                 {filteredRoutes.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {filteredRoutes.map((route) => (
-                      <div 
-                        key={route.id} 
-                        className={`flex items-center p-3 rounded-lg transition duration-150 ${
-                          formData.assigned_routes.includes(route.id) 
-                            ? 'bg-blue-50 border border-blue-200 shadow-sm' 
-                            : 'border border-gray-200 hover:border-blue-300 hover:bg-blue-50'
-                        }`}
+                      <div
+                        key={route.id}
+                        className={`flex items-center p-3 rounded-lg transition duration-150 ${formData.assigned_routes.includes(route.id)
+                          ? 'bg-blue-50 border border-blue-200 shadow-sm'
+                          : 'border border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                          }`}
                       >
                         <div className="flex items-center h-5">
-                          <input 
+                          <input
                             type="checkbox"
                             className="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 transition duration-150"
-                            id={`route_${route.id}`} 
+                            id={`route_${route.id}`}
                             checked={formData.assigned_routes.includes(route.id)}
                             onChange={() => handleRouteChange(route.id)}
                           />
@@ -654,13 +684,13 @@ const OperatorEdit = () => {
 
           {/* Buttons */}
           <div className="flex justify-end mt-8 space-x-4">
-            <Link 
+            <Link
               to="/admin/operators"
               className="px-6 py-2 border border-gray-300 shadow-sm text-base font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
             >
               <i className="fas fa-times mr-2"></i> Batal
             </Link>
-            <Link 
+            <Link
               to={`/admin/operators/${operator.id}`}
               className="px-6 py-2 border border-blue-300 shadow-sm text-base font-medium rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
             >

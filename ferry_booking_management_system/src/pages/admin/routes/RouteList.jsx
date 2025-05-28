@@ -15,7 +15,7 @@ const RouteList = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showVehiclePriceModal, setShowVehiclePriceModal] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState(null);
-  const [vehiclePrices, setVehiclePrices] = useState({});
+  const [vehicleCategories, setVehicleCategories] = useState([]);
   const [viewMode, setViewMode] = useState('table'); // table or grid
   const [alert, setAlert] = useState({ show: false, type: '', message: '' });
 
@@ -26,11 +26,11 @@ const RouteList = () => {
 
   useEffect(() => {
     fetchRoutes();
-    
+
     // Auto-hide alert after 5 seconds
     if (alert.show) {
       const timer = setTimeout(() => {
-        setAlert({...alert, show: false});
+        setAlert({ ...alert, show: false });
       }, 5000);
       return () => clearTimeout(timer);
     }
@@ -67,7 +67,7 @@ const RouteList = () => {
   const handleSearch = (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
-    
+
     setSearchParams({
       search: formData.get('search') || '',
       status: formData.get('status') || '',
@@ -103,14 +103,26 @@ const RouteList = () => {
     }
   };
 
-  const showVehiclePriceDetails = (route) => {
-    setVehiclePrices({
-      motorcycle: route.motorcycle_price,
-      car: route.car_price,
-      bus: route.bus_price,
-      truck: route.truck_price
-    });
-    setShowVehiclePriceModal(true);
+  const showVehiclePriceDetails = async () => {
+    try {
+      setLoading(true); // Tambahkan state loading jika belum ada
+
+      // Ambil data kategori kendaraan dari API
+      const response = await adminRouteService.getVehicleCategories();
+
+      if (response.status === 'success' && Array.isArray(response.data)) {
+        // Simpan seluruh data kategori kendaraan
+        setVehicleCategories(response.data);
+      } else {
+        setVehicleCategories([]);
+      }
+    } catch (error) {
+      console.error('Error fetching vehicle categories:', error);
+      setVehicleCategories([]);
+    } finally {
+      setLoading(false);
+      setShowVehiclePriceModal(true);
+    }
   };
 
   const formatPrice = (price) => {
@@ -128,7 +140,7 @@ const RouteList = () => {
 
   // Status badge configuration
   const getStatusConfig = (status) => {
-    switch(status) {
+    switch (status) {
       case 'ACTIVE':
         return {
           bg: 'bg-emerald-100',
@@ -165,13 +177,13 @@ const RouteList = () => {
       <div className="bg-gradient-to-br from-blue-800 via-blue-600 to-blue-500 p-8 text-white relative">
         <div className="absolute inset-0 opacity-20">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" className="w-full h-full">
-            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                  fill="#fff" opacity="0.2" />
-            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                  fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
+            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+              fill="#fff" opacity="0.2" />
+            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+              fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
           </svg>
         </div>
-        
+
         <div className="relative z-10">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div className="flex items-start">
@@ -183,7 +195,7 @@ const RouteList = () => {
                 <p className="mt-1 text-blue-100">Kelola seluruh rute pelayaran dalam sistem</p>
               </div>
             </div>
-            
+
             <div>
               <Link to="/admin/routes/create"
                 className="inline-flex items-center px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-white/20 shadow-sm">
@@ -191,7 +203,7 @@ const RouteList = () => {
               </Link>
             </div>
           </div>
-          
+
           {/* Quick Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-8">
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
@@ -201,7 +213,7 @@ const RouteList = () => {
                 <span className="text-2xl font-bold">{pagination.total}</span>
               </div>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Rute Aktif</p>
               <div className="flex items-center mt-1">
@@ -211,7 +223,7 @@ const RouteList = () => {
                 </span>
               </div>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Masalah Cuaca</p>
               <div className="flex items-center mt-1">
@@ -234,7 +246,7 @@ const RouteList = () => {
                 <i className={`fas ${alert.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-2`}></i>
                 <span className="font-medium">{alert.type === 'success' ? 'Sukses' : 'Error'}</span>
               </div>
-              <button onClick={() => setAlert({...alert, show: false})} className="text-white/80 hover:text-white">
+              <button onClick={() => setAlert({ ...alert, show: false })} className="text-white/80 hover:text-white">
                 <i className="fas fa-times"></i>
               </button>
             </div>
@@ -252,7 +264,7 @@ const RouteList = () => {
               Filter & Pencarian
             </h2>
           </div>
-          
+
           <div className="p-6 bg-white">
             <form onSubmit={handleSearch}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -318,20 +330,20 @@ const RouteList = () => {
         {/* View Toggle & Result Count */}
         <div className="flex justify-between items-center mb-6">
           <p className="text-sm text-gray-600">
-            Menampilkan <span className="font-medium">{getFirstItem()}</span> - 
-            <span className="font-medium"> {getLastItem()}</span> dari 
+            Menampilkan <span className="font-medium">{getFirstItem()}</span> -
+            <span className="font-medium"> {getLastItem()}</span> dari
             <span className="font-medium"> {pagination.total}</span> rute
           </p>
-          
+
           <div className="flex items-center space-x-2">
             <div className="p-1 bg-gray-100 rounded-lg flex">
-              <button 
+              <button
                 onClick={() => setViewMode('table')}
                 className={`px-3 py-1 rounded ${viewMode === 'table' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-800'}`}
               >
                 <i className="fas fa-list"></i>
               </button>
-              <button 
+              <button
                 onClick={() => setViewMode('grid')}
                 className={`px-3 py-1 rounded ${viewMode === 'grid' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-800'}`}
               >
@@ -346,7 +358,7 @@ const RouteList = () => {
           <div className="bg-white rounded-xl border border-gray-100 shadow-md p-8 text-center">
             <div className="inline-block relative">
               <div className="h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-500 animate-spin"></div>
-              <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-200 animate-spin" style={{animationDirection: 'reverse', animationDuration: '1.5s'}}></div>
+              <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-200 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
             </div>
             <p className="mt-4 text-gray-600">Memuat data rute...</p>
           </div>
@@ -502,19 +514,19 @@ const RouteList = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="p-4">
                     <div className="flex justify-between items-center mb-4">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${statusConfig.bg} ${statusConfig.text} border ${statusConfig.border}`}>
                         <span className={`w-1.5 h-1.5 ${statusConfig.indicator} rounded-full mr-1.5 ${route.status === 'ACTIVE' ? 'animate-pulse' : ''}`}></span>
                         {statusConfig.label}
                       </span>
-                      
+
                       <span className="text-sm text-gray-600">
                         <i className="fas fa-clock mr-1"></i> {Math.floor(route.duration / 60)}j {route.duration % 60}m
                       </span>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-2 mb-4">
                       <div className="bg-blue-50 p-2 rounded-lg text-center">
                         <p className="text-xs text-blue-600 mb-1">Jarak</p>
@@ -523,7 +535,7 @@ const RouteList = () => {
                           <span className="text-lg font-semibold text-blue-700">{route.distance || '-'} km</span>
                         </div>
                       </div>
-                      
+
                       <div className="bg-emerald-50 p-2 rounded-lg text-center">
                         <p className="text-xs text-emerald-600 mb-1">Harga Dasar</p>
                         <div className="flex items-center justify-center">
@@ -534,12 +546,12 @@ const RouteList = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="flex justify-between border-t border-gray-100 pt-4">
                       <Link to={`/admin/routes/${route.id}`} className="btn-icon bg-blue-50 hover:bg-blue-100 text-blue-600 p-2 rounded-lg transition-colors">
                         <i className="fas fa-eye"></i>
                       </Link>
-                      <button 
+                      <button
                         onClick={() => showVehiclePriceDetails(route)}
                         className="btn-icon bg-purple-50 hover:bg-purple-100 text-purple-600 p-2 rounded-lg transition-colors">
                         <i className="fas fa-tags"></i>
@@ -565,26 +577,26 @@ const RouteList = () => {
         {!loading && pagination.total > 0 && (
           <div className="flex flex-col md:flex-row justify-between items-center bg-white rounded-xl border border-gray-100 shadow-sm p-4">
             <div className="text-sm text-gray-600 mb-4 md:mb-0">
-              Menampilkan <span className="font-medium">{getFirstItem()}</span> - 
-              <span className="font-medium"> {getLastItem()}</span> dari 
+              Menampilkan <span className="font-medium">{getFirstItem()}</span> -
+              <span className="font-medium"> {getLastItem()}</span> dari
               <span className="font-medium"> {pagination.total}</span> hasil
             </div>
             <div className="flex space-x-1">
-              <button 
+              <button
                 onClick={() => handlePageChange(1)}
                 disabled={pagination.current_page === 1}
                 className="px-3 py-1 rounded-md bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
               >
                 <i className="fas fa-angle-double-left"></i>
               </button>
-              <button 
+              <button
                 onClick={() => handlePageChange(pagination.current_page - 1)}
                 disabled={pagination.current_page === 1}
                 className="px-3 py-1 rounded-md bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
               >
                 <i className="fas fa-angle-left"></i>
               </button>
-              
+
               {/* Page numbers */}
               <div className="flex space-x-1">
                 {Array.from({ length: Math.min(5, pagination.last_page) }, (_, i) => {
@@ -602,7 +614,7 @@ const RouteList = () => {
                     // Middle cases
                     pageNum = pagination.current_page - 2 + i;
                   }
-                  
+
                   return (
                     <button
                       key={i}
@@ -615,15 +627,15 @@ const RouteList = () => {
                   );
                 })}
               </div>
-              
-              <button 
+
+              <button
                 onClick={() => handlePageChange(pagination.current_page + 1)}
                 disabled={pagination.current_page === pagination.last_page}
                 className="px-3 py-1 rounded-md bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
               >
                 <i className="fas fa-angle-right"></i>
               </button>
-              <button 
+              <button
                 onClick={() => handlePageChange(pagination.last_page)}
                 disabled={pagination.current_page === pagination.last_page}
                 className="px-3 py-1 rounded-md bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
@@ -650,7 +662,7 @@ const RouteList = () => {
                   <p className="font-semibold text-lg text-gray-800">{selectedRoute?.origin} - {selectedRoute?.destination}</p>
                 </div>
               </div>
-              
+
               <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-r mb-6">
                 <div className="flex">
                   <div className="flex-shrink-0">
@@ -663,15 +675,15 @@ const RouteList = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex space-x-3">
-                <button 
+                <button
                   onClick={() => setShowDeleteModal(false)}
                   className="w-full py-3 px-4 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-gray-200 transition-colors"
                 >
                   Batal
                 </button>
-                <button 
+                <button
                   onClick={handleDelete}
                   className="w-full py-3 px-4 bg-red-500 rounded-lg text-white font-medium hover:bg-red-600 focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
                 >
@@ -700,60 +712,110 @@ const RouteList = () => {
               </button>
             </div>
             <div className="p-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <div className="flex items-center">
-                    <div className="p-3 bg-blue-100 text-blue-600 rounded-full mr-4">
-                      <i className="fas fa-motorcycle"></i>
-                    </div>
-                    <span className="font-medium text-gray-700">Motor</span>
-                  </div>
-                  <span className="font-semibold text-gray-800 bg-blue-50 px-3 py-1 rounded-lg">
-                    Rp {formatPrice(vehiclePrices.motorcycle)}
-                  </span>
+              {loading ? (
+                <div className="flex justify-center items-center py-10">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+                  <p className="ml-3 text-gray-600">Memuat data kategori kendaraan...</p>
                 </div>
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <div className="flex items-center">
-                    <div className="p-3 bg-indigo-100 text-indigo-600 rounded-full mr-4">
-                      <i className="fas fa-car"></i>
-                    </div>
-                    <span className="font-medium text-gray-700">Mobil</span>
+              ) : vehicleCategories.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="bg-gray-100 w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4">
+                    <i className="fas fa-info-circle text-gray-400 text-xl"></i>
                   </div>
-                  <span className="font-semibold text-gray-800 bg-indigo-50 px-3 py-1 rounded-lg">
-                    Rp {formatPrice(vehiclePrices.car)}
-                  </span>
+                  <p className="text-gray-500">Belum ada kategori kendaraan yang tersedia</p>
+                  <p className="text-sm text-gray-400 mt-2">Silakan tambahkan kategori kendaraan terlebih dahulu</p>
                 </div>
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <div className="flex items-center">
-                    <div className="p-3 bg-purple-100 text-purple-600 rounded-full mr-4">
-                      <i className="fas fa-bus"></i>
-                    </div>
-                    <span className="font-medium text-gray-700">Bus</span>
+              ) : (
+                <>
+                  <div className="space-y-4">
+                    {/* Pengelompokan berdasarkan tipe kendaraan */}
+                    {['MOTORCYCLE', 'CAR', 'BUS', 'TRUCK'].map(vehicleType => {
+                      // Filter kategori berdasarkan tipe
+                      const categoriesOfType = vehicleCategories.filter(
+                        category => category.vehicle_type === vehicleType
+                      );
+
+                      // Jika tidak ada kategori dari tipe ini, lewati
+                      if (categoriesOfType.length === 0) return null;
+
+                      // Konfigurasi tampilan berdasarkan tipe
+                      const typeConfig = {
+                        'MOTORCYCLE': {
+                          label: 'Motor',
+                          bgColor: 'bg-blue-100',
+                          textColor: 'text-blue-600',
+                          icon: 'fa-motorcycle',
+                          priceBg: 'bg-blue-50'
+                        },
+                        'CAR': {
+                          label: 'Mobil',
+                          bgColor: 'bg-indigo-100',
+                          textColor: 'text-indigo-600',
+                          icon: 'fa-car',
+                          priceBg: 'bg-indigo-50'
+                        },
+                        'BUS': {
+                          label: 'Bus',
+                          bgColor: 'bg-purple-100',
+                          textColor: 'text-purple-600',
+                          icon: 'fa-bus',
+                          priceBg: 'bg-purple-50'
+                        },
+                        'TRUCK': {
+                          label: 'Truk',
+                          bgColor: 'bg-yellow-100',
+                          textColor: 'text-yellow-600',
+                          icon: 'fa-truck',
+                          priceBg: 'bg-yellow-50'
+                        }
+                      };
+
+                      const config = typeConfig[vehicleType];
+
+                      return (
+                        <div key={vehicleType} className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                          <div className="flex items-center justify-between p-4 hover:bg-gray-50">
+                            <div className="flex items-center">
+                              <div className={`w-9 h-9 flex items-center justify-center ${config.bgColor} ${config.textColor} rounded-lg mr-3`}>
+                                <i className={`fas ${config.icon}`}></i>
+                              </div>
+                              <div>
+                                <div className="text-sm font-medium text-gray-700">{config.label}</div>
+                                <div className="text-xs text-gray-500">{categoriesOfType.length} kategori</div>
+                              </div>
+                            </div>
+                            <i className="fas fa-chevron-right text-gray-400"></i>
+                          </div>
+
+                          {/* Daftar kategori untuk tipe ini */}
+                          <div className="border-t border-gray-100">
+                            {categoriesOfType.map(category => (
+                              <div key={category.id} className="flex items-center justify-between p-3 pl-14 hover:bg-gray-50 border-b border-gray-100 last:border-b-0">
+                                <div>
+                                  <div className="text-sm text-gray-700">{category.name}</div>
+                                  <div className="text-xs text-gray-500">{category.code}</div>
+                                </div>
+                                <div className={`font-bold text-gray-800 ${config.priceBg} px-3 py-1 rounded-lg`}>
+                                  Rp {formatPrice(category.base_price)}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <span className="font-semibold text-gray-800 bg-purple-50 px-3 py-1 rounded-lg">
-                    Rp {formatPrice(vehiclePrices.bus)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <div className="flex items-center">
-                    <div className="p-3 bg-yellow-100 text-yellow-600 rounded-full mr-4">
-                      <i className="fas fa-truck"></i>
-                    </div>
-                    <span className="font-medium text-gray-700">Truck</span>
+
+                  <div className="mt-8 flex justify-center">
+                    <button
+                      onClick={() => setShowVehiclePriceModal(false)}
+                      className="inline-flex justify-center items-center px-6 py-3 border border-gray-300 shadow-sm text-sm font-medium rounded-lg bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                    >
+                      <i className="fas fa-times mr-2"></i> Tutup
+                    </button>
                   </div>
-                  <span className="font-semibold text-gray-800 bg-yellow-50 px-3 py-1 rounded-lg">
-                    Rp {formatPrice(vehiclePrices.truck)}
-                  </span>
-                </div>
-              </div>
-              <div className="mt-8 flex justify-center">
-                <button
-                  onClick={() => setShowVehiclePriceModal(false)}
-                  className="inline-flex justify-center items-center px-6 py-3 border border-gray-300 shadow-sm text-sm font-medium rounded-lg bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                >
-                  <i className="fas fa-times mr-2"></i> Tutup
-                </button>
-              </div>
+                </>
+              )}
             </div>
           </div>
         </div>

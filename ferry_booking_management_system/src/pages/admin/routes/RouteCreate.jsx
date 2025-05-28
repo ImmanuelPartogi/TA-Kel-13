@@ -16,10 +16,7 @@ const RouteCreate = () => {
     distance: '',
     duration: '',
     base_price: 0,
-    motorcycle_price: 0,
-    car_price: 0,
-    bus_price: 0,
-    truck_price: 0,
+    // Hapus harga kendaraan dari state
     status: 'ACTIVE',
     status_reason: '',
     status_expiry_date: ''
@@ -226,84 +223,6 @@ const RouteCreate = () => {
                   />
                 </div>
               </div>
-              <div>
-                <label htmlFor="motorcycle_price" className="block text-sm font-medium text-gray-700 mb-1">
-                  Harga Motor <span className="text-red-500">*</span>
-                </label>
-                <div className="flex rounded-lg shadow-sm">
-                  <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">Rp</span>
-                  <input
-                    type="number"
-                    id="motorcycle_price"
-                    name="motorcycle_price"
-                    value={formData.motorcycle_price}
-                    onChange={handleInputChange}
-                    min="0"
-                    required
-                    placeholder="Masukkan harga motor"
-                    className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-              <div>
-                <label htmlFor="car_price" className="block text-sm font-medium text-gray-700 mb-1">
-                  Harga Mobil <span className="text-red-500">*</span>
-                </label>
-                <div className="flex rounded-lg shadow-sm">
-                  <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">Rp</span>
-                  <input
-                    type="number"
-                    id="car_price"
-                    name="car_price"
-                    value={formData.car_price}
-                    onChange={handleInputChange}
-                    min="0"
-                    required
-                    placeholder="Masukkan harga mobil"
-                    className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-              <div>
-                <label htmlFor="bus_price" className="block text-sm font-medium text-gray-700 mb-1">
-                  Harga Bus <span className="text-red-500">*</span>
-                </label>
-                <div className="flex rounded-lg shadow-sm">
-                  <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">Rp</span>
-                  <input
-                    type="number"
-                    id="bus_price"
-                    name="bus_price"
-                    value={formData.bus_price}
-                    onChange={handleInputChange}
-                    min="0"
-                    required
-                    placeholder="Masukkan harga bus"
-                    className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-              <div>
-                <label htmlFor="truck_price" className="block text-sm font-medium text-gray-700 mb-1">
-                  Harga Truk <span className="text-red-500">*</span>
-                </label>
-                <div className="flex rounded-lg shadow-sm">
-                  <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">Rp</span>
-                  <input
-                    type="number"
-                    id="truck_price"
-                    name="truck_price"
-                    value={formData.truck_price}
-                    onChange={handleInputChange}
-                    min="0"
-                    required
-                    placeholder="Masukkan harga truk"
-                    className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
             </div>
           </div>
 
@@ -378,7 +297,7 @@ const RouteCreate = () => {
 
           {/* Buttons - Diselaraskan dengan style RouteList */}
           <div className="flex justify-end mt-8 space-x-4">
-            <Link 
+            <Link
               to="/admin/routes"
               className="px-6 py-2 border border-gray-300 shadow-sm text-base font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
             >

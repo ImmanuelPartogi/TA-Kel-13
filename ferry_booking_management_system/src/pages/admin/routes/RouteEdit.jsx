@@ -10,7 +10,7 @@ const RouteEdit = () => {
   const [errors, setErrors] = useState({});
   const [showReasonContainer, setShowReasonContainer] = useState(false);
   const [showExpiryDate, setShowExpiryDate] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     route_code: '',
     origin: '',
@@ -18,10 +18,7 @@ const RouteEdit = () => {
     distance: '',
     duration: '',
     base_price: 0,
-    motorcycle_price: 0,
-    car_price: 0,
-    bus_price: 0,
-    truck_price: 0,
+    // Hapus harga kendaraan dari state
     status: 'ACTIVE',
     status_reason: '',
     status_expiry_date: ''
@@ -62,7 +59,7 @@ const RouteEdit = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
-    
+
     if (name === 'status') {
       setShowReasonContainer(value !== 'ACTIVE');
       setShowExpiryDate(value === 'WEATHER_ISSUE');
@@ -73,7 +70,7 @@ const RouteEdit = () => {
     e.preventDefault();
     setSaving(true);
     setErrors({});
-    
+
     try {
       await adminRouteService.updateRoute(id, formData);
       navigate('/admin/routes');
@@ -139,10 +136,10 @@ const RouteEdit = () => {
                 <label htmlFor="route_code" className="block text-sm font-medium text-gray-700 mb-1">
                   Kode Rute <span className="text-red-500">*</span>
                 </label>
-                <input 
-                  type="text" 
-                  id="route_code" 
-                  name="route_code" 
+                <input
+                  type="text"
+                  id="route_code"
+                  name="route_code"
                   value={formData.route_code}
                   onChange={handleInputChange}
                   required
@@ -159,10 +156,10 @@ const RouteEdit = () => {
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i className="fas fa-map-marker-alt text-gray-400"></i>
                   </div>
-                  <input 
-                    type="text" 
-                    id="origin" 
-                    name="origin" 
+                  <input
+                    type="text"
+                    id="origin"
+                    name="origin"
                     value={formData.origin}
                     onChange={handleInputChange}
                     required
@@ -179,10 +176,10 @@ const RouteEdit = () => {
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i className="fas fa-map-marker-alt text-gray-400"></i>
                   </div>
-                  <input 
-                    type="text" 
-                    id="destination" 
-                    name="destination" 
+                  <input
+                    type="text"
+                    id="destination"
+                    name="destination"
                     value={formData.destination}
                     onChange={handleInputChange}
                     required
@@ -200,13 +197,13 @@ const RouteEdit = () => {
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i className="fas fa-ruler text-gray-400"></i>
                   </div>
-                  <input 
-                    type="number" 
-                    id="distance" 
-                    name="distance" 
+                  <input
+                    type="number"
+                    id="distance"
+                    name="distance"
                     value={formData.distance}
                     onChange={handleInputChange}
-                    step="0.01" 
+                    step="0.01"
                     min="0"
                     placeholder="Masukkan jarak dalam kilometer"
                     className="pl-10 w-full rounded-lg border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -221,13 +218,13 @@ const RouteEdit = () => {
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i className="fas fa-clock text-gray-400"></i>
                   </div>
-                  <input 
-                    type="number" 
-                    id="duration" 
-                    name="duration" 
+                  <input
+                    type="number"
+                    id="duration"
+                    name="duration"
                     value={formData.duration}
                     onChange={handleInputChange}
-                    min="1" 
+                    min="1"
                     required
                     placeholder="Masukkan durasi perjalanan"
                     className="pl-10 w-full rounded-lg border border-gray-300 shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -247,93 +244,15 @@ const RouteEdit = () => {
                 </label>
                 <div className="flex rounded-lg shadow-sm">
                   <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">Rp</span>
-                  <input 
-                    type="number" 
-                    id="base_price" 
-                    name="base_price" 
+                  <input
+                    type="number"
+                    id="base_price"
+                    name="base_price"
                     value={formData.base_price}
                     onChange={handleInputChange}
-                    min="0" 
+                    min="0"
                     required
                     placeholder="Masukkan harga dasar"
-                    className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-              <div>
-                <label htmlFor="motorcycle_price" className="block text-sm font-medium text-gray-700 mb-1">
-                  Harga Motor <span className="text-red-500">*</span>
-                </label>
-                <div className="flex rounded-lg shadow-sm">
-                  <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">Rp</span>
-                  <input 
-                    type="number" 
-                    id="motorcycle_price" 
-                    name="motorcycle_price" 
-                    value={formData.motorcycle_price}
-                    onChange={handleInputChange}
-                    min="0" 
-                    required
-                    placeholder="Masukkan harga motor"
-                    className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-              <div>
-                <label htmlFor="car_price" className="block text-sm font-medium text-gray-700 mb-1">
-                  Harga Mobil <span className="text-red-500">*</span>
-                </label>
-                <div className="flex rounded-lg shadow-sm">
-                  <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">Rp</span>
-                  <input 
-                    type="number" 
-                    id="car_price" 
-                    name="car_price" 
-                    value={formData.car_price}
-                    onChange={handleInputChange}
-                    min="0" 
-                    required
-                    placeholder="Masukkan harga mobil"
-                    className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-              <div>
-                <label htmlFor="bus_price" className="block text-sm font-medium text-gray-700 mb-1">
-                  Harga Bus <span className="text-red-500">*</span>
-                </label>
-                <div className="flex rounded-lg shadow-sm">
-                  <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">Rp</span>
-                  <input 
-                    type="number" 
-                    id="bus_price" 
-                    name="bus_price" 
-                    value={formData.bus_price}
-                    onChange={handleInputChange}
-                    min="0" 
-                    required
-                    placeholder="Masukkan harga bus"
-                    className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-              <div>
-                <label htmlFor="truck_price" className="block text-sm font-medium text-gray-700 mb-1">
-                  Harga Truk <span className="text-red-500">*</span>
-                </label>
-                <div className="flex rounded-lg shadow-sm">
-                  <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">Rp</span>
-                  <input 
-                    type="number" 
-                    id="truck_price" 
-                    name="truck_price" 
-                    value={formData.truck_price}
-                    onChange={handleInputChange}
-                    min="0" 
-                    required
-                    placeholder="Masukkan harga truk"
                     className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -349,9 +268,9 @@ const RouteEdit = () => {
                 <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
                   Status <span className="text-red-500">*</span>
                 </label>
-                <select 
-                  id="status" 
-                  name="status" 
+                <select
+                  id="status"
+                  name="status"
                   value={formData.status}
                   onChange={handleInputChange}
                   required
@@ -371,10 +290,10 @@ const RouteEdit = () => {
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <i className="fas fa-info-circle text-gray-400"></i>
                     </div>
-                    <input 
-                      type="text" 
-                      id="status_reason" 
-                      name="status_reason" 
+                    <input
+                      type="text"
+                      id="status_reason"
+                      name="status_reason"
                       value={formData.status_reason}
                       onChange={handleInputChange}
                       placeholder="Masukkan alasan status"
@@ -395,10 +314,10 @@ const RouteEdit = () => {
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i className="fas fa-calendar-alt text-gray-400"></i>
                   </div>
-                  <input 
-                    type="datetime-local" 
-                    id="status_expiry_date" 
-                    name="status_expiry_date" 
+                  <input
+                    type="datetime-local"
+                    id="status_expiry_date"
+                    name="status_expiry_date"
                     value={formData.status_expiry_date}
                     onChange={handleInputChange}
                     required
@@ -412,14 +331,14 @@ const RouteEdit = () => {
 
           {/* Buttons */}
           <div className="flex justify-end mt-8 space-x-4">
-            <Link 
+            <Link
               to="/admin/routes"
               className="px-6 py-2 border border-gray-300 shadow-sm text-base font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
             >
               <i className="fas fa-times mr-2"></i> Batal
             </Link>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={saving}
               className="px-6 py-2 border border-transparent shadow-sm text-base font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 disabled:opacity-50"
             >

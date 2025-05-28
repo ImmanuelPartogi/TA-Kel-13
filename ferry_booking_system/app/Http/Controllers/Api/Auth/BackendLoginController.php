@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 use App\Models\Admin;
 use App\Models\Operator;
 
@@ -36,6 +37,13 @@ class BackendLoginController extends Controller
             'password' => $request->password
         ])) {
             $admin = Admin::where('email', $request->email)->first();
+
+            // Update last_login timestamp jika kolom ada
+            if (isset($admin->last_login)) {
+                $admin->last_login = now();
+                $admin->save();
+            }
+
             $token = $admin->createToken('admin-token', ['role:admin'])->plainTextToken;
 
             return response()->json([
@@ -46,7 +54,9 @@ class BackendLoginController extends Controller
                     'id' => $admin->id,
                     'name' => $admin->name,
                     'email' => $admin->email,
-                    'role' => 'admin'
+                    'role' => 'admin',
+                    'last_login' => $admin->last_login ?? null
+                    // remember_token tidak dimasukkan ke respons
                 ]
             ]);
         }
@@ -83,6 +93,32 @@ class BackendLoginController extends Controller
             'password' => $request->password
         ])) {
             $operator = Operator::where('email', $request->email)->first();
+
+            // Log status untuk debugging
+            Log::info('Operator login attempt', [
+                'operator_id' => $operator->id,
+                'email' => $operator->email,
+                'status' => $operator->status,
+                'status_type' => gettype($operator->status)
+            ]);
+
+            // Periksa status dengan case insensitive
+            $status = strtoupper($operator->status ?? '');
+
+            if ($status !== 'ACTIVE') {
+                // Revoke token yang baru saja dibuat
+                $operator->tokens()->delete();
+
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Akun operator tidak aktif. Hubungi administrator sistem.'
+                ], 403);
+            }
+
+            // Update last_login timestamp
+            $operator->last_login = now();
+            $operator->save();
+
             $token = $operator->createToken('operator-token', ['role:operator'])->plainTextToken;
 
             return response()->json([
@@ -91,10 +127,12 @@ class BackendLoginController extends Controller
                 'token' => $token,
                 'user' => [
                     'id' => $operator->id,
-                    'name' => $operator->name,
+                    'company_name' => $operator->company_name,
                     'email' => $operator->email,
                     'role' => 'operator',
-                    'assigned_routes' => $operator->assigned_routes
+                    'assigned_routes' => $operator->assigned_routes,
+                    'status' => $operator->status,
+                    'last_login' => $operator->last_login
                 ]
             ]);
         }

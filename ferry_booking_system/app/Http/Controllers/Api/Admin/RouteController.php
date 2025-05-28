@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Route;
+use App\Models\VehicleCategory;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -42,19 +43,26 @@ class RouteController extends Controller
         $perPage = $request->input('per_page', 10);
         $routes = $query->paginate($perPage);
 
+        // Tambahkan data vehicle categories
+        $vehicleCategories = VehicleCategory::where('is_active', true)->get();
+
         return response()->json([
             'status' => 'success',
-            'data' => $routes
+            'data' => $routes,
+            'vehicle_categories' => $vehicleCategories
         ]);
     }
 
     public function show($id)
     {
         $route = Route::findOrFail($id);
+        // Tambahkan data vehicle categories
+        $vehicleCategories = VehicleCategory::where('is_active', true)->get();
 
         return response()->json([
             'status' => 'success',
-            'data' => $route
+            'data' => $route,
+            'vehicle_categories' => $vehicleCategories
         ]);
     }
 
@@ -67,10 +75,7 @@ class RouteController extends Controller
             'distance' => 'nullable|numeric|min:0',
             'duration' => 'required|integer|min:1',
             'base_price' => 'required|numeric|min:0',
-            'motorcycle_price' => 'required|numeric|min:0',
-            'car_price' => 'required|numeric|min:0',
-            'bus_price' => 'required|numeric|min:0',
-            'truck_price' => 'required|numeric|min:0',
+            // Validasi harga kendaraan dihapus karena sudah ada di vehicle_categories
             'status' => 'required|in:ACTIVE,INACTIVE,WEATHER_ISSUE',
             'status_reason' => 'nullable|string|max:191',
         ]);
@@ -110,10 +115,7 @@ class RouteController extends Controller
             'distance' => 'nullable|numeric|min:0',
             'duration' => 'required|integer|min:1',
             'base_price' => 'required|numeric|min:0',
-            'motorcycle_price' => 'required|numeric|min:0',
-            'car_price' => 'required|numeric|min:0',
-            'bus_price' => 'required|numeric|min:0',
-            'truck_price' => 'required|numeric|min:0',
+            // Validasi harga kendaraan dihapus karena sudah ada di vehicle_categories
             'status' => 'required|in:ACTIVE,INACTIVE,WEATHER_ISSUE',
             'status_reason' => 'nullable|string|max:191',
         ]);

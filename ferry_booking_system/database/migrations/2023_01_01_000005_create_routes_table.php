@@ -16,10 +16,7 @@ return new class extends Migration
             $table->decimal('distance', 10, 2)->nullable()->comment('Jarak dalam KM');
             $table->unsignedInteger('duration')->comment('Durasi dalam menit');
             $table->decimal('base_price', 12, 2)->comment('Harga dasar untuk penumpang');
-            $table->decimal('motorcycle_price', 12, 2)->comment('Harga tambahan untuk motor');
-            $table->decimal('car_price', 12, 2)->comment('Harga tambahan untuk mobil');
-            $table->decimal('bus_price', 12, 2)->comment('Harga tambahan untuk bus');
-            $table->decimal('truck_price', 12, 2)->comment('Harga tambahan untuk truk');
+            // Kolom harga kendaraan dihapus karena sudah ada di vehicle_categories
             $table->enum('status', ['ACTIVE', 'INACTIVE', 'WEATHER_ISSUE'])->default('ACTIVE');
             $table->string('status_reason', 191)->nullable()->comment('Alasan perubahan status');
             $table->timestamp('status_updated_at')->nullable()->comment('Waktu terakhir status diperbarui');

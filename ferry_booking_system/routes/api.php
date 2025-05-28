@@ -31,6 +31,7 @@ use App\Http\Controllers\Api\User\VehicleController;
 use App\Http\Controllers\Api\User\ChatbotController;
 use App\Http\Controllers\Api\User\PollingController;
 use App\Http\Controllers\Api\User\RefundController;
+use App\Http\Controllers\Api\User\VehicleCategoryController;
 
 /*
 |--------------------------------------------------------------------------
@@ -178,6 +179,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{id}', [NotificationController::class, 'delete']);
         Route::delete('/read/all', [NotificationController::class, 'deleteRead']);
     });
+
+    Route::get('/vehicle-categories', [VehicleCategoryController::class, 'index']);
+    Route::get('/vehicle-categories/type/{type}', [VehicleCategoryController::class, 'getByType']);
 });
 
 /*
@@ -211,6 +215,7 @@ Route::prefix('admin-panel')->middleware(['auth:sanctum'])->group(function () {
         Route::put('/{id}', [OperatorController::class, 'update']);
         Route::delete('/{id}', [OperatorController::class, 'destroy']);
         Route::post('/check-email', [OperatorController::class, 'checkEmailAvailability']);
+        Route::put('/{id}/status', [OperatorController::class, 'toggleStatus']);
     });
 
     // Routes Management
@@ -301,13 +306,13 @@ Route::prefix('admin-panel')->middleware(['auth:sanctum'])->group(function () {
         Route::post('/{id}/complete', [AdminRefundController::class, 'complete']);
     });
 
-    Route::prefix('vehicleCategories')->group(function () {
+   Route::prefix('vehicle-categories')->group(function () {
         Route::get('/', [AdminVehicleCategoryController::class, 'index']);
         Route::post('/', [AdminVehicleCategoryController::class, 'store']);
-        Route::get('/{vehicleCategory}', [AdminVehicleCategoryController::class, 'show']);
-        Route::put('/{vehicleCategory}', [AdminVehicleCategoryController::class, 'update']);
-        Route::delete('/{vehicleCategory}', [AdminVehicleCategoryController::class, 'destroy']);
-        Route::put('/{vehicleCategory}/status', [AdminVehicleCategoryController::class, 'toggleStatus']);
+        Route::get('/{id}', [AdminVehicleCategoryController::class, 'show']);
+        Route::put('/{id}', [AdminVehicleCategoryController::class, 'update']);
+        Route::delete('/{id}', [AdminVehicleCategoryController::class, 'destroy']);
+        Route::put('/{id}/status', [AdminVehicleCategoryController::class, 'toggleStatus']);
         Route::get('/by-type', [AdminVehicleCategoryController::class, 'getCategoriesByType'])->withoutMiddleware(['auth:sanctum']);
     });
 });

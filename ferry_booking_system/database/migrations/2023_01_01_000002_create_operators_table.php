@@ -19,6 +19,7 @@ return new class extends Migration
             $table->text('company_address');
             $table->string('password', 191);
             $table->enum('role', ['OPERATOR'])->default('OPERATOR');
+            $table->enum('status', ['ACTIVE', 'INACTIVE', 'SUSPENDED'])->default('ACTIVE');
             $table->json('assigned_routes')->nullable()->comment('Rute yang dapat dikelola');
             $table->timestamp('last_login')->nullable();
             $table->rememberToken();

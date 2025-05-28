@@ -16,10 +16,6 @@ class Route extends Model
         'distance',
         'duration',
         'base_price',
-        'motorcycle_price',
-        'car_price',
-        'bus_price',
-        'truck_price',
         'status',
         'status_reason',
         'status_updated_at',
@@ -34,5 +30,25 @@ class Route extends Model
     public function schedules()
     {
         return $this->hasMany(Schedule::class);
+    }
+
+    /**
+     * Get the vehicle categories for this route.
+     * Ini akan memberikan kategori kendaraan yang aktif
+     */
+    public function vehicleCategories()
+    {
+        return VehicleCategory::where('is_active', true)->get();
+    }
+
+    /**
+     * Helper method untuk mendapatkan harga kendaraan dari kategori
+     */
+    public function getVehiclePriceByType($vehicleType)
+    {
+        return VehicleCategory::where('vehicle_type', $vehicleType)
+            ->where('is_active', true)
+            ->first()
+            ->base_price ?? 0;
     }
 }

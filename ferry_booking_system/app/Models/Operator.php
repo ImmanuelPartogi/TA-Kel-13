@@ -21,6 +21,7 @@ class Operator extends Authenticatable
         'company_address',
         'password',
         'role',
+        'status',
         'assigned_routes',
         'last_login',
     ];
@@ -36,6 +37,11 @@ class Operator extends Authenticatable
         'password' => 'hashed',
     ];
 
+    // Konstanta untuk status operator
+    const STATUS_ACTIVE = 'ACTIVE';
+    const STATUS_INACTIVE = 'INACTIVE';
+    const STATUS_SUSPENDED = 'SUSPENDED';
+
     /**
      * Get the routes managed by this operator.
      */
@@ -50,5 +56,13 @@ class Operator extends Authenticatable
     public function managesRoute($routeId)
     {
         return is_array($this->assigned_routes) && in_array($routeId, $this->assigned_routes);
+    }
+
+    /**
+     * Check if operator is active.
+     */
+    public function isActive()
+    {
+        return $this->status === self::STATUS_ACTIVE;
     }
 }

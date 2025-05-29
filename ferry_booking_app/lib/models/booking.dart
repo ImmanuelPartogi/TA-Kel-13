@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart' as intl;
+
 import 'schedule.dart';
 import 'payment.dart';
 import 'ticket.dart';
@@ -208,11 +210,168 @@ class Booking {
 
   bool get isExpired {
     try {
-      final bookingDateObj = DateTime.parse(departureDate);
-      return DateTime.now().isAfter(bookingDateObj);
+      // Pastikan schedule tersedia
+      if (schedule == null) return false;
+
+      final departureDate = DateTime.parse(this.departureDate);
+      final now = DateTime.now();
+
+      // Jika tanggal keberangkatan sudah lewat beberapa hari
+      if (departureDate.year < now.year ||
+          (departureDate.year == now.year && departureDate.month < now.month) ||
+          (departureDate.year == now.year &&
+              departureDate.month == now.month &&
+              departureDate.day < now.day)) {
+        return true;
+      }
+
+      // Jika ini adalah hari keberangkatan, periksa waktu keberangkatan
+      if (departureDate.year == now.year &&
+          departureDate.month == now.month &&
+          departureDate.day == now.day) {
+        final departureTime = schedule!.departureTime;
+        DateTime? departureDateTime;
+
+        // Parsing berbagai kemungkinan format waktu
+        if (departureTime.contains('T')) {
+          // Format ISO
+          departureDateTime = DateTime.parse(departureTime);
+        } else if (departureTime.contains(':')) {
+          // Format HH:MM:SS atau HH:MM
+          final parts = departureTime.split(':');
+          if (parts.length >= 2) {
+            final hour = int.tryParse(parts[0]) ?? 0;
+            final minute = int.tryParse(parts[1]) ?? 0;
+
+            departureDateTime = DateTime(
+              departureDate.year,
+              departureDate.month,
+              departureDate.day,
+              hour,
+              minute,
+            );
+          }
+        }
+
+        // Jika berhasil parsing waktu keberangkatan, periksa apakah sudah lewat
+        if (departureDateTime != null) {
+          return now.isAfter(departureDateTime);
+        }
+      }
+
+      // Default false jika tidak memenuhi kriteria di atas
+      return false;
     } catch (e) {
+      print('Error checking booking expiry: $e');
       return false;
     }
+  }
+
+  // Metode untuk mendapatkan DateTime gabungan tanggal dan waktu keberangkatan
+  DateTime? get departureDateTime {
+    try {
+      if (schedule == null) return null;
+
+      final departureDate = DateTime.parse(this.departureDate);
+      final departureTime = schedule!.departureTime;
+
+      // Parsing berbagai kemungkinan format waktu
+      if (departureTime.contains('T')) {
+        // Format ISO
+        final timeDate = DateTime.parse(departureTime);
+        return DateTime(
+          departureDate.year,
+          departureDate.month,
+          departureDate.day,
+          timeDate.hour,
+          timeDate.minute,
+          timeDate.second,
+        );
+      } else if (departureTime.contains(':')) {
+        // Format HH:MM:SS atau HH:MM
+        final parts = departureTime.split(':');
+        if (parts.length >= 2) {
+          final hour = int.tryParse(parts[0]) ?? 0;
+          final minute = int.tryParse(parts[1]) ?? 0;
+          final second = parts.length > 2 ? (int.tryParse(parts[2]) ?? 0) : 0;
+
+          return DateTime(
+            departureDate.year,
+            departureDate.month,
+            departureDate.day,
+            hour,
+            minute,
+            second,
+          );
+        }
+      }
+
+      // Return tanggal saja jika tidak bisa parse waktu
+      return departureDate;
+    } catch (e) {
+      print('Error getting departure date time: $e');
+      return null;
+    }
+  }
+
+  // Metode untuk mendapatkan waktu keberangkatan yang diformat
+  String get formattedDepartureTime {
+    try {
+      if (schedule == null) return '--:--';
+
+      final departureTime = schedule!.departureTime;
+
+      // Format ISO dengan T
+      if (departureTime.contains('T')) {
+        final dateTime = DateTime.parse(departureTime);
+        return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+      }
+
+      // Format dengan spasi (YYYY-MM-DD HH:MM:SS)
+      if (departureTime.contains(' ')) {
+        final parts = departureTime.split(' ');
+        if (parts.length > 1 && parts[1].contains(':')) {
+          final timeParts = parts[1].split(':');
+          return '${timeParts[0].padLeft(2, '0')}:${timeParts[1].padLeft(2, '0')}';
+        }
+      }
+
+      // Format HH:MM:SS atau HH:MM
+      if (departureTime.contains(':')) {
+        final parts = departureTime.split(':');
+        if (parts.length >= 2) {
+          return '${parts[0].padLeft(2, '0')}:${parts[1].padLeft(2, '0')}';
+        }
+      }
+
+      return departureTime;
+    } catch (e) {
+      print('Error formatting departure time: $e');
+      return '--:--';
+    }
+  }
+
+  // Metode untuk mendapatkan tanggal keberangkatan yang diformat
+  String formattedDepartureDate({String locale = 'id_ID'}) {
+    try {
+      final dateFormat = intl.DateFormat('EEEE, d MMMM yyyy', locale);
+      final date = DateTime.parse(departureDate);
+      return dateFormat.format(date);
+    } catch (e) {
+      print('Error formatting departure date: $e');
+      return departureDate;
+    }
+  }
+
+  // Metode untuk memeriksa apakah keberangkatan dalam 24 jam ke depan
+  bool get isDepartureWithin24Hours {
+    final departureTime = departureDateTime;
+    if (departureTime == null) return false;
+
+    final now = DateTime.now();
+    final difference = departureTime.difference(now);
+
+    return difference.inHours <= 24 && difference.inHours >= 0;
   }
 
   // Update properti payment method dan payment type

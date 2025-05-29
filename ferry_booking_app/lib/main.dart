@@ -33,6 +33,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:ferry_booking_app/screens/auth/forgot_password_screen.dart';
 import 'package:ferry_booking_app/screens/auth/reset_password_screen.dart';
 import 'package:ferry_booking_app/services/local_notification_service.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -81,9 +82,10 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ScheduleProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProxyProvider<AuthProvider, ChatbotProvider>(
-          create: (context) => ChatbotProvider(
-            Provider.of<AuthProvider>(context, listen: false),
-          ),
+          create:
+              (context) => ChatbotProvider(
+                Provider.of<AuthProvider>(context, listen: false),
+              ),
           update: (context, auth, previous) => previous!,
         ),
         ChangeNotifierProvider(
@@ -94,12 +96,26 @@ class MyApp extends StatelessWidget {
         title: 'Ferry Booking',
         theme: AppTheme.lightTheme,
         debugShowCheckedModeBanner: false,
-        home: const SplashScreen(), // Tidak perlu menambahkan FAB ke SplashScreen
-        // Di bagian routes (hanya rute tanpa parameter wajib)
+
+        // Tambahkan konfigurasi lokalisasi
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [
+          Locale('id', 'ID'), // Indonesia
+          Locale('en', 'US'), // English
+        ],
+        locale: const Locale('id', 'ID'),
+
+        home: const SplashScreen(),
         routes: {
           '/login': (context) => const LoginScreen(),
           '/register': (context) => const RegisterScreen(),
-          '/home': (context) => const HomeScreen(), // GlobalFAB sudah ditambahkan di HomeScreen
+          '/home':
+              (context) =>
+                  const HomeScreen(), // GlobalFAB sudah ditambahkan di HomeScreen
           '/profile': (context) => const ProfileScreen(),
           '/tickets': (context) => const TicketListScreen(),
 
@@ -109,7 +125,7 @@ class MyApp extends StatelessWidget {
           '/booking/vehicles': (context) => const VehicleDetailsScreen(),
           '/booking/summary': (context) => const BookingSummaryScreen(),
           '/booking/payment': (context) => const PaymentScreen(),
-          
+
           // Rute Chatbot
           '/chatbot': (context) => const ChatbotScreen(), // Tanpa FAB
 
@@ -142,18 +158,20 @@ class MyApp extends StatelessWidget {
           } else if (settings.name == '/booking/payment') {
             final args = settings.arguments as Map<String, dynamic>?;
             return MaterialPageRoute(
-              builder: (context) => PaymentScreen(
-                paymentMethod: args?['paymentMethod'],
-                paymentType: args?['paymentType'],
-              ),
+              builder:
+                  (context) => PaymentScreen(
+                    paymentMethod: args?['paymentMethod'],
+                    paymentType: args?['paymentType'],
+                  ),
             );
           } else if (settings.name == '/reset-password') {
             final args = settings.arguments as Map<String, String>;
             return MaterialPageRoute(
-              builder: (context) => ResetPasswordScreen(
-                email: args['email']!,
-                token: args['token'] ?? '',
-              ),
+              builder:
+                  (context) => ResetPasswordScreen(
+                    email: args['email']!,
+                    token: args['token'] ?? '',
+                  ),
             );
           }
 

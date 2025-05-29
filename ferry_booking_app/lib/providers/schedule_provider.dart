@@ -20,31 +20,14 @@ class ScheduleProvider extends ChangeNotifier {
   List<FerryRoute>? get routes => _routes;
   List<Schedule>? get schedules => _schedules;
 
-  // Get all routes
-  Future<void> getRoutes() async {
-    if (_isLoading) return; // Prevent multiple simultaneous calls
-
-    _isLoading = true;
-    _errorMessage = null;
+  // Method untuk set loading status secara manual
+  void setLoading(bool loading) {
+    _isLoading = loading;
     notifyListeners();
-
-    try {
-      final result = await _routeApi.getRoutes();
-
-      // Ensure we're in a valid state before updating
-      _routes = result;
-      _isLoading = false;
-      notifyListeners();
-    } catch (e) {
-      print('Error fetching routes: $e');
-      _isLoading = false;
-      _errorMessage = 'Gagal memuat data rute: ${e.toString()}';
-      notifyListeners();
-    }
   }
 
-  // Get schedules for a specific route and date
-  Future<void> getSchedules(int routeId, DateTime date) async {
+  // Get all routes
+  Future<void> getRoutes() async {
     if (_isLoading) return;
 
     _isLoading = true;
@@ -52,35 +35,116 @@ class ScheduleProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Standardize date format - IMPORTANT FIX
-      final dateString = DateFormat('yyyy-MM-dd').format(date);
-      print(
-        'DEBUG: Fetching schedules for route: $routeId, standardized date: $dateString',
+      final result = await _routeApi.getRoutes();
+      _routes = result;
+    } catch (e) {
+      print('Error fetching routes: $e');
+      _errorMessage = 'Gagal memuat data rute: ${e.toString()}';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Metode utama untuk mendapatkan jadwal - Konsolidasikan metode yang ada
+  Future<void> getSchedulesByRoute(
+    int routeId, 
+    String formattedDate, 
+    {bool forceRefresh = false}
+  ) async {
+    if (_isLoading && !forceRefresh) return;
+
+    _isLoading = true;
+    _errorMessage = null;
+    
+    // Jika forceRefresh, reset data jadwal
+    if (forceRefresh) {
+      _schedules = null;
+    }
+    
+    notifyListeners();
+
+    try {
+      print('DEBUG: Fetching schedules - Route ID: $routeId, Date: $formattedDate, Force Refresh: $forceRefresh');
+      
+      // Tambahkan cache buster untuk memaksa server memberikan data baru
+      final cacheBuster = DateTime.now().millisecondsSinceEpoch.toString();
+      final schedules = await _scheduleApi.getSchedulesByFormattedDate(
+        routeId,
+        formattedDate,
+        queryParams: {
+          '_': cacheBuster,
+          'refresh': forceRefresh ? 'true' : 'false',
+        },
       );
-      print('DEBUG: Device timezone offset: ${DateTime.now().timeZoneOffset}');
-      print('DEBUG: Original date object: ${date.toString()}');
 
-      final schedules = await _scheduleApi.getSchedules(routeId, dateString);
-      print('DEBUG: Received ${schedules.length} schedules');
-
-      // Debug log untuk schedule pertama jika ada
+      print('DEBUG: Received ${schedules.length} schedules from API');
+      
+      // Log detail jadwal untuk debugging
       if (schedules.isNotEmpty) {
-        print(
-          'DEBUG: First schedule: ID=${schedules[0].id}, Status=${schedules[0].scheduleDateStatus}',
-        );
+        for (var i = 0; i < schedules.length; i++) {
+          final s = schedules[i];
+          print('DEBUG: Schedule[$i] - ID: ${s.id}, Departure: ${s.departureTime}, '
+              'Status: ${s.status}, ScheduleDateStatus: ${s.scheduleDateStatus}');
+        }
       } else {
         print('DEBUG: No schedules returned from API');
       }
 
-      _schedules = schedules;
-      _isLoading = false;
-      notifyListeners();
+      // Filter jadwal yang valid - Perbaiki validasi status
+      _schedules = schedules.where((schedule) {
+        // Terima semua jadwal dengan status ACTIVE/AVAILABLE
+        // dan juga jadwal yang memiliki scheduleDateStatus valid
+        return schedule.status == 'ACTIVE' || 
+               ['ACTIVE', 'AVAILABLE'].contains(schedule.scheduleDateStatus);
+      }).toList();
+      
+      // Urutkan jadwal berdasarkan waktu keberangkatan
+      _schedules?.sort((a, b) {
+        try {
+          final timeA = _parseTimeString(a.departureTime);
+          final timeB = _parseTimeString(b.departureTime);
+          return timeA.compareTo(timeB);
+        } catch (e) {
+          print('Error sorting schedules: $e');
+          return 0;
+        }
+      });
+      
+      print('DEBUG: After filtering and sorting: ${_schedules?.length ?? 0} schedules');
     } catch (e) {
       print('ERROR: Fetching schedules failed: $e');
-      _isLoading = false;
       _errorMessage = 'Gagal memuat jadwal: ${e.toString()}';
-      _schedules = []; // Set ke array kosong, bukan null
+      // Jangan set _schedules ke array kosong jika ini bukan forceRefresh
+      if (forceRefresh || _schedules == null) {
+        _schedules = [];
+      }
+    } finally {
+      _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  // Helper untuk parse string waktu ke DateTime untuk sorting
+  DateTime _parseTimeString(String timeString) {
+    try {
+      // Format ISO 8601
+      if (timeString.contains('T')) {
+        return DateTime.parse(timeString);
+      }
+      
+      // Format HH:MM:SS atau HH:MM
+      if (timeString.contains(':')) {
+        final parts = timeString.split(':');
+        final hour = int.tryParse(parts[0]) ?? 0;
+        final minute = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
+        return DateTime(2000, 1, 1, hour, minute);
+      }
+      
+      return DateTime(2000, 1, 1);
+    } catch (e) {
+      print('Error parsing time: $e');
+      return DateTime(2000, 1, 1);
     }
   }
 
@@ -92,15 +156,14 @@ class ScheduleProvider extends ChangeNotifier {
 
     try {
       final route = await _routeApi.getRouteDetails(routeId);
-      _isLoading = false;
-      notifyListeners();
       return route;
     } catch (e) {
       print('Error fetching route details: $e');
-      _isLoading = false;
       _errorMessage = 'Gagal memuat detail rute: ${e.toString()}';
-      notifyListeners();
       return null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
@@ -112,15 +175,14 @@ class ScheduleProvider extends ChangeNotifier {
 
     try {
       final schedule = await _scheduleApi.getScheduleDetails(scheduleId);
-      _isLoading = false;
-      notifyListeners();
       return schedule;
     } catch (e) {
       print('Error fetching schedule details: $e');
-      _isLoading = false;
       _errorMessage = 'Gagal memuat detail jadwal: ${e.toString()}';
-      notifyListeners();
       return null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
@@ -133,7 +195,6 @@ class ScheduleProvider extends ChangeNotifier {
   // Method to check if there's a connection or API issue
   Future<bool> checkConnection() async {
     try {
-      // Try to get routes as a simple connection test
       await _routeApi.getRoutes();
       return true;
     } catch (e) {
@@ -142,42 +203,16 @@ class ScheduleProvider extends ChangeNotifier {
     }
   }
 
-  // Tambahkan method baru di ScheduleProvider
-  Future<void> getSchedulesByFormattedDate(
-    int routeId,
-    String formattedDate,
-  ) async {
-    if (_isLoading) return;
+  // Metode ini dipertahankan untuk kompatibilitas, tetapi harus diganti ke getSchedulesByRoute
+  @Deprecated('Use getSchedulesByRoute instead')
+  Future<void> getSchedules(int routeId, DateTime date) async {
+    final formattedDate = DateFormat('yyyy-MM-dd').format(date);
+    return getSchedulesByRoute(routeId, formattedDate);
+  }
 
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
-      print('DEBUG: Fetching schedules with formatted date: $formattedDate');
-
-      final schedules = await _scheduleApi.getSchedulesByFormattedDate(
-        routeId,
-        formattedDate,
-      );
-
-      // Validasi tambahan untuk memastikan jadwal sesuai dengan tanggal
-      _schedules =
-          schedules.where((schedule) {
-            return [
-              'ACTIVE',
-              'AVAILABLE',
-            ].contains(schedule.scheduleDateStatus);
-          }).toList();
-
-      _isLoading = false;
-      notifyListeners();
-    } catch (e) {
-      print('ERROR: Fetching schedules failed: $e');
-      _isLoading = false;
-      _errorMessage = 'Gagal memuat jadwal: ${e.toString()}';
-      _schedules = []; // Set ke array kosong, bukan null
-      notifyListeners();
-    }
+  // Metode ini dipertahankan untuk kompatibilitas, tetapi harus diganti ke getSchedulesByRoute
+  @Deprecated('Use getSchedulesByRoute instead')
+  Future<void> getSchedulesByFormattedDate(int routeId, String formattedDate) async {
+    return getSchedulesByRoute(routeId, formattedDate);
   }
 }

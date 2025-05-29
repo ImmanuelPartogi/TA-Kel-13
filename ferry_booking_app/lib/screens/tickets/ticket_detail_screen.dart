@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:ferry_booking_app/utils/date_time_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -382,38 +383,50 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
 
     // Format date
     final locale = 'id_ID';
-    final dateFormat = DateFormat('dd MMMM yyyy', locale); // Format Indonesia
+    final dateFormat = DateFormat('dd MMMM yyyy', locale);
     final timeFormat = DateFormat('HH:mm', locale);
     final bookingDate = DateTime.parse(booking.departureDate).toLocal();
     // Parse departureTime menjadi DateTime jika formatnya ISO
     final departureTimeString = booking.schedule?.departureTime ?? '';
-    DateTime? departureDateTime;
-    try {
-      if (departureTimeString.isNotEmpty) {
-        // Periksa format waktu
-        if (departureTimeString.contains("T") ||
-            departureTimeString.contains(" ")) {
-          // Format ISO atau datetime lengkap
-          departureDateTime = DateTime.parse(departureTimeString).toLocal();
-        } else {
-          // Format waktu saja (HH:MM:SS)
-          final parts = departureTimeString.split(':');
+    DateTime? parseDateTime(String dateStr, String timeStr) {
+      try {
+        final date = DateTime.parse(dateStr);
+
+        // Standarisasi format waktu
+        if (timeStr.contains('T')) {
+          // Format ISO
+          final time = DateTime.parse(timeStr);
+          return DateTime(
+            date.year,
+            date.month,
+            date.day,
+            time.hour,
+            time.minute,
+          );
+        } else if (timeStr.contains(':')) {
+          // Format HH:MM atau HH:MM:SS
+          final parts = timeStr.split(':');
           if (parts.length >= 2) {
             final hour = int.tryParse(parts[0]) ?? 0;
             final minute = int.tryParse(parts[1]) ?? 0;
-            departureDateTime = DateTime(
-              DateTime.now().year,
-              DateTime.now().month,
-              DateTime.now().day,
-              hour,
-              minute,
-            );
+
+            return DateTime(date.year, date.month, date.day, hour, minute);
           }
         }
+
+        // Fallback ke tanggal saja jika waktu tidak bisa di-parse
+        return date;
+      } catch (e) {
+        print("Error parsing date/time: $e");
+        return null;
       }
-    } catch (e) {
-      print("Error parsing departureTime: $e");
     }
+
+    // Gunakan fungsi ini di build:
+    DateTime? departureDateTime = DateTimeHelper.combineDateAndTime(
+      booking.departureDate,
+      departureTimeString,
+    );
 
     // Check if can be cancelled
     final now = DateTime.now();
@@ -1120,7 +1133,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                                                           ? timeFormat.format(
                                                             departureDateTime,
                                                           )
-                                                          : departureTimeString,
+                                                          : DateTimeHelper.formatTime(
+                                                            departureTimeString,
+                                                          ),
                                                       style: TextStyle(
                                                         fontWeight:
                                                             FontWeight.bold,

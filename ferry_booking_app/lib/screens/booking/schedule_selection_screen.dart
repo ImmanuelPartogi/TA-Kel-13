@@ -7,6 +7,7 @@ import 'package:ferry_booking_app/providers/booking_provider.dart';
 import 'package:ferry_booking_app/providers/schedule_provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ferry_booking_app/utils/date_time_helper.dart';
 
 class ScheduleSelectionScreen extends StatefulWidget {
   final FerryRoute route;
@@ -63,41 +64,29 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
         _selectedDate.day == now.day;
 
     if (isToday) {
-      if (schedule.departureTime != null) {
-        DateTime departureDateTime;
-        try {
-          // Handle format ISO 8601: 2025-05-19T12:24:00.000000Z
-          if (schedule.departureTime.contains('T')) {
-            departureDateTime = DateTime.parse(schedule.departureTime);
-          } else {
-            // Handle format jam biasa: 12:24 atau 12:24:00
-            final parts = schedule.departureTime.split(':');
-            final hour = int.parse(parts[0]);
-            final minute = parts.length > 1 ? int.parse(parts[1]) : 0;
-            departureDateTime = DateTime(
-              _selectedDate.year,
-              _selectedDate.month,
-              _selectedDate.day,
-              hour,
-              minute,
-            );
-          }
+      try {
+        final String formattedDate = _formatDateForApi(_selectedDate);
+        // Gunakan DateTimeHelper untuk mendapatkan waktu keberangkatan
+        final departureDateTime = DateTimeHelper.combineDateAndTime(
+          formattedDate,
+          schedule.departureTime,
+        );
 
-          if (departureDateTime.isBefore(now)) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Jadwal ini sudah lewat waktu keberangkatan'),
-              ),
-            );
-            return;
-          }
-        } catch (e) {
-          print('ERROR: Gagal memproses waktu keberangkatan: $e');
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        // Cek apakah jadwal sudah lewat
+        if (departureDateTime != null && departureDateTime.isBefore(now)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Jadwal ini sudah lewat waktu keberangkatan'),
+            ),
+          );
           return;
         }
+      } catch (e) {
+        print('ERROR: Gagal memproses waktu keberangkatan: $e');
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        return;
       }
     }
 
@@ -119,18 +108,28 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
     }
   }
 
-  Future<void> _loadSchedules() async {
+  Future<void> _loadSchedules({bool forceRefresh = true}) async {
     final scheduleProvider = Provider.of<ScheduleProvider>(
       context,
       listen: false,
     );
     try {
-      final formattedDate = _formatDateForApi(_selectedDate);
-      print('DEBUG: Loading schedules for date: $formattedDate');
+      // Format tanggal yang konsisten untuk API
+      final formattedDate = DateFormat('yyyy-MM-dd').format(_selectedDate);
+      print(
+        'DEBUG: Loading schedules for date: $formattedDate with forceRefresh: $forceRefresh',
+      );
 
-      await scheduleProvider.getSchedulesByFormattedDate(
+      // Gunakan metode baru
+      await scheduleProvider.getSchedulesByRoute(
         widget.route.id,
         formattedDate,
+        forceRefresh: forceRefresh,
+      );
+
+      // Log untuk debugging
+      print(
+        'DEBUG: Loaded ${scheduleProvider.schedules?.length ?? 0} schedules',
       );
 
       if (scheduleProvider.schedules?.isEmpty ?? true) {
@@ -152,6 +151,7 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
       initialDate: _selectedDate,
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 90)),
+      locale: const Locale('id', 'ID'),
     );
 
     if (picked != null && picked != _selectedDate) {
@@ -159,11 +159,8 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
         _selectedDate = picked;
       });
 
-      final scheduleProvider = Provider.of<ScheduleProvider>(
-        context,
-        listen: false,
-      );
-      await scheduleProvider.getSchedules(widget.route.id, _selectedDate);
+      // Gunakan metode loading yang konsisten
+      await _loadSchedules(forceRefresh: true);
     }
   }
 
@@ -203,20 +200,20 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
 
     // Calculate travel time
     Duration? travelDuration;
+    int durationMinutes = 0;
     try {
-      if (schedule.departureTime.contains('T') &&
-          schedule.arrivalTime.contains('T')) {
-        final departure = DateTime.parse(schedule.departureTime);
-        final arrival = DateTime.parse(schedule.arrivalTime);
-        travelDuration = arrival.difference(departure);
-      }
+      durationMinutes = DateTimeHelper.calculateDurationMinutes(
+        schedule.departureTime,
+        schedule.arrivalTime,
+      );
+      travelDuration = Duration(minutes: durationMinutes);
     } catch (e) {
       print('ERROR: Gagal menghitung durasi: $e');
     }
 
     final travelTime =
-        travelDuration != null
-            ? '${travelDuration.inMinutes} menit'
+        durationMinutes > 0
+            ? DateTimeHelper.formatDuration(durationMinutes)
             : '${widget.route.duration ?? 0} menit';
 
     return Container(
@@ -792,25 +789,7 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
   }
 
   String _formatTime(String time) {
-    if (time.isEmpty) return "00:00";
-
-    try {
-      // Jika format ISO 8601
-      if (time.contains('T')) {
-        final datetime = DateTime.parse(time);
-        return DateFormat('HH:mm').format(datetime);
-      }
-
-      // Format waktu biasa
-      final parts = time.split(':');
-      if (parts.length >= 2) {
-        return '${parts[0]}:${parts[1]}';
-      }
-      return time;
-    } catch (e) {
-      print('ERROR: Gagal format waktu: $e');
-      return time;
-    }
+    return DateTimeHelper.formatTime(time);
   }
 
   Color _getStatusColor(String status) {
@@ -1061,86 +1040,104 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
 
                   // Schedules List
                   Expanded(
-                    child:
-                        scheduleProvider.isLoading
-                            ? Center(
-                              child: CircularProgressIndicator(
-                                color: theme.primaryColor,
-                              ),
-                            )
-                            : schedules == null || schedules.isEmpty
-                            ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                    child: RefreshIndicator(
+                      onRefresh: () => _loadSchedules(forceRefresh: true),
+                      color: theme.primaryColor,
+                      child:
+                          scheduleProvider.isLoading
+                              ? Center(
+                                child: CircularProgressIndicator(
+                                  color: theme.primaryColor,
+                                ),
+                              )
+                              : schedules == null || schedules.isEmpty
+                              ? ListView(
+                                // Ganti Center dengan ListView untuk support pull-to-refresh
+                                physics: const AlwaysScrollableScrollPhysics(),
                                 children: [
-                                  Icon(
-                                    Icons.timer_off,
-                                    size: 64,
-                                    color: Colors.grey[400],
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'Tidak ada jadwal tersedia untuk tanggal ini',
-                                    style: TextStyle(
-                                      color: Colors.grey[600],
-                                      fontSize: 16,
+                                  SizedBox(height: size.height * 0.2),
+                                  Center(
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.timer_off,
+                                          size: 64,
+                                          color: Colors.grey[400],
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'Tidak ada jadwal tersedia untuk tanggal ini',
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            ElevatedButton(
+                                              onPressed:
+                                                  () => _selectDate(context),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    theme.primaryColor,
+                                                foregroundColor: Colors.white,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 16,
+                                                      vertical: 12,
+                                                    ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(16),
+                                                ),
+                                              ),
+                                              child: const Text(
+                                                'Pilih Tanggal Lain',
+                                              ),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            ElevatedButton(
+                                              onPressed:
+                                                  () =>
+                                                      _findNextAvailableDate(),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.green,
+                                                foregroundColor: Colors.white,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 16,
+                                                      vertical: 12,
+                                                    ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(16),
+                                                ),
+                                              ),
+                                              child: const Text(
+                                                'Cari Jadwal Terdekat',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  const SizedBox(height: 16),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      ElevatedButton(
-                                        onPressed: () => _selectDate(context),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: theme.primaryColor,
-                                          foregroundColor: Colors.white,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 12,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                          ),
-                                        ),
-                                        child: const Text('Pilih Tanggal Lain'),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      ElevatedButton(
-                                        onPressed:
-                                            () => _findNextAvailableDate(),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.green,
-                                          foregroundColor: Colors.white,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 12,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                          ),
-                                        ),
-                                        child: const Text(
-                                          'Cari Jadwal Terdekat',
-                                        ),
-                                      ),
-                                    ],
-                                  ),
                                 ],
+                              )
+                              : ListView.builder(
+                                padding: const EdgeInsets.all(24.0),
+                                itemCount: schedules.length,
+                                itemBuilder: (context, index) {
+                                  final schedule = schedules[index];
+                                  return _buildScheduleCard(schedule);
+                                },
                               ),
-                            )
-                            : ListView.builder(
-                              padding: const EdgeInsets.all(24.0),
-                              itemCount: schedules.length,
-                              itemBuilder: (context, index) {
-                                final schedule = schedules[index];
-                                return _buildScheduleCard(schedule);
-                              },
-                            ),
+                    ),
                   ),
                 ],
               ),

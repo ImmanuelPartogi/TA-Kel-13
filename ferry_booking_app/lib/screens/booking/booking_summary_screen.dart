@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../providers/booking_provider.dart';
 import '../../widgets/custom_appbar.dart';
+import '../../utils/date_time_helper.dart'; // Import DateTimeHelper
 
 class BookingSummaryScreen extends StatefulWidget {
   const BookingSummaryScreen({Key? key}) : super(key: key);
@@ -97,10 +98,6 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
       );
     }
 
-    // Format tanggal dan waktu
-    final dateFormat = DateFormat('EEEE, d MMMM yyyy', 'id_ID');
-    final timeFormat = DateFormat('HH:mm', 'id_ID');
-
     // Format mata uang
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
@@ -108,12 +105,14 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
       decimalDigits: 0,
     );
 
-    // Hitung info dari jadwal
-    final departureTime =
-        selectedSchedule.departureTime != null
-            ? DateTime.parse(selectedSchedule.departureTime!)
-            : DateTime.now();
-    final arrivalTime =
+    // Dapatkan string waktu keberangkatan dan kedatangan
+    final departureTimeStr = selectedSchedule.departureTime ?? DateTime.now().toString();
+    final arrivalTimeStr = selectedSchedule.arrivalTime ?? 
+        DateTime.now().add(Duration(minutes: selectedRoute.duration)).toString();
+
+    // Parse ke DateTime untuk perhitungan internal jika diperlukan
+    final departureTime = DateTime.parse(departureTimeStr);
+    final arrivalTime = 
         selectedSchedule.arrivalTime != null
             ? DateTime.parse(selectedSchedule.arrivalTime!)
             : departureTime.add(Duration(minutes: selectedRoute.duration));
@@ -132,10 +131,8 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
             _buildRouteInfoSection(
               theme,
               selectedRoute,
-              departureTime,
-              arrivalTime,
-              timeFormat,
-              dateFormat,
+              departureTimeStr,
+              arrivalTimeStr,
               selectedSchedule,
               bookingProvider,
             ),
@@ -207,10 +204,8 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
   Widget _buildRouteInfoSection(
     ThemeData theme,
     dynamic selectedRoute,
-    DateTime departureTime,
-    DateTime arrivalTime,
-    DateFormat timeFormat,
-    DateFormat dateFormat,
+    String departureTimeStr,
+    String arrivalTimeStr,
     dynamic selectedSchedule,
     dynamic bookingProvider,
   ) {
@@ -265,7 +260,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              timeFormat.format(departureTime),
+                              DateTimeHelper.formatTime(departureTimeStr),
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -296,7 +291,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                             ),
                             child: Center(
                               child: Text(
-                                '${selectedRoute.duration} menit',
+                                DateTimeHelper.formatDuration(selectedRoute.duration),
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
@@ -330,7 +325,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              timeFormat.format(arrivalTime),
+                              DateTimeHelper.formatTime(arrivalTimeStr),
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -361,7 +356,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
             _buildInfoRow(
               Icons.calendar_today,
               'Tanggal Keberangkatan',
-              dateFormat.format(bookingProvider.selectedDate!),
+              DateTimeHelper.formatDate(bookingProvider.selectedDate!.toString()),
             ),
 
             const Divider(height: 24),
@@ -1111,7 +1106,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
     }
   }
 
-  // PERUBAHAN: Metode untuk menyiapkan booking tanpa memanggil API create langsung
+  // Metode untuk menyiapkan booking tanpa memanggil API create langsung
   Future<void> _prepareBookingAndNavigate(BuildContext context) async {
     final bookingProvider = Provider.of<BookingProvider>(
       context,

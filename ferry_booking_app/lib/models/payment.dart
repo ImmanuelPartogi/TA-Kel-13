@@ -40,20 +40,29 @@ class Payment {
     // Simpan data mentah untuk debugging
     final rawData = Map<String, dynamic>.from(json);
 
-    // Parse expiry_date dengan menangani format ISO dan non-ISO
+    // Perbaikan: Parse expiry_date dengan menangani format ISO dan non-ISO
     DateTime? parseExpiryDate() {
       if (json['expiry_date'] == null) return null;
 
       try {
-        return DateTime.parse(json['expiry_date'].toString());
+        // Coba parse sebagai string ISO 8601
+        DateTime parsedDate = DateTime.parse(json['expiry_date'].toString());
+        
+        // Penting: Pastikan tanggal dalam format lokal
+        return parsedDate.toLocal();
       } catch (e) {
         // Fallback untuk format lain jika parsing gagal
         try {
           final dateFormat = DateFormat('yyyy-MM-dd HH:mm:ss');
-          return dateFormat.parse(json['expiry_date'].toString());
+          DateTime parsedDate = dateFormat.parse(json['expiry_date'].toString());
+          
+          // Penting: Pastikan tanggal dalam format lokal
+          return parsedDate.toLocal();
         } catch (_) {
           print('Error parsing expiry_date: ${json['expiry_date']}');
-          return null;
+          
+          // Tambahan: Fallback ke 5 menit dari sekarang jika parsing gagal
+          return DateTime.now().add(const Duration(minutes: 5));
         }
       }
     }
@@ -76,6 +85,14 @@ class Payment {
       }
     }
 
+    // Debugging: Log waktu expiry
+    final expiryDate = parseExpiryDate();
+    if (expiryDate != null) {
+      final now = DateTime.now();
+      final diff = expiryDate.difference(now);
+      print('Parsed expiry_date: $expiryDate (${diff.inMinutes} minutes from now)');
+    }
+
     return Payment(
       id: json['id'],
       bookingId: json['booking_id'],
@@ -89,7 +106,7 @@ class Payment {
           json['virtual_account_number'] ?? json['external_reference'],
       deepLinkUrl: json['deep_link_url'],
       qrCodeUrl: json['qr_code_url'],
-      expiryTime: parseExpiryDate(),
+      expiryTime: expiryDate,
       paymentTime: parsePaymentDate(),
       createdAt: json['created_at'],
       updatedAt: json['updated_at'],
@@ -285,6 +302,22 @@ class Payment {
     }
     if (qrCodeUrl != null) {
       this.qrCodeUrl = qrCodeUrl;
+    }
+  }
+  
+  // SOLUSI: Getter untuk kompatibilitas dengan kode yang menggunakan expiryDate
+  DateTime? get expiryDate => expiryTime;
+  
+  // Metode debugging untuk melacak masalah waktu
+  void debugExpiryTime() {
+    if (expiryTime != null) {
+      print('Expiry Time: $expiryTime');
+      print('Current Time: ${DateTime.now()}');
+      print('Difference in minutes: ${expiryTime!.difference(DateTime.now()).inMinutes}');
+      print('Difference in seconds: ${expiryTime!.difference(DateTime.now()).inSeconds}');
+      print('Is local time: ${!expiryTime!.isUtc ? "Yes" : "No (UTC)"}');
+    } else {
+      print('Expiry Time is null');
     }
   }
 }

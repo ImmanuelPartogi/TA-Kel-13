@@ -1,3 +1,4 @@
+import 'package:ferry_booking_app/utils/date_time_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ferry_booking_app/models/route.dart';
@@ -5,12 +6,9 @@ import 'package:ferry_booking_app/models/route.dart';
 class RouteCard extends StatelessWidget {
   final FerryRoute route;
   final VoidCallback onTap;
-  
-  const RouteCard({
-    Key? key,
-    required this.route,
-    required this.onTap,
-  }) : super(key: key);
+
+  const RouteCard({Key? key, required this.route, required this.onTap})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -20,13 +18,9 @@ class RouteCard extends StatelessWidget {
       symbol: 'Rp ',
       decimalDigits: 0,
     );
-    
-    // Format duration
-    final hours = route.duration ~/ 60;
-    final minutes = route.duration % 60;
-    final durationText = hours > 0 
-        ? '$hours jam ${minutes > 0 ? '$minutes menit' : ''}'
-        : '$minutes menit';
+
+    // Format durasi menggunakan helper
+    final durationText = DateTimeHelper.formatDuration(route.duration);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -95,7 +89,7 @@ class RouteCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 20),
-                
+
                 Container(
                   height: 1,
                   decoration: BoxDecoration(
@@ -110,19 +104,16 @@ class RouteCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 20),
-                
+
                 // Route Details dalam container khusus
                 Container(
                   padding: const EdgeInsets.all(15),
                   decoration: BoxDecoration(
                     color: Colors.grey.shade50,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.grey.shade200,
-                      width: 1,
-                    ),
+                    border: Border.all(color: Colors.grey.shade200, width: 1),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -158,7 +149,7 @@ class RouteCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                
+
                 // Tambahan button untuk pemesanan
                 if (route.status == 'ACTIVE') ...[
                   const SizedBox(height: 20),
@@ -217,35 +208,28 @@ class RouteCard extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildStatusBadge(BuildContext context, String status) {
     final statusText = _getStatusText(status);
     final statusColor = _getStatusColor(status);
     final isActive = status == 'ACTIVE';
-    
+
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 6,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: isActive ? statusColor : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: isActive 
-            ? null 
-            : Border.all(
-                color: statusColor,
-                width: 1.5,
-              ),
-        boxShadow: isActive 
-            ? [
-                BoxShadow(
-                  color: statusColor.withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ] 
-            : null,
+        border: isActive ? null : Border.all(color: statusColor, width: 1.5),
+        boxShadow:
+            isActive
+                ? [
+                  BoxShadow(
+                    color: statusColor.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+                : null,
       ),
       child: Text(
         statusText,
@@ -258,7 +242,7 @@ class RouteCard extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildDetailItem(
     BuildContext context,
     String label,
@@ -269,33 +253,21 @@ class RouteCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 5),
       child: Column(
         children: [
-          Icon(
-            icon,
-            size: 22,
-            color: Theme.of(context).primaryColor,
-          ),
+          Icon(icon, size: 22, color: Theme.of(context).primaryColor),
           const SizedBox(height: 8),
           Text(
             value,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            ),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
             textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis, // Tambahkan ini
           ),
           const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 12,
-            ),
-          ),
+          Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
         ],
       ),
     );
   }
-  
+
   Color _getStatusColor(String status) {
     switch (status) {
       case 'ACTIVE':
@@ -314,7 +286,7 @@ class RouteCard extends StatelessWidget {
         return Colors.grey.shade600;
     }
   }
-  
+
   String _getStatusText(String status) {
     switch (status) {
       case 'ACTIVE':

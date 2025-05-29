@@ -38,8 +38,10 @@ class TicketController extends Controller
 
             // PERUBAHAN: Periksa jika tanggal keberangkatan sudah lewat
             // atau jika hari ini dan waktu keberangkatan sudah lewat
-            if ($bookingDate->isPast() ||
-                ($bookingDate->isSameDay(Carbon::today()) && $departureDateTime->isPast())) {
+            if (
+                $bookingDate->isPast() ||
+                ($bookingDate->isSameDay(Carbon::today()) && $departureDateTime->isPast())
+            ) {
                 // Update status menjadi EXPIRED
                 $ticket->status = 'EXPIRED';
                 $ticket->boarding_status = 'MISSED';
@@ -144,5 +146,19 @@ class TicketController extends Controller
             'message' => 'Check-in berhasil',
             'data' => $ticket
         ], 200);
+    }
+
+    private function formatTimeForClient($timeString)
+    {
+        try {
+            // Parse sebagai Carbon
+            $time = Carbon::parse($timeString);
+
+            // Return dalam format HH:MM:SS
+            return $time->format('H:i:s');
+        } catch (\Exception $e) {
+            Log::error('Error formatting time: ' . $e->getMessage());
+            return $timeString;
+        }
     }
 }

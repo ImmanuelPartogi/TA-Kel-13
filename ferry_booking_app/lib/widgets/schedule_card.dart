@@ -1,3 +1,4 @@
+import 'package:ferry_booking_app/utils/date_time_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ferry_booking_app/models/schedule.dart';
@@ -24,7 +25,22 @@ class ScheduleCard extends StatelessWidget {
 
     // Check availability
     final isPassengerAvailable = (schedule.availablePassenger ?? 0) > 0;
-    
+
+    // Periksa apakah jadwal masih tersedia berdasarkan tanggal dan waktu
+    bool isScheduleAvailable = true;
+    try {
+      final departureDateTime = DateTimeHelper.combineDateAndTime(
+        date.toString(),
+        schedule.departureTime,
+      );
+
+      if (departureDateTime != null) {
+        isScheduleAvailable = !DateTime.now().isAfter(departureDateTime);
+      }
+    } catch (e) {
+      debugPrint('Error checking schedule availability: $e');
+    }
+
     // Get status color
     Color statusColor = _getStatusColor(schedule.status);
     String statusText = _getStatusText(schedule.status);
@@ -128,7 +144,7 @@ class ScheduleCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    
+
                     // Arrow between times
                     Container(
                       alignment: Alignment.center,
@@ -145,7 +161,9 @@ class ScheduleCard extends StatelessWidget {
                                 color: Colors.grey.shade300,
                               ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 2),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 2,
+                                ),
                                 color: Colors.white,
                                 child: Icon(
                                   Icons.arrow_forward,
@@ -158,7 +176,7 @@ class ScheduleCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    
+
                     // Arrival information
                     Expanded(
                       child: Column(
@@ -224,7 +242,7 @@ class ScheduleCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    
+
                     // Passenger availability
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -232,9 +250,10 @@ class ScheduleCard extends StatelessWidget {
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: isPassengerAvailable
-                            ? Colors.green.shade50
-                            : Colors.red.shade50,
+                        color:
+                            isPassengerAvailable
+                                ? Colors.green.shade50
+                                : Colors.red.shade50,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -242,17 +261,19 @@ class ScheduleCard extends StatelessWidget {
                           Icon(
                             Icons.person,
                             size: 18,
-                            color: isPassengerAvailable
-                                ? Colors.green.shade700
-                                : Colors.red.shade700,
+                            color:
+                                isPassengerAvailable
+                                    ? Colors.green.shade700
+                                    : Colors.red.shade700,
                           ),
                           const SizedBox(width: 6),
                           Text(
                             '${schedule.availablePassenger ?? 0} kursi',
                             style: TextStyle(
-                              color: isPassengerAvailable
-                                  ? Colors.green.shade700
-                                  : Colors.red.shade700,
+                              color:
+                                  isPassengerAvailable
+                                      ? Colors.green.shade700
+                                      : Colors.red.shade700,
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                             ),
@@ -303,26 +324,30 @@ class ScheduleCard extends StatelessWidget {
     );
   }
 
-  Widget _buildVehicleItem(BuildContext context, String label, int count, IconData icon) {
+  Widget _buildVehicleItem(
+    BuildContext context,
+    String label,
+    int count,
+    IconData icon,
+  ) {
     final bool isAvailable = count > 0;
-    final Color textColor = isAvailable ? Colors.grey.shade800 : Colors.red.shade300;
-    final Color iconColor = isAvailable ? Theme.of(context).primaryColor : Colors.red.shade300;
-    
+    final Color textColor =
+        isAvailable ? Colors.grey.shade800 : Colors.red.shade300;
+    final Color iconColor =
+        isAvailable ? Theme.of(context).primaryColor : Colors.red.shade300;
+
     return Column(
       children: [
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: isAvailable 
-                ? Theme.of(context).primaryColor.withOpacity(0.1)
-                : Colors.red.shade50,
+            color:
+                isAvailable
+                    ? Theme.of(context).primaryColor.withOpacity(0.1)
+                    : Colors.red.shade50,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(
-            icon,
-            size: 22,
-            color: iconColor,
-          ),
+          child: Icon(icon, size: 22, color: iconColor),
         ),
         const SizedBox(height: 6),
         Text(
@@ -336,45 +361,16 @@ class ScheduleCard extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           label,
-          style: TextStyle(
-            color: Colors.grey.shade600,
-            fontSize: 12,
-          ),
+          style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
         ),
       ],
     );
   }
 
   String _formatTimeOnly(String timeString) {
-    try {
-      // Jika format ISO (dengan T dan Z)
-      if (timeString.contains('T')) {
-        final dateTime = DateTime.parse(timeString);
-        final localTime = dateTime.toLocal();
-        return DateFormat('HH:mm').format(localTime);
-      }
-
-      // Jika format "YYYY-MM-DD HH:MM:SS"
-      if (timeString.contains(' ')) {
-        final parts = timeString.split(' ');
-        if (parts.length > 1 && parts[1].length >= 5) {
-          return parts[1].substring(0, 5);
-        }
-      }
-
-      // Jika format "HH:MM:SS"
-      if (timeString.contains(':') && timeString.length >= 5) {
-        return timeString.substring(0, 5);
-      }
-
-      // Fallback jika format tidak dikenali
-      return timeString;
-    } catch (e) {
-      print('ERROR: Gagal memformat string waktu: $e');
-      return timeString; // Kembalikan nilai asli jika gagal
-    }
+    return DateTimeHelper.formatTime(timeString);
   }
-  
+
   Color _getStatusColor(String status) {
     switch (status.toUpperCase()) {
       case 'ACTIVE':
@@ -388,7 +384,7 @@ class ScheduleCard extends StatelessWidget {
         return Colors.grey;
     }
   }
-  
+
   String _getStatusText(String status) {
     switch (status.toUpperCase()) {
       case 'ACTIVE':

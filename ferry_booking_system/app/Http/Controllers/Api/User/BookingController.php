@@ -36,6 +36,11 @@ class BookingController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
+        // Standardisasi format untuk setiap booking
+        $bookings = $bookings->map(function ($booking) {
+            return $this->standardizeDateTime($booking);
+        });
+
         return response()->json([
             'success' => true,
             'message' => 'Daftar booking berhasil diambil',
@@ -56,6 +61,13 @@ class BookingController extends Controller
                 'vehicles'
             ])
             ->firstOrFail();
+
+        if ($booking->schedule) {
+            $booking->schedule->departure_time = $this->formatTimeForClient($booking->schedule->departure_time);
+            if (isset($booking->schedule->arrival_time)) {
+                $booking->schedule->arrival_time = $this->formatTimeForClient($booking->schedule->arrival_time);
+            }
+        }
 
         return response()->json([
             'success' => true,
@@ -781,5 +793,55 @@ class BookingController extends Controller
             DB::rollBack();
             // Error handling
         }
+    }
+
+    private function formatTimeForClient($timeString)
+    {
+        try {
+            // Parse sebagai Carbon
+            $time = Carbon::parse($timeString);
+
+            // Return dalam format HH:MM:SS
+            return $time->format('H:i:s');
+        } catch (\Exception $e) {
+            Log::error('Error formatting time: ' . $e->getMessage());
+            return $timeString;
+        }
+    }
+
+    private function standardizeDateTime($booking)
+    {
+        // Standarisasi format tanggal
+        if (isset($booking->departure_date)) {
+            try {
+                $booking->departure_date = Carbon::parse($booking->departure_date)->format('Y-m-d');
+            } catch (\Exception $e) {
+                Log::error('Error standardizing departure_date: ' . $e->getMessage());
+            }
+        }
+
+        // Standarisasi format waktu di schedule
+        if (isset($booking->schedule)) {
+            if (isset($booking->schedule->departure_time)) {
+                try {
+                    // Pastikan format waktu yang konsisten (HH:MM:SS)
+                    $time = Carbon::parse($booking->schedule->departure_time);
+                    $booking->schedule->departure_time = $time->format('H:i:s');
+                } catch (\Exception $e) {
+                    Log::error('Error standardizing departure_time: ' . $e->getMessage());
+                }
+            }
+
+            if (isset($booking->schedule->arrival_time)) {
+                try {
+                    $time = Carbon::parse($booking->schedule->arrival_time);
+                    $booking->schedule->arrival_time = $time->format('H:i:s');
+                } catch (\Exception $e) {
+                    Log::error('Error standardizing arrival_time: ' . $e->getMessage());
+                }
+            }
+        }
+
+        return $booking;
     }
 }

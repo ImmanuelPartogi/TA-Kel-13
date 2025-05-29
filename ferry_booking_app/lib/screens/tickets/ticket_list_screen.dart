@@ -1,4 +1,5 @@
 import 'package:ferry_booking_app/models/booking.dart';
+import 'package:ferry_booking_app/utils/date_time_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ferry_booking_app/providers/booking_provider.dart';
@@ -107,28 +108,10 @@ class _TicketListScreenState extends State<TicketListScreen>
   bool _shouldBeExpired(Booking booking) {
     if (booking.schedule == null) return false;
 
-    final now = DateTime.now();
-    final departureDate = DateTime.parse(booking.departureDate);
-
-    // Gabungkan tanggal dan waktu keberangkatan
-    final departureTime = booking.schedule!.departureTime;
-    final departureParts = departureTime.split(':');
-
-    if (departureParts.length < 2) return false;
-
-    final hour = int.tryParse(departureParts[0]) ?? 0;
-    final minute = int.tryParse(departureParts[1]) ?? 0;
-
-    final departureDateTime = DateTime(
-      departureDate.year,
-      departureDate.month,
-      departureDate.day,
-      hour,
-      minute,
+    return DateTimeHelper.isExpired(
+      booking.departureDate,
+      booking.schedule!.departureTime,
     );
-
-    // Jadwal keberangkatan sudah lewat
-    return now.isAfter(departureDateTime);
   }
 
   // Fungsi untuk mendapatkan status efektif dari booking/tiket

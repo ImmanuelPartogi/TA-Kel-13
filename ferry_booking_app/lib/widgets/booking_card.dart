@@ -1,3 +1,4 @@
+import 'package:ferry_booking_app/utils/date_time_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ferry_booking_app/models/booking.dart';
@@ -5,31 +6,31 @@ import 'package:ferry_booking_app/models/booking.dart';
 class BookingCard extends StatelessWidget {
   final Booking booking;
   final VoidCallback? onTap;
-  
-  const BookingCard({
-    Key? key,
-    required this.booking,
-    this.onTap,
-  }) : super(key: key);
+
+  const BookingCard({Key? key, required this.booking, this.onTap})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     // Format date
     final dateFormat = DateFormat('EEEE, d MMM yyyy', 'id_ID');
     final dateObj = DateTime.parse(booking.departureDate).toLocal();
     final formattedDate = dateFormat.format(dateObj);
-    
+
     // Format time
-    final departureTime = booking.schedule?.departureTime?.substring(0, 5) ?? '--:--';
-    
+    final departureTime = DateTimeHelper.formatTime(
+      booking.schedule?.departureTime ?? '--:--',
+    );
+
     // Check if booking is today
     final now = DateTime.now();
-    final isToday = dateObj.year == now.year && 
-                   dateObj.month == now.month && 
-                   dateObj.day == now.day;
-    
+    final isToday =
+        dateObj.year == now.year &&
+        dateObj.month == now.month &&
+        dateObj.day == now.day;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -42,10 +43,10 @@ class BookingCard extends StatelessWidget {
             offset: const Offset(0, 5),
           ),
         ],
-        border: isToday && booking.status == 'CONFIRMED' ? Border.all(
-          color: theme.primaryColor,
-          width: 2,
-        ) : null,
+        border:
+            isToday && booking.status == 'CONFIRMED'
+                ? Border.all(color: theme.primaryColor, width: 2)
+                : null,
       ),
       child: Material(
         color: Colors.transparent,
@@ -58,7 +59,7 @@ class BookingCard extends StatelessWidget {
             children: [
               // Header dengan gradien untuk status
               _buildHeader(context),
-              
+
               // Konten utama
               Padding(
                 padding: const EdgeInsets.all(20),
@@ -66,10 +67,14 @@ class BookingCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Route and date info
-                    _buildRouteAndDateInfo(context, formattedDate, departureTime),
-                    
+                    _buildRouteAndDateInfo(
+                      context,
+                      formattedDate,
+                      departureTime,
+                    ),
+
                     const SizedBox(height: 20),
-                    
+
                     // Divider dengan gradient
                     Container(
                       height: 1,
@@ -85,12 +90,12 @@ class BookingCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    
+
                     const SizedBox(height: 20),
-                    
+
                     // Detail penumpang dan kendaraan
                     _buildDetailsSection(context),
-                    
+
                     // Tombol aksi untuk booking confirmed
                     if (booking.status == 'CONFIRMED') ...[
                       const SizedBox(height: 20),
@@ -105,19 +110,16 @@ class BookingCard extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildHeader(BuildContext context) {
     final theme = Theme.of(context);
     final statusColor = _getStatusColor(booking.status);
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            statusColor.withOpacity(0.9),
-            statusColor,
-          ],
+          colors: [statusColor.withOpacity(0.9), statusColor],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -156,22 +158,21 @@ class BookingCard extends StatelessWidget {
                       color: Colors.white,
                       letterSpacing: 0.5,
                     ),
-                    overflow: TextOverflow.ellipsis, // Tambahkan ini untuk menangani teks panjang
+                    overflow:
+                        TextOverflow
+                            .ellipsis, // Tambahkan ini untuk menangani teks panjang
                   ),
                 ),
               ],
             ),
           ),
-          
+
           // Beri ruang antara booking code dan status
           const SizedBox(width: 8),
-          
+
           // Status badge
           Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 6,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
@@ -197,19 +198,20 @@ class BookingCard extends StatelessWidget {
       ),
     );
   }
-  
-  Widget _buildRouteAndDateInfo(BuildContext context, String formattedDate, String departureTime) {
+
+  Widget _buildRouteAndDateInfo(
+    BuildContext context,
+    String formattedDate,
+    String departureTime,
+  ) {
     final theme = Theme.of(context);
-    
+
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: Colors.grey.shade50,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.grey.shade200,
-          width: 1,
-        ),
+        border: Border.all(color: Colors.grey.shade200, width: 1),
       ),
       child: Row(
         children: [
@@ -237,7 +239,8 @@ class BookingCard extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
-                  overflow: TextOverflow.ellipsis, // Tambahkan handling overflow
+                  overflow:
+                      TextOverflow.ellipsis, // Tambahkan handling overflow
                 ),
                 const SizedBox(height: 6),
                 // Row dengan tanggal dan waktu - potensial overflow
@@ -253,10 +256,7 @@ class BookingCard extends StatelessWidget {
                     Flexible(
                       child: Text(
                         formattedDate,
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 14,
-                        ),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -277,10 +277,7 @@ class BookingCard extends StatelessWidget {
                     const SizedBox(width: 6),
                     Text(
                       departureTime,
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
                     ),
                   ],
                 ),
@@ -291,19 +288,16 @@ class BookingCard extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildDetailsSection(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: Colors.grey.shade50,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.grey.shade200,
-          width: 1,
-        ),
+        border: Border.all(color: Colors.grey.shade200, width: 1),
       ),
       child: Row(
         children: [
@@ -316,11 +310,7 @@ class BookingCard extends StatelessWidget {
             ),
           ),
           if (booking.vehicleCount > 0) ...[
-            Container(
-              height: 40,
-              width: 1,
-              color: Colors.grey.shade200,
-            ),
+            Container(height: 40, width: 1, color: Colors.grey.shade200),
             Expanded(
               child: _buildDetailItem(
                 context,
@@ -334,7 +324,7 @@ class BookingCard extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildDetailItem(
     BuildContext context,
     String label,
@@ -357,11 +347,7 @@ class BookingCard extends StatelessWidget {
               ),
             ],
           ),
-          child: Icon(
-            icon,
-            size: 20,
-            color: Colors.grey.shade700,
-          ),
+          child: Icon(icon, size: 20, color: Colors.grey.shade700),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -370,10 +356,7 @@ class BookingCard extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
               ),
               const SizedBox(height: 4),
               Text(
@@ -390,10 +373,10 @@ class BookingCard extends StatelessWidget {
       ],
     );
   }
-  
+
   Widget _buildActionButton(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Row(
       children: [
         Expanded(
@@ -447,7 +430,7 @@ class BookingCard extends StatelessWidget {
       ],
     );
   }
-  
+
   Color _getStatusColor(String status) {
     switch (status) {
       case 'CONFIRMED':
@@ -465,7 +448,7 @@ class BookingCard extends StatelessWidget {
         return Colors.grey.shade600;
     }
   }
-  
+
   String _getStatusText(String status) {
     switch (status) {
       case 'CONFIRMED':

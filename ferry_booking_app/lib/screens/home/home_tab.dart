@@ -80,7 +80,7 @@ class _HomeTabState extends State<HomeTab> with SingleTickerProviderStateMixin {
           children: [
             // Background elements - similar to LoginScreen
             Positioned(
-              top: -50,
+              top: 90,
               right: -50,
               child: Container(
                 width: 180,
@@ -92,8 +92,8 @@ class _HomeTabState extends State<HomeTab> with SingleTickerProviderStateMixin {
               ),
             ),
             Positioned(
-              bottom: -80,
-              left: -80,
+              bottom: 40,
+              left: -90,
               child: Container(
                 width: 200,
                 height: 200,
@@ -286,7 +286,7 @@ class _HomeTabState extends State<HomeTab> with SingleTickerProviderStateMixin {
                                 ),
                               ),
                               
-                              const SizedBox(height: 30),
+                              const SizedBox(height: 10),
                               
                               // Search box with card-like appearance
                               Container(

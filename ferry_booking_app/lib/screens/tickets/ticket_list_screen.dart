@@ -1,5 +1,5 @@
 import 'package:ferry_booking_app/models/booking.dart';
-import 'package:ferry_booking_app/providers/ticket_status_provider.dart';
+import 'package:ferry_booking_app/providers/ticket_status_provider.dart'; // Provider baru
 import 'package:ferry_booking_app/utils/date_time_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -24,8 +24,8 @@ class _TicketListScreenState extends State<TicketListScreen>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
-  String _historyFilter = 'all';
-  bool _isSyncing = false;
+  String _historyFilter = 'all'; // Filter untuk riwayat tiket
+  bool _isSyncing = false; // Status sinkronisasi
   Timer? _statusUpdateTimer;
   Timer? _syncTimer;
 
@@ -34,31 +34,31 @@ class _TicketListScreenState extends State<TicketListScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
 
-    // Animation controller setup dengan durasi lebih cepat
+    // Animation controller setup
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800), // Lebih cepat
+      duration: const Duration(milliseconds: 1000),
     );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: const Interval(0.0, 0.6, curve: Curves.easeOutCubic), // Kurva yang lebih halus
+        curve: const Interval(0.0, 0.7, curve: Curves.easeOut),
       ),
     );
 
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.08), // Pergerakan lebih halus
+      begin: const Offset(0, 0.1),
       end: Offset.zero,
     ).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: const Interval(0.0, 0.7, curve: Curves.easeOutCubic),
+        curve: const Interval(0.0, 0.8, curve: Curves.easeOutCubic),
       ),
     );
 
     // Start animation
-    Future.delayed(const Duration(milliseconds: 50), () {
+    Future.delayed(const Duration(milliseconds: 100), () {
       _animationController.forward();
     });
 
@@ -69,6 +69,7 @@ class _TicketListScreenState extends State<TicketListScreen>
       }
     });
 
+    // Use post-frame callback to avoid setState during build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadBookings();
       _setupStatusSynchronization();
@@ -84,9 +85,15 @@ class _TicketListScreenState extends State<TicketListScreen>
     super.dispose();
   }
 
+  /// Setup timer untuk sinkronisasi status tiket
   void _setupStatusSynchronization() async {
+    // Sinkronisasi pertama kali
     await _synchronizeStatuses();
+
+    // Atur timer berdasarkan waktu keberangkatan terdekat
     _updateSyncTimer();
+
+    // Setup timer untuk secara periodik memeriksa apakah perlu mengubah interval sinkronisasi
     _statusUpdateTimer = Timer.periodic(const Duration(minutes: 10), (_) {
       if (mounted) {
         _updateSyncTimer();
@@ -94,19 +101,97 @@ class _TicketListScreenState extends State<TicketListScreen>
     });
   }
 
+  /// Update timer sinkronisasi berdasarkan keberangkatan terdekat
   void _updateSyncTimer() {
-    // Logika sama seperti sebelumnya
-    // ...
+    // Cancel timer yang ada
+    _syncTimer?.cancel();
+
+    final bookingProvider = Provider.of<BookingProvider>(
+      context,
+      listen: false,
+    );
+    final ticketStatusProvider = Provider.of<TicketStatusProvider>(
+      context,
+      listen: false,
+    );
+
+    if (bookingProvider.bookings == null) return;
+
+    // Kategorikan tiket
+    final categorized = ticketStatusProvider.categorizeTickets(
+      bookingProvider.bookings!,
+    );
+    final upcomingTickets = categorized['upcoming'] ?? [];
+
+    // Dapatkan waktu keberangkatan terdekat
+    final closestDeparture = ticketStatusProvider.getClosestDepartureTime(
+      upcomingTickets,
+    );
+
+    // Atur interval sinkronisasi berdasarkan kedekatan waktu keberangkatan
+    if (closestDeparture != null) {
+      final difference = closestDeparture.difference(DateTime.now());
+
+      if (difference.inHours < 2) {
+        // Jika kurang dari 2 jam, sync setiap 1 menit
+        _syncTimer = Timer.periodic(
+          const Duration(minutes: 1),
+          (_) => _synchronizeStatuses(),
+        );
+      } else if (difference.inHours < 6) {
+        // Jika kurang dari 6 jam, sync setiap 3 menit
+        _syncTimer = Timer.periodic(
+          const Duration(minutes: 3),
+          (_) => _synchronizeStatuses(),
+        );
+      } else {
+        // Jika lebih dari 6 jam, sync setiap 5 menit
+        _syncTimer = Timer.periodic(
+          const Duration(minutes: 5),
+          (_) => _synchronizeStatuses(),
+        );
+      }
+    } else {
+      // Jika tidak ada tiket upcoming, sync setiap 10 menit
+      _syncTimer = Timer.periodic(
+        const Duration(minutes: 10),
+        (_) => _synchronizeStatuses(),
+      );
+    }
   }
 
+  /// Sinkronisasi status tiket dengan server
   Future<void> _synchronizeStatuses() async {
-    // Logika sama seperti sebelumnya
-    // ...
+    if (_isSyncing) return;
+
+    setState(() {
+      _isSyncing = true;
+    });
+
+    try {
+      final ticketStatusProvider = Provider.of<TicketStatusProvider>(
+        context,
+        listen: false,
+      );
+      await ticketStatusProvider.synchronizeTicketStatuses();
+      await _loadBookings();
+    } catch (e) {
+      debugPrint('Error synchronizing statuses: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSyncing = false;
+        });
+      }
+    }
   }
 
   Future<void> _loadBookings() async {
-    // Logika sama seperti sebelumnya
-    // ...
+    final bookingProvider = Provider.of<BookingProvider>(
+      context,
+      listen: false,
+    );
+    await bookingProvider.getBookings();
   }
 
   Future<void> _refreshBookings() async {
@@ -130,6 +215,8 @@ class _TicketListScreenState extends State<TicketListScreen>
 
     final upcomingTickets = categorizedTickets['upcoming'] ?? [];
     final allHistoryTickets = categorizedTickets['history'] ?? [];
+
+    // Filter tiket riwayat berdasarkan pilihan filter
     final historyTickets = ticketStatusProvider.filterHistoryTickets(
       allHistoryTickets,
       _historyFilter,
@@ -137,7 +224,6 @@ class _TicketListScreenState extends State<TicketListScreen>
 
     return Scaffold(
       body: Container(
-        // Gradien yang lebih halus dan profesional
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topRight,
@@ -145,47 +231,46 @@ class _TicketListScreenState extends State<TicketListScreen>
             colors: [
               Colors.white,
               Colors.blue.shade50,
-              Colors.blue.shade100.withOpacity(0.3),
+              Colors.blue.shade100.withOpacity(0.4),
             ],
-            stops: const [0.1, 0.6, 1.0], // Kontrol gradien lebih baik
           ),
         ),
         child: Stack(
           children: [
-            // Elemen background dengan desain yang lebih halus
+            // Background elements (tidak berubah)
             Positioned(
-              top: -60,
-              right: -60,
+              top: 90,
+              right: -50,
+              child: Container(
+                width: 180,
+                height: 180,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: theme.primaryColor.withOpacity(0.1),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 40,
+              left: -90,
               child: Container(
                 width: 200,
                 height: 200,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: theme.primaryColor.withOpacity(0.08), // Transparansi lebih halus
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: -90,
-              left: -90,
-              child: Container(
-                width: 220,
-                height: 220,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: theme.primaryColor.withOpacity(0.07),
+                  color: theme.primaryColor.withOpacity(0.1),
                 ),
               ),
             ),
 
-            // Ikon kapal yang lebih subtle
+            // Small boat icons in the background (tidak berubah)
             Positioned(
               top: size.height * 0.15,
               left: size.width * 0.1,
               child: Icon(
                 Icons.sailing_outlined,
-                size: 22,
-                color: theme.primaryColor.withOpacity(0.15),
+                size: 20,
+                color: theme.primaryColor.withOpacity(0.2),
               ),
             ),
             Positioned(
@@ -193,8 +278,8 @@ class _TicketListScreenState extends State<TicketListScreen>
               right: size.width * 0.15,
               child: Icon(
                 Icons.directions_boat_outlined,
-                size: 26,
-                color: theme.primaryColor.withOpacity(0.12),
+                size: 25,
+                color: theme.primaryColor.withOpacity(0.15),
               ),
             ),
             Positioned(
@@ -202,8 +287,8 @@ class _TicketListScreenState extends State<TicketListScreen>
               left: size.width * 0.2,
               child: Icon(
                 Icons.directions_boat_filled_outlined,
-                size: 24,
-                color: theme.primaryColor.withOpacity(0.09),
+                size: 22,
+                color: theme.primaryColor.withOpacity(0.1),
               ),
             ),
 
@@ -211,189 +296,150 @@ class _TicketListScreenState extends State<TicketListScreen>
             SafeArea(
               child: Column(
                 children: [
-                  // Custom App Bar dengan shadow halus
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Tiket Saya',
-                          style: TextStyle(
-                            fontSize: 24, // Ukuran font yang lebih besar
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                            letterSpacing: -0.5, // Kerning yang lebih rapat
-                          ),
-                        ),
-                        const Spacer(),
-                        // Indikator sinkronisasi yang diperbarui
-                        _buildSyncIndicator(),
-                      ],
-                    ),
-                  ),
-
-                  // Custom Tab Bar yang diperbarui
+                  // Custom Tab Bar
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 28, 24, 12),
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 10),
                     child: Container(
-                      height: 62,
+                      height: 60,
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(24), // Radius yang lebih besar
+                        borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.grey.withOpacity(0.08),
-                            blurRadius: 20,
-                            offset: const Offset(0, 6),
-                            spreadRadius: -2,
+                            color: Colors.grey.withOpacity(0.1),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
+                            spreadRadius: -5,
                           ),
                         ],
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(4.0), // Padding dalam
-                        child: Row(
-                          children: [
-                            // Tab 1 - Akan Datang
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () {
-                                  _tabController.animateTo(0);
-                                },
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 300),
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    color:
-                                        _tabController.index == 0
-                                            ? theme.primaryColor.withOpacity(0.1)
-                                            : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        'Akan Datang',
-                                        style: TextStyle(
-                                          fontWeight:
-                                              _tabController.index == 0
-                                                  ? FontWeight.bold
-                                                  : FontWeight.normal,
-                                          color:
-                                              _tabController.index == 0
-                                                  ? theme.primaryColor
-                                                  : Colors.grey.shade600,
-                                          fontSize: 15,
+                      child: Row(
+                        children: [
+                          // Tab 1 - Akan Datang
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                _tabController.animateTo(0);
+                              },
+                              child: Container(
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color:
+                                      _tabController.index == 0
+                                          ? theme.primaryColor.withOpacity(0.1)
+                                          : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'Akan Datang',
+                                      style: TextStyle(
+                                        fontWeight:
+                                            _tabController.index == 0
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                        color:
+                                            _tabController.index == 0
+                                                ? theme.primaryColor
+                                                : Colors.grey.shade600,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                    if (upcomingTickets.isNotEmpty) ...[
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: theme.primaryColor,
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '${upcomingTickets.length}',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                       ),
-                                      if (upcomingTickets.isNotEmpty) ...[
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 2,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: theme.primaryColor,
-                                            borderRadius: BorderRadius.circular(10),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: theme.primaryColor.withOpacity(0.2),
-                                                blurRadius: 8,
-                                                offset: const Offset(0, 2),
-                                                spreadRadius: -2,
-                                              ),
-                                            ],
-                                          ),
-                                          child: Text(
-                                            '${upcomingTickets.length}',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
                                     ],
-                                  ),
+                                  ],
                                 ),
                               ),
                             ),
+                          ),
 
-                            // Tab 2 - Riwayat
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () {
-                                  _tabController.animateTo(1);
-                                },
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 300),
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    color:
-                                        _tabController.index == 1
-                                            ? theme.primaryColor.withOpacity(0.1)
-                                            : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        'Riwayat',
-                                        style: TextStyle(
-                                          fontWeight:
-                                              _tabController.index == 1
-                                                  ? FontWeight.bold
-                                                  : FontWeight.normal,
+                          // Tab 2 - Riwayat
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                _tabController.animateTo(1);
+                              },
+                              child: Container(
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color:
+                                      _tabController.index == 1
+                                          ? theme.primaryColor.withOpacity(0.1)
+                                          : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'Riwayat',
+                                      style: TextStyle(
+                                        fontWeight:
+                                            _tabController.index == 1
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                        color:
+                                            _tabController.index == 1
+                                                ? theme.primaryColor
+                                                : Colors.grey.shade600,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                    if (allHistoryTickets.isNotEmpty) ...[
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
                                           color:
                                               _tabController.index == 1
                                                   ? theme.primaryColor
-                                                  : Colors.grey.shade600,
-                                          fontSize: 15,
+                                                  : Colors.grey.shade400,
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '${allHistoryTickets.length}',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                       ),
-                                      if (allHistoryTickets.isNotEmpty) ...[
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 2,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color:
-                                                _tabController.index == 1
-                                                    ? theme.primaryColor
-                                                    : Colors.grey.shade400,
-                                            borderRadius: BorderRadius.circular(10),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: (_tabController.index == 1 ? theme.primaryColor : Colors.grey.shade400).withOpacity(0.2),
-                                                blurRadius: 8,
-                                                offset: const Offset(0, 2),
-                                                spreadRadius: -2,
-                                              ),
-                                            ],
-                                          ),
-                                          child: Text(
-                                            '${allHistoryTickets.length}',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
                                     ],
-                                  ),
+                                  ],
                                 ),
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -413,95 +459,142 @@ class _TicketListScreenState extends State<TicketListScreen>
                               color: theme.primaryColor,
                               child:
                                   bookingProvider.isLoading
-                                      ? Center(
-                                        child: SizedBox(
-                                          width: 40, 
-                                          height: 40,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 3,
-                                            valueColor: AlwaysStoppedAnimation<Color>(theme.primaryColor),
-                                          ),
-                                        ),
+                                      ? const Center(
+                                        child: CircularProgressIndicator(),
                                       )
                                       : upcomingTickets.isEmpty
                                       ? _buildEmptyState('upcoming')
                                       : ListView.builder(
-                                        padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                                        padding: const EdgeInsets.all(24.0),
                                         itemCount: upcomingTickets.length,
                                         itemBuilder: (context, index) {
-                                          final booking = upcomingTickets[index];
+                                          final booking =
+                                              upcomingTickets[index];
+
+                                          // Perhitungan waktu keberangkatan
                                           final now = DateTime.now().toLocal();
-                                          
+                                          debugPrint(
+                                            'Format tanggal keberangkatan: ${booking.departureDate}',
+                                          );
+                                          debugPrint(
+                                            'Format waktu keberangkatan: ${booking.schedule?.departureTime}',
+                                          );
+
                                           final departureDateTime =
                                               DateTimeHelper.combineDateAndTime(
                                                 booking.departureDate,
-                                                booking.schedule?.departureTime ?? "00:00",
+                                                booking
+                                                        .schedule
+                                                        ?.departureTime ??
+                                                    "00:00", // Gunakan waktu default jika null
                                               );
-                                          
+                                          debugPrint(
+                                            'Tanggal keberangkatan: ${departureDateTime?.toString()}',
+                                          );
+
+                                          if (departureDateTime != null) {
+                                            final difference = departureDateTime
+                                                .difference(now);
+                                            debugPrint(
+                                              'Selisih dalam hari: ${difference.inDays}',
+                                            );
+                                            debugPrint(
+                                              'Selisih dalam jam: ${difference.inHours}',
+                                            );
+                                            debugPrint(
+                                              'Selisih dalam menit: ${difference.inMinutes}',
+                                            );
+                                            debugPrint(
+                                              'Format waktu: ${_formatTimeRemaining(difference)}',
+                                            );
+                                          }
+
                                           final timeDifference =
                                               departureDateTime != null
-                                                  ? departureDateTime.difference(now)
+                                                  ? departureDateTime
+                                                      .difference(now)
                                                   : null;
 
                                           return Padding(
-                                            padding: const EdgeInsets.only(bottom: 20),
+                                            padding: const EdgeInsets.only(
+                                              bottom: 16,
+                                            ),
                                             child: Container(
                                               decoration: BoxDecoration(
                                                 color: Colors.white,
-                                                borderRadius: BorderRadius.circular(24), // Radius yang lebih besar
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
                                                 boxShadow: [
                                                   BoxShadow(
-                                                    color: Colors.grey.withOpacity(0.07),
-                                                    blurRadius: 20,
-                                                    offset: const Offset(0, 8),
-                                                    spreadRadius: -2,
+                                                    color: Colors.grey
+                                                        .withOpacity(0.1),
+                                                    blurRadius: 15,
+                                                    offset: const Offset(0, 5),
+                                                    spreadRadius: -5,
                                                   ),
                                                 ],
                                               ),
                                               child: Column(
                                                 children: [
-                                                  // Status indikator yang diperbarui
-                                                  _buildStatusBanner(
-                                                    booking,
-                                                    ticketStatusProvider,
-                                                  ),
-
-                                                  // Timer keberangkatan dengan desain yang lebih baik
+                                                  // Timer keberangkatan (jika < 24 jam)
                                                   if (timeDifference != null &&
-                                                      !timeDifference.isNegative)
+                                                      !timeDifference
+                                                          .isNegative)
                                                     Container(
                                                       width: double.infinity,
-                                                      padding: const EdgeInsets.symmetric(
-                                                        vertical: 10,
-                                                        horizontal: 18,
-                                                      ),
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            vertical: 8,
+                                                            horizontal: 16,
+                                                          ),
                                                       decoration: BoxDecoration(
                                                         color:
-                                                            booking.status == 'PENDING'
+                                                            booking.status ==
+                                                                    'PENDING'
                                                                 ? Colors.white
-                                                                : theme.primaryColor.withOpacity(0.08),
+                                                                : theme
+                                                                    .primaryColor
+                                                                    .withOpacity(
+                                                                      0.1,
+                                                                    ),
                                                         borderRadius:
-                                                            booking.status == 'PENDING'
-                                                                ? BorderRadius.zero
+                                                            booking.status ==
+                                                                    'PENDING'
+                                                                ? BorderRadius
+                                                                    .zero
                                                                 : const BorderRadius.only(
-                                                                  topLeft: Radius.circular(24),
-                                                                  topRight: Radius.circular(24),
+                                                                  topLeft:
+                                                                      Radius.circular(
+                                                                        20,
+                                                                      ),
+                                                                  topRight:
+                                                                      Radius.circular(
+                                                                        20,
+                                                                      ),
                                                                 ),
                                                       ),
                                                       child: Row(
                                                         children: [
                                                           Icon(
-                                                            Icons.access_time_rounded, // Icon yang lebih bulat
+                                                            Icons.access_time,
                                                             size: 16,
-                                                            color: theme.primaryColor,
+                                                            color:
+                                                                theme
+                                                                    .primaryColor,
                                                           ),
-                                                          const SizedBox(width: 10),
+                                                          const SizedBox(
+                                                            width: 8,
+                                                          ),
                                                           Text(
                                                             'Berangkat dalam ${_formatTimeRemaining(timeDifference)}',
                                                             style: TextStyle(
-                                                              color: theme.primaryColor,
-                                                              fontWeight: FontWeight.bold,
-                                                              fontSize: 13, // Sedikit lebih besar
+                                                              color:
+                                                                  theme
+                                                                      .primaryColor,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize: 12,
                                                             ),
                                                           ),
                                                         ],
@@ -510,10 +603,11 @@ class _TicketListScreenState extends State<TicketListScreen>
 
                                                   // Ticket Card
                                                   ClipRRect(
-                                                    borderRadius: _getTicketCardBorderRadius(
-                                                      booking,
-                                                      timeDifference,
-                                                    ),
+                                                    borderRadius:
+                                                        _getTicketCardBorderRadius(
+                                                          booking,
+                                                          timeDifference,
+                                                        ),
                                                     child: TicketCard(
                                                       booking: booking,
                                                       onTap: () {
@@ -535,7 +629,7 @@ class _TicketListScreenState extends State<TicketListScreen>
                           ),
                         ),
 
-                        // History tickets
+                        // History tickets with filtering
                         FadeTransition(
                           opacity: _fadeAnimation,
                           child: SlideTransition(
@@ -545,7 +639,7 @@ class _TicketListScreenState extends State<TicketListScreen>
                               color: theme.primaryColor,
                               child: Column(
                                 children: [
-                                  // Filter chip yang ditingkatkan
+                                  // History filter chips
                                   if (allHistoryTickets.isNotEmpty)
                                     _buildHistoryFilters(),
 
@@ -553,15 +647,9 @@ class _TicketListScreenState extends State<TicketListScreen>
                                   Expanded(
                                     child:
                                         bookingProvider.isLoading
-                                            ? Center(
-                                              child: SizedBox(
-                                                width: 40, 
-                                                height: 40,
-                                                child: CircularProgressIndicator(
-                                                  strokeWidth: 3,
-                                                  valueColor: AlwaysStoppedAnimation<Color>(theme.primaryColor),
-                                                ),
-                                              ),
+                                            ? const Center(
+                                              child:
+                                                  CircularProgressIndicator(),
                                             )
                                             : historyTickets.isEmpty
                                             ? _buildEmptyState(
@@ -570,57 +658,86 @@ class _TicketListScreenState extends State<TicketListScreen>
                                                   : 'history',
                                             )
                                             : ListView.builder(
-                                              padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                                              padding: const EdgeInsets.all(
+                                                24.0,
+                                              ),
                                               itemCount: historyTickets.length,
                                               itemBuilder: (context, index) {
-                                                final booking = historyTickets[index];
-                                                final statusInfo =
-                                                    ticketStatusProvider
+                                                final booking =
+                                                    historyTickets[index];
+                                                ticketStatusProvider
                                                         .getStatusInfo(booking);
 
                                                 return Padding(
-                                                  padding: const EdgeInsets.only(bottom: 20),
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        bottom: 16,
+                                                      ),
                                                   child: Container(
                                                     decoration: BoxDecoration(
                                                       color: Colors.white,
-                                                      borderRadius: BorderRadius.circular(24),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            20,
+                                                          ),
                                                       boxShadow: [
                                                         BoxShadow(
-                                                          color: Colors.grey.withOpacity(0.07),
-                                                          blurRadius: 20,
-                                                          offset: const Offset(0, 8),
-                                                          spreadRadius: -2,
+                                                          color: Colors.grey
+                                                              .withOpacity(0.1),
+                                                          blurRadius: 15,
+                                                          offset: const Offset(
+                                                            0,
+                                                            5,
+                                                          ),
+                                                          spreadRadius: -5,
                                                         ),
                                                       ],
                                                     ),
                                                     child: Column(
                                                       children: [
-                                                        // Status banner yang ditingkatkan
-                                                        _buildStatusBanner(
-                                                          booking,
-                                                          ticketStatusProvider,
-                                                        ),
-
                                                         // Ticket Card
                                                         ClipRRect(
                                                           borderRadius: BorderRadius.only(
                                                             topLeft:
-                                                                booking.status == 'PENDING' ||
-                                                                        booking.status == 'CONFIRMED'
-                                                                    ? Radius.zero
-                                                                    : const Radius.circular(24),
+                                                                booking.status ==
+                                                                            'PENDING' ||
+                                                                        booking.status ==
+                                                                            'CONFIRMED'
+                                                                    ? Radius
+                                                                        .zero
+                                                                    : const Radius.circular(
+                                                                      20,
+                                                                    ),
                                                             topRight:
-                                                                booking.status == 'PENDING' ||
-                                                                        booking.status == 'CONFIRMED'
-                                                                    ? Radius.zero
-                                                                    : const Radius.circular(24),
-                                                            bottomLeft: const Radius.circular(24),
-                                                            bottomRight: const Radius.circular(24),
+                                                                booking.status ==
+                                                                            'PENDING' ||
+                                                                        booking.status ==
+                                                                            'CONFIRMED'
+                                                                    ? Radius
+                                                                        .zero
+                                                                    : const Radius.circular(
+                                                                      20,
+                                                                    ),
+                                                            bottomLeft:
+                                                                const Radius.circular(
+                                                                  20,
+                                                                ),
+                                                            bottomRight:
+                                                                const Radius.circular(
+                                                                  20,
+                                                                ),
                                                           ),
                                                           child: Opacity(
                                                             opacity:
-                                                                ['EXPIRED', 'CANCELLED', 'REFUNDED'].contains(booking.status)
-                                                                    ? 0.75 // Sedikit lebih transparan
+                                                                [
+                                                                      'EXPIRED',
+                                                                      'CANCELLED',
+                                                                      'REFUNDED',
+                                                                    ].contains(
+                                                                      booking
+                                                                          .status,
+                                                                    )
+                                                                    ? 0.8
                                                                     : 1.0,
                                                             child: TicketCard(
                                                               booking: booking,
@@ -628,7 +745,9 @@ class _TicketListScreenState extends State<TicketListScreen>
                                                                 Navigator.pushNamed(
                                                                   context,
                                                                   '/tickets/detail',
-                                                                  arguments: booking.id,
+                                                                  arguments:
+                                                                      booking
+                                                                          .id,
                                                                 );
                                                               },
                                                             ),
@@ -658,7 +777,7 @@ class _TicketListScreenState extends State<TicketListScreen>
     );
   }
 
-  /// Membangun indikator sinkronisasi yang lebih profesional
+  /// Membangun indikator sinkronisasi
   Widget _buildSyncIndicator() {
     final ticketStatusProvider = Provider.of<TicketStatusProvider>(
       context,
@@ -676,20 +795,12 @@ class _TicketListScreenState extends State<TicketListScreen>
               ? Container(
                 key: const ValueKey('syncing'),
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 6,
+                  horizontal: 12,
+                  vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(30), // Lebih bulat
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.blue.shade100.withOpacity(0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                      spreadRadius: -2,
-                    ),
-                  ],
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -699,17 +810,13 @@ class _TicketListScreenState extends State<TicketListScreen>
                       height: 12,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade500),
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'Memperbarui...',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.blue.shade600,
-                        fontWeight: FontWeight.w500, // Lebih tebal
-                      ),
+                      style: TextStyle(fontSize: 12, color: Colors.blue),
                     ),
                   ],
                 ),
@@ -717,149 +824,83 @@ class _TicketListScreenState extends State<TicketListScreen>
               : Tooltip(
                 message:
                     'Terakhir diperbarui: ${DateTimeHelper.formatDate(lastSyncTime.toIso8601String())} ${formattedTime}',
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(30),
-                    border: Border.all(color: Colors.grey.shade200, width: 1),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.update_rounded,
-                        size: 12,
-                        color: Colors.grey.shade500,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        formattedTime,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                child: const SizedBox.shrink(key: ValueKey('not_syncing')),
               ),
     );
   }
 
-  /// Filter history yang diperbarui dengan tampilan lebih modern
+  /// Membangun filter untuk riwayat tiket
   Widget _buildHistoryFilters() {
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      height: 50,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-        children: [
-          _buildFilterChip('Semua', _historyFilter == 'all'),
-          _buildFilterChip('Selesai', _historyFilter == 'completed'),
-          _buildFilterChip('Kadaluarsa', _historyFilter == 'expired'),
-          _buildFilterChip('Dibatalkan', _historyFilter == 'cancelled'),
-          _buildFilterChip('Refund', _historyFilter == 'refunded'),
-        ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+        child: Row(
+          children: [
+            _buildFilterChip('Semua', _historyFilter == 'all'),
+            _buildFilterChip('Selesai', _historyFilter == 'completed'),
+            _buildFilterChip('Kadaluarsa', _historyFilter == 'expired'),
+            _buildFilterChip('Dibatalkan', _historyFilter == 'cancelled'),
+            _buildFilterChip('Refund', _historyFilter == 'refunded'),
+          ],
+        ),
       ),
     );
   }
 
-  /// Chip filter yang diperbarui dengan desain yang lebih modern
+  /// Membangun chip filter
   Widget _buildFilterChip(String label, bool isSelected) {
     final theme = Theme.of(context);
 
     return Padding(
-      padding: const EdgeInsets.only(right: 10.0),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        decoration: BoxDecoration(
-          color: isSelected 
-              ? theme.primaryColor.withOpacity(0.1) 
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected 
-                ? theme.primaryColor.withOpacity(0.3) 
-                : Colors.grey.withOpacity(0.3),
-            width: 1,
-          ),
+      padding: const EdgeInsets.only(right: 8.0),
+      child: ChoiceChip(
+        label: Text(label),
+        selected: isSelected,
+        selectedColor: theme.primaryColor.withOpacity(0.2),
+        labelStyle: TextStyle(
+          color: isSelected ? theme.primaryColor : Colors.grey[700],
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         ),
-        child: InkWell(
-          onTap: () {
+        onSelected: (selected) {
+          if (selected) {
             setState(
-              () => _historyFilter =
-                  label.toLowerCase() == 'semua'
-                      ? 'all'
-                      : label.toLowerCase(),
+              () =>
+                  _historyFilter =
+                      label.toLowerCase() == 'semua'
+                          ? 'all'
+                          : label.toLowerCase(),
             );
-          },
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Text(
-              label,
-              style: TextStyle(
-                color: isSelected ? theme.primaryColor : Colors.grey[700],
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ),
+          }
+        },
       ),
     );
   }
 
-  /// Banner status yang diperbarui dengan desain yang lebih modern
+  /// Membangun banner status
   Widget _buildStatusBanner(Booking booking, TicketStatusProvider provider) {
     final statusInfo = provider.getStatusInfo(booking);
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 18),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       decoration: BoxDecoration(
         color: statusInfo.color.withOpacity(0.1),
         borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: statusInfo.color.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 1),
-            spreadRadius: 0,
-          ),
-        ],
       ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: statusInfo.color.withOpacity(0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              statusInfo.icon, 
-              size: 14, 
-              color: statusInfo.color,
-            ),
-          ),
+          Icon(statusInfo.icon, size: 16, color: statusInfo.color),
           const SizedBox(width: 8),
           Text(
             statusInfo.label,
             style: TextStyle(
               color: statusInfo.color,
               fontWeight: FontWeight.bold,
-              fontSize: 13,
-              letterSpacing: 0.2,
+              fontSize: 12,
             ),
           ),
         ],
@@ -867,7 +908,7 @@ class _TicketListScreenState extends State<TicketListScreen>
     );
   }
 
-  /// Border radius untuk card tiket
+  /// Mendapatkan border radius untuk card tiket
   BorderRadius _getTicketCardBorderRadius(
     Booking booking,
     Duration? timeDifference,
@@ -880,18 +921,18 @@ class _TicketListScreenState extends State<TicketListScreen>
     return BorderRadius.only(
       topLeft:
           (booking.status != 'PENDING' && !showTimeInfo)
-              ? const Radius.circular(24)
+              ? const Radius.circular(20)
               : Radius.zero,
       topRight:
           (booking.status != 'PENDING' && !showTimeInfo)
-              ? const Radius.circular(24)
+              ? const Radius.circular(20)
               : Radius.zero,
-      bottomLeft: const Radius.circular(24),
-      bottomRight: const Radius.circular(24),
+      bottomLeft: const Radius.circular(20),
+      bottomRight: const Radius.circular(20),
     );
   }
 
-  /// Empty state yang diperbarui
+  /// Membangun tampilan kosong
   Widget _buildEmptyState(String type) {
     final theme = Theme.of(context);
 
@@ -929,58 +970,37 @@ class _TicketListScreenState extends State<TicketListScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Ikon dengan efek elevasi yang ditingkatkan
               Container(
-                padding: const EdgeInsets.all(28),
+                padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: theme.primaryColor.withOpacity(0.1),
                   shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      theme.primaryColor.withOpacity(0.15),
-                      theme.primaryColor.withOpacity(0.05),
-                    ],
-                    radius: 0.8,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: theme.primaryColor.withOpacity(0.05),
-                      blurRadius: 20,
-                      spreadRadius: 5,
-                    ),
-                  ],
                 ),
-                child: Icon(
-                  icon, 
-                  size: 70, 
-                  color: theme.primaryColor.withOpacity(0.7),
-                ),
+                child: Icon(icon, size: 70, color: theme.primaryColor),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
               Text(
                 title,
                 style: TextStyle(
                   color: Colors.grey[800],
-                  fontSize: 20,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  letterSpacing: -0.5,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               Text(
                 message,
                 style: TextStyle(
-                  color: Colors.grey[600],
+                  color: Colors.grey[700],
                   fontSize: 16,
-                  height: 1.5,
+                  fontWeight: FontWeight.w500,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 35),
-              // Tombol dengan efek hover dan shadow yang lebih halus
+              const SizedBox(height: 30),
               Container(
-                height: 54,
+                height: 50,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
@@ -1014,26 +1034,15 @@ class _TicketListScreenState extends State<TicketListScreen>
                       ),
                       child: Container(
                         alignment: Alignment.center,
-                        padding: const EdgeInsets.symmetric(horizontal: 28),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              'PESAN TIKET SEKARANG',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                                letterSpacing: 1,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Icon(
-                              Icons.arrow_forward_rounded,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                          ],
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: const Text(
+                          'PESAN TIKET SEKARANG',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            letterSpacing: 1,
+                          ),
                         ),
                       ),
                     ),
@@ -1047,8 +1056,9 @@ class _TicketListScreenState extends State<TicketListScreen>
     );
   }
 
-  /// Format waktu
+  /// Fungsi untuk memformat sisa waktu
   String _formatTimeRemaining(Duration duration) {
+    // Perhitungan yang lebih akurat untuk selisih hari dan jam
     final days = duration.inDays;
     final hours = duration.inHours % 24;
     final minutes = duration.inMinutes % 60;

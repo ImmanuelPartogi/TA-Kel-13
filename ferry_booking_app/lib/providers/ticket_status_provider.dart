@@ -50,9 +50,9 @@ class TicketStatusProvider extends ChangeNotifier {
 
   /// Cek apakah tiket termasuk kategori "Akan Datang"
   bool _isUpcoming(Booking booking) {
-    // Tiket Akan Datang hanya jika:
+    // Tiket Akan Datang jika:
     // 1. Status CONFIRMED atau PENDING
-    // 2. Tanggal keberangkatan >= tanggal hari ini (belum termasuk jam)
+    // 2. Tanggal & jam keberangkatan > tanggal & jam saat ini
 
     // Cek status dulu
     if (!['CONFIRMED', 'PENDING'].contains(booking.status)) {
@@ -60,42 +60,33 @@ class TicketStatusProvider extends ChangeNotifier {
     }
 
     try {
-      // Parse tanggal keberangkatan
-      final departureDateObj = DateTime.parse(booking.departureDate);
-
-      // Ambil tanggal hari ini (tanpa waktu)
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      final departureDay = DateTime(
-        departureDateObj.year,
-        departureDateObj.month,
-        departureDateObj.day,
+      // Dapatkan datetime keberangkatan lengkap (tanggal + waktu)
+      final departureDateTime = DateTimeHelper.combineDateAndTime(
+        booking.departureDate,
+        booking.schedule?.departureTime ?? '00:00',
       );
 
-      // Tiket masih upcoming jika tanggal keberangkatan >= hari ini
-      if (departureDay.isBefore(today)) {
-        return false; // Tiket untuk hari-hari sebelumnya tidak dianggap upcoming
+      // Jika tidak bisa mendapatkan waktu keberangkatan,
+      // cek hanya berdasarkan tanggal
+      if (departureDateTime == null) {
+        final departureDateObj = DateTime.parse(booking.departureDate);
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        final departureDay = DateTime(
+          departureDateObj.year,
+          departureDateObj.month,
+          departureDateObj.day,
+        );
+
+        // Tiket masih upcoming jika tanggal keberangkatan >= hari ini
+        return !departureDay.isBefore(today);
       }
 
-      // Jika tanggal sama dengan hari ini, periksa waktu
-      if (departureDay.isAtSameMomentAs(today)) {
-        // Jika ada jadwal, periksa waktu keberangkatan
-        if (booking.schedule?.departureTime != null &&
-            booking.schedule!.departureTime.isNotEmpty) {
-          final departureDateTime = DateTimeHelper.combineDateAndTime(
-            booking.departureDate,
-            booking.schedule!.departureTime,
-          );
+      // Cek apakah waktu keberangkatan belum lewat
+      final now = DateTime.now();
 
-          // Jika waktu keberangkatan sudah lewat, bukan upcoming
-          if (departureDateTime != null && departureDateTime.isBefore(now)) {
-            return false;
-          }
-        }
-      }
-
-      // Tiket dianggap upcoming jika lolos semua pengecekan di atas
-      return true;
+      // Tiket masih upcoming jika waktu keberangkatan >= waktu sekarang
+      return !departureDateTime.isBefore(now);
     } catch (e) {
       debugPrint('Error checking if booking is upcoming: $e');
       // Default ke false jika terjadi error

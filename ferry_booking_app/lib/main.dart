@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:ferry_booking_app/models/route.dart';
+import 'package:ferry_booking_app/providers/ticket_status_provider.dart';
 import 'package:ferry_booking_app/screens/notification/notification_screen.dart';
 import 'package:ferry_booking_app/screens/payment/payment_method_screen.dart';
 import 'package:ferry_booking_app/screens/booking/schedule_selection_screen.dart';
@@ -79,6 +80,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => BookingProvider()),
+        ChangeNotifierProvider(create: (_) => TicketStatusProvider()),
         ChangeNotifierProvider(create: (_) => ScheduleProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProxyProvider<AuthProvider, ChatbotProvider>(

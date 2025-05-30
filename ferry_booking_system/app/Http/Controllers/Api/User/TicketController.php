@@ -1,6 +1,5 @@
 <?php
 
-// app/Http/Controllers/Api/TicketController.php
 namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
@@ -36,7 +35,7 @@ class TicketController extends Controller
             $departureDateTime = Carbon::parse($bookingDate->format('Y-m-d') . ' ' . $departureTimeString);
             $currentTime = Carbon::now();
 
-            // PERUBAHAN: Periksa jika tanggal keberangkatan sudah lewat
+            // Periksa jika tanggal keberangkatan sudah lewat
             // atau jika hari ini dan waktu keberangkatan sudah lewat
             if (
                 $bookingDate->isPast() ||
@@ -54,6 +53,17 @@ class TicketController extends Controller
                     'departure_datetime' => $departureDateTime->format('Y-m-d H:i:s'),
                     'current_time' => $currentTime->format('Y-m-d H:i:s')
                 ]);
+
+                // Update booking status juga jika perlu
+                if ($ticket->booking->status === 'CONFIRMED') {
+                    $ticket->booking->status = 'EXPIRED';
+                    $ticket->booking->save();
+
+                    Log::info('Booking status diubah menjadi EXPIRED', [
+                        'booking_id' => $ticket->booking->id,
+                        'booking_code' => $ticket->booking->booking_code
+                    ]);
+                }
             }
         }
 
@@ -98,6 +108,72 @@ class TicketController extends Controller
             'success' => true,
             'message' => 'Detail tiket berhasil diambil',
             'data' => $ticket
+        ], 200);
+    }
+
+    // Endpoint baru: Check status semua tiket milik user
+    public function checkStatus(Request $request)
+    {
+        $user = $request->user();
+
+        // Ambil semua booking user
+        $bookings = \App\Models\Booking::where('user_id', $user->id)
+            ->with(['tickets', 'schedule'])
+            ->get();
+
+        // Periksa dan update status untuk setiap booking dan tiket
+        $updatedBookings = [];
+
+        foreach ($bookings as $booking) {
+            $isExpired = false;
+
+            // Periksa apakah jadwal keberangkatan sudah lewat
+            if ($booking->schedule) {
+                $bookingDate = Carbon::parse($booking->booking_date);
+                $departureTime = $booking->schedule->departure_time;
+
+                // Pastikan format waktu konsisten
+                if ($departureTime instanceof \Carbon\Carbon) {
+                    $departureTimeString = $departureTime->format('H:i:s');
+                } else {
+                    $departureTimeString = $departureTime;
+                }
+
+                // Gabungkan tanggal dan waktu keberangkatan
+                $departureDateTime = Carbon::parse($bookingDate->format('Y-m-d') . ' ' . $departureTimeString);
+                $currentTime = Carbon::now();
+
+                // Cek apakah sudah expired
+                if (
+                    $bookingDate->isPast() ||
+                    ($bookingDate->isSameDay(Carbon::today()) && $departureDateTime->isPast())
+                ) {
+                    $isExpired = true;
+                }
+            }
+
+            // Update status booking jika perlu
+            if ($isExpired && in_array($booking->status, ['CONFIRMED'])) {
+                $booking->status = 'EXPIRED';
+                $booking->save();
+
+                // Update semua tiket terkait
+                foreach ($booking->tickets as $ticket) {
+                    if ($ticket->status === 'ACTIVE') {
+                        $ticket->status = 'EXPIRED';
+                        $ticket->boarding_status = 'MISSED';
+                        $ticket->save();
+                    }
+                }
+            }
+
+            $updatedBookings[] = $booking->fresh(['tickets', 'schedule']);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status tiket berhasil diperbarui',
+            'data' => $updatedBookings
         ], 200);
     }
 

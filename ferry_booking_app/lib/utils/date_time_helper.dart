@@ -50,32 +50,35 @@ class DateTimeHelper {
   // Mendapatkan DateTime dari kombinasi tanggal dan waktu
   static DateTime? combineDateAndTime(String dateString, String timeString) {
     try {
-      final date = DateTime.parse(dateString);
+      // Parse tanggal dan pastikan menggunakan zona waktu lokal
+      final date = DateTime.parse(dateString).toLocal();
 
-      // Handle berbagai format waktu
+      // Debug untuk melihat format waktu yang masuk
+      debugPrint('Parse date time: $dateString, $timeString');
+
+      // Parse waktu dengan benar
+      int hour = 0, minute = 0, second = 0;
+
+      // Format ISO dengan T (seperti dalam departure_time dari API)
       if (timeString.contains('T')) {
-        // Format ISO
-        final timeDate = DateTime.parse(timeString);
-        return DateTime(
-          date.year,
-          date.month,
-          date.day,
-          timeDate.hour,
-          timeDate.minute,
-          timeDate.second,
-        );
-      } else if (timeString.contains(':')) {
-        // Format HH:MM:SS atau HH:MM
+        final time = DateTime.parse(timeString).toLocal();
+        hour = time.hour;
+        minute = time.minute;
+        second = time.second;
+      }
+      // Format dengan titik dua (HH:MM:SS atau HH:MM)
+      else if (timeString.contains(':')) {
         final parts = timeString.split(':');
-        final hour = int.tryParse(parts[0]) ?? 0;
-        final minute = parts.length > 1 ? (int.tryParse(parts[1]) ?? 0) : 0;
-        final second = parts.length > 2 ? (int.tryParse(parts[2]) ?? 0) : 0;
-
-        return DateTime(date.year, date.month, date.day, hour, minute, second);
+        hour = int.tryParse(parts[0].trim()) ?? 0;
+        minute = parts.length > 1 ? (int.tryParse(parts[1].trim()) ?? 0) : 0;
+        second = parts.length > 2 ? (int.tryParse(parts[2].trim()) ?? 0) : 0;
       }
 
-      // Default fallback
-      return date;
+      // Log hasil parsing waktu untuk debugging
+      debugPrint('Parsed time: $hour:$minute:$second');
+
+      // Gabungkan tanggal dan waktu
+      return DateTime(date.year, date.month, date.day, hour, minute, second);
     } catch (e) {
       debugPrint('Error combining date and time: $e');
       return null;
@@ -84,12 +87,21 @@ class DateTimeHelper {
 
   // Cek apakah jadwal sudah expired
   static bool isExpired(String dateString, String timeString) {
-    final now = DateTime.now();
-    final departureDateTime = combineDateAndTime(dateString, timeString);
+    try {
+      final departureDateTime = combineDateAndTime(dateString, timeString);
 
-    if (departureDateTime == null) return false;
+      if (departureDateTime == null) {
+        return false; // Anggap belum expired jika tidak bisa parse tanggal/waktu
+      }
 
-    return now.isAfter(departureDateTime);
+      final now = DateTime.now();
+
+      // Tiket dianggap expired jika waktu keberangkatan sudah lewat
+      return now.isAfter(departureDateTime);
+    } catch (e) {
+      debugPrint('Error checking if expired: $e');
+      return false; // Asumsikan belum expired jika terjadi error
+    }
   }
 
   static String formatDuration(int minutes) {

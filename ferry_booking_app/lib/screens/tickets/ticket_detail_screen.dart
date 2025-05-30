@@ -382,45 +382,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
     }
 
     // Format date
-    final locale = 'id_ID';
-    final dateFormat = DateFormat('dd MMMM yyyy', locale);
-    final timeFormat = DateFormat('HH:mm', locale);
     final bookingDate = DateTime.parse(booking.departureDate).toLocal();
+
     // Parse departureTime menjadi DateTime jika formatnya ISO
     final departureTimeString = booking.schedule?.departureTime ?? '';
-    DateTime? parseDateTime(String dateStr, String timeStr) {
-      try {
-        final date = DateTime.parse(dateStr);
-
-        // Standarisasi format waktu
-        if (timeStr.contains('T')) {
-          // Format ISO
-          final time = DateTime.parse(timeStr);
-          return DateTime(
-            date.year,
-            date.month,
-            date.day,
-            time.hour,
-            time.minute,
-          );
-        } else if (timeStr.contains(':')) {
-          // Format HH:MM atau HH:MM:SS
-          final parts = timeStr.split(':');
-          if (parts.length >= 2) {
-            final hour = int.tryParse(parts[0]) ?? 0;
-            final minute = int.tryParse(parts[1]) ?? 0;
-
-            return DateTime(date.year, date.month, date.day, hour, minute);
-          }
-        }
-
-        // Fallback ke tanggal saja jika waktu tidak bisa di-parse
-        return date;
-      } catch (e) {
-        print("Error parsing date/time: $e");
-        return null;
-      }
-    }
 
     // Gunakan fungsi ini di build:
     DateTime? departureDateTime = DateTimeHelper.combineDateAndTime(
@@ -429,8 +394,12 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
     );
 
     // Check if can be cancelled
-    final now = DateTime.now();
-    final isWithin24Hours = bookingDate.difference(now).inHours <= 24;
+    final departureDiff = DateTimeHelper.combineDateAndTime(
+      booking.departureDate,
+      booking.schedule?.departureTime ?? '',
+    )?.difference(DateTime.now());
+
+    final isWithin24Hours = departureDiff != null ? departureDiff.inHours <= 24 : false;
     final canCancel = booking.status == 'PENDING' && !isWithin24Hours;
     final canRefund = booking.status == 'CONFIRMED' && !isWithin24Hours;
 
@@ -1032,8 +1001,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                                                     ),
                                                     const SizedBox(height: 4),
                                                     Text(
-                                                      dateFormat.format(
-                                                        bookingDate,
+                                                      DateTimeHelper.formatDate(
+                                                        booking.departureDate,
                                                       ),
                                                       style: TextStyle(
                                                         fontWeight:
@@ -1129,13 +1098,12 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                                                     ),
                                                     const SizedBox(height: 4),
                                                     Text(
-                                                      departureDateTime != null
-                                                          ? timeFormat.format(
-                                                            departureDateTime,
-                                                          )
-                                                          : DateTimeHelper.formatTime(
-                                                            departureTimeString,
-                                                          ),
+                                                      DateTimeHelper.formatTime(
+                                                        booking
+                                                                .schedule
+                                                                ?.departureTime ??
+                                                            '',
+                                                      ),
                                                       style: TextStyle(
                                                         fontWeight:
                                                             FontWeight.bold,
@@ -1251,8 +1219,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                                                           height: 4,
                                                         ),
                                                         Text(
-                                                          dateFormat.format(
-                                                            bookingDate,
+                                                          DateTimeHelper.formatDate(
+                                                            booking
+                                                                .departureDate,
                                                           ),
                                                           style: TextStyle(
                                                             fontWeight:
@@ -1371,12 +1340,12 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                                                           height: 4,
                                                         ),
                                                         Text(
-                                                          departureDateTime !=
-                                                                  null
-                                                              ? timeFormat.format(
-                                                                departureDateTime,
-                                                              )
-                                                              : departureTimeString,
+                                                          DateTimeHelper.formatTime(
+                                                            booking
+                                                                    .schedule
+                                                                    ?.departureTime ??
+                                                                '',
+                                                          ),
                                                           style: TextStyle(
                                                             fontWeight:
                                                                 FontWeight.bold,
@@ -1484,7 +1453,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                                                   2, // Biarkan nama ferry panjang bisa 2 baris
                                             ),
                                             Text(
-                                              'Keberangkatan: ${dateFormat.format(bookingDate)}, ${departureDateTime != null ? timeFormat.format(departureDateTime) : (booking.schedule?.departureTime ?? '')}',
+                                              'Keberangkatan: ${DateTimeHelper.formatDate(booking.departureDate)}, ${DateTimeHelper.formatTime(booking.schedule?.departureTime ?? '')}',
                                               style: TextStyle(
                                                 color: Colors.grey[700],
                                                 fontSize: 14,
@@ -2813,7 +2782,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                             const SizedBox(width: 5),
                             Expanded(
                               child: Text(
-                                'Bayar sebelum ${DateFormat('dd MMM yyyy, HH:mm', 'id_ID').format(payment.expiryTime!)}',
+                                'Bayar sebelum ${DateTimeHelper.formatDate(payment.expiryTime.toString())} ${DateTimeHelper.formatTime(payment.expiryTime.toString())}',
                                 style: TextStyle(
                                   color: Colors.grey[600],
                                   fontSize: 14,

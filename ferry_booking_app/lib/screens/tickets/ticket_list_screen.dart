@@ -69,6 +69,9 @@ class _TicketListScreenState extends State<TicketListScreen>
       }
     });
 
+    _historyFilter = 'all';
+    debugPrint('Filter awal: $_historyFilter');
+
     // Use post-frame callback to avoid setState during build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadBookings();
@@ -192,6 +195,16 @@ class _TicketListScreenState extends State<TicketListScreen>
       listen: false,
     );
     await bookingProvider.getBookings();
+
+    // Log jumlah tiket yang dimuat
+    if (bookingProvider.bookings != null) {
+      debugPrint('Loaded ${bookingProvider.bookings!.length} bookings');
+
+      // Lihat status tiket
+      for (var booking in bookingProvider.bookings!) {
+        debugPrint('Booking ${booking.id}: ${booking.status}');
+      }
+    }
   }
 
   Future<void> _refreshBookings() async {
@@ -666,7 +679,7 @@ class _TicketListScreenState extends State<TicketListScreen>
                                                 final booking =
                                                     historyTickets[index];
                                                 ticketStatusProvider
-                                                        .getStatusInfo(booking);
+                                                    .getStatusInfo(booking);
 
                                                 return Padding(
                                                   padding:
@@ -852,6 +865,9 @@ class _TicketListScreenState extends State<TicketListScreen>
   Widget _buildFilterChip(String label, bool isSelected) {
     final theme = Theme.of(context);
 
+    // Mapping label UI ke nilai filter
+    final String filterValue = _getFilterValueFromLabel(label);
+
     return Padding(
       padding: const EdgeInsets.only(right: 8.0),
       child: ChoiceChip(
@@ -864,17 +880,31 @@ class _TicketListScreenState extends State<TicketListScreen>
         ),
         onSelected: (selected) {
           if (selected) {
-            setState(
-              () =>
-                  _historyFilter =
-                      label.toLowerCase() == 'semua'
-                          ? 'all'
-                          : label.toLowerCase(),
-            );
+            setState(() {
+              _historyFilter = filterValue;
+              debugPrint('Filter diubah ke: $_historyFilter');
+            });
           }
         },
       ),
     );
+  }
+
+  String _getFilterValueFromLabel(String label) {
+    switch (label) {
+      case 'Semua':
+        return 'all';
+      case 'Selesai':
+        return 'completed';
+      case 'Kadaluarsa':
+        return 'expired';
+      case 'Dibatalkan':
+        return 'cancelled';
+      case 'Refund':
+        return 'refunded';
+      default:
+        return 'all';
+    }
   }
 
   /// Membangun banner status

@@ -26,24 +26,24 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     super.initState();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 800),
     );
     
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: const Interval(0.0, 0.7, curve: Curves.easeOut),
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
       ),
     );
     
-    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(
+    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: const Interval(0.0, 0.8, curve: Curves.easeOutCubic),
+        curve: const Interval(0.0, 0.7, curve: Curves.easeOutCubic),
       ),
     );
     
-    // Delay start of animation slightly for better UX
+    // Memulai animasi setelah sedikit delay untuk UX yang lebih baik
     Future.delayed(const Duration(milliseconds: 100), () {
       _animationController.forward();
     });
@@ -61,36 +61,41 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     final user = authProvider.user;
     final size = MediaQuery.of(context).size;
     final theme = Theme.of(context);
+    final primaryColor = theme.primaryColor;
 
     if (user == null) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+        child: CircularProgressIndicator(
+          color: primaryColor,
+        ),
+      );
     }
 
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
             colors: [
               Colors.white,
               Colors.blue.shade50,
-              Colors.blue.shade100.withOpacity(0.4),
+              Colors.blue.shade100.withOpacity(0.3),
             ],
           ),
         ),
         child: Stack(
           children: [
-            // Background elements
+            // Elemen dekoratif latar belakang
             Positioned(
-              top: -50,
-              right: -50,
+              top: -60,
+              right: -60,
               child: Container(
-                width: 180,
-                height: 180,
+                width: 200,
+                height: 200,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: theme.primaryColor.withOpacity(0.1),
+                  color: primaryColor.withOpacity(0.08),
                 ),
               ),
             ),
@@ -98,455 +103,53 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
               bottom: -80,
               left: -80,
               child: Container(
-                width: 200,
-                height: 200,
+                width: 230,
+                height: 230,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: theme.primaryColor.withOpacity(0.1),
+                  color: primaryColor.withOpacity(0.08),
                 ),
               ),
             ),
             
-            // Small boat icons in the background
-            Positioned(
-              top: size.height * 0.15,
-              left: size.width * 0.1,
-              child: Icon(
-                Icons.sailing_outlined,
-                size: 20,
-                color: theme.primaryColor.withOpacity(0.2),
-              ),
-            ),
-            Positioned(
-              top: size.height * 0.3,
-              right: size.width * 0.15,
-              child: Icon(
-                Icons.directions_boat_outlined,
-                size: 25,
-                color: theme.primaryColor.withOpacity(0.15),
-              ),
-            ),
-            Positioned(
-              bottom: size.height * 0.25,
-              left: size.width * 0.2,
-              child: Icon(
-                Icons.directions_boat_filled_outlined,
-                size: 22,
-                color: theme.primaryColor.withOpacity(0.1),
-              ),
-            ),
+            // Ikon kapal di latar belakang
+            ..._buildBackgroundIcons(size, primaryColor),
             
-            // Main Content
+            // Konten utama
             SafeArea(
               child: FadeTransition(
                 opacity: _fadeAnimation,
                 child: SlideTransition(
                   position: _slideAnimation,
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24.0),
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Header with profile picture
-                        Center(
-                          child: Column(
-                            children: [
-                              // Avatar with reflection effect
-                              Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  // Shadow
-                                  Container(
-                                    width: 110,
-                                    height: 110,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: theme.primaryColor.withOpacity(0.3),
-                                          blurRadius: 25,
-                                          offset: const Offset(0, 10),
-                                          spreadRadius: 0,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  // Main avatar container
-                                  Container(
-                                    width: 110,
-                                    height: 110,
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          theme.primaryColor.withBlue(245),
-                                          theme.primaryColor,
-                                        ],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-                                        style: const TextStyle(
-                                          fontSize: 44,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  // Reflection effect
-                                  Positioned(
-                                    top: 15,
-                                    left: 20,
-                                    child: Container(
-                                      width: 40,
-                                      height: 20,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(10),
-                                        gradient: LinearGradient(
-                                          colors: [
-                                            Colors.white.withOpacity(0.5),
-                                            Colors.white.withOpacity(0.1),
-                                          ],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              
-                              const SizedBox(height: 20),
-                              
-                              // User name with shadow
-                              ShaderMask(
-                                shaderCallback: (Rect bounds) {
-                                  return LinearGradient(
-                                    colors: [
-                                      Colors.black.withOpacity(0.8),
-                                      Colors.black,
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ).createShader(bounds);
-                                },
-                                child: Text(
-                                  user.name,
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                              
-                              const SizedBox(height: 6),
-                              Text(
-                                user.email,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey[700],
-                                ),
-                              ),
-                              
-                              const SizedBox(height: 10),
-                              
-                              // Edit Profile Button
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const EditProfileScreen(),
-                                    ),
-                                  );
-                                },
-                                child: _buildAnimatedTextButton(
-                                  text: 'Edit Profil',
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => const EditProfileScreen(),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        // Header dengan foto profil
+                        _buildProfileHeader(user, theme),
                         
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 36),
 
-                        // Account Statistics
-                        Text(
-                          'Statistik Akun',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
+                        // Statistik Akun
+                        _buildSectionHeader('Statistik Akun'),
                         const SizedBox(height: 16),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.1),
-                                blurRadius: 15,
-                                offset: const Offset(0, 5),
-                                spreadRadius: -5,
-                              ),
-                            ],
-                          ),
-                          padding: const EdgeInsets.all(20),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: _buildStatItem(
-                                  'Total Perjalanan',
-                                  user.totalBookings.toString(),
-                                  Icons.directions_boat,
-                                  theme,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        _buildStatsCard(user, theme),
                         
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 36),
 
-                        // Personal Information
-                        Text(
-                          'Informasi Pribadi',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
+                        // Informasi Pribadi
+                        _buildSectionHeader('Informasi Pribadi'),
                         const SizedBox(height: 16),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.1),
-                                blurRadius: 15,
-                                offset: const Offset(0, 5),
-                                spreadRadius: -5,
-                              ),
-                            ],
-                          ),
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            children: [
-                              _buildProfileInfo('Nama Lengkap', user.name, Icons.person, theme),
-                              Divider(color: Colors.grey[200], thickness: 1),
-                              _buildProfileInfo('Email', user.email, Icons.email, theme),
-                              Divider(color: Colors.grey[200], thickness: 1),
-                              _buildProfileInfo('Nomor Telepon', user.phone, Icons.phone, theme),
-                              if (user.address != null && user.address!.isNotEmpty) ...[
-                                Divider(color: Colors.grey[200], thickness: 1),
-                                _buildProfileInfo('Alamat', user.address!, Icons.home, theme),
-                              ],
-                              if (user.idNumber != null && user.idNumber!.isNotEmpty) ...[
-                                Divider(color: Colors.grey[200], thickness: 1),
-                                _buildProfileInfo(
-                                  'Nomor ${user.idType ?? 'Identitas'}',
-                                  user.idNumber!,
-                                  Icons.badge,
-                                  theme,
-                                ),
-                              ],
-                              if (user.dateOfBirthday != null) ...[
-                                Divider(color: Colors.grey[200], thickness: 1),
-                                _buildProfileInfo(
-                                  'Tanggal Lahir',
-                                  user.dateOfBirthday!,
-                                  Icons.cake,
-                                  theme,
-                                ),
-                              ],
-                              if (user.gender != null) ...[
-                                Divider(color: Colors.grey[200], thickness: 1),
-                                _buildProfileInfo(
-                                  'Jenis Kelamin',
-                                  user.gender == 'MALE' ? 'Laki-laki' : 'Perempuan',
-                                  Icons.person_outline,
-                                  theme,
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
+                        _buildPersonalInfoCard(user, theme),
                         
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 36),
 
-                        // Account Options
-                        Text(
-                          'Pengaturan Akun',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
+                        // Opsi Akun
+                        _buildSectionHeader('Pengaturan Akun'),
                         const SizedBox(height: 16),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.1),
-                                blurRadius: 15,
-                                offset: const Offset(0, 5),
-                                spreadRadius: -5,
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            children: [
-                              _buildMenuOption(
-                                'Ubah Profil',
-                                Icons.edit,
-                                () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const EditProfileScreen(),
-                                    ),
-                                  );
-                                },
-                                theme,
-                              ),
-                              _buildMenuOption(
-                                'Ubah Password',
-                                Icons.lock,
-                                () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const ChangePasswordScreen(),
-                                    ),
-                                  );
-                                },
-                                theme,
-                              ),
-                              // _buildMenuOption(
-                              //   'Notifikasi',
-                              //   Icons.notifications,
-                              //   () {
-                              //     Navigator.push(
-                              //       context,
-                              //       MaterialPageRoute(
-                              //         builder:
-                              //             (context) => const NotificationSettingsScreen(),
-                              //       ),
-                              //     );
-                              //   },
-                              //   theme,
-                              // ),
-                              _buildMenuOption(
-                                'Bantuan',
-                                Icons.help,
-                                () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const HelpScreen(),
-                                    ),
-                                  );
-                                },
-                                theme,
-                              ),
-                              _buildMenuOption(
-                                'Tentang Aplikasi',
-                                Icons.info,
-                                () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const AboutAppScreen(),
-                                    ),
-                                  );
-                                },
-                                theme,
-                              ),
-                              _buildMenuOption(
-                                'Logout',
-                                Icons.logout,
-                                () async {
-                                  final result =
-                                      await showDialog<bool>(
-                                        context: context,
-                                        builder:
-                                            (context) => AlertDialog(
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(20),
-                                              ),
-                                              title: Text(
-                                                'Logout',
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                              content: const Text(
-                                                'Apakah Anda yakin ingin keluar?',
-                                              ),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed:
-                                                      () => Navigator.pop(context, false),
-                                                  child: Text(
-                                                    'Tidak',
-                                                    style: TextStyle(
-                                                      color: Colors.grey[800],
-                                                    ),
-                                                  ),
-                                                ),
-                                                ElevatedButton(
-                                                  onPressed:
-                                                      () => Navigator.pop(context, true),
-                                                  style: ElevatedButton.styleFrom(
-                                                    backgroundColor: theme.primaryColor,
-                                                    shape: RoundedRectangleBorder(
-                                                      borderRadius: BorderRadius.circular(10),
-                                                    ),
-                                                  ),
-                                                  child: const Text(
-                                                    'Ya',
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                      ) ??
-                                      false;
-
-                                  if (result && context.mounted) {
-                                    await authProvider.logout();
-                                    Navigator.pushReplacementNamed(context, '/login');
-                                  }
-                                },
-                                theme,
-                                textColor: Colors.red,
-                                iconColor: Colors.red,
-                              ),
-                            ],
-                          ),
-                        ),
+                        _buildAccountOptionsCard(context, authProvider, theme),
                         
                         const SizedBox(height: 40),
                       ],
@@ -561,54 +164,306 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     );
   }
 
-  Widget _buildProfileInfo(String label, String value, IconData icon, ThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12.0),
-      child: Row(
+  // Fungsi untuk membangun ikon latar belakang
+  List<Widget> _buildBackgroundIcons(Size size, Color primaryColor) {
+    return [
+      Positioned(
+        top: size.height * 0.15,
+        left: size.width * 0.1,
+        child: Icon(
+          Icons.sailing_outlined,
+          size: 22,
+          color: primaryColor.withOpacity(0.15),
+        ),
+      ),
+      Positioned(
+        top: size.height * 0.3,
+        right: size.width * 0.15,
+        child: Icon(
+          Icons.directions_boat_outlined,
+          size: 26,
+          color: primaryColor.withOpacity(0.12),
+        ),
+      ),
+      Positioned(
+        bottom: size.height * 0.25,
+        left: size.width * 0.2,
+        child: Icon(
+          Icons.directions_boat_filled_outlined,
+          size: 24,
+          color: primaryColor.withOpacity(0.1),
+        ),
+      ),
+      Positioned(
+        bottom: size.height * 0.4,
+        right: size.width * 0.15,
+        child: Icon(
+          Icons.water,
+          size: 18,
+          color: primaryColor.withOpacity(0.12),
+        ),
+      ),
+    ];
+  }
+
+  // Header section dengan foto profil
+  Widget _buildProfileHeader(user, ThemeData theme) {
+    return Center(
+      child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: theme.primaryColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, size: 20, color: theme.primaryColor),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
+          // Avatar dengan efek refleksi
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              // Bayangan
+              Container(
+                width: 115,
+                height: 115,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.primaryColor.withOpacity(0.25),
+                      blurRadius: 30,
+                      offset: const Offset(0, 12),
+                      spreadRadius: -5,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+              ),
+              // Container avatar utama
+              Container(
+                width: 115,
+                height: 115,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      theme.primaryColor.withBlue(250),
+                      theme.primaryColor,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.8),
+                    width: 3,
                   ),
                 ),
-              ],
+                child: Center(
+                  child: Text(
+                    user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+                    style: const TextStyle(
+                      fontSize: 46,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              // Efek refleksi
+              Positioned(
+                top: 15,
+                left: 22,
+                child: Container(
+                  width: 45,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.white.withOpacity(0.6),
+                        Colors.white.withOpacity(0.1),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 22),
+          
+          // Nama pengguna dengan efek bayangan
+          ShaderMask(
+            shaderCallback: (Rect bounds) {
+              return LinearGradient(
+                colors: [
+                  Colors.black.withOpacity(0.85),
+                  Colors.black,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ).createShader(bounds);
+            },
+            child: Text(
+              user.name,
+              style: const TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                letterSpacing: 0.5,
+              ),
             ),
           ),
+          
+          const SizedBox(height: 6),
+          Text(
+            user.email,
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey[700],
+              letterSpacing: 0.3,
+            ),
+          ),
+          
+          const SizedBox(height: 14),
+          
+          // Tombol Edit Profil
+          _buildEditProfileButton(theme),
         ],
       ),
     );
   }
 
+  // Tombol Edit Profil dengan animasi
+  Widget _buildEditProfileButton(ThemeData theme) {
+    return TextButton(
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const EditProfileScreen(),
+          ),
+        );
+      },
+      style: TextButton.styleFrom(
+        padding: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.edit_outlined,
+                  size: 16,
+                  color: theme.primaryColor,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Edit Profil',
+                  style: TextStyle(
+                    color: theme.primaryColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
+            ),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              height: 2,
+              width: 85,
+              margin: const EdgeInsets.only(top: 4),
+              decoration: BoxDecoration(
+                color: theme.primaryColor,
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Header untuk setiap bagian
+  Widget _buildSectionHeader(String title) {
+    return Row(
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+            letterSpacing: 0.3,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Container(
+            height: 1,
+            margin: const EdgeInsets.only(left: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.grey.shade300,
+                  Colors.grey.shade100,
+                  Colors.transparent,
+                ],
+                stops: const [0.1, 0.6, 1.0],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Kartu statistik
+  Widget _buildStatsCard(user, ThemeData theme) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+            spreadRadius: -5,
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(24),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildStatItem(
+              'Total Perjalanan',
+              user.totalBookings.toString(),
+              Icons.directions_boat,
+              theme,
+            ),
+          ),
+          // Di sini bisa ditambahkan statistik lain jika diperlukan
+        ],
+      ),
+    );
+  }
+
+  // Item statistik
   Widget _buildStatItem(String label, String value, IconData icon, ThemeData theme) {
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                theme.primaryColor.withOpacity(0.6),
-                theme.primaryColor.withOpacity(0.8),
+                theme.primaryColor.withOpacity(0.7),
+                theme.primaryColor.withOpacity(0.9),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -617,28 +472,30 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
             boxShadow: [
               BoxShadow(
                 color: theme.primaryColor.withOpacity(0.2),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
                 spreadRadius: -2,
               ),
             ],
           ),
-          child: Icon(icon, color: Colors.white, size: 30),
+          child: Icon(icon, color: Colors.white, size: 32),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         Text(
           value,
           style: const TextStyle(
-            fontSize: 24,
+            fontSize: 28,
             fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         Text(
           label,
           style: TextStyle(
             color: Colors.grey[600],
             fontSize: 14,
+            letterSpacing: 0.3,
           ),
           textAlign: TextAlign.center,
         ),
@@ -646,6 +503,225 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     );
   }
 
+  // Kartu informasi pribadi
+  Widget _buildPersonalInfoCard(user, ThemeData theme) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+            spreadRadius: -5,
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(22),
+      child: Column(
+        children: [
+          _buildProfileInfo('Nama Lengkap', user.name, Icons.person, theme),
+          Divider(color: Colors.grey[200], thickness: 1, height: 30),
+          _buildProfileInfo('Email', user.email, Icons.email, theme),
+          Divider(color: Colors.grey[200], thickness: 1, height: 30),
+          _buildProfileInfo('Nomor Telepon', user.phone, Icons.phone, theme),
+          if (user.address != null && user.address!.isNotEmpty) ...[
+            Divider(color: Colors.grey[200], thickness: 1, height: 30),
+            _buildProfileInfo('Alamat', user.address!, Icons.home, theme),
+          ],
+          if (user.idNumber != null && user.idNumber!.isNotEmpty) ...[
+            Divider(color: Colors.grey[200], thickness: 1, height: 30),
+            _buildProfileInfo(
+              'Nomor ${user.idType ?? 'Identitas'}',
+              user.idNumber!,
+              Icons.badge,
+              theme,
+            ),
+          ],
+          if (user.dateOfBirthday != null) ...[
+            Divider(color: Colors.grey[200], thickness: 1, height: 30),
+            _buildProfileInfo(
+              'Tanggal Lahir',
+              user.dateOfBirthday!,
+              Icons.cake,
+              theme,
+            ),
+          ],
+          if (user.gender != null) ...[
+            Divider(color: Colors.grey[200], thickness: 1, height: 30),
+            _buildProfileInfo(
+              'Jenis Kelamin',
+              user.gender == 'MALE' ? 'Laki-laki' : 'Perempuan',
+              Icons.person_outline,
+              theme,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // Item informasi profil
+  Widget _buildProfileInfo(String label, String value, IconData icon, ThemeData theme) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: theme.primaryColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Icon(icon, size: 22, color: theme.primaryColor),
+        ),
+        const SizedBox(width: 18),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 14,
+                  letterSpacing: 0.2,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Kartu opsi akun
+  Widget _buildAccountOptionsCard(BuildContext context, authProvider, ThemeData theme) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+            spreadRadius: -5,
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          _buildMenuOption(
+            'Ubah Profil',
+            Icons.edit_outlined,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const EditProfileScreen(),
+                ),
+              );
+            },
+            theme,
+          ),
+          _buildDivider(),
+          _buildMenuOption(
+            'Ubah Password',
+            Icons.lock_outline,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ChangePasswordScreen(),
+                ),
+              );
+            },
+            theme,
+          ),
+          _buildDivider(),
+          _buildMenuOption(
+            'Notifikasi',
+            Icons.notifications_outlined,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationSettingsScreen(),
+                ),
+              );
+            },
+            theme,
+          ),
+          _buildDivider(),
+          _buildMenuOption(
+            'Bantuan',
+            Icons.help_outline,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const HelpScreen(),
+                ),
+              );
+            },
+            theme,
+          ),
+          _buildDivider(),
+          _buildMenuOption(
+            'Tentang Aplikasi',
+            Icons.info_outline,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AboutAppScreen(),
+                ),
+              );
+            },
+            theme,
+          ),
+          _buildDivider(),
+          _buildMenuOption(
+            'Logout',
+            Icons.logout_rounded,
+            () async {
+              final result = await _showLogoutDialog(context, theme);
+              if (result && context.mounted) {
+                await authProvider.logout();
+                Navigator.pushReplacementNamed(context, '/login');
+              }
+            },
+            theme,
+            textColor: Colors.red,
+            iconColor: Colors.red,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Divider untuk menu
+  Widget _buildDivider() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Divider(
+        color: Colors.grey[200],
+        thickness: 1,
+        height: 1,
+      ),
+    );
+  }
+
+  // Opsi menu
   Widget _buildMenuOption(
     String title,
     IconData icon,
@@ -654,89 +730,111 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     Color? textColor,
     Color? iconColor,
   }) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 2),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: (iconColor ?? theme.primaryColor).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    icon,
-                    color: iconColor ?? theme.primaryColor,
-                    size: 22,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        splashColor: (iconColor ?? theme.primaryColor).withOpacity(0.03),
+        highlightColor: (iconColor ?? theme.primaryColor).withOpacity(0.05),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 22.0, vertical: 18.0),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: (iconColor ?? theme.primaryColor).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  icon,
+                  color: iconColor ?? theme.primaryColor,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 18),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: textColor ?? Colors.black87,
+                    letterSpacing: 0.3,
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: textColor ?? Colors.black87,
-                    ),
-                  ),
-                ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: Colors.grey[400],
-                  size: 16,
-                ),
-              ],
-            ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios,
+                color: Colors.grey[400],
+                size: 16,
+              ),
+            ],
           ),
         ),
       ),
     );
   }
-  
-  Widget _buildAnimatedTextButton({
-    required String text,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
-      splashColor: Colors.transparent,
-      highlightColor: Colors.transparent,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              text,
-              style: TextStyle(
-                color: Theme.of(context).primaryColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              height: 2,
-              width: text.length * 6.5,
-              margin: const EdgeInsets.only(top: 3),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor,
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          ],
+
+  // Dialog logout
+  Future<bool> _showLogoutDialog(BuildContext context, ThemeData theme) async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
         ),
+        title: const Text(
+          'Logout',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        content: const Text(
+          'Apakah Anda yakin ingin keluar?',
+          style: TextStyle(fontSize: 16),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Text(
+              'Tidak',
+              style: TextStyle(
+                color: Colors.grey[800],
+                fontSize: 15,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: theme.primaryColor,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'Ya',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+        actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
-    );
+    ) ?? false;
   }
 }

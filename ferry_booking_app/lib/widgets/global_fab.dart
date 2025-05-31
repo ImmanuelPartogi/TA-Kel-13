@@ -4,8 +4,15 @@ import 'package:ferry_booking_app/screens/chatbot/chatbot_screen.dart';
 class GlobalFAB extends StatefulWidget {
   // Callback untuk navigasi ke tambah tiket
   final VoidCallback onAddTicket;
+  
+  // Parameter baru untuk menentukan apakah ini halaman tiket
+  final bool isTicketScreen;
 
-  const GlobalFAB({Key? key, required this.onAddTicket}) : super(key: key);
+  const GlobalFAB({
+    Key? key, 
+    required this.onAddTicket,
+    this.isTicketScreen = false, // Default-nya bukan halaman tiket
+  }) : super(key: key);
 
   @override
   GlobalFABState createState() => GlobalFABState();
@@ -86,9 +93,7 @@ class GlobalFABState extends State<GlobalFAB>
             width: size.width,
             height: size.height,
             child: GestureDetector(
-              behavior:
-                  HitTestBehavior
-                      .translucent, // Penting: gunakan translucent, bukan opaque
+              behavior: HitTestBehavior.translucent,
               onTap: closeMenu,
               // Gunakan Stack untuk membuat area di sekitar FAB tidak menangkap tap
               child: Stack(
@@ -120,7 +125,7 @@ class GlobalFABState extends State<GlobalFAB>
           child: Stack(
             alignment: Alignment.bottomRight,
             children: [
-              // Opsi Chatbot - opsi pertama
+              // Opsi Chatbot - opsi pertama (selalu ditampilkan)
               AnimatedBuilder(
                 animation: _option1Animation,
                 builder: (context, child) {
@@ -157,37 +162,38 @@ class GlobalFABState extends State<GlobalFAB>
                 },
               ),
 
-              // Opsi Tambah Tiket - opsi kedua
-              AnimatedBuilder(
-                animation: _option2Animation,
-                builder: (context, child) {
-                  return Positioned(
-                    bottom: 120 * _option2Animation.value + 16,
-                    right: 16,
-                    child: Opacity(
-                      opacity: _option2Animation.value,
-                      child: Transform.scale(
-                        scale: _option2Animation.value,
-                        child: FloatingActionButton(
-                          heroTag: "fab_add_ticket",
-                          backgroundColor: theme.primaryColor,
-                          mini: false,
-                          elevation: 6.0,
-                          child: const Icon(
-                            Icons.add_rounded,
-                            color: Colors.white,
-                            size: 24,
+              // Opsi Tambah Tiket - opsi kedua (hanya ditampilkan di halaman tiket)
+              if (widget.isTicketScreen)
+                AnimatedBuilder(
+                  animation: _option2Animation,
+                  builder: (context, child) {
+                    return Positioned(
+                      bottom: 120 * _option2Animation.value + 16,
+                      right: 16,
+                      child: Opacity(
+                        opacity: _option2Animation.value,
+                        child: Transform.scale(
+                          scale: _option2Animation.value,
+                          child: FloatingActionButton(
+                            heroTag: "fab_add_ticket",
+                            backgroundColor: theme.primaryColor,
+                            mini: false,
+                            elevation: 6.0,
+                            child: const Icon(
+                              Icons.add_rounded,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                            onPressed: () {
+                              closeMenu();
+                              widget.onAddTicket();
+                            },
                           ),
-                          onPressed: () {
-                            closeMenu();
-                            widget.onAddTicket();
-                          },
                         ),
                       ),
-                    ),
-                  );
-                },
-              ),
+                    );
+                  },
+                ),
 
               // FAB Utama dengan ikon hamburger menu
               Positioned(

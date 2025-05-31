@@ -47,7 +47,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
   }
 
-  // Metode baru untuk menutup FAB
+  // Metode untuk menutup FAB
   void _closeFabIfOpen() {
     final fabState = _fabKey.currentState;
     if (fabState != null) {
@@ -148,30 +148,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
               ),
             ),
-            // Positioned(
-            //   bottom: -100,
-            //   left: -100,
-            //   child: Container(
-            //     width: 300,
-            //     height: 300,
-            //     decoration: BoxDecoration(
-            //       shape: BoxShape.circle,
-            //       gradient: RadialGradient(
-            //         colors: [
-            //           theme.primaryColor.withOpacity(0.2),
-            //           theme.primaryColor.withOpacity(0.05),
-            //         ],
-            //       ),
-            //       boxShadow: [
-            //         BoxShadow(
-            //           color: theme.primaryColor.withOpacity(0.1),
-            //           blurRadius: 30,
-            //           spreadRadius: 10,
-            //         ),
-            //       ],
-            //     ),
-            //   ),
-            // ),
 
             // Main content dengan efek blur
             SafeArea(
@@ -183,30 +159,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   // Tampilkan loading indicator atau konten tab
                   _isLoading
                       ? const Expanded(
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              strokeWidth: 3,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.blue,
                             ),
                           ),
-                        )
-                      : Expanded(
-                          child: TabBarView(
-                            controller: _tabController,
-                            physics: const NeverScrollableScrollPhysics(),
-                            children: _tabs,
-                          ),
                         ),
+                      )
+                      : Expanded(
+                        child: TabBarView(
+                          controller: _tabController,
+                          physics: const NeverScrollableScrollPhysics(),
+                          children: _tabs,
+                        ),
+                      ),
                 ],
               ),
             ),
 
             // Gunakan GlobalKey pada GlobalFAB dengan posisi yang lebih baik
+            // PERUBAHAN: Tambahkan isTicketScreen berdasarkan tab yang aktif
             Positioned(
               right: 16,
               bottom: 80,
               child: GlobalFAB(
                 key: _fabKey,
+                isTicketScreen: _currentIndex == 1, // Tab Tiket adalah index 1
                 onAddTicket: () {
                   Navigator.pushNamed(context, '/booking/routes');
                 },
@@ -264,9 +244,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 icon: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: _currentIndex == 0
-                        ? theme.primaryColor.withOpacity(0.1)
-                        : Colors.transparent,
+                    color:
+                        _currentIndex == 0
+                            ? theme.primaryColor.withOpacity(0.1)
+                            : Colors.transparent,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(Icons.home_outlined),
@@ -285,9 +266,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 icon: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: _currentIndex == 1
-                        ? theme.primaryColor.withOpacity(0.1)
-                        : Colors.transparent,
+                    color:
+                        _currentIndex == 1
+                            ? theme.primaryColor.withOpacity(0.1)
+                            : Colors.transparent,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(Icons.confirmation_number_outlined),
@@ -306,9 +288,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 icon: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: _currentIndex == 2
-                        ? theme.primaryColor.withOpacity(0.1)
-                        : Colors.transparent,
+                    color:
+                        _currentIndex == 2
+                            ? theme.primaryColor.withOpacity(0.1)
+                            : Colors.transparent,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(Icons.person_outline_rounded),

@@ -103,19 +103,47 @@ class TicketStatusProvider extends ChangeNotifier {
       return historyTickets;
     }
 
+    // Tambahkan logging untuk debugging
+    debugPrint('Filtering tickets with filter: $filter');
+
     return historyTickets.where((booking) {
+      final bool result;
+
       switch (filter) {
         case 'completed':
-          return booking.status == 'COMPLETED';
+          result = booking.status == 'COMPLETED';
+          break;
         case 'expired':
-          return booking.status == 'EXPIRED';
+          // Periksa status EXPIRED atau status lain yang secara waktu sudah expired
+          result =
+              booking.status == 'EXPIRED' ||
+              (DateTimeHelper.isExpired(
+                    booking.departureDate,
+                    booking.schedule?.departureTime ?? '',
+                  ) &&
+                  ['CONFIRMED', 'PENDING'].contains(booking.status));
+          break;
         case 'cancelled':
-          return booking.status == 'CANCELLED';
+          result = booking.status == 'CANCELLED';
+          break;
         case 'refunded':
-          return booking.status == 'REFUNDED';
+          // Pertimbangkan semua status terkait refund
+          result =
+              booking.status == 'REFUNDED' ||
+              booking.status == 'REFUND_PENDING';
+          break;
         default:
-          return true;
+          result = true;
       }
+
+      // Log untuk debugging
+      if (filter != 'all') {
+        debugPrint(
+          'Booking ${booking.id} with status ${booking.status} - included: $result',
+        );
+      }
+
+      return result;
     }).toList();
   }
 

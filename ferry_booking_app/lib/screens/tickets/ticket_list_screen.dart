@@ -210,6 +210,35 @@ class _TicketListScreenState extends State<TicketListScreen>
   Future<void> _refreshBookings() async {
     return _synchronizeStatuses();
   }
+  
+  /// Fungsi untuk mengurutkan tiket berdasarkan tanggal keberangkatan
+  List<Booking> _sortUpcomingTickets(List<Booking> tickets) {
+    return List<Booking>.from(tickets)..sort((a, b) {
+      // Mendapatkan tanggal dan waktu keberangkatan untuk tiket a
+      final aDepartureDateTime = DateTimeHelper.combineDateAndTime(
+        a.departureDate,
+        a.schedule?.departureTime ?? "00:00",
+      );
+      
+      // Mendapatkan tanggal dan waktu keberangkatan untuk tiket b
+      final bDepartureDateTime = DateTimeHelper.combineDateAndTime(
+        b.departureDate,
+        b.schedule?.departureTime ?? "00:00",
+      );
+      
+      // Jika salah satu atau kedua tanggal tidak valid, tangani kasus ini
+      if (aDepartureDateTime == null && bDepartureDateTime == null) {
+        return 0; // Keduanya tidak memiliki tanggal valid, anggap sama
+      } else if (aDepartureDateTime == null) {
+        return 1; // a tidak memiliki tanggal valid, tempatkan di akhir
+      } else if (bDepartureDateTime == null) {
+        return -1; // b tidak memiliki tanggal valid, tempatkan di akhir
+      }
+      
+      // Bandingkan tanggal keberangkatan
+      return aDepartureDateTime.compareTo(bDepartureDateTime);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -226,7 +255,10 @@ class _TicketListScreenState extends State<TicketListScreen>
             ? ticketStatusProvider.categorizeTickets(bookings)
             : {'upcoming': [], 'history': []};
 
-    final upcomingTickets = categorizedTickets['upcoming'] ?? [];
+    // Mendapatkan dan mengurutkan tiket yang akan datang
+    final List<Booking> upcomingTickets = 
+        _sortUpcomingTickets(categorizedTickets['upcoming'] ?? []);
+    
     final allHistoryTickets = categorizedTickets['history'] ?? [];
 
     // Filter tiket riwayat berdasarkan pilihan filter
@@ -709,63 +741,70 @@ class _TicketListScreenState extends State<TicketListScreen>
                                                     child: Column(
                                                       children: [
                                                         // Ticket Card
-                                                        ClipRRect(
-                                                          borderRadius: BorderRadius.only(
-                                                            topLeft:
+                                                ClipRRect(
+                                                  borderRadius: BorderRadius.only(
+                                                    topLeft:
+                                                        booking.status ==
+                                                                    'PENDING' ||
                                                                 booking.status ==
-                                                                            'PENDING' ||
-                                                                        booking.status ==
-                                                                            'CONFIRMED'
-                                                                    ? Radius
-                                                                        .zero
-                                                                    : const Radius.circular(
-                                                                      20,
-                                                                    ),
-                                                            topRight:
-                                                                booking.status ==
-                                                                            'PENDING' ||
-                                                                        booking.status ==
-                                                                            'CONFIRMED'
-                                                                    ? Radius
-                                                                        .zero
-                                                                    : const Radius.circular(
-                                                                      20,
-                                                                    ),
-                                                            bottomLeft:
-                                                                const Radius.circular(
-                                                                  20,
-                                                                ),
-                                                            bottomRight:
-                                                                const Radius.circular(
-                                                                  20,
-                                                                ),
-                                                          ),
-                                                          child: Opacity(
-                                                            opacity:
-                                                                [
-                                                                      'EXPIRED',
-                                                                      'CANCELLED',
-                                                                      'REFUNDED',
-                                                                    ].contains(
-                                                                      booking
-                                                                          .status,
-                                                                    )
-                                                                    ? 0.8
-                                                                    : 1.0,
-                                                            child: TicketCard(
-                                                              booking: booking,
-                                                              onTap: () {
-                                                                Navigator.pushNamed(
-                                                                  context,
-                                                                  '/tickets/detail',
-                                                                  arguments:
-                                                                      booking
-                                                                          .id,
-                                                                );
-                                                              },
+                                                                    'CONFIRMED'
+                                                            ? Radius
+                                                                .zero
+                                                            : const Radius.circular(
+                                                              20,
                                                             ),
-                                                          ),
+                                                    topRight:
+                                                        booking.status ==
+                                                                    'PENDING' ||
+                                                                booking.status ==
+                                                                    'CONFIRMED'
+                                                            ? Radius
+                                                                .zero
+                                                            : const Radius.circular(
+                                                              20,
+                                                            ),
+                                                    bottomLeft:
+                                                        const Radius.circular(
+                                                          20,
                                                         ),
+                                                    bottomRight:
+                                                        const Radius.circular(
+                                                          20,
+                                                        ),
+                                                  ),
+                                                  child: Column(
+                                                    children: [
+                                                      // Ticket card dengan opacity yang disesuaikan
+                                                      Opacity(
+                                                        opacity:
+                                                            [
+                                                                  'EXPIRED',
+                                                                  'CANCELLED',
+                                                                  'REFUNDED',
+                                                                ].contains(
+                                                                  booking
+                                                                      .status,
+                                                                ) || 
+                                                                (DateTimeHelper.isExpired(booking.departureDate, booking.schedule?.departureTime ?? '') && 
+                                                                ['CONFIRMED', 'PENDING'].contains(booking.status))
+                                                                ? 0.7
+                                                                : 1.0,
+                                                        child: TicketCard(
+                                                          booking: booking,
+                                                          onTap: () {
+                                                            Navigator.pushNamed(
+                                                              context,
+                                                              '/tickets/detail',
+                                                              arguments:
+                                                                  booking
+                                                                      .id,
+                                                            );
+                                                          },
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
                                                       ],
                                                     ),
                                                   ),
@@ -860,18 +899,60 @@ class _TicketListScreenState extends State<TicketListScreen>
       ),
     );
   }
-
-  /// Membangun chip filter
+  
+  /// Membangun chip filter dengan badge jumlah tiket
   Widget _buildFilterChip(String label, bool isSelected) {
     final theme = Theme.of(context);
-
+    final bookingProvider = Provider.of<BookingProvider>(context);
+    final ticketStatusProvider = Provider.of<TicketStatusProvider>(context);
+    final bookings = bookingProvider.bookings;
+    
     // Mapping label UI ke nilai filter
     final String filterValue = _getFilterValueFromLabel(label);
+    
+    // Hitung jumlah tiket untuk setiap kategori
+    int count = 0;
+    if (bookings != null) {
+      final categorized = ticketStatusProvider.categorizeTickets(bookings);
+      final historyTickets = categorized['history'] ?? [];
+      
+      if (filterValue == 'all') {
+        count = historyTickets.length;
+      } else {
+        count = ticketStatusProvider.filterHistoryTickets(
+          historyTickets, 
+          filterValue
+        ).length;
+      }
+    }
 
     return Padding(
       padding: const EdgeInsets.only(right: 8.0),
       child: ChoiceChip(
-        label: Text(label),
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(label),
+            if (count > 0) ...[
+              const SizedBox(width: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isSelected ? theme.primaryColor : Colors.grey[400],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$count',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
         selected: isSelected,
         selectedColor: theme.primaryColor.withOpacity(0.2),
         labelStyle: TextStyle(
@@ -972,7 +1053,7 @@ class _TicketListScreenState extends State<TicketListScreen>
 
     switch (type) {
       case 'upcoming':
-        icon = Icons.flight_takeoff_rounded;
+        icon = Icons.directions_ferry;
         title = 'Belum Ada Tiket';
         message =
             'Belum ada tiket untuk perjalanan mendatang.\nJelajahi tujuan baru dan pesan tiket sekarang!';

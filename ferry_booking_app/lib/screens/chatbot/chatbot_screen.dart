@@ -264,26 +264,26 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: _primaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      Icons.restart_alt_rounded,
-                      color: _primaryColor,
-                    ),
-                  ),
-                  title: const Text('Mulai Percakapan Baru'),
-                  subtitle: const Text('Hapus semua pesan dan mulai ulang'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showResetConfirmation();
-                  },
-                ),
-                const Divider(),
+                // ListTile(
+                //   leading: Container(
+                //     padding: const EdgeInsets.all(8),
+                //     decoration: BoxDecoration(
+                //       color: _primaryColor.withOpacity(0.1),
+                //       borderRadius: BorderRadius.circular(10),
+                //     ),
+                //     child: Icon(
+                //       Icons.restart_alt_rounded,
+                //       color: _primaryColor,
+                //     ),
+                //   ),
+                //   title: const Text('Mulai Percakapan Baru'),
+                //   subtitle: const Text('Hapus semua pesan dan mulai ulang'),
+                //   onTap: () {
+                //     Navigator.pop(context);
+                //     _showResetConfirmation();
+                //   },
+                // ),
+                // const Divider(),
                 ListTile(
                   leading: Container(
                     padding: const EdgeInsets.all(8),
@@ -305,45 +305,45 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                     _showPopularQuestions();
                   },
                 ),
-                const Divider(),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: _primaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      Icons.color_lens_outlined,
-                      color: _primaryColor,
-                    ),
-                  ),
-                  title: const Text('Tampilan'),
-                  subtitle: const Text('Ubah tema chatbot'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showThemeSelector();
-                  },
-                ),
-                if (_authProvider.isLoggedIn) ...[
-                  const Divider(),
-                  ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: _primaryColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(Icons.history_rounded, color: _primaryColor),
-                    ),
-                    title: const Text('Riwayat Percakapan'),
-                    subtitle: const Text('Lihat percakapan sebelumnya'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showConversationHistory();
-                    },
-                  ),
-                ],
+                // const Divider(),
+                // ListTile(
+                //   leading: Container(
+                //     padding: const EdgeInsets.all(8),
+                //     decoration: BoxDecoration(
+                //       color: _primaryColor.withOpacity(0.1),
+                //       borderRadius: BorderRadius.circular(10),
+                //     ),
+                //     child: Icon(
+                //       Icons.color_lens_outlined,
+                //       color: _primaryColor,
+                //     ),
+                //   ),
+                //   title: const Text('Tampilan'),
+                //   subtitle: const Text('Ubah tema chatbot'),
+                //   onTap: () {
+                //     Navigator.pop(context);
+                //     _showThemeSelector();
+                //   },
+                // ),
+                // if (_authProvider.isLoggedIn) ...[
+                //   const Divider(),
+                //   ListTile(
+                //     leading: Container(
+                //       padding: const EdgeInsets.all(8),
+                //       decoration: BoxDecoration(
+                //         color: _primaryColor.withOpacity(0.1),
+                //         borderRadius: BorderRadius.circular(10),
+                //       ),
+                //       child: Icon(Icons.history_rounded, color: _primaryColor),
+                //     ),
+                //     title: const Text('Riwayat Percakapan'),
+                //     subtitle: const Text('Lihat percakapan sebelumnya'),
+                //     onTap: () {
+                //       Navigator.pop(context);
+                //       _showConversationHistory();
+                //     },
+                //   ),
+                // ],
               ],
             ),
           ),

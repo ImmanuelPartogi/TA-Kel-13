@@ -2,11 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ferry_booking_app/providers/auth_provider.dart';
 import 'package:ferry_booking_app/providers/booking_provider.dart';
-import 'package:ferry_booking_app/config/theme.dart';
 import 'package:ferry_booking_app/widgets/booking_card.dart';
-import 'package:ferry_booking_app/screens/notification/notification_screen.dart';
-import 'package:ferry_booking_app/screens/help/help_screen.dart';
-import 'package:ferry_booking_app/screens/history/history_screen.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({Key? key}) : super(key: key);
@@ -258,30 +254,6 @@ class _HomeTabState extends State<HomeTab> with SingleTickerProviderStateMixin {
                                         ),
                                       ],
                                     ),
-                                    const Spacer(),
-                                    // Notification icon with shadow
-                                    Container(
-                                      width: 42,
-                                      height: 42,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.3),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Material(
-                                        color: Colors.transparent,
-                                        child: InkWell(
-                                          borderRadius: BorderRadius.circular(12),
-                                          onTap: () {
-                                            Navigator.pushNamed(context, '/notifications');
-                                          },
-                                          child: const Icon(
-                                            Icons.notifications_outlined,
-                                            color: Colors.white,
-                                            size: 24,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
                                   ],
                                 ),
                               ),
@@ -348,83 +320,7 @@ class _HomeTabState extends State<HomeTab> with SingleTickerProviderStateMixin {
                               ),
                               
                               const SizedBox(height: 30),
-                              
-                              // Quick Actions
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Akses Cepat',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 18,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                ],
-                              ),
                             ],
-                          ),
-                        ),
-                      ),
-                      
-                      // Quick Links
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(24, 15, 24, 20),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(24),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.grey.withOpacity(0.1),
-                                  blurRadius: 15,
-                                  offset: const Offset(0, 5),
-                                  spreadRadius: -5,
-                                ),
-                              ],
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 15),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
-                              children: [
-                                _buildQuickLink(
-                                  context,
-                                  Icons.history_rounded,
-                                  'Riwayat',
-                                  () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const HistoryScreen(),
-                                    ),
-                                  ),
-                                ),
-                                _buildQuickLink(
-                                  context,
-                                  Icons.directions_boat_rounded,
-                                  'Tiket',
-                                  () => Navigator.pushNamed(context, '/tickets'),
-                                ),
-                                _buildQuickLink(
-                                  context,
-                                  Icons.chat_rounded,
-                                  'Bantuan',
-                                  () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const HelpScreen(),
-                                    ),
-                                  ),
-                                ),
-                                _buildQuickLink(
-                                  context,
-                                  Icons.person_rounded,
-                                  'Profil',
-                                  () => Navigator.pushNamed(context, '/profile'),
-                                ),
-                              ],
-                            ),
                           ),
                         ),
                       ),
@@ -477,20 +373,8 @@ class _HomeTabState extends State<HomeTab> with SingleTickerProviderStateMixin {
                                           .map((booking) => Padding(
                                                 padding: const EdgeInsets.only(bottom: 16),
                                                 child: Container(
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.white,
-                                                    borderRadius: BorderRadius.circular(24),
-                                                    boxShadow: [
-                                                      BoxShadow(
-                                                        color: Colors.grey.withOpacity(0.1),
-                                                        blurRadius: 15,
-                                                        offset: const Offset(0, 5),
-                                                        spreadRadius: -5,
-                                                      ),
-                                                    ],
-                                                  ),
                                                   child: ClipRRect(
-                                                    borderRadius: BorderRadius.circular(24),
+                                                    // borderRadius: BorderRadius.circular(24),
                                                     child: BookingCard(booking: booking),
                                                   ),
                                                 ),
@@ -641,48 +525,4 @@ class _HomeTabState extends State<HomeTab> with SingleTickerProviderStateMixin {
     );
   }
 
-  Widget _buildQuickLink(
-    BuildContext context,
-    IconData icon,
-    String label,
-    VoidCallback onTap,
-  ) {
-    final theme = Theme.of(context);
-    
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: theme.primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
-                    blurRadius: 5,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Icon(icon, color: theme.primaryColor, size: 24),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade800,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

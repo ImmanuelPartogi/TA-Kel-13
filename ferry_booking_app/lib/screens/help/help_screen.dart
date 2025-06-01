@@ -288,7 +288,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
                               context,
                               'Bagaimana cara memesan tiket?',
                               'Untuk memesan tiket, Anda perlu: \n\n'
-                                  '1. Pergi ke tab Beranda atau tab Tiket\n'
+                                  '1. Pergi ke tab Tiket\n'
                                   '2. Tekan tombol "Pesan Tiket" atau "+" \n'
                                   '3. Pilih rute perjalanan\n'
                                   '4. Pilih jadwal dan tanggal keberangkatan\n'
@@ -318,8 +318,6 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
                               'Kami menerima berbagai metode pembayaran, antara lain:\n\n'
                                   '- Transfer bank (Virtual Account)\n'
                                   '- E-Wallet (GoPay, ShopeePay)\n'
-                                  '- Kartu kredit\n'
-                                  '- Minimarket (Alfamart, Indomaret)\n\n'
                                   'Setelah memesan tiket, Anda akan diarahkan ke halaman pembayaran dengan petunjuk lengkap.',
                               theme,
                               2
@@ -330,7 +328,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
                               'Apa yang harus saya lakukan saat hari keberangkatan?',
                               'Pada hari keberangkatan: \n\n'
                                   '1. Datanglah ke pelabuhan minimal 30 menit sebelum jadwal keberangkatan\n'
-                                  '2. Tunjukkan tiket digital (QR Code) di aplikasi kepada petugas\n'
+                                  '2. Tunjukkan tiket digital di aplikasi kepada petugas\n'
                                   '3. Jika membawa kendaraan, ikuti petunjuk petugas untuk menaiki kapal\n\n'
                                   'Pastikan Anda telah menyiapkan dokumen identitas asli yang sesuai dengan data saat pemesanan.',
                               theme,
@@ -341,7 +339,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
                               context,
                               'Bagaimana jika kapal terlambat atau dibatalkan?',
                               'Jika terjadi keterlambatan atau pembatalan: \n\n'
-                                  '1. Anda akan mendapatkan notifikasi melalui aplikasi dan email\n'
+                                  '1. Anda akan mendapatkan notifikasi melalui aplikasi\n'
                                   '2. Untuk keterlambatan, Anda dapat tetap menggunakan tiket pada jadwal baru\n'
                                   '3. Untuk pembatalan oleh kami, Anda berhak mendapatkan pengembalian dana penuh atau penggantian jadwal\n\n'
                                   'Silakan hubungi layanan pelanggan untuk informasi lebih lanjut.',
@@ -407,17 +405,6 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
                                     theme,
                                     () {
                                       // Action to send email
-                                    },
-                                  ),
-                                  Divider(color: Colors.grey.shade200, height: 1),
-                                  _buildContactItem(
-                                    context,
-                                    Icons.chat_rounded,
-                                    'Live Chat',
-                                    'Jam operasional: 08.00 - 20.00 WIB',
-                                    theme,
-                                    () {
-                                      // Action to open live chat
                                     },
                                   ),
                                 ],

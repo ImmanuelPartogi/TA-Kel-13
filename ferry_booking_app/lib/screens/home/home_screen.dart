@@ -35,9 +35,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (!_tabController.indexIsChanging) {
         setState(() {
           _currentIndex = _tabController.index;
-
-          // Tutup FAB ketika tab berubah
-          _closeFabIfOpen();
         });
       }
     });
@@ -45,14 +42,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadInitialData();
     });
-  }
-
-  // Metode untuk menutup FAB
-  void _closeFabIfOpen() {
-    final fabState = _fabKey.currentState;
-    if (fabState != null) {
-      fabState.closeMenu();
-    }
   }
 
   Future<void> _loadInitialData() async {
@@ -179,11 +168,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ),
 
-            // Gunakan GlobalKey pada GlobalFAB dengan posisi yang lebih baik
-            // PERUBAHAN: Tambahkan isTicketScreen berdasarkan tab yang aktif
+            // GlobalFAB yang telah diperbarui
             Positioned(
               right: 16,
-              bottom: 80,
+              bottom: 80, // Posisi sesuai dengan desain di screenshot
               child: GlobalFAB(
                 key: _fabKey,
                 isTicketScreen: _currentIndex == 1, // Tab Tiket adalah index 1
@@ -224,9 +212,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               setState(() {
                 _currentIndex = index;
                 _tabController.animateTo(index);
-
-                // Tutup FAB ketika tab diubah melalui BottomNavigationBar
-                _closeFabIfOpen();
               });
             },
             elevation: 0,
@@ -403,8 +388,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
                 onPressed: () {
-                  // Tutup FAB juga saat masuk ke halaman notifikasi
-                  _closeFabIfOpen();
                   Navigator.pushNamed(context, '/notifications');
                 },
               ),

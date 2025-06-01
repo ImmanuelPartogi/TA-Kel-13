@@ -347,7 +347,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> with SingleTickerProvid
                                       ],
                                     ),
                                     child: const Text(
-                                      'Aplikasi untuk pemesanan tiket kapal ferry antar pulau di Indonesia. Temukan rute perjalanan, pesan tiket, dan nikmati perjalanan yang menyenangkan!',
+                                      'Aplikasi untuk pemesanan tiket kapal ferry di Toba. Temukan rute perjalanan, pesan tiket, dan nikmati perjalanan yang menyenangkan!',
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
                                         fontSize: 16,
@@ -393,7 +393,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> with SingleTickerProvid
                                         _buildFeatureItem(
                                           Icons.search_rounded,
                                           'Pencarian Rute',
-                                          'Temukan rute perjalanan ferry di seluruh Indonesia',
+                                          'Temukan rute perjalanan ferry dengan mudah',
                                           theme,
                                         ),
                                         _buildFeatureItem(
@@ -498,7 +498,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> with SingleTickerProvid
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                'PT Ferry Booking Indonesia',
+                                                'PT Ferry Pass',
                                                 style: TextStyle(
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.bold,
@@ -507,7 +507,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> with SingleTickerProvid
                                               ),
                                               SizedBox(height: 6),
                                               Text(
-                                                'Jl. Pelabuhan No. 123, Jakarta Utara',
+                                                'Jl. Porsea - Balige, Laguboti, Toba',
                                                 style: TextStyle(
                                                   fontSize: 14,
                                                   color: Colors.black87,
@@ -530,31 +530,31 @@ class _AboutAppScreenState extends State<AboutAppScreen> with SingleTickerProvid
                                   
                                   const SizedBox(height: 32),
                                   
-                                  // Contact & Social
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 10),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(24),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.grey.withOpacity(0.1),
-                                          blurRadius: 15,
-                                          offset: const Offset(0, 5),
-                                          spreadRadius: -5,
-                                        ),
-                                      ],
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                      children: [
-                                        _buildSocialButton(Icons.language_rounded, 'Website', theme),
-                                        _buildSocialButton(Icons.facebook_rounded, 'Facebook', theme),
-                                        _buildSocialButton(Icons.camera_alt_rounded, 'Instagram', theme),
-                                        _buildSocialButton(Icons.message_rounded, 'Twitter', theme),
-                                      ],
-                                    ),
-                                  ),
+                                  // // Contact & Social
+                                  // Container(
+                                  //   padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 10),
+                                  //   decoration: BoxDecoration(
+                                  //     color: Colors.white,
+                                  //     borderRadius: BorderRadius.circular(24),
+                                  //     boxShadow: [
+                                  //       BoxShadow(
+                                  //         color: Colors.grey.withOpacity(0.1),
+                                  //         blurRadius: 15,
+                                  //         offset: const Offset(0, 5),
+                                  //         spreadRadius: -5,
+                                  //       ),
+                                  //     ],
+                                  //   ),
+                                  //   child: Row(
+                                  //     mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                  //     children: [
+                                  //       _buildSocialButton(Icons.language_rounded, 'Website', theme),
+                                  //       _buildSocialButton(Icons.facebook_rounded, 'Facebook', theme),
+                                  //       _buildSocialButton(Icons.camera_alt_rounded, 'Instagram', theme),
+                                  //       _buildSocialButton(Icons.message_rounded, 'Twitter', theme),
+                                  //     ],
+                                  //   ),
+                                  // ),
                                   
                                   const SizedBox(height: 32),
                                   
@@ -569,28 +569,28 @@ class _AboutAppScreenState extends State<AboutAppScreen> with SingleTickerProvid
                                   ),
                                   const SizedBox(height: 12),
                                   
-                                  // Privacy & Terms
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      _buildAnimatedTextButton(
-                                        text: 'Kebijakan Privasi',
-                                        onTap: () {
-                                          // Navigate to privacy policy
-                                        },
-                                      ),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                                        child: Text('|', style: TextStyle(color: Colors.grey[400])),
-                                      ),
-                                      _buildAnimatedTextButton(
-                                        text: 'Syarat & Ketentuan',
-                                        onTap: () {
-                                          // Navigate to terms of service
-                                        },
-                                      ),
-                                    ],
-                                  ),
+                                  // // Privacy & Terms
+                                  // Row(
+                                  //   mainAxisAlignment: MainAxisAlignment.center,
+                                  //   children: [
+                                  //     _buildAnimatedTextButton(
+                                  //       text: 'Kebijakan Privasi',
+                                  //       onTap: () {
+                                  //         // Navigate to privacy policy
+                                  //       },
+                                  //     ),
+                                  //     Padding(
+                                  //       padding: const EdgeInsets.symmetric(horizontal: 8),
+                                  //       child: Text('|', style: TextStyle(color: Colors.grey[400])),
+                                  //     ),
+                                  //     _buildAnimatedTextButton(
+                                  //       text: 'Syarat & Ketentuan',
+                                  //       onTap: () {
+                                  //         // Navigate to terms of service
+                                  //       },
+                                  //     ),
+                                  //   ],
+                                  // ),
                                   
                                   const SizedBox(height: 16),
                                 ],

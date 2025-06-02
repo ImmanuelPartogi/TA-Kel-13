@@ -9,7 +9,7 @@ class BookingCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   const BookingCard({Key? key, required this.booking, this.onTap})
-    : super(key: key);
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -44,24 +44,23 @@ class BookingCard extends StatelessWidget {
     return GestureDetector(
       onTap: () => navigateToTicketDetail(),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 18),
+        margin: const EdgeInsets.only(bottom: 20),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.07),
-              blurRadius: 20,
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 22,
               offset: const Offset(0, 8),
-              spreadRadius: -3,
+              spreadRadius: -4,
             ),
           ],
-          
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header dengan desain yang lebih modern
+            // Header dengan desain yang lebih profesional
             _buildHeader(context),
             
             // Konten utama
@@ -76,7 +75,7 @@ class BookingCard extends StatelessWidget {
                     formattedDate,
                     departureTime,
                   ),
-                          ],
+                ],
               ),
             ),
           ],
@@ -86,7 +85,6 @@ class BookingCard extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context) {
-    Theme.of(context);
     final statusColor = _getStatusColor(booking.status);
 
     return Container(
@@ -146,6 +144,13 @@ class BookingCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.03),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
                       ),
                       child: const Icon(
                         Icons.confirmation_number_rounded,
@@ -176,6 +181,7 @@ class BookingCard extends StatelessWidget {
                                 fontSize: 13,
                                 color: Colors.white.withOpacity(0.9),
                                 letterSpacing: 0.2,
+                                fontWeight: FontWeight.w500,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -207,10 +213,10 @@ class BookingCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-            spreadRadius: -2,
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+            spreadRadius: -3,
           ),
         ],
         border: Border.all(color: Colors.grey.shade100, width: 1),
@@ -224,7 +230,7 @@ class BookingCard extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  theme.primaryColor.withOpacity(0.7),
+                  theme.primaryColor.withOpacity(0.8),
                   theme.primaryColor,
                 ],
                 begin: Alignment.topLeft,
@@ -323,8 +329,6 @@ class BookingCard extends StatelessWidget {
       ),
     );
   }
-
-
 
   Color _getStatusColor(String status) {
     switch (status) {

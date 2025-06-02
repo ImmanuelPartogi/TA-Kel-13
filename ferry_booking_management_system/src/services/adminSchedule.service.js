@@ -1,9 +1,6 @@
 import { api } from './api';
 
 class adminScheduleService {
-  /**
-   * Alias methods untuk kompatibilitas dengan kode lama
-   */
   get(endpoint, config) {
     return api.get(endpoint, config);
   }

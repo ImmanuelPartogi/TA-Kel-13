@@ -65,7 +65,6 @@ class ChatbotService
             'message' => $message,
             'matched_template_id' => $templateId,
             'confidence_score' => $confidenceScore,
-            'created_at' => now()
         ]);
     }
 

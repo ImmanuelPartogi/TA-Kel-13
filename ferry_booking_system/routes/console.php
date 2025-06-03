@@ -37,6 +37,9 @@ Schedule::command('payments:check-expiry')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/payment-expiry.log'));
 
+Schedule::command('chatbot:manage --action=cleanup')
+    ->daily()
+    ->appendOutputTo(storage_path('logs/chatbot-cleanup.log'));
 
 // Schedule untuk pembersihan notifikasi (perlu dijalankan terpisah dan jarang)
 Schedule::command('notifications:manage --action=cleanup')

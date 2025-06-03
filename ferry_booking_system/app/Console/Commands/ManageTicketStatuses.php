@@ -15,6 +15,14 @@ class ManageTicketStatuses extends Command
     protected $signature = 'tickets:manage-statuses';
     protected $description = 'Command terpadu untuk mengelola semua status tiket dan booking';
 
+    // Definisikan enum values yang valid
+    protected $validBoardingStatuses = [
+        'NOT_BOARDED',
+        'BOARDED',
+        'MISSED'
+        // Jika ada nilai enum lain, tambahkan di sini
+    ];
+
     public function handle()
     {
         $startTime = microtime(true);
@@ -56,6 +64,7 @@ class ManageTicketStatuses extends Command
      */
     private function updateExpiredTickets()
     {
+        // Kode yang sudah ada
         $this->info('1. Mengupdate tiket yang sudah expired...');
 
         // 1a. Update tiket dengan tanggal booking yang sudah lewat
@@ -65,7 +74,7 @@ class ManageTicketStatuses extends Command
             ->whereDate('bookings.departure_date', '<', Carbon::today())
             ->update([
                 'tickets.status' => 'EXPIRED',
-                'tickets.boarding_status' => 'MISSED'  // Diubah dari 'EXPIRED'
+                'tickets.boarding_status' => 'MISSED'
             ]);
 
         $this->info("   - {$pastTicketsCount} tiket tanggal sebelumnya diupdate menjadi EXPIRED");
@@ -96,7 +105,7 @@ class ManageTicketStatuses extends Command
 
                     if ($departureDateTime->isPast()) {
                         $ticket->status = 'EXPIRED';
-                        $ticket->boarding_status = 'MISSED';  // Diubah dari 'EXPIRED'
+                        $ticket->boarding_status = 'MISSED';
                         $ticket->save();
                         $todayTicketsCount++;
 
@@ -119,6 +128,7 @@ class ManageTicketStatuses extends Command
      */
     private function updateExpiredPendingBookings()
     {
+        // Kode yang sudah ada
         $this->info('2. Mengupdate booking PENDING yang sudah expired...');
 
         $now = Carbon::now();
@@ -147,15 +157,16 @@ class ManageTicketStatuses extends Command
 
                     // Jika sudah lewat waktu keberangkatan
                     if ($departureDateTime->isPast()) {
-                        // Update status booking
+                        // Update status booking dan tambahkan cancellation_reason
                         $booking->status = 'EXPIRED';
+                        $booking->cancellation_reason = 'Jadwal keberangkatan telah terlewati. Pemesanan dibatalkan secara otomatis oleh sistem.';
                         $booking->save();
 
                         // Update status semua tiket terkait
                         Ticket::where('booking_id', $booking->id)
                             ->update([
                                 'status' => 'EXPIRED',
-                                'boarding_status' => 'MISSED'  // Diubah dari 'EXPIRED'
+                                'boarding_status' => 'MISSED'
                             ]);
 
                         $expiredBookingsCount++;
@@ -164,7 +175,8 @@ class ManageTicketStatuses extends Command
                             'booking_id' => $booking->id,
                             'booking_code' => $booking->booking_code,
                             'departure' => $departureDateTime->format('Y-m-d H:i:s'),
-                            'current_time' => now()->format('Y-m-d H:i:s')
+                            'current_time' => now()->format('Y-m-d H:i:s'),
+                            'cancellation_reason' => $booking->cancellation_reason
                         ]);
                     }
                 }
@@ -192,7 +204,7 @@ class ManageTicketStatuses extends Command
             ->where('tickets.status', '!=', 'EXPIRED')
             ->update([
                 'tickets.status' => 'EXPIRED',
-                'tickets.boarding_status' => 'MISSED'  // Diubah dari 'EXPIRED'
+                'tickets.boarding_status' => 'MISSED'
             ]);
 
         $this->info("   Total {$expiredTicketsCount} tiket diupdate menjadi EXPIRED karena booking expired");
@@ -205,6 +217,8 @@ class ManageTicketStatuses extends Command
     {
         $this->info('3. Sinkronisasi status tiket dengan booking...');
 
+        // PERUBAHAN: Perbaikan untuk error truncation - gunakan MISSED untuk boarding_status
+        
         // Untuk booking dengan status CANCELLED
         $cancelledCount = DB::table('tickets')
             ->join('bookings', 'tickets.booking_id', '=', 'bookings.id')
@@ -212,10 +226,10 @@ class ManageTicketStatuses extends Command
             ->where('tickets.status', '!=', 'CANCELLED')
             ->update([
                 'tickets.status' => 'CANCELLED',
-                'tickets.boarding_status' => 'CANCELLED'
+                'tickets.boarding_status' => 'MISSED' // Menggunakan MISSED sebagai nilai yang valid
             ]);
 
-        $this->info("   - {$cancelledCount} tiket diupdate menjadi CANCELLED");
+        $this->info("   - {$cancelledCount} tiket diupdate menjadi CANCELLED dengan boarding_status MISSED");
 
         // Untuk booking dengan status COMPLETED
         $completedCount = DB::table('tickets')
@@ -235,7 +249,7 @@ class ManageTicketStatuses extends Command
             ->where('tickets.status', '!=', 'CANCELLED')
             ->update([
                 'tickets.status' => 'CANCELLED',
-                'tickets.boarding_status' => 'CANCELLED'
+                'tickets.boarding_status' => 'MISSED' // Menggunakan MISSED sebagai nilai yang valid
             ]);
 
         $this->info("   - {$refundedCount} tiket diupdate menjadi CANCELLED karena refund");
@@ -252,7 +266,7 @@ class ManageTicketStatuses extends Command
         $boardingExpiredCount = DB::table('tickets')
             ->where('status', 'EXPIRED')
             ->where('boarding_status', 'NOT_BOARDED')
-            ->update(['boarding_status' => 'MISSED']);  // Diubah dari 'EXPIRED'
+            ->update(['boarding_status' => 'MISSED']);
 
         $this->info("   - {$boardingExpiredCount} tiket diupdate boarding status menjadi MISSED");
 
@@ -274,7 +288,6 @@ class ManageTicketStatuses extends Command
 
     /**
      * Update status booking berdasarkan status check-in, boarding tiket, dan tanggal keberangkatan
-     * Penggabungan dari SyncBookingStatus.php
      */
     private function updateBookingStatusesBasedOnTickets()
     {
@@ -319,13 +332,18 @@ class ManageTicketStatuses extends Command
                     // Cek apakah booking seharusnya EXPIRED
                     else if (($allTicketsExpired || $isDatePassed) && $booking->status != 'COMPLETED') {
                         $booking->status = 'EXPIRED';
+                        
+                        // PERUBAHAN: Tambahkan alasan pembatalan yang profesional
+                        $booking->cancellation_reason = 'Jadwal keberangkatan telah terlewati. Pemesanan dibatalkan secara otomatis oleh sistem.';
+                        
                         $booking->save();
                         $updatedExpiredCount++;
 
                         Log::info('Booking diupdate menjadi EXPIRED', [
                             'booking_id' => $booking->id,
                             'booking_code' => $booking->booking_code,
-                            'reason' => $allTicketsExpired ? 'semua tiket expired' : 'tanggal keberangkatan sudah lewat'
+                            'reason' => $allTicketsExpired ? 'semua tiket expired' : 'tanggal keberangkatan sudah lewat',
+                            'cancellation_reason' => $booking->cancellation_reason
                         ]);
                     }
                 }
@@ -333,5 +351,90 @@ class ManageTicketStatuses extends Command
 
         $this->info("   - {$updatedCompletedCount} booking diupdate menjadi COMPLETED");
         $this->info("   - {$updatedExpiredCount} booking diupdate menjadi EXPIRED");
+        
+        // PERUBAHAN: Tambahkan pencarian booking dengan tiket EXPIRED tapi status booking belum diupdate
+        $this->info("   - Mencari booking tambahan yang perlu diupdate karena tiket EXPIRED...");
+        
+        $additionalExpiredCount = 0;
+        
+        // Temukan booking yang memiliki tiket EXPIRED tapi status booking belum EXPIRED
+        $bookingsToUpdate = DB::table('bookings')
+            ->whereIn('bookings.status', ['CONFIRMED', 'PENDING'])
+            ->whereExists(function ($query) {
+                $query->select(DB::raw(1))
+                    ->from('tickets')
+                    ->whereRaw('tickets.booking_id = bookings.id')
+                    ->where('tickets.status', 'EXPIRED');
+            })
+            ->select('bookings.id', 'bookings.booking_code')
+            ->get();
+            
+        if ($bookingsToUpdate->isNotEmpty()) {
+            foreach ($bookingsToUpdate as $bookingInfo) {
+                $booking = Booking::find($bookingInfo->id);
+                if ($booking) {
+                    $booking->status = 'EXPIRED';
+                    $booking->cancellation_reason = 'Jadwal keberangkatan telah terlewati. Pemesanan dibatalkan secara otomatis oleh sistem.';
+                    $booking->save();
+                    
+                    $additionalExpiredCount++;
+                    
+                    Log::info('Booking tambahan diupdate menjadi EXPIRED', [
+                        'booking_id' => $booking->id,
+                        'booking_code' => $booking->booking_code,
+                        'cancellation_reason' => $booking->cancellation_reason
+                    ]);
+                }
+            }
+        }
+        
+        if ($additionalExpiredCount > 0) {
+            $this->info("   - {$additionalExpiredCount} booking tambahan diupdate menjadi EXPIRED");
+        } else {
+            $this->info("   - Tidak ada booking tambahan yang perlu diupdate");
+        }
+        
+        $this->info("   Total " . ($updatedExpiredCount + $additionalExpiredCount) . " booking diupdate menjadi EXPIRED");
+
+        // PERUBAHAN: Tambahkan pencarian booking dengan tanggal keberangkatan yang telah lewat
+        $this->info("   - Mencari booking dengan tanggal keberangkatan yang telah lewat...");
+        
+        $pastDateBookingsCount = 0;
+        
+        // Temukan semua booking dengan tanggal keberangkatan yang sudah lewat tapi belum EXPIRED atau COMPLETED
+        $pastDateBookings = Booking::whereIn('status', ['CONFIRMED', 'PENDING'])
+            ->where('departure_date', '<', Carbon::today())
+            ->get();
+            
+        foreach ($pastDateBookings as $booking) {
+            $booking->status = 'EXPIRED';
+            $booking->cancellation_reason = 'Jadwal keberangkatan telah terlewati. Pemesanan dibatalkan secara otomatis oleh sistem.';
+            $booking->save();
+            
+            // Update tiket terkait
+            Ticket::where('booking_id', $booking->id)
+                ->update([
+                    'status' => 'EXPIRED',
+                    'boarding_status' => 'MISSED'
+                ]);
+                
+            $pastDateBookingsCount++;
+            
+            Log::info('Booking dengan tanggal lampau diupdate menjadi EXPIRED', [
+                'booking_id' => $booking->id,
+                'booking_code' => $booking->booking_code,
+                'departure_date' => $booking->departure_date,
+                'cancellation_reason' => $booking->cancellation_reason
+            ]);
+        }
+        
+        if ($pastDateBookingsCount > 0) {
+            $this->info("   - {$pastDateBookingsCount} booking dengan tanggal lampau diupdate menjadi EXPIRED");
+        } else {
+            $this->info("   - Tidak ada booking dengan tanggal lampau yang perlu diupdate");
+        }
+        
+        $this->info("   Total booking diupdate menjadi EXPIRED: " . 
+            ($updatedExpiredCount + $additionalExpiredCount + $pastDateBookingsCount));
     }
 }

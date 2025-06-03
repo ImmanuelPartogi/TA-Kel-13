@@ -34,6 +34,10 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->appendOutputTo(storage_path('logs/payment-expiry.log'));
 
+        $schedule->command('chatbot:manage --action=cleanup')
+            ->daily()
+            ->appendOutputTo(storage_path('logs/chatbot-cleanup.log'));
+
         // Command lainnya
         $schedule->command('notifications:manage --action=cleanup')
             ->daily()

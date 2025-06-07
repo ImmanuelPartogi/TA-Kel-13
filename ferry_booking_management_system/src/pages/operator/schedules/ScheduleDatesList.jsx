@@ -30,27 +30,27 @@ const ScheduleDatesList = () => {
     setLoading(true);
     try {
       const scheduleResponse = await operatorSchedulesService.getById(id);
-      console.log('Schedule response:', scheduleResponse);
-      
+      // console.log('Schedule response:', scheduleResponse);
+
       // Handle different response structures
       if (scheduleResponse.data && scheduleResponse.data.data) {
         const scheduleData = scheduleResponse.data.data.schedule || scheduleResponse.data.data;
         setSchedule(scheduleData);
       }
-  
+
       const datesResponse = await operatorSchedulesService.getScheduleDates(id);
-      console.log('Dates response:', datesResponse);
-      console.log('Dates response data:', datesResponse.data);
-      
+      // console.log('Dates response:', datesResponse);
+      // console.log('Dates response data:', datesResponse.data);
+
       // Parse dates from pagination structure
       if (datesResponse.data && datesResponse.data.data) {
         const datesData = datesResponse.data.data.dates || datesResponse.data.data;
-        console.log('Dates data structure:', datesData);
-        
+        // console.log('Dates data structure:', datesData);
+
         // Check if it's a pagination object (Laravel structure)
         if (datesData.data && Array.isArray(datesData.data)) {
           setDates(datesData.data); // Get the actual array from pagination object
-          
+
           // Set pagination info
           setPagination({
             current_page: datesData.current_page || 1,
@@ -78,9 +78,9 @@ const ScheduleDatesList = () => {
 
   const getDayNames = () => {
     if (!schedule || !schedule.days) return [];
-    
+
     const dayNames = {
-      '0': 'Minggu',
+      '7': 'Minggu',
       '1': 'Senin',
       '2': 'Selasa',
       '3': 'Rabu',
@@ -90,6 +90,27 @@ const ScheduleDatesList = () => {
     };
 
     return schedule.days.split(',').map(day => dayNames[day] || day);
+  };
+
+  const formatTime = (isoTimeString) => {
+    if (!isoTimeString || isoTimeString === '-') return '-';
+
+    try {
+      // Membuat objek Date dari string waktu ISO
+      const date = new Date(isoTimeString);
+
+      // Mengecek apakah date valid
+      if (isNaN(date.getTime())) return 'Format Waktu Invalid';
+
+      // Memformat ke jam:menit
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+
+      return `${hours}:${minutes}`;
+    } catch (error) {
+      console.error("Error memformat waktu:", error);
+      return 'Error Format';
+    }
   };
 
   const openUpdateStatusModal = (dateId) => {
@@ -115,10 +136,10 @@ const ScheduleDatesList = () => {
 
   const handleUpdateStatus = async (e) => {
     e.preventDefault();
-    
+
     try {
       await operatorSchedulesService.updateDateStatus(id, selectedDateId, updateFormData);
-      
+
       Swal.fire({
         icon: 'success',
         title: 'Berhasil!',
@@ -150,7 +171,7 @@ const ScheduleDatesList = () => {
       if (result.isConfirmed) {
         try {
           await operatorSchedulesService.deleteScheduleDate(id, dateId);
-          
+
           Swal.fire(
             'Terhapus!',
             'Tanggal jadwal berhasil dihapus.',
@@ -207,8 +228,8 @@ const ScheduleDatesList = () => {
   }
 
   // Debug log untuk melihat data
-  console.log('Current dates state:', dates);
-  console.log('Current schedule state:', schedule);
+  // console.log('Current dates state:', dates);
+  // console.log('Current schedule state:', schedule);
 
   // Add null checks for schedule properties
   const origin = schedule?.route?.origin || 'Unknown';
@@ -226,13 +247,13 @@ const ScheduleDatesList = () => {
         <div className="bg-gradient-to-br from-blue-800 via-blue-600 to-blue-500 rounded-2xl shadow-xl text-white p-8 mb-8 relative overflow-hidden">
           <div className="absolute inset-0 opacity-20">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" className="w-full h-full">
-              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                    fill="#fff" opacity="0.2" />
-              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                    fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
+              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+                fill="#fff" opacity="0.2" />
+              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+                fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
             </svg>
           </div>
-          
+
           <div className="relative z-10">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
               <div className="flex items-start">
@@ -243,10 +264,10 @@ const ScheduleDatesList = () => {
                 </div>
                 <div>
                   <h1 className="text-3xl font-bold">Tanggal Jadwal</h1>
-                  <p className="mt-1 text-blue-100">{origin} - {destination} • {departureTime}</p>
+                  <p className="mt-1 text-blue-100">{origin} - {destination} • {formatTime(departureTime)}</p>
                 </div>
               </div>
-              
+
               <div className="flex space-x-3">
                 <Link
                   to={`/operator/schedules/${id}`}
@@ -301,11 +322,28 @@ const ScheduleDatesList = () => {
                   </div>
                   <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200 shadow-sm">
                     <p className="text-xs text-gray-500 mb-1">Waktu Keberangkatan</p>
-                    <p className="text-lg font-semibold text-gray-800">{departureTime}</p>
+                    <p className="text-lg font-semibold text-gray-800">{formatTime(departureTime)}</p>
+                    {departureTime !== '-' && (
+                      <div className="flex items-center mt-1">
+                        <svg className="w-3 h-3 text-gray-400 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <p className="text-xs text-gray-500">{new Date(departureTime).toLocaleDateString('id-ID')}</p>
+                      </div>
+                    )}
                   </div>
+
                   <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200 shadow-sm">
                     <p className="text-xs text-gray-500 mb-1">Waktu Kedatangan</p>
-                    <p className="text-lg font-semibold text-gray-800">{arrivalTime}</p>
+                    <p className="text-lg font-semibold text-gray-800">{formatTime(arrivalTime)}</p>
+                    {arrivalTime !== '-' && (
+                      <div className="flex items-center mt-1">
+                        <svg className="w-3 h-3 text-gray-400 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <p className="text-xs text-gray-500">{new Date(arrivalTime).toLocaleDateString('id-ID')}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -353,9 +391,9 @@ const ScheduleDatesList = () => {
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Kapasitas Tersisa
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {/* <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Penumpang
-                  </th>
+                  </th> */}
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Kendaraan
                   </th>
@@ -398,11 +436,11 @@ const ScheduleDatesList = () => {
                             {passengerCapacity - (date.passenger_count || 0)} dari {passengerCapacity} kursi tersedia
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                        {/* <td className="px-6 py-4 whitespace-nowrap text-center">
                           <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 font-semibold border border-blue-300 shadow-sm">
                             {date.passenger_count || 0}
                           </span>
-                        </td>
+                        </td> */}
                         <td className="px-6 py-4">
                           <div className="text-xs text-gray-500 space-y-1">
                             <div className="flex items-center justify-between">
@@ -452,7 +490,7 @@ const ScheduleDatesList = () => {
                 ) : (
                   <tr>
                     <td colSpan="7" className="px-6 py-4 text-sm text-gray-500 text-center">
-                      Tidak ada data tanggal jadwal. 
+                      Tidak ada data tanggal jadwal.
                       <div className="mt-2">
                         <Link
                           to={`/operator/schedules/${id}/dates/create`}

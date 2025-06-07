@@ -7,51 +7,51 @@ import Swal from 'sweetalert2';
 const ScheduleShow = () => {
   const { id } = useParams();
   const [schedule, setSchedule] = useState(null);
-  const [upcomingDates, setUpcomingDates] = useState([]);
+  const [, setUpcomingDates] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const fetchScheduleDetails = async () => {
+      setLoading(true);
+      try {
+        // Fetch schedule details
+        const scheduleResponse = await operatorSchedulesService.getById(id);
+        // console.log('Schedule response:', scheduleResponse);
+
+        if (scheduleResponse.data && scheduleResponse.data.data) {
+          const scheduleData = scheduleResponse.data.data.schedule || scheduleResponse.data.data;
+          setSchedule(scheduleData);
+
+          // Set upcoming dates dari response schedule jika ada
+          if (scheduleData.upcomingDates) {
+            setUpcomingDates(scheduleData.upcomingDates);
+          } else {
+            // Jika tidak ada, ambil dari dates endpoint
+            const datesResponse = await operatorSchedulesService.getScheduleDates(id, {
+              status: 'ACTIVE',
+              start_date: new Date().toISOString().split('T')[0],
+              per_page: 14
+            });
+
+            if (datesResponse.data && datesResponse.data.data) {
+              setUpcomingDates(datesResponse.data.data.dates || datesResponse.data.data || []);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching schedule details:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Gagal memuat detail jadwal',
+        });
+      }
+      setLoading(false);
+    };
+
     fetchScheduleDetails();
   }, [id]);
 
-  const fetchScheduleDetails = async () => {
-    setLoading(true);
-    try {
-      // Fetch schedule details
-      const scheduleResponse = await operatorSchedulesService.getById(id);
-      console.log('Schedule response:', scheduleResponse);
-
-      if (scheduleResponse.data && scheduleResponse.data.data) {
-        const scheduleData = scheduleResponse.data.data.schedule || scheduleResponse.data.data;
-        setSchedule(scheduleData);
-
-        // Set upcoming dates dari response schedule jika ada
-        if (scheduleData.upcomingDates) {
-          setUpcomingDates(scheduleData.upcomingDates);
-        } else {
-          // Jika tidak ada, ambil dari dates endpoint
-          const datesResponse = await operatorSchedulesService.getScheduleDates(id, {
-            status: 'ACTIVE',
-            start_date: new Date().toISOString().split('T')[0],
-            per_page: 14
-          });
-
-          if (datesResponse.data && datesResponse.data.data) {
-            setUpcomingDates(datesResponse.data.data.dates || datesResponse.data.data || []);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching schedule details:', error);
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Gagal memuat detail jadwal',
-      });
-    }
-    setLoading(false);
-  };
-  
   const getDayNames = () => {
     if (!schedule) return [];
 
@@ -68,52 +68,67 @@ const ScheduleShow = () => {
     return schedule.days.split(',').map(day => dayNames[day] || day);
   };
 
-  const formatDuration = (minutes) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    const durationText = [];
+  const formatTime = (isoTimeString) => {
+    if (!isoTimeString) return 'N/A';
 
+    try {
+      // Membuat objek Date dari string waktu ISO
+      const date = new Date(isoTimeString);
+
+      // Mengecek apakah date valid
+      if (isNaN(date.getTime())) return 'Format Waktu Invalid';
+
+      // Memformat ke jam:menit
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+
+      return `${hours}:${minutes}`;
+    } catch (error) {
+      console.error("Error memformat waktu:", error);
+      return 'Error Format';
+    }
+  };
+
+  const formatDuration = (minutes) => {
+    // Jika minutes adalah undefined, null, atau NaN
+    if (!minutes && minutes !== 0) {
+      // Coba hitung durasi dari waktu keberangkatan dan kedatangan
+      if (schedule?.departure_time && schedule?.arrival_time) {
+        try {
+          const departure = new Date(schedule.departure_time);
+          const arrival = new Date(schedule.arrival_time);
+          if (!isNaN(departure.getTime()) && !isNaN(arrival.getTime())) {
+            minutes = Math.round((arrival - departure) / (1000 * 60));
+          }
+        } catch (error) {
+          console.error("Error menghitung durasi dari waktu:", error);
+        }
+      }
+
+      // Jika masih tidak ada nilai valid
+      if (!minutes && minutes !== 0) {
+        return 'Tidak tersedia';
+      }
+    }
+
+    // Pastikan minutes adalah angka
+    const numMinutes = Number(minutes);
+    if (isNaN(numMinutes)) return 'Format tidak valid';
+
+    const hours = Math.floor(numMinutes / 60);
+    const mins = numMinutes % 60;
+
+    const durationText = [];
     if (hours > 0) {
       durationText.push(`${hours} jam`);
     }
-
     if (mins > 0) {
       durationText.push(`${mins} menit`);
     }
 
-    return durationText.join(' ');
+    return durationText.join(' ') || '0 menit';
   };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const options = { day: 'numeric', month: 'long', year: 'numeric' };
-    return date.toLocaleDateString('id-ID', options);
-  };
-
-  const getDayName = (dateString) => {
-    const date = new Date(dateString);
-    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-    return days[date.getDay()];
-  };
-
-  const getStatusBadge = (status) => {
-    const badges = {
-      'ACTIVE': { class: 'bg-gradient-to-r from-green-100 to-green-200 text-green-800 border-green-300', text: 'Tersedia' },
-      'INACTIVE': { class: 'bg-gradient-to-r from-red-100 to-red-200 text-red-800 border-red-300', text: 'Tidak Tersedia' },
-      'FULL': { class: 'bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 border-yellow-300', text: 'Penuh' },
-      'CANCELLED': { class: 'bg-gradient-to-r from-red-100 to-red-200 text-red-800 border-red-300', text: 'Dibatalkan' },
-      'WEATHER_ISSUE': { class: 'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border-blue-300', text: 'Masalah Cuaca' },
-    };
-
-    const badge = badges[status] || { class: 'bg-gradient-to-r from-slate-100 to-slate-200 text-slate-800 border-slate-300', text: status };
-
-    return (
-      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border shadow-md ${badge.class}`}>
-        {badge.text}
-      </span>
-    );
-  };
-
+  
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -139,8 +154,8 @@ const ScheduleShow = () => {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Jadwal tidak ditemukan</h2>
           <p className="text-gray-600 mb-8">Maaf, data jadwal yang Anda cari tidak tersedia atau telah dihapus.</p>
-          <Link 
-            to="/operator/schedules" 
+          <Link
+            to="/operator/schedules"
             className="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg"
           >
             <svg className="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -160,13 +175,13 @@ const ScheduleShow = () => {
         <div className="bg-gradient-to-br from-blue-800 via-blue-600 to-blue-500 rounded-2xl shadow-xl text-white p-8 mb-8 relative overflow-hidden">
           <div className="absolute inset-0 opacity-20">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" className="w-full h-full">
-              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                    fill="#fff" opacity="0.2" />
-              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                    fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
+              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+                fill="#fff" opacity="0.2" />
+              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+                fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
             </svg>
           </div>
-          
+
           <div className="relative z-10">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
               <div className="flex items-start">
@@ -180,7 +195,7 @@ const ScheduleShow = () => {
                   <p className="mt-1 text-blue-100">{schedule.route.origin} - {schedule.route.destination}</p>
                 </div>
               </div>
-              
+
               <div className="flex space-x-3">
                 <Link
                   to="/operator/schedules"
@@ -226,11 +241,13 @@ const ScheduleShow = () => {
             </div>
             <div className="p-4 flex flex-col items-center justify-center">
               <span className="text-sm text-gray-500 mb-1">Keberangkatan</span>
-              <span className="text-xl font-bold text-gray-800">{schedule.departure_time}</span>
+              <span className="text-xl font-bold text-gray-800">{formatTime(schedule.departure_time)}</span>
+              <span className="text-xs text-gray-500">{new Date(schedule.departure_time).toLocaleDateString('id-ID')}</span>
             </div>
             <div className="p-4 flex flex-col items-center justify-center">
               <span className="text-sm text-gray-500 mb-1">Kedatangan</span>
-              <span className="text-xl font-bold text-gray-800">{schedule.arrival_time}</span>
+              <span className="text-xl font-bold text-gray-800">{formatTime(schedule.arrival_time)}</span>
+              <span className="text-xs text-gray-500">{new Date(schedule.arrival_time).toLocaleDateString('id-ID')}</span>
             </div>
           </div>
         </div>
@@ -312,17 +329,6 @@ const ScheduleShow = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200 shadow-sm">
-                  <span className="text-sm text-gray-500 mb-1 block">ID Rute</span>
-                  <span className="text-sm font-medium text-gray-800">{schedule.route.id}</span>
-                </div>
-                <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200 shadow-sm">
-                  <span className="text-sm text-gray-500 mb-1 block">Jarak</span>
-                  <span className="text-sm font-medium text-gray-800">{schedule.route.distance} km</span>
-                </div>
-              </div>
-
               <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200 shadow-sm">
                 <span className="text-sm text-gray-500 mb-1 block">Durasi Perjalanan</span>
                 <span className="text-sm font-medium text-gray-800">{formatDuration(schedule.route.duration)}</span>
@@ -375,7 +381,7 @@ const ScheduleShow = () => {
                     <svg className="h-6 w-6 text-gray-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                     </svg>
-                    <span className="block text-lg font-bold text-gray-800">{schedule.ferry.capacity_motorcycle}</span>
+                    <span className="block text-lg font-bold text-gray-800">{schedule.ferry.capacity_vehicle_motorcycle}</span>
                     <span className="text-xs text-gray-500">Motor</span>
                   </div>
 
@@ -383,7 +389,7 @@ const ScheduleShow = () => {
                     <svg className="h-6 w-6 text-gray-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                     </svg>
-                    <span className="block text-lg font-bold text-gray-800">{schedule.ferry.capacity_car}</span>
+                    <span className="block text-lg font-bold text-gray-800">{schedule.ferry.capacity_vehicle_car}</span>
                     <span className="text-xs text-gray-500">Mobil</span>
                   </div>
 
@@ -391,7 +397,7 @@ const ScheduleShow = () => {
                     <svg className="h-6 w-6 text-gray-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                     </svg>
-                    <span className="block text-lg font-bold text-gray-800">{schedule.ferry.capacity_bus}</span>
+                    <span className="block text-lg font-bold text-gray-800">{schedule.ferry.capacity_vehicle_bus}</span>
                     <span className="text-xs text-gray-500">Bus</span>
                   </div>
 
@@ -399,106 +405,11 @@ const ScheduleShow = () => {
                     <svg className="h-6 w-6 text-gray-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                     </svg>
-                    <span className="block text-lg font-bold text-gray-800">{schedule.ferry.capacity_truck}</span>
+                    <span className="block text-lg font-bold text-gray-800">{schedule.ferry.capacity_vehicle_truck}</span>
                     <span className="text-xs text-gray-500">Truk</span>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Tanggal Mendatang */}
-        <div className="mt-8">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Tanggal Jadwal Mendatang</h3>
-
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 hover:shadow-2xl transition-all duration-300">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tanggal
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Alasan Status
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Jumlah Booking
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Aksi
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {upcomingDates.length > 0 ? (
-                    upcomingDates.map((date) => (
-                      <tr key={date.id} className="hover:bg-gray-50 transition-colors duration-150">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{formatDate(date.date)}</div>
-                          <div className="text-xs text-gray-500">{getDayName(date.date)}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {getStatusBadge(date.status)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">{date.status_reason || '-'}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 font-medium">{date.booking_count} booking</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <Link
-                            to={`/operator/bookings?schedule_id=${schedule.id}&date=${date.date}`}
-                            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
-                          >
-                            <svg className="mr-1.5 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                            Lihat Booking
-                          </Link>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="5" className="px-6 py-4 text-sm text-center text-gray-500">
-                        Tidak ada tanggal jadwal mendatang yang tersedia.
-                        <div className="mt-2">
-                          <Link
-                            to={`/operator/schedules/${id}/dates/create`}
-                            className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800"
-                          >
-                            <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                            </svg>
-                            Tambahkan tanggal jadwal
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <div className="bg-gray-50 px-6 py-4 border-t border-gray-100 flex justify-between items-center">
-              <span className="text-sm text-gray-500">
-                Menampilkan {upcomingDates.length} dari {upcomingDates.length} tanggal mendatang
-              </span>
-              <Link
-                to={`/operator/schedules/${id}/dates`}
-                className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors duration-150"
-              >
-                Lihat semua tanggal
-                <svg className="h-5 w-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </svg>
-              </Link>
             </div>
           </div>
         </div>

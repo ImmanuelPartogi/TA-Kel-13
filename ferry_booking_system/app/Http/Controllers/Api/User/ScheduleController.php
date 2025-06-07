@@ -8,6 +8,7 @@ use App\Models\ScheduleDate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class ScheduleController extends Controller
 {
@@ -243,13 +244,35 @@ class ScheduleController extends Controller
     }
 
     public function show($id)
-    {
-        $schedule = Schedule::with(['ferry', 'route'])->findOrFail($id);
+{
+    // Ambil data jadwal dengan relasi
+    $schedule = Schedule::with(['ferry', 'route'])->findOrFail($id);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Detail jadwal berhasil diambil',
-            'data' => $schedule
-        ], 200);
+    // Ambil langsung data route dari database
+    $routeData = DB::table('routes')
+        ->where('id', $schedule->route_id)
+        ->select('id', 'origin', 'destination', 'route_code', 'distance', 'duration', 'base_price', 'status')
+        ->first();
+
+    // Konversi objek standar ke array
+    $scheduleArray = $schedule->toArray();
+
+    // Ganti data route dengan data yang diambil langsung
+    if ($routeData) {
+        $scheduleArray['route'] = (array) $routeData;
     }
+
+    // Log untuk debugging
+    Log::info('Manual Route Data:', [
+        'route_data' => $routeData,
+        'has_distance' => isset($routeData->distance),
+        'distance_value' => $routeData->distance ?? 'N/A'
+    ]);
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Detail jadwal berhasil diambil',
+        'data' => $scheduleArray
+    ], 200);
+}
 }

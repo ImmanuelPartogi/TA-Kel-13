@@ -22,11 +22,51 @@ const ScheduleCreateDate = () => {
     fetchSchedule();
   }, [id]);
 
+  // Fungsi format waktu
+  const formatTime = (isoTimeString) => {
+    if (!isoTimeString || isoTimeString === 'N/A') return 'N/A';
+
+    try {
+      // Membuat objek Date dari string waktu ISO
+      const date = new Date(isoTimeString);
+
+      // Mengecek apakah date valid
+      if (isNaN(date.getTime())) return 'Format Waktu Invalid';
+
+      // Memformat ke jam:menit
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+
+      return `${hours}:${minutes}`;
+    } catch (error) {
+      console.error("Error memformat waktu:", error);
+      return 'Error Format';
+    }
+  };
+
+  // Fungsi format tanggal
+  const formatDate = (isoTimeString) => {
+    if (!isoTimeString || isoTimeString === 'N/A') return '';
+
+    try {
+      const date = new Date(isoTimeString);
+      if (isNaN(date.getTime())) return '';
+      
+      return date.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    } catch (error) {
+      console.error("Error memformat tanggal:", error);
+      return '';
+    }
+  };
+
   const fetchSchedule = async () => {
     setLoading(true);
     try {
       const response = await operatorSchedulesService.getById(id);
-      console.log('Schedule response:', response); // Debug log
       
       if (response.data && response.data.data) {
         const scheduleData = response.data.data.schedule || response.data.data;
@@ -101,12 +141,15 @@ const ScheduleCreateDate = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex justify-center items-center h-96">
-        <div className="relative">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-600"></div>
-          <div className="animate-ping absolute top-0 left-0 rounded-full h-16 w-16 border-2 border-blue-600 opacity-30"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex justify-center items-center">
+        <div className="flex flex-col items-center bg-white p-8 rounded-2xl shadow-xl">
+          <div className="relative mb-4">
+            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-600"></div>
+            <div className="animate-ping absolute top-0 left-0 rounded-full h-16 w-16 border-2 border-blue-600 opacity-30"></div>
+          </div>
+          <p className="text-lg text-gray-700 font-medium">Memuat jadwal...</p>
+          <p className="text-sm text-gray-500 mt-2">Mohon tunggu sebentar</p>
         </div>
-        <p className="ml-4 text-lg text-gray-600 font-medium">Memuat jadwal...</p>
       </div>
     );
   }
@@ -199,24 +242,24 @@ const ScheduleCreateDate = () => {
               
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
                 <p className="text-blue-100 text-sm">Waktu Keberangkatan</p>
-                <div className="flex items-center mt-1">
-                  <svg className="w-5 h-5 mr-2 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                <div className="flex flex-col mt-1">
                   <span className="text-2xl font-bold">
-                    {schedule?.departure_time || 'N/A'}
+                    {formatTime(schedule?.departure_time) || 'N/A'}
+                  </span>
+                  <span className="text-xs text-blue-200 mt-1">
+                    {formatDate(schedule?.departure_time)}
                   </span>
                 </div>
               </div>
               
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
                 <p className="text-blue-100 text-sm">Waktu Kedatangan</p>
-                <div className="flex items-center mt-1">
-                  <svg className="w-5 h-5 mr-2 text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                <div className="flex flex-col mt-1">
                   <span className="text-2xl font-bold">
-                    {schedule?.arrival_time || 'N/A'}
+                    {formatTime(schedule?.arrival_time) || 'N/A'}
+                  </span>
+                  <span className="text-xs text-blue-200 mt-1">
+                    {formatDate(schedule?.arrival_time)}
                   </span>
                 </div>
               </div>
@@ -238,7 +281,7 @@ const ScheduleCreateDate = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           {/* Jadwal Info Card */}
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 hover:shadow-2xl transition-shadow duration-300">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 hover:shadow-2xl transition-all duration-300">
             <div className="bg-gray-50 px-6 py-4 border-b border-gray-100">
               <h2 className="text-lg font-semibold text-gray-800 flex items-center">
                 <svg className="w-5 h-5 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -262,7 +305,10 @@ const ScheduleCreateDate = () => {
                     <div className="text-center">
                       <p className="text-xs text-gray-500 mb-1">Berangkat</p>
                       <p className="text-sm font-bold text-gray-900">
-                        {schedule?.departure_time || 'N/A'}
+                        {formatTime(schedule?.departure_time) || 'N/A'}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {formatDate(schedule?.departure_time)}
                       </p>
                     </div>
 
@@ -281,7 +327,10 @@ const ScheduleCreateDate = () => {
                     <div className="text-center">
                       <p className="text-xs text-gray-500 mb-1">Tiba</p>
                       <p className="text-sm font-bold text-gray-900">
-                        {schedule?.arrival_time || 'N/A'}
+                        {formatTime(schedule?.arrival_time) || 'N/A'}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {formatDate(schedule?.arrival_time)}
                       </p>
                     </div>
                   </div>
@@ -289,7 +338,7 @@ const ScheduleCreateDate = () => {
                 
                 <div className="border-b border-gray-100 pb-3">
                   <span className="text-sm text-gray-500">Hari Operasi:</span>
-                  <div className="flex flex-wrap gap-1 mt-1">
+                  <div className="flex flex-wrap gap-1.5 mt-2">
                     {getDayNames().map((day, index) => (
                       <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                         {day}
@@ -312,7 +361,7 @@ const ScheduleCreateDate = () => {
           </div>
 
           {/* Form Card */}
-          <div className="lg:col-span-2 bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 hover:shadow-2xl transition-shadow duration-300">
+          <div className="lg:col-span-2 bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 hover:shadow-2xl transition-all duration-300">
             <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center">
               <svg className="w-5 h-5 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -336,7 +385,7 @@ const ScheduleCreateDate = () => {
                         type="date"
                         id="date"
                         name="date"
-                        className={`pl-10 w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-150 ${errors.date ? 'border-red-500' : ''}`}
+                        className={`p-5 pl-10 w-full h-10 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-150 border ${errors.date ? 'border-red-500' : ''}`}
                         min={new Date().toISOString().split('T')[0]}
                         value={formData.date}
                         onChange={handleInputChange}
@@ -362,7 +411,7 @@ const ScheduleCreateDate = () => {
                       <select
                         id="status"
                         name="status"
-                        className={`pl-10 w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-150 ${errors.status ? 'border-red-500' : ''}`}
+                        className={`pl-10 w-full h-10 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-150 border ${errors.status ? 'border-red-500' : ''}`}
                         value={formData.status}
                         onChange={handleInputChange}
                         required
@@ -394,7 +443,7 @@ const ScheduleCreateDate = () => {
                       id="status_reason"
                       name="status_reason"
                       rows="3"
-                      className={`pl-10 w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-150 ${errors.status_reason ? 'border-red-500' : ''}`}
+                      className={`p-5 pl-10 w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-150 border ${errors.status_reason ? 'border-red-500' : ''}`}
                       value={formData.status_reason}
                       onChange={handleInputChange}
                     />
@@ -473,7 +522,7 @@ const ScheduleCreateDate = () => {
         </div>
 
         {/* Bantuan */}
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 mt-6 hover:shadow-2xl transition-shadow duration-300">
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 mt-6 hover:shadow-2xl transition-all duration-300">
           <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center">
             <svg className="w-5 h-5 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

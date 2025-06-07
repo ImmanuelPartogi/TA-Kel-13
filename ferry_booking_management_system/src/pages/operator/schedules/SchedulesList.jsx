@@ -51,6 +51,15 @@ const SchedulesList = () => {
       const params = Object.fromEntries(searchParams);
       const response = await operatorSchedulesService.getSchedules(params);
 
+      // Tambahkan debugging
+      // console.log('API Response:', response.data);
+      // if (response.data?.data?.length > 0) {
+      //   console.log('Sample Schedule:', response.data.data[0]);
+      //   console.log('Sample Route:', response.data.data[0].route);
+      //   console.log('Duration Value:', response.data.data[0].route?.duration);
+      // }
+
+      // Lanjutkan kode seperti biasa
       if (response.data && response.data.data) {
         if (response.data.data.schedules) {
           setSchedules(response.data.data.schedules);
@@ -96,22 +105,67 @@ const SchedulesList = () => {
     if (!daysString) return [];
 
     const dayNames = {
-      '0': 'Minggu',
       '1': 'Senin',
       '2': 'Selasa',
       '3': 'Rabu',
       '4': 'Kamis',
       '5': 'Jumat',
       '6': 'Sabtu',
+      '7': 'Minggu'
     };
 
     return daysString.split(',').map(day => dayNames[day] || day);
   };
 
   const formatDuration = (minutes) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
+    // Pastikan minutes adalah angka
+    if (!minutes && minutes !== 0) return 'N/A';
+
+    const numMinutes = Number(minutes);
+
+    // Jika bukan angka yang valid
+    if (isNaN(numMinutes)) return 'N/A';
+
+    const hours = Math.floor(numMinutes / 60);
+    const mins = numMinutes % 60;
+
     return `${hours}j${mins > 0 ? ` ${mins}m` : ''}`;
+  };
+
+  const formatTime = (isoTimeString) => {
+    if (!isoTimeString) return 'N/A';
+
+    try {
+      // Membuat objek Date dari string waktu ISO
+      const date = new Date(isoTimeString);
+
+      // Mengecek apakah date valid
+      if (isNaN(date.getTime())) return 'Format Waktu Invalid';
+
+      // Memformat ke jam:menit
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+
+      return `${hours}:${minutes}`;
+    } catch (error) {
+      console.error("Error memformat waktu:", error);
+      return 'Error Format';
+    }
+  };
+
+  const calculateDuration = (schedule) => {
+    if (schedule.arrival_time && schedule.departure_time) {
+      try {
+        const arrival = new Date(schedule.arrival_time);
+        const departure = new Date(schedule.departure_time);
+        const diffMinutes = Math.round((arrival - departure) / (1000 * 60));
+        return diffMinutes > 0 ? diffMinutes : 0;
+      } catch (error) {
+        console.error("Error menghitung durasi:", error);
+        return 0;
+      }
+    }
+    return 0;
   };
 
   return (
@@ -121,13 +175,13 @@ const SchedulesList = () => {
         <div className="bg-gradient-to-br from-blue-800 via-blue-600 to-blue-500 rounded-2xl shadow-xl text-white p-8 mb-8 relative overflow-hidden">
           <div className="absolute inset-0 opacity-20">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" className="w-full h-full">
-              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                    fill="#fff" opacity="0.2" />
-              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                    fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
+              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+                fill="#fff" opacity="0.2" />
+              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+                fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
             </svg>
           </div>
-          
+
           <div className="relative z-10">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
               <div className="flex items-start">
@@ -141,7 +195,7 @@ const SchedulesList = () => {
                   <p className="mt-1 text-blue-100">Kelola dan pantau jadwal keberangkatan kapal</p>
                 </div>
               </div>
-              
+
               <div>
                 <div className="inline-flex items-center px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-white/20 shadow-sm">
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -151,7 +205,7 @@ const SchedulesList = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Quick Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-8">
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
@@ -165,7 +219,7 @@ const SchedulesList = () => {
                   </span>
                 </div>
               </div>
-              
+
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
                 <p className="text-blue-100 text-sm">Rute Aktif</p>
                 <div className="flex items-center mt-1">
@@ -177,7 +231,7 @@ const SchedulesList = () => {
                   </span>
                 </div>
               </div>
-              
+
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
                 <p className="text-blue-100 text-sm">Jadwal Hari Ini</p>
                 <div className="flex items-center mt-1">
@@ -192,7 +246,7 @@ const SchedulesList = () => {
                   </span>
                 </div>
               </div>
-              
+
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
                 <p className="text-blue-100 text-sm">Keberangkatan Terjadwal</p>
                 <div className="flex items-center mt-1">
@@ -221,7 +275,7 @@ const SchedulesList = () => {
               Filter & Pencarian
             </h2>
           </div>
-          
+
           <div className="p-6 bg-white">
             <form onSubmit={handleFilter} className="space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -346,7 +400,7 @@ const SchedulesList = () => {
                         <div className="text-center">
                           <p className="text-xs text-gray-500 mb-1">Berangkat</p>
                           <p className="text-sm font-bold text-gray-900">
-                            {schedule.departure_time || 'N/A'}
+                            {formatTime(schedule.departure_time)}
                           </p>
                         </div>
 
@@ -359,7 +413,7 @@ const SchedulesList = () => {
                               <div className="h-4 w-4 rounded-full bg-blue-600 border-3 border-white shadow-sm"></div>
                               <div className="absolute left-1/2 transform -translate-x-1/2 bg-white px-3 py-1 rounded-full shadow-sm">
                                 <span className="text-xs font-medium text-gray-700">
-                                  {formatDuration(schedule.route?.duration || 0)}
+                                 {formatDuration(calculateDuration(schedule))}
                                 </span>
                               </div>
                               <div className="h-4 w-4 rounded-full bg-blue-600 border-3 border-white shadow-sm"></div>
@@ -370,7 +424,7 @@ const SchedulesList = () => {
                         <div className="text-center">
                           <p className="text-xs text-gray-500 mb-1">Tiba</p>
                           <p className="text-sm font-bold text-gray-900">
-                            {schedule.arrival_time || 'N/A'}
+                            {formatTime(schedule.arrival_time)}
                           </p>
                         </div>
                       </div>
@@ -383,7 +437,7 @@ const SchedulesList = () => {
                             {getDayNames(schedule.days).join(', ') || 'Tidak Ada'}
                           </p>
                         </div>
-                        
+
                         <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-3 border border-purple-200 shadow-sm">
                           <p className="text-xs text-purple-700 font-semibold mb-1">Kapasitas</p>
                           <p className="text-sm font-medium text-purple-900">

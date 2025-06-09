@@ -371,7 +371,7 @@ const ScheduleEdit = () => {
                   </label>
                   <div className="relative rounded-md shadow-sm">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <i className="fas fa-plane-departure text-gray-400"></i>
+                      <i className="fas fa-ship text-green-400"></i>
                     </div>
                     <input 
                       type="time"
@@ -391,7 +391,7 @@ const ScheduleEdit = () => {
                   </label>
                   <div className="relative rounded-md shadow-sm">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <i className="fas fa-plane-arrival text-gray-400"></i>
+                      <i className="fas fa-ship text-red-400"></i>
                     </div>
                     <input 
                       type="time"

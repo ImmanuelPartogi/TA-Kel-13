@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import adminScheduleService from '../../../services/adminSchedule.service';
 
 const ScheduleShow = () => {
@@ -13,7 +13,8 @@ const ScheduleShow = () => {
   });
   const [activeTab, setActiveTab] = useState('info'); // 'info', 'dates'
   const [alert, setAlert] = useState({ show: false, type: '', message: '' });
-
+  const [searchParams] = useSearchParams();
+  const editDateId = searchParams.get('edit');
   const dayNames = {
     1: 'Senin', 2: 'Selasa', 3: 'Rabu', 4: 'Kamis',
     5: 'Jumat', 6: 'Sabtu', 7: 'Minggu'
@@ -21,11 +22,11 @@ const ScheduleShow = () => {
 
   useEffect(() => {
     fetchSchedule();
-    
+
     // Auto-hide alert after 5 seconds
     if (alert.show) {
       const timer = setTimeout(() => {
-        setAlert({...alert, show: false});
+        setAlert({ ...alert, show: false });
       }, 5000);
       return () => clearTimeout(timer);
     }
@@ -36,6 +37,14 @@ const ScheduleShow = () => {
       fetchScheduleDates();
     }
   }, [schedule, filter]);
+
+  useEffect(() => {
+    if (editDateId && scheduleDates.length > 0) {
+      // if (dateToEdit) {
+      //   openEditModal(dateToEdit);
+      // }
+    }
+  }, [editDateId, scheduleDates]);
 
   const fetchSchedule = async () => {
     try {
@@ -57,17 +66,17 @@ const ScheduleShow = () => {
   const fetchScheduleDates = async () => {
     try {
       let params = {};
-      
+
       if (filter.month) params.month = filter.month;
       if (filter.year) params.year = filter.year;
-      
+
       const response = await adminScheduleService.getScheduleDates(id, params);
-      
+
       console.log('Schedule dates response:', response);
-      
+
       if (response && response.data && response.data.status === 'success') {
         console.log('Data structure:', response.data.data);
-        
+
         if (response.data.data && response.data.data.dates) {
           console.log('Dates found:', response.data.data.dates);
           setScheduleDates(response.data.data.dates.data || response.data.data.dates || []);
@@ -118,7 +127,7 @@ const ScheduleShow = () => {
 
   // Status badge configuration - sama dengan SchedulesList dan ScheduleEdit
   const getStatusConfig = (status) => {
-    switch(status) {
+    switch (status) {
       case 'ACTIVE':
       case 'AVAILABLE':
         return {
@@ -202,13 +211,13 @@ const ScheduleShow = () => {
       <div className="bg-white rounded-xl border border-gray-100 shadow-md p-8 text-center">
         <div className="inline-block relative">
           <div className="h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-500 animate-spin"></div>
-          <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-200 animate-spin" style={{animationDirection: 'reverse', animationDuration: '1.5s'}}></div>
+          <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-200 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
         </div>
         <p className="mt-4 text-gray-600">Memuat detail jadwal...</p>
       </div>
     );
   }
-  
+
   // Not Found State
   if (!schedule) {
     return (
@@ -231,13 +240,13 @@ const ScheduleShow = () => {
       <div className="bg-gradient-to-br from-blue-800 via-blue-600 to-blue-500 p-8 text-white relative">
         <div className="absolute inset-0 opacity-20">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" className="w-full h-full">
-            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                  fill="#fff" opacity="0.2" />
-            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                  fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
+            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+              fill="#fff" opacity="0.2" />
+            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+              fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
           </svg>
         </div>
-        
+
         <div className="relative z-10">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div className="flex items-start">
@@ -249,7 +258,7 @@ const ScheduleShow = () => {
                 <p className="mt-1 text-blue-100">Informasi lengkap jadwal pelayaran #{id}</p>
               </div>
             </div>
-            
+
             <div className="flex gap-3">
               <Link to="/admin/schedules"
                 className="inline-flex items-center px-4 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-white/20 shadow-sm">
@@ -265,7 +274,7 @@ const ScheduleShow = () => {
               </Link>
             </div>
           </div>
-          
+
           {/* Quick Info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-8">
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
@@ -277,7 +286,7 @@ const ScheduleShow = () => {
                 </span>
               </div>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Kapal</p>
               <div className="flex items-center mt-1">
@@ -287,7 +296,7 @@ const ScheduleShow = () => {
                 </span>
               </div>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Jam Keberangkatan</p>
               <div className="flex items-center mt-1">
@@ -297,7 +306,7 @@ const ScheduleShow = () => {
                 </span>
               </div>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Status</p>
               <div className="flex items-center mt-1">
@@ -320,7 +329,7 @@ const ScheduleShow = () => {
                 <i className={`fas ${alert.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-2`}></i>
                 <span className="font-medium">{alert.type === 'success' ? 'Sukses' : 'Error'}</span>
               </div>
-              <button onClick={() => setAlert({...alert, show: false})} className="text-white/80 hover:text-white">
+              <button onClick={() => setAlert({ ...alert, show: false })} className="text-white/80 hover:text-white">
                 <i className="fas fa-times"></i>
               </button>
             </div>
@@ -336,11 +345,10 @@ const ScheduleShow = () => {
             <div className="flex space-x-1">
               <button
                 onClick={() => setActiveTab('info')}
-                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  activeTab === 'info'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
+                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'info'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-gray-600 hover:bg-gray-100'
+                  }`}
               >
                 <div className="flex items-center justify-center">
                   <i className="fas fa-info-circle mr-2"></i>
@@ -349,11 +357,10 @@ const ScheduleShow = () => {
               </button>
               <button
                 onClick={() => setActiveTab('dates')}
-                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  activeTab === 'dates'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
+                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'dates'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-gray-600 hover:bg-gray-100'
+                  }`}
               >
                 <div className="flex items-center justify-center">
                   <i className="fas fa-calendar-alt mr-2"></i>
@@ -417,7 +424,7 @@ const ScheduleShow = () => {
                         </div>
                       )}
                     </div>
-                    
+
                     {/* Informasi Kapal */}
                     <div className="bg-indigo-50 rounded-lg p-5">
                       <h3 className="text-sm font-semibold text-indigo-700 uppercase tracking-wider mb-4 flex items-center">
@@ -454,7 +461,7 @@ const ScheduleShow = () => {
                         </div>
                       )}
                     </div>
-                    
+
                     {/* Hari Operasi */}
                     <div className="bg-purple-50 rounded-lg p-5">
                       <h3 className="text-sm font-semibold text-purple-700 uppercase tracking-wider mb-4 flex items-center">
@@ -467,7 +474,7 @@ const ScheduleShow = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     {/* Status */}
                     <div className="bg-gray-50 rounded-lg p-5">
                       <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4 flex items-center">
@@ -521,7 +528,7 @@ const ScheduleShow = () => {
                         <div className="text-2xl font-bold">{schedule.ferry.capacity_passenger}</div>
                         <div className="text-sm text-blue-100">Penumpang</div>
                       </div>
-                      
+
                       <div className="grid grid-cols-2 gap-3">
                         <div className="bg-green-100 rounded-lg p-3 text-center">
                           <i className="fas fa-motorcycle text-green-600 mb-2"></i>
@@ -565,14 +572,14 @@ const ScheduleShow = () => {
                 <i className="fas fa-calendar-alt text-blue-500 mr-2"></i>
                 Tanggal Tersedia
               </h2>
-              <Link to={`/admin/schedules/${id}/dates`} 
+              <Link to={`/admin/schedules/${id}/dates`}
                 className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
                 <i className="fas fa-plus mr-2"></i>
                 Tambah Tanggal
               </Link>
             </div>
-            
-            <div className="p-6">              
+
+            <div className="p-6">
               {/* Dates Table */}
               {Array.isArray(scheduleDates) && scheduleDates.length > 0 ? (
                 <div className="overflow-x-auto">
@@ -631,7 +638,7 @@ const ScheduleShow = () => {
                             {getStatusBadge(date.status)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <Link to={`/admin/schedules/${id}/dates/${date.id}/edit`} 
+                            <Link to={`/admin/schedules/${id}/dates?edit=${date.id}`}
                               className="btn-icon bg-blue-50 hover:bg-blue-100 text-blue-600 p-2 rounded-lg transition-colors"
                               title="Edit">
                               <i className="fas fa-edit"></i>
@@ -649,7 +656,7 @@ const ScheduleShow = () => {
                   </div>
                   <h3 className="text-xl font-semibold text-gray-800 mb-2">Belum Ada Tanggal Tersedia</h3>
                   <p className="text-gray-600 mb-6">Jadwal ini belum memiliki tanggal yang tersedia untuk pemesanan</p>
-                  <Link to={`/admin/schedules/${id}/dates`} 
+                  <Link to={`/admin/schedules/${id}/dates`}
                     className="inline-flex items-center px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-sm">
                     <i className="fas fa-plus mr-2"></i> Tambah Tanggal
                   </Link>

@@ -263,21 +263,6 @@ const RouteShow = () => {
                 <i className="fas fa-hashtag text-blue-500 mr-1 text-xs"></i>
                 {route.route_code}
               </span>
-              <div className="ml-auto">
-                {route.status === 'ACTIVE' ? (
-                  <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 border border-green-200">
-                    <i className="fas fa-check-circle mr-1"></i> Aktif
-                  </span>
-                ) : route.status === 'WEATHER_ISSUE' ? (
-                  <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200">
-                    <i className="fas fa-cloud-rain mr-1"></i> Masalah Cuaca
-                  </span>
-                ) : (
-                  <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 border border-red-200">
-                    <i className="fas fa-ban mr-1"></i> Tidak Aktif
-                  </span>
-                )}
-              </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-y-3 gap-x-6">
               <div className="flex items-center p-2 bg-white rounded-lg border border-gray-100 shadow-sm">
@@ -577,8 +562,8 @@ const RouteShow = () => {
                   <div className="mx-auto w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-4">
                     <i className="fas fa-info text-gray-400 text-xl"></i>
                   </div>
-                  <p className="text-gray-500">Belum ada kategori kendaraan yang tersedia</p>
-                  <p className="text-sm text-gray-400 mt-2">Hubungi administrator untuk menambahkan kategori kendaraan</p>
+                  <p className="text-gray-500">Harga kendaraan ada pada Kategori Kendaraan</p>
+                  <p className="text-sm text-gray-400 mt-2">Menambahkan kategori kendaraan dapat dilakukan di Navigasi Kategori Kendaraan</p>
                 </div>
               )}
 

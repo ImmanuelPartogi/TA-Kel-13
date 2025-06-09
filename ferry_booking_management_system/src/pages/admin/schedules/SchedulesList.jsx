@@ -480,7 +480,7 @@ const SchedulesList = () => {
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rute</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kapal</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jam</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jadwal</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hari</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
@@ -525,7 +525,7 @@ const SchedulesList = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex flex-col space-y-1">
                             <span className="bg-blue-100 text-blue-700 px-2.5 py-1 rounded-md text-xs font-medium flex items-center">
-                              <i className="fas fa-plane-departure mr-1 text-blue-500"></i>
+                              <i className="fas fa-ship mr-1 text-blue-500"></i>
                               {schedule.departure_time ? new Intl.DateTimeFormat('id-ID', {
                                 hour: '2-digit',
                                 minute: '2-digit',
@@ -533,7 +533,7 @@ const SchedulesList = () => {
                               }).format(new Date(schedule.departure_time)) : 'N/A'}
                             </span>
                             <span className="bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-md text-xs font-medium flex items-center">
-                              <i className="fas fa-plane-arrival mr-1 text-emerald-500"></i>
+                              <i className="fas fa-ship mr-1 text-emerald-500"></i>
                               {schedule.arrival_time ? new Intl.DateTimeFormat('id-ID', {
                                 hour: '2-digit',
                                 minute: '2-digit',

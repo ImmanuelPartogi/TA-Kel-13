@@ -215,12 +215,33 @@ const ScheduleDates = () => {
     });
   };
 
-  const formatTime = (timeString) => {
-    if (!timeString) return '-';
-    return new Date(`2000-01-01T${timeString}`).toLocaleTimeString('id-ID', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const formatTime = (isoTimeString) => {
+    if (!isoTimeString || isoTimeString === 'N/A') return 'N/A';
+
+    try {
+      // Jika format waktu standar HH:MM:SS (tanpa tanggal)
+      if (typeof isoTimeString === 'string' && isoTimeString.match(/^\d{2}:\d{2}(:\d{2})?$/)) {
+        return isoTimeString.substring(0, 5); // Ambil HH:MM saja
+      }
+
+      // Jika format ISO datetime
+      const date = new Date(isoTimeString);
+
+      // Verifikasi bahwa tanggal valid
+      if (isNaN(date.getTime())) {
+        console.warn("Invalid time format:", isoTimeString);
+        return 'N/A';
+      }
+
+      // Format waktu
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+
+      return `${hours}:${minutes}`;
+    } catch (error) {
+      console.error("Error memformat waktu:", error);
+      return 'N/A';
+    }
   };
 
   // Status badge configuration - sama dengan komponen lain
@@ -343,7 +364,6 @@ const ScheduleDates = () => {
               </div>
               <div>
                 <h1 className="text-3xl font-bold">Kelola Tanggal Jadwal</h1>
-                <p className="mt-1 text-blue-100">Atur tanggal tersedia untuk jadwal #{id}</p>
               </div>
             </div>
 
@@ -438,7 +458,7 @@ const ScheduleDates = () => {
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Waktu:</span>
                     <span className="text-sm font-medium">
-                      {formatTime(schedule.departure_time)} - {formatTime(schedule.arrival_time)}
+                      {formatTime(schedule?.departure_time) || 'N/A'} - {formatTime(schedule?.arrival_time) || 'N/A'}
                     </span>
                   </div>
                 </div>

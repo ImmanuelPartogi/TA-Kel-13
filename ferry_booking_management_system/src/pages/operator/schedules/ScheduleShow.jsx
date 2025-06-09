@@ -128,7 +128,7 @@ const ScheduleShow = () => {
 
     return durationText.join(' ') || '0 menit';
   };
-  
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -224,8 +224,9 @@ const ScheduleShow = () => {
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 mb-8 hover:shadow-2xl transition-all duration-300">
           <div className="grid grid-cols-1 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-gray-100">
             <div className="p-4 flex flex-col items-center justify-center">
-              <span className="text-sm text-gray-500 mb-1">ID Jadwal</span>
-              <span className="text-xl font-bold text-gray-800">{schedule.id}</span>
+              <span className="text-sm text-gray-500 mb-1">Kode Rute</span>
+              <span className="text-xl font-bold text-gray-800">                    {schedule?.route?.route_code ? schedule.route.route_code : 'N/A'}
+              </span>
             </div>
             <div className="p-4 flex flex-col items-center justify-center">
               <span className="text-sm text-gray-500 mb-1">Status</span>

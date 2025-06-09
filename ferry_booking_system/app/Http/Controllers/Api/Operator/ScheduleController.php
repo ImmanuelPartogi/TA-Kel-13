@@ -65,7 +65,7 @@ class ScheduleController extends Controller
         }
 
         $query = Schedule::with([
-            'route:id,origin,destination',
+            'route:id,origin,destination,route_code',
             'ferry'
         ])
             ->where('status', 'active')
@@ -118,7 +118,7 @@ class ScheduleController extends Controller
         $this->checkExpiredStatuses();
 
         $schedule = Schedule::with([
-            'route:id,origin,destination',
+            'route:id,origin,destination,route_code', // Tambahkan route_code di sini
             'ferry'
         ])->findOrFail($id);
 
@@ -162,7 +162,7 @@ class ScheduleController extends Controller
         $this->checkExpiredStatuses();
 
         $schedule = Schedule::with([
-            'route:id,origin,destination',
+            'route:id,origin,destination,route_code',
             'ferry'
         ])->findOrFail($id);
 

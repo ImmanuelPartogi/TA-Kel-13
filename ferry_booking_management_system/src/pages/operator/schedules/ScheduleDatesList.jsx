@@ -237,7 +237,6 @@ const ScheduleDatesList = () => {
   const departureTime = schedule?.departure_time || '-';
   const arrivalTime = schedule?.arrival_time || '-';
   const status = schedule?.status || 'INACTIVE';
-  const scheduleId = schedule?.id || '-';
   const ferry = schedule?.ferry || {};
 
   return (
@@ -303,11 +302,7 @@ const ScheduleDatesList = () => {
                 <h2 className="text-lg font-semibold text-gray-800">Informasi Jadwal</h2>
               </div>
               <div className="p-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200 shadow-sm">
-                    <p className="text-xs text-gray-500 mb-1">ID Jadwal</p>
-                    <p className="text-lg font-semibold text-gray-800">{scheduleId}</p>
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200 shadow-sm">
                     <p className="text-xs text-gray-500 mb-1">Status</p>
                     {status === 'ACTIVE' || status === 'active' ? (
@@ -512,15 +507,15 @@ const ScheduleDatesList = () => {
 
         {/* Modal Update Status */}
         {selectedDateId && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-            <div className="bg-white rounded-2xl max-w-lg w-full mx-4 shadow-2xl transform transition-all animate-fade-in">
+          <div className="fixed inset-0 bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="bg-white rounded-2xl max-w-lg w-full mx-4 shadow-xl transform transition-all animate-fade-in">
               <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                <h3 className="text-lg font-medium text-gray-900">
+                <h3 className="text-lg font-semibold text-gray-900">
                   Update Status Tanggal
                 </h3>
                 <button
                   type="button"
-                  className="text-gray-400 hover:text-gray-500"
+                  className="text-gray-500 hover:text-gray-700"
                   onClick={closeModal}
                 >
                   <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -529,13 +524,13 @@ const ScheduleDatesList = () => {
                 </button>
               </div>
               <form onSubmit={handleUpdateStatus}>
-                <div className="px-6 py-4">
+                <div className="px-6 py-4 space-y-4">
                   <div className="mb-4">
-                    <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="status" className="block text-ms font-medium text-gray-700 mb-2">
                       Status:
                     </label>
                     <select
-                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+                      className="py-2 px-3 w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-500 focus:ring-opacity-50 border"
                       id="status"
                       name="status"
                       value={updateFormData.status}
@@ -550,11 +545,11 @@ const ScheduleDatesList = () => {
                     </select>
                   </div>
                   <div className="mb-4">
-                    <label htmlFor="status_reason" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="status_reason" className="block text-ms font-medium text-gray-700 mb-2">
                       Alasan Status (Opsional):
                     </label>
                     <textarea
-                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+                      className="py-2 px-3 w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-500 focus:ring-opacity-50 border"
                       id="status_reason"
                       name="status_reason"
                       rows="3"
@@ -565,12 +560,12 @@ const ScheduleDatesList = () => {
 
                   {updateFormData.status === 'WEATHER_ISSUE' && (
                     <div className="mb-4">
-                      <label htmlFor="status_expiry_date" className="block text-sm font-medium text-gray-700 mb-1">
+                      <label htmlFor="status_expiry_date" className="block text-sm font-medium text-gray-700 mb-2">
                         Tanggal & Waktu Berakhir Status:
                       </label>
                       <input
                         type="datetime-local"
-                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-500 focus:ring-opacity-50"
                         id="status_expiry_date"
                         name="status_expiry_date"
                         value={updateFormData.status_expiry_date}
@@ -580,17 +575,17 @@ const ScheduleDatesList = () => {
                     </div>
                   )}
                 </div>
-                <div className="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+                <div className="px-6 py-4 bg-gray-50 flex justify-end space-x-4">
                   <button
                     type="button"
-                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition duration-150"
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition duration-150"
                     onClick={closeModal}
                   >
                     Batal
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150"
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-150"
                   >
                     Simpan Perubahan
                   </button>
@@ -599,6 +594,7 @@ const ScheduleDatesList = () => {
             </div>
           </div>
         )}
+
 
         {/* CSS for animations */}
         <style>{`

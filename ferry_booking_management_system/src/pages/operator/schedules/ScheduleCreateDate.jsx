@@ -51,7 +51,7 @@ const ScheduleCreateDate = () => {
     try {
       const date = new Date(isoTimeString);
       if (isNaN(date.getTime())) return '';
-      
+
       return date.toLocaleDateString('id-ID', {
         day: '2-digit',
         month: '2-digit',
@@ -67,7 +67,7 @@ const ScheduleCreateDate = () => {
     setLoading(true);
     try {
       const response = await operatorSchedulesService.getById(id);
-      
+
       if (response.data && response.data.data) {
         const scheduleData = response.data.data.schedule || response.data.data;
         setSchedule(scheduleData);
@@ -86,7 +86,7 @@ const ScheduleCreateDate = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
+
     // Clear error for this field
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
@@ -100,7 +100,7 @@ const ScheduleCreateDate = () => {
 
     try {
       await operatorSchedulesService.storeDate(id, formData);
-      
+
       Swal.fire({
         icon: 'success',
         title: 'Berhasil!',
@@ -124,7 +124,7 @@ const ScheduleCreateDate = () => {
 
   const getDayNames = () => {
     if (!schedule || !schedule.days) return [];
-    
+
     const dayNames = {
       '0': 'Minggu',
       '1': 'Senin',
@@ -190,13 +190,13 @@ const ScheduleCreateDate = () => {
         <div className="bg-gradient-to-br from-blue-800 via-blue-600 to-blue-500 rounded-2xl shadow-xl text-white p-8 mb-8 relative overflow-hidden">
           <div className="absolute inset-0 opacity-20">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" className="w-full h-full">
-              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                    fill="#fff" opacity="0.2" />
-              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                    fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
+              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+                fill="#fff" opacity="0.2" />
+              <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+                fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
             </svg>
           </div>
-          
+
           <div className="relative z-10">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
               <div className="flex items-start">
@@ -212,7 +212,7 @@ const ScheduleCreateDate = () => {
                   </p>
                 </div>
               </div>
-              
+
               <div>
                 <Link
                   to={`/operator/schedules/${id}/dates`}
@@ -225,7 +225,7 @@ const ScheduleCreateDate = () => {
                 </Link>
               </div>
             </div>
-            
+
             {/* Quick Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-8">
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
@@ -235,11 +235,12 @@ const ScheduleCreateDate = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                   </svg>
                   <span className="text-2xl font-bold">
-                    {schedule?.route?.route_code || 'N/A'}
+                    {schedule?.route?.route_code ? schedule.route.route_code : 'N/A'}
+
                   </span>
                 </div>
               </div>
-              
+
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
                 <p className="text-blue-100 text-sm">Waktu Keberangkatan</p>
                 <div className="flex flex-col mt-1">
@@ -251,7 +252,7 @@ const ScheduleCreateDate = () => {
                   </span>
                 </div>
               </div>
-              
+
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
                 <p className="text-blue-100 text-sm">Waktu Kedatangan</p>
                 <div className="flex flex-col mt-1">
@@ -263,7 +264,7 @@ const ScheduleCreateDate = () => {
                   </span>
                 </div>
               </div>
-              
+
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
                 <p className="text-blue-100 text-sm">Kapal</p>
                 <div className="flex items-center mt-1">
@@ -298,7 +299,7 @@ const ScheduleCreateDate = () => {
                     {schedule?.route?.origin || 'Unknown'} → {schedule?.route?.destination || 'Unknown'}
                   </span>
                 </div>
-                
+
                 {/* Time Display */}
                 <div className="bg-gradient-to-r from-gray-50 to-white rounded-xl p-4 border border-gray-100 shadow-sm mb-4">
                   <div className="flex items-center justify-between">
@@ -335,7 +336,7 @@ const ScheduleCreateDate = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="border-b border-gray-100 pb-3">
                   <span className="text-sm text-gray-500">Hari Operasi:</span>
                   <div className="flex flex-wrap gap-1.5 mt-2">
@@ -346,15 +347,10 @@ const ScheduleCreateDate = () => {
                     ))}
                   </div>
                 </div>
-                
+
                 <div className="flex justify-between border-b border-gray-100 pb-3">
                   <span className="text-sm text-gray-500">Kapal:</span>
                   <span className="text-sm font-medium text-gray-900">{schedule?.ferry?.name || 'N/A'}</span>
-                </div>
-                
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-500">ID Jadwal:</span>
-                  <span className="text-sm font-medium text-gray-900">{schedule?.id || 'N/A'}</span>
                 </div>
               </div>
             </div>
@@ -372,7 +368,7 @@ const ScheduleCreateDate = () => {
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="date" className="block text-ms font-medium text-gray-700 mb-1">
                       Tanggal <span className="text-red-600">*</span>
                     </label>
                     <div className="relative rounded-md shadow-sm">
@@ -395,11 +391,11 @@ const ScheduleCreateDate = () => {
                     {errors.date && (
                       <p className="mt-1 text-sm text-red-600">{errors.date}</p>
                     )}
-                    <p className="mt-1 text-xs text-gray-500">Pilih tanggal sesuai hari operasi kapal</p>
+                    <p className="mt-1 text-sm text-gray-500">Pilih tanggal sesuai hari operasi kapal</p>
                   </div>
 
                   <div>
-                    <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="status" className="block text-ms font-medium text-gray-700 mb-1">
                       Status <span className="text-red-600">*</span>
                     </label>
                     <div className="relative rounded-md shadow-sm">
@@ -430,7 +426,7 @@ const ScheduleCreateDate = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="status_reason" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="status_reason" className="block text-xm font-medium text-gray-700 mb-1">
                     Alasan Status (Opsional)
                   </label>
                   <div className="relative rounded-md shadow-sm">
@@ -451,7 +447,7 @@ const ScheduleCreateDate = () => {
                   {errors.status_reason && (
                     <p className="mt-1 text-sm text-red-600">{errors.status_reason}</p>
                   )}
-                  <p className="mt-1 text-xs text-gray-500">Tambahkan alasan jika status bukan 'Tersedia'</p>
+                  <p className="mt-1 text-sm text-gray-500">Tambahkan alasan jika status bukan 'Tersedia'</p>
                 </div>
 
                 {formData.status === 'weather_issue' && (
@@ -548,7 +544,7 @@ const ScheduleCreateDate = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-3 border border-red-200 shadow-sm">
                       <div className="flex items-center">
                         <div className="bg-red-500/20 p-2 rounded-full mr-2">
@@ -562,7 +558,7 @@ const ScheduleCreateDate = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl p-3 border border-yellow-200 shadow-sm">
                       <div className="flex items-center">
                         <div className="bg-yellow-500/20 p-2 rounded-full mr-2">
@@ -576,7 +572,7 @@ const ScheduleCreateDate = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-3 border border-blue-200 shadow-sm">
                       <div className="flex items-center">
                         <div className="bg-blue-500/20 p-2 rounded-full mr-2">
@@ -602,7 +598,7 @@ const ScheduleCreateDate = () => {
             </dl>
           </div>
         </div>
-        
+
         {/* CSS untuk animasi */}
         <style>{`
           @keyframes fadeIn {

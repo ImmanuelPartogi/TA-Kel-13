@@ -14,6 +14,9 @@ const BookingCreate = () => {
   const [carPrice, setCarPrice] = useState(0);
   const [busPrice, setBusPrice] = useState(0);
   const [truckPrice, setTruckPrice] = useState(0);
+  const [vehicleCategories, setVehicleCategories] = useState([]);
+  const [vehicleTypes, setVehicleTypes] = useState([]);
+
 
   const [formData, setFormData] = useState({
     route_id: '',
@@ -26,7 +29,7 @@ const BookingCreate = () => {
     payment_channel: '',
     notes: '',
     passengers: [{ name: '', id_number: '', id_type: 'KTP' }],
-    vehicles: []
+    vehicles: [{ type: 'MOTORCYCLE', license_plate: '', brand: '', model: '', vehicle_category_id: '' }],
   });
 
   const [selectedUser, setSelectedUser] = useState(null);
@@ -39,6 +42,8 @@ const BookingCreate = () => {
 
   useEffect(() => {
     fetchRoutes();
+    fetchVehicleCategories();
+    fetchVehicleTypes(); // Tambahkan ini
   }, []);
 
   const fetchRoutes = async () => {
@@ -55,6 +60,28 @@ const BookingCreate = () => {
       setRoutes([]);
     } finally {
       setInitialLoading(false);
+    }
+  };
+
+  const fetchVehicleCategories = async () => {
+    try {
+      const response = await api.get('/admin-panel/vehicle-categories');
+      if (response.data.success) {
+        setVehicleCategories(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching vehicle categories:', error);
+    }
+  };
+
+  const fetchVehicleTypes = async () => {
+    try {
+      const response = await api.get('/admin-panel/vehicle-categories/types');
+      if (response.data.success) {
+        setVehicleTypes(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching vehicle types:', error);
     }
   };
 
@@ -143,10 +170,6 @@ const BookingCreate = () => {
       const selectedSchedule = scheduleData.find(s => s.id == scheduleId);
       if (selectedSchedule) {
         setBasePrice(selectedSchedule.route.base_price);
-        setMotorcyclePrice(selectedSchedule.route.motorcycle_price);
-        setCarPrice(selectedSchedule.route.car_price);
-        setBusPrice(selectedSchedule.route.bus_price);
-        setTruckPrice(selectedSchedule.route.truck_price);
 
         setScheduleInfo(`
           Kapasitas Penumpang: ${selectedSchedule.available_passenger} tersedia
@@ -184,7 +207,15 @@ const BookingCreate = () => {
       const newVehicles = [...formData.vehicles];
 
       if (increment > 0) {
-        newVehicles.push({ type: 'MOTORCYCLE', license_plate: '', brand: '', model: '' });
+        // Gunakan jenis kendaraan default dari database jika tersedia
+        const defaultType = vehicleTypes.length > 0 ? vehicleTypes[0].code : 'MOTORCYCLE';
+        newVehicles.push({
+          type: defaultType,
+          license_plate: '',
+          brand: '',
+          model: '',
+          vehicle_category_id: ''
+        });
       } else {
         newVehicles.pop();
       }
@@ -227,12 +258,13 @@ const BookingCreate = () => {
   const calculateTotal = () => {
     let total = formData.passenger_count * basePrice;
 
+    // Gunakan kategori kendaraan untuk menghitung harga
     formData.vehicles.forEach(vehicle => {
-      switch (vehicle.type) {
-        case 'MOTORCYCLE': total += motorcyclePrice; break;
-        case 'CAR': total += carPrice; break;
-        case 'BUS': total += busPrice; break;
-        case 'TRUCK': total += truckPrice; break;
+      if (vehicle.vehicle_category_id) {
+        const category = vehicleCategories.find(cat => cat.id == vehicle.vehicle_category_id);
+        if (category) {
+          total += parseFloat(category.base_price);
+        }
       }
     });
 
@@ -304,10 +336,10 @@ const BookingCreate = () => {
       const response = await api.post('/admin-panel/bookings', dataToSend);
 
       if (response.data.success) {
-        navigate('/admin/bookings', { 
-          state: { 
-            successMessage: 'Booking baru berhasil dibuat!' 
-          } 
+        navigate('/admin/bookings', {
+          state: {
+            successMessage: 'Booking baru berhasil dibuat!'
+          }
         });
       }
     } catch (error) {
@@ -330,7 +362,7 @@ const BookingCreate = () => {
         <div className="bg-white rounded-xl border border-gray-100 shadow-md p-8 text-center">
           <div className="inline-block relative">
             <div className="h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-500 animate-spin"></div>
-            <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-200 animate-spin" style={{animationDirection: 'reverse', animationDuration: '1.5s'}}></div>
+            <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-200 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
           </div>
           <p className="mt-4 text-gray-600">Memuat data...</p>
         </div>
@@ -344,13 +376,13 @@ const BookingCreate = () => {
       <div className="bg-gradient-to-br from-blue-800 via-blue-600 to-blue-500 p-8 text-white relative">
         <div className="absolute inset-0 opacity-20">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" className="w-full h-full">
-            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                  fill="#fff" opacity="0.2" />
-            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                  fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
+            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+              fill="#fff" opacity="0.2" />
+            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+              fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
           </svg>
         </div>
-        
+
         <div className="relative z-10">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div className="flex items-start">
@@ -362,7 +394,7 @@ const BookingCreate = () => {
                 <p className="mt-1 text-blue-100">Buat reservasi tiket kapal ferry baru</p>
               </div>
             </div>
-            
+
             <div>
               <button
                 onClick={() => navigate('/admin/bookings')}
@@ -372,7 +404,7 @@ const BookingCreate = () => {
               </button>
             </div>
           </div>
-          
+
           {/* Quick Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-8">
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
@@ -382,7 +414,7 @@ const BookingCreate = () => {
                 <span className="text-2xl font-bold">{formData.booking_date}</span>
               </div>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Jumlah Penumpang</p>
               <div className="flex items-center mt-1">
@@ -390,7 +422,7 @@ const BookingCreate = () => {
                 <span className="text-2xl font-bold">{formData.passenger_count}</span>
               </div>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Jumlah Kendaraan</p>
               <div className="flex items-center mt-1">
@@ -398,7 +430,7 @@ const BookingCreate = () => {
                 <span className="text-2xl font-bold">{formData.vehicle_count}</span>
               </div>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Total Pembayaran</p>
               <div className="flex items-center mt-1">
@@ -738,27 +770,30 @@ const BookingCreate = () => {
                                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                     <div>
                                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Jenis <span className="text-red-500">*</span>
+                                        Kategori <span className="text-red-500">*</span>
                                       </label>
                                       <div className="relative rounded-md shadow-sm">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                          <i className="fas fa-car-side text-gray-400"></i>
+                                          <i className="fas fa-tag text-gray-400"></i>
                                         </div>
                                         <select
                                           className="block w-full pl-10 pr-3 py-2 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
-                                          value={vehicle.type}
+                                          value={vehicle.vehicle_category_id}
                                           onChange={(e) => {
                                             const newVehicles = [...formData.vehicles];
-                                            newVehicles[index].type = e.target.value;
+                                            newVehicles[index].vehicle_category_id = e.target.value;
                                             setFormData({ ...formData, vehicles: newVehicles });
                                           }}
                                           required
                                         >
-                                          <option value="">Pilih Jenis</option>
-                                          <option value="MOTORCYCLE">Motor</option>
-                                          <option value="CAR">Mobil</option>
-                                          <option value="BUS">Bus</option>
-                                          <option value="TRUCK">Truk</option>
+                                          <option value="">Pilih Kategori</option>
+                                          {vehicleCategories
+                                            .filter(cat => cat.vehicle_type === vehicle.type)
+                                            .map(category => (
+                                              <option key={category.id} value={category.id}>
+                                                {category.code} - {category.name}
+                                              </option>
+                                            ))}
                                         </select>
                                       </div>
                                     </div>

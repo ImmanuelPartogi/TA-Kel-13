@@ -174,7 +174,7 @@ class BookingController extends Controller
                 ->whereRaw("FIND_IN_SET('$dayOfWeek', days)")
                 ->with([
                     'ferry:id,name,capacity_passenger,capacity_vehicle_motorcycle,capacity_vehicle_car,capacity_vehicle_bus,capacity_vehicle_truck',
-                    'route:id,origin,destination'
+                    'route:id,origin,destination,base_price'
                 ])
                 ->get();
 
@@ -399,20 +399,8 @@ class BookingController extends Controller
 
             if ($validated['vehicle_count'] > 0) {
                 foreach ($validated['vehicles'] as $vehicle) {
-                    switch ($vehicle['type']) {
-                        case 'MOTORCYCLE':
-                            $vehiclePrice += $schedule->route->motorcycle_price;
-                            break;
-                        case 'CAR':
-                            $vehiclePrice += $schedule->route->car_price;
-                            break;
-                        case 'BUS':
-                            $vehiclePrice += $schedule->route->bus_price;
-                            break;
-                        case 'TRUCK':
-                            $vehiclePrice += $schedule->route->truck_price;
-                            break;
-                    }
+                    // Gunakan method getVehiclePriceByType dari model Route
+                    $vehiclePrice += $schedule->route->getVehiclePriceByType($vehicle['type']);
                 }
             }
 

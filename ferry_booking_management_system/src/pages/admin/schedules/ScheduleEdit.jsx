@@ -11,7 +11,7 @@ const ScheduleEdit = () => {
   const [ferries, setFerries] = useState([]);
   const [errors, setErrors] = useState({});
   const [alert, setAlert] = useState({ show: false, type: '', message: '' });
-  
+
   const [formData, setFormData] = useState({
     route_id: '',
     ferry_id: '',
@@ -30,11 +30,11 @@ const ScheduleEdit = () => {
 
   useEffect(() => {
     fetchData();
-    
+
     // Auto-hide alert after 5 seconds
     if (alert.show) {
       const timer = setTimeout(() => {
-        setAlert({...alert, show: false});
+        setAlert({ ...alert, show: false });
       }, 5000);
       return () => clearTimeout(timer);
     }
@@ -48,27 +48,29 @@ const ScheduleEdit = () => {
         adminScheduleService.get('/admin-panel/routes?all=true'),
         adminScheduleService.get('/admin-panel/ferries?all=true')
       ]);
-      
+
       console.log('Schedule Response:', scheduleRes.data);
       console.log('Routes Response:', routesRes.data);
       console.log('Ferries Response:', ferriesRes.data);
-      
+
       const schedule = scheduleRes.data.data;
-      
+
       // Format waktu dari UTC ke HH:mm
       const formatTime = (timeString) => {
         if (!timeString) return '';
+
         // Jika format "HH:mm:ss"
         if (timeString.includes(':') && timeString.length <= 8) {
           return timeString.substring(0, 5);
         }
+
         // Jika format ISO date-time
         const date = new Date(timeString);
         const hours = String(date.getHours()).padStart(2, '0');
         const minutes = String(date.getMinutes()).padStart(2, '0');
         return `${hours}:${minutes}`;
       };
-      
+
       setFormData({
         route_id: schedule.route_id,
         ferry_id: schedule.ferry_id,
@@ -79,28 +81,28 @@ const ScheduleEdit = () => {
         status_reason: schedule.status_reason || '',
         status_expiry_date: schedule.status_expiry_date || ''
       });
-      
+
       // Handle pagination response
       let routesData = [];
       let ferriesData = [];
-      
+
       // Extract routes from pagination response
       if (routesRes.data?.data?.data) {
         routesData = routesRes.data.data.data;
       } else if (routesRes.data?.data) {
         routesData = Array.isArray(routesRes.data.data) ? routesRes.data.data : [];
       }
-      
+
       // Extract ferries from pagination response  
       if (ferriesRes.data?.data?.data) {
         ferriesData = ferriesRes.data.data.data;
       } else if (ferriesRes.data?.data) {
         ferriesData = Array.isArray(ferriesRes.data.data) ? ferriesRes.data.data : [];
       }
-      
+
       console.log('Routes array:', routesData);
       console.log('Ferries array:', ferriesData);
-      
+
       setRoutes(routesData);
       setFerries(ferriesData);
     } catch (error) {
@@ -117,9 +119,9 @@ const ScheduleEdit = () => {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
+
     if (type === 'checkbox') {
-      const newDays = checked 
+      const newDays = checked
         ? [...formData.days, value]
         : formData.days.filter(day => day !== value);
       setFormData({ ...formData, days: newDays });
@@ -130,25 +132,25 @@ const ScheduleEdit = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (formData.days.length === 0) {
       setErrors({ days: 'Pilih minimal satu hari operasional' });
       return;
     }
-    
+
     setSaving(true);
     try {
       await adminScheduleService.put(`/admin-panel/schedules/${id}`, {
         ...formData,
         days: formData.days // Kirim sebagai array, tidak perlu join
       });
-      
+
       setAlert({
         show: true,
         type: 'success',
         message: 'Jadwal berhasil diperbarui'
       });
-      
+
       setTimeout(() => {
         navigate('/admin/schedules');
       }, 2000);
@@ -172,7 +174,7 @@ const ScheduleEdit = () => {
       <div className="bg-white rounded-xl border border-gray-100 shadow-md p-8 text-center">
         <div className="inline-block relative">
           <div className="h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-500 animate-spin"></div>
-          <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-200 animate-spin" style={{animationDirection: 'reverse', animationDuration: '1.5s'}}></div>
+          <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-200 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
         </div>
         <p className="mt-4 text-gray-600">Memuat data jadwal...</p>
       </div>
@@ -185,13 +187,13 @@ const ScheduleEdit = () => {
       <div className="bg-gradient-to-br from-blue-800 via-blue-600 to-blue-500 p-8 text-white relative">
         <div className="absolute inset-0 opacity-20">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" className="w-full h-full">
-            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                  fill="#fff" opacity="0.2" />
-            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                  fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
+            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+              fill="#fff" opacity="0.2" />
+            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+              fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
           </svg>
         </div>
-        
+
         <div className="relative z-10">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div className="flex items-start">
@@ -203,7 +205,7 @@ const ScheduleEdit = () => {
                 <p className="mt-1 text-blue-100">Perbarui informasi jadwal pelayaran</p>
               </div>
             </div>
-            
+
             <div>
               <Link to="/admin/schedules"
                 className="inline-flex items-center px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-white/20 shadow-sm">
@@ -211,7 +213,7 @@ const ScheduleEdit = () => {
               </Link>
             </div>
           </div>
-          
+
           {/* Quick Info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-8">
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
@@ -221,7 +223,7 @@ const ScheduleEdit = () => {
                 <span className="text-2xl font-bold">{routes.length}</span>
               </div>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Kapal Tersedia</p>
               <div className="flex items-center mt-1">
@@ -229,7 +231,7 @@ const ScheduleEdit = () => {
                 <span className="text-2xl font-bold">{ferries.length}</span>
               </div>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Status Saat Ini</p>
               <div className="flex items-center mt-1">
@@ -252,7 +254,7 @@ const ScheduleEdit = () => {
                 <i className={`fas ${alert.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-2`}></i>
                 <span className="font-medium">{alert.type === 'success' ? 'Sukses' : 'Error'}</span>
               </div>
-              <button onClick={() => setAlert({...alert, show: false})} className="text-white/80 hover:text-white">
+              <button onClick={() => setAlert({ ...alert, show: false })} className="text-white/80 hover:text-white">
                 <i className="fas fa-times"></i>
               </button>
             </div>
@@ -289,7 +291,7 @@ const ScheduleEdit = () => {
               Form Edit Jadwal
             </h2>
           </div>
-          
+
           <div className="p-6 bg-white">
             <form onSubmit={handleSubmit}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -302,8 +304,8 @@ const ScheduleEdit = () => {
                       <i className="fas fa-route text-gray-400"></i>
                     </div>
                     <select
-                      id="route_id" 
-                      name="route_id" 
+                      id="route_id"
+                      name="route_id"
                       value={formData.route_id}
                       onChange={handleInputChange}
                       className="block w-full pl-10 pr-3 py-2.5 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
@@ -337,8 +339,8 @@ const ScheduleEdit = () => {
                       <i className="fas fa-ship text-gray-400"></i>
                     </div>
                     <select
-                      id="ferry_id" 
-                      name="ferry_id" 
+                      id="ferry_id"
+                      name="ferry_id"
                       value={formData.ferry_id}
                       onChange={handleInputChange}
                       className="block w-full pl-10 pr-3 py-2.5 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
@@ -369,40 +371,156 @@ const ScheduleEdit = () => {
                   <label htmlFor="departure_time" className="block text-sm font-medium text-gray-700 mb-1">
                     Waktu Keberangkatan <span className="text-red-500">*</span>
                   </label>
-                  <div className="relative rounded-md shadow-sm">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <i className="fas fa-ship text-green-400"></i>
+                  <div className="flex space-x-2">
+                    <div className="relative flex-1">
+                      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                        <i className="fas fa-clock text-blue-600"></i>
+                      </div>
+                      <select
+                        className="block w-full pl-10 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg shadow-sm transition-all duration-200 appearance-none bg-white"
+                        id="departure_hour"
+                        name="departure_hour"
+                        value={formData.departure_time ? formData.departure_time.split(':')[0] : ''}
+                        onChange={(e) => {
+                          const hour = e.target.value;
+                          const minute = formData.departure_time ? formData.departure_time.split(':')[1] || '00' : '00';
+                          const newTime = `${hour}:${minute}`;
+                          setFormData({ ...formData, departure_time: newTime });
+                        }}
+                        required
+                      >
+                        <option value="">Jam</option>
+                        {Array.from({ length: 24 }, (_, i) => {
+                          const hour = i.toString().padStart(2, '0');
+                          return (
+                            <option key={hour} value={hour}>
+                              {hour}
+                            </option>
+                          );
+                        })}
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <i className="fas fa-chevron-down text-gray-400"></i>
+                      </div>
                     </div>
-                    <input 
-                      type="time"
-                      id="departure_time" 
-                      name="departure_time" 
-                      value={formData.departure_time}
-                      onChange={handleInputChange}
-                      className="block w-full pl-10 pr-3 py-2.5 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
-                      required
-                    />
+
+                    <div className="relative flex-1">
+                      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                        <i className="fas fa-stopwatch text-blue-600"></i>
+                      </div>
+                      <select
+                        className="block w-full pl-10 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg shadow-sm transition-all duration-200 appearance-none bg-white"
+                        id="departure_minute"
+                        name="departure_minute"
+                        value={formData.departure_time ? formData.departure_time.split(':')[1] || '' : ''}
+                        onChange={(e) => {
+                          const minute = e.target.value;
+                          const hour = formData.departure_time ? formData.departure_time.split(':')[0] || '00' : '00';
+                          const newTime = `${hour}:${minute}`;
+                          setFormData({ ...formData, departure_time: newTime });
+                        }}
+                        required
+                      >
+                        <option value="">Menit</option>
+                        {Array.from({ length: 60 }, (_, i) => {
+                          const minute = i.toString().padStart(2, '0');
+                          return (
+                            <option key={minute} value={minute}>
+                              {minute}
+                            </option>
+                          );
+                        })}
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <i className="fas fa-chevron-down text-gray-400"></i>
+                      </div>
+                    </div>
                   </div>
+                  {/* Error message */}
+                  {errors.departure_time && (
+                    <p className="mt-1 text-sm text-red-600">
+                      <i className="fas fa-exclamation-circle mr-1"></i>
+                      {errors.departure_time}
+                    </p>
+                  )}
                 </div>
 
                 <div>
                   <label htmlFor="arrival_time" className="block text-sm font-medium text-gray-700 mb-1">
                     Waktu Kedatangan <span className="text-red-500">*</span>
                   </label>
-                  <div className="relative rounded-md shadow-sm">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <i className="fas fa-ship text-red-400"></i>
+                  <div className="flex space-x-2">
+                    <div className="relative flex-1">
+                      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                        <i className="fas fa-clock text-blue-600"></i>
+                      </div>
+                      <select
+                        className="block w-full pl-10 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg shadow-sm transition-all duration-200 appearance-none bg-white"
+                        id="arrival_hour"
+                        name="arrival_hour"
+                        value={formData.arrival_time ? formData.arrival_time.split(':')[0] : ''}
+                        onChange={(e) => {
+                          const hour = e.target.value;
+                          const minute = formData.arrival_time ? formData.arrival_time.split(':')[1] || '00' : '00';
+                          const newTime = `${hour}:${minute}`;
+                          setFormData({ ...formData, arrival_time: newTime });
+                        }}
+                        required
+                      >
+                        <option value="">Jam</option>
+                        {Array.from({ length: 24 }, (_, i) => {
+                          const hour = i.toString().padStart(2, '0');
+                          return (
+                            <option key={hour} value={hour}>
+                              {hour}
+                            </option>
+                          );
+                        })}
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <i className="fas fa-chevron-down text-gray-400"></i>
+                      </div>
                     </div>
-                    <input 
-                      type="time"
-                      id="arrival_time" 
-                      name="arrival_time" 
-                      value={formData.arrival_time}
-                      onChange={handleInputChange}
-                      className="block w-full pl-10 pr-3 py-2.5 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
-                      required
-                    />
+
+                    <div className="relative flex-1">
+                      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                        <i className="fas fa-stopwatch text-blue-600"></i>
+                      </div>
+                      <select
+                        className="block w-full pl-10 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg shadow-sm transition-all duration-200 appearance-none bg-white"
+                        id="arrival_minute"
+                        name="arrival_minute"
+                        value={formData.arrival_time ? formData.arrival_time.split(':')[1] || '' : ''}
+                        onChange={(e) => {
+                          const minute = e.target.value;
+                          const hour = formData.arrival_time ? formData.arrival_time.split(':')[0] || '00' : '00';
+                          const newTime = `${hour}:${minute}`;
+                          setFormData({ ...formData, arrival_time: newTime });
+                        }}
+                        required
+                      >
+                        <option value="">Menit</option>
+                        {Array.from({ length: 60 }, (_, i) => {
+                          const minute = i.toString().padStart(2, '0');
+                          return (
+                            <option key={minute} value={minute}>
+                              {minute}
+                            </option>
+                          );
+                        })}
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <i className="fas fa-chevron-down text-gray-400"></i>
+                      </div>
+                    </div>
                   </div>
+                  {/* Error message */}
+                  {errors.arrival_time && (
+                    <p className="mt-1 text-sm text-red-600">
+                      <i className="fas fa-exclamation-circle mr-1"></i>
+                      {errors.arrival_time}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -414,19 +532,18 @@ const ScheduleEdit = () => {
                   {Object.entries(dayNames).map(([value, name]) => {
                     const isChecked = formData.days.includes(value);
                     return (
-                      <div 
-                        key={value} 
-                        className={`flex items-center p-3 border rounded-lg transition-all duration-200 ${
-                          isChecked 
-                            ? 'bg-blue-50 border-blue-300 shadow-sm' 
-                            : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
-                        }`}
+                      <div
+                        key={value}
+                        className={`flex items-center p-3 border rounded-lg transition-all duration-200 ${isChecked
+                          ? 'bg-blue-50 border-blue-300 shadow-sm'
+                          : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                          }`}
                       >
-                        <input 
+                        <input
                           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                          type="checkbox" 
-                          name="days" 
-                          value={value} 
+                          type="checkbox"
+                          name="days"
+                          value={value}
                           id={`day-${value}`}
                           checked={isChecked}
                           onChange={handleInputChange}
@@ -455,8 +572,8 @@ const ScheduleEdit = () => {
                       <i className="fas fa-toggle-on text-gray-400"></i>
                     </div>
                     <select
-                      id="status" 
-                      name="status" 
+                      id="status"
+                      name="status"
                       value={formData.status}
                       onChange={handleInputChange}
                       className="block w-full pl-10 pr-3 py-2.5 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
@@ -479,10 +596,10 @@ const ScheduleEdit = () => {
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <i className="fas fa-info-circle text-gray-400"></i>
                       </div>
-                      <input 
+                      <input
                         type="text"
-                        id="status_reason" 
-                        name="status_reason" 
+                        id="status_reason"
+                        name="status_reason"
                         value={formData.status_reason}
                         onChange={handleInputChange}
                         className="block w-full pl-10 pr-3 py-2.5 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
@@ -502,10 +619,10 @@ const ScheduleEdit = () => {
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <i className="fas fa-calendar-alt text-gray-400"></i>
                     </div>
-                    <input 
+                    <input
                       type="datetime-local"
-                      id="status_expiry_date" 
-                      name="status_expiry_date" 
+                      id="status_expiry_date"
+                      name="status_expiry_date"
                       value={formData.status_expiry_date}
                       onChange={handleInputChange}
                       className="block w-full pl-10 pr-3 py-2.5 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
@@ -536,15 +653,15 @@ const ScheduleEdit = () => {
               )}
 
               <div className="mt-8 flex justify-end space-x-3">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => navigate('/admin/schedules')}
                   className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
                 >
                   Batalkan
                 </button>
-                
-                <button 
+
+                <button
                   type="submit"
                   disabled={saving}
                   className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50"

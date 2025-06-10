@@ -140,9 +140,52 @@ class VehicleCategoryController extends Controller
     {
         $type = $request->input('type');
         $categories = VehicleCategory::where('vehicle_type', $type)
-                                    ->where('is_active', true)
-                                    ->get(['id', 'code', 'name', 'base_price']);
+            ->where('is_active', true)
+            ->get(['id', 'code', 'name', 'base_price']);
 
         return response()->json($categories);
+    }
+
+    /**
+     * Mendapatkan semua jenis kendaraan yang unik
+     */
+    public function getVehicleTypes()
+    {
+        try {
+            // Ambil semua jenis kendaraan yang unik
+            $vehicleTypes = VehicleCategory::select('vehicle_type')
+                ->where('is_active', true)
+                ->distinct()
+                ->get()
+                ->pluck('vehicle_type');
+
+            // Siapkan data dengan label yang lebih ramah pengguna
+            $formattedTypes = $vehicleTypes->map(function ($type) {
+                $labels = [
+                    'MOTORCYCLE' => 'Motor',
+                    'CAR' => 'Mobil',
+                    'BUS' => 'Bus',
+                    'TRUCK' => 'Truk',
+                    'PICKUP' => 'Pickup',
+                    'TRONTON' => 'Tronton',
+                ];
+
+                return [
+                    'code' => $type,
+                    'name' => $labels[$type] ?? $type
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data jenis kendaraan berhasil diambil',
+                'data' => $formattedTypes
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data jenis kendaraan: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

@@ -109,14 +109,27 @@ const ScheduleShow = () => {
   };
 
   const formatTime = (timeString) => {
-    if (adminScheduleService.formatTime && timeString) {
-      return adminScheduleService.formatTime(timeString);
-    }
     if (!timeString) return '-';
-    return new Date(`2000-01-01T${timeString}`).toLocaleTimeString('id-ID', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+
+    // Jika sudah dalam format "HH:mm" atau "HH:mm:ss"
+    if (timeString.includes(':') && timeString.length <= 8) {
+      return timeString.substring(0, 5); // Ambil hanya jam dan menit
+    }
+
+    // Jika format ISO date-time atau timestamp
+    try {
+      const date = new Date(timeString);
+      if (isNaN(date.getTime())) {
+        return '-'; // Invalid date
+      }
+      // Format khusus untuk 24 jam (HH:mm)
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${hours}:${minutes}`;
+    } catch (error) {
+      console.error('Error formatting time:', error);
+      return '-';
+    }
   };
 
   const getDaysText = (daysString) => {
@@ -300,7 +313,7 @@ const ScheduleShow = () => {
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Jam Keberangkatan</p>
               <div className="flex items-center mt-1">
-                <i className="fas fa-plane-departure mr-2 text-blue-100"></i>
+                <i className="fas fa-clock mr-2 text-blue-100"></i>
                 <span className="text-lg font-semibold">
                   {formatTime(schedule.departure_time)}
                 </span>

@@ -159,13 +159,23 @@ class adminBookingService {
    */
   async exportBookings(params = {}) {
     try {
-      const response = await api.get('/admin-panel/bookings/export', { 
+      const response = await api.get('/admin-panel/bookings/export', {
         params,
-        responseType: 'blob' 
+        responseType: 'blob'
       });
       return response.data;
     } catch (error) {
       console.error('Error exporting bookings:', error);
+      throw error;
+    }
+  }
+
+  async getVehicleCategories() {
+    try {
+      const response = await api.get('/admin-panel/vehicle-categories');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching vehicle categories:', error);
       throw error;
     }
   }

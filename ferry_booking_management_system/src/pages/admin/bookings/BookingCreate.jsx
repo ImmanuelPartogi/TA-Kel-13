@@ -10,13 +10,8 @@ const BookingCreate = () => {
   const [routes, setRoutes] = useState([]);
   const [scheduleData, setScheduleData] = useState([]);
   const [basePrice, setBasePrice] = useState(0);
-  const [motorcyclePrice, setMotorcyclePrice] = useState(0);
-  const [carPrice, setCarPrice] = useState(0);
-  const [busPrice, setBusPrice] = useState(0);
-  const [truckPrice, setTruckPrice] = useState(0);
   const [vehicleCategories, setVehicleCategories] = useState([]);
   const [vehicleTypes, setVehicleTypes] = useState([]);
-
 
   const [formData, setFormData] = useState({
     route_id: '',
@@ -29,7 +24,7 @@ const BookingCreate = () => {
     payment_channel: '',
     notes: '',
     passengers: [{ name: '', id_number: '', id_type: 'KTP' }],
-    vehicles: [{ type: 'MOTORCYCLE', license_plate: '', brand: '', model: '', vehicle_category_id: '' }],
+    vehicles: [],
   });
 
   const [selectedUser, setSelectedUser] = useState(null);
@@ -41,10 +36,59 @@ const BookingCreate = () => {
   const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
-    fetchRoutes();
-    fetchVehicleCategories();
-    fetchVehicleTypes(); // Tambahkan ini
-  }, []);
+    // Auto refresh jadwal setiap 30 detik jika halaman jadwal aktif
+    if (formData.route_id && formData.booking_date && scheduleData.length > 0) {
+      const intervalId = setInterval(() => {
+        refreshSchedules();
+      }, 30000); // 30 detik
+
+      return () => clearInterval(intervalId);
+    }
+  }, [formData.route_id, formData.booking_date, scheduleData.length]);
+
+  useEffect(() => {
+    const updateVehicleCategoriesOnTypeChange = () => {
+      if (formData.vehicles.length > 0 && vehicleCategories.length > 0) {
+        console.log('Updating vehicle categories based on type...');
+        const updatedVehicles = [...formData.vehicles];
+        let hasChanges = false;
+
+        updatedVehicles.forEach((vehicle, index) => {
+          console.log(`Vehicle ${index} type:`, vehicle.type);
+          // Filter kategori yang tersedia untuk tipe kendaraan ini
+          const availableCategories = vehicleCategories.filter(
+            cat => cat.vehicle_type === vehicle.type
+          );
+          console.log(`Available categories for ${vehicle.type}:`, availableCategories);
+
+          // Jika kategori yang dipilih tidak cocok dengan tipe kendaraan saat ini,
+          // reset kategori
+          const isCategoryValid = availableCategories.some(
+            cat => cat.id.toString() === vehicle.vehicle_category_id.toString()
+          );
+
+          if (!isCategoryValid) {
+            console.log(`Resetting category for vehicle ${index}`);
+            updatedVehicles[index] = {
+              ...vehicle,
+              vehicle_category_id: ''
+            };
+            hasChanges = true;
+          }
+        });
+
+        if (hasChanges) {
+          console.log('Updating formData with new vehicle categories');
+          setFormData({
+            ...formData,
+            vehicles: updatedVehicles
+          });
+        }
+      }
+    };
+
+    updateVehicleCategoriesOnTypeChange();
+  }, [vehicleCategories, formData.vehicles.map(v => v.type).join(',')]);
 
   const fetchRoutes = async () => {
     try {
@@ -65,23 +109,54 @@ const BookingCreate = () => {
 
   const fetchVehicleCategories = async () => {
     try {
+      console.log('Fetching vehicle categories...');
       const response = await api.get('/admin-panel/vehicle-categories');
-      if (response.data.success) {
+      console.log('Vehicle categories response:', response);
+
+      // Format respons adalah paginasi, perlu mengakses data array dari dalam response.data.data
+      if (response.data && response.data.data) {
+        console.log('Vehicle categories loaded:', response.data.data);
         setVehicleCategories(response.data.data);
+      } else {
+        console.error('Invalid vehicle categories response structure:', response.data);
+        setVehicleCategories([]);
       }
     } catch (error) {
       console.error('Error fetching vehicle categories:', error);
+      setVehicleCategories([]);
     }
   };
 
   const fetchVehicleTypes = async () => {
     try {
+      console.log('Fetching vehicle types...');
       const response = await api.get('/admin-panel/vehicle-categories/types');
-      if (response.data.success) {
+      console.log('Vehicle types response:', response);
+
+      if (response.data && response.data.success && response.data.data && response.data.data.length > 0) {
+        console.log('Vehicle types loaded:', response.data.data);
         setVehicleTypes(response.data.data);
+      } else {
+        // Data default jika API mengembalikan array kosong
+        console.log('Using default vehicle types');
+        const defaultTypes = [
+          { code: 'MOTORCYCLE', name: 'Motor' },
+          { code: 'CAR', name: 'Mobil' },
+          { code: 'BUS', name: 'Bus' },
+          { code: 'TRUCK', name: 'Truk' }
+        ];
+        setVehicleTypes(defaultTypes);
       }
     } catch (error) {
       console.error('Error fetching vehicle types:', error);
+      // Tetap gunakan data default
+      const defaultTypes = [
+        { code: 'MOTORCYCLE', name: 'Motor' },
+        { code: 'CAR', name: 'Mobil' },
+        { code: 'BUS', name: 'Bus' },
+        { code: 'TRUCK', name: 'Truk' }
+      ];
+      setVehicleTypes(defaultTypes);
     }
   };
 
@@ -93,12 +168,19 @@ const BookingCreate = () => {
 
     setLoading(true);
     try {
+      console.log('Checking schedules with params:', {
+        route_id: formData.route_id,
+        date: formData.booking_date
+      });
+
       const response = await api.get('/admin-panel/bookings/get-schedules', {
         params: {
           route_id: formData.route_id,
           date: formData.booking_date
         }
       });
+
+      console.log('Schedules response:', response.data);
 
       if (response.data.success) {
         setScheduleData(response.data.data);
@@ -204,11 +286,14 @@ const BookingCreate = () => {
   const updateVehicleCount = (increment) => {
     const newCount = formData.vehicle_count + increment;
     if (newCount >= 0 && newCount <= 5) {
-      const newVehicles = [...formData.vehicles];
+      let newVehicles = [...formData.vehicles];
 
       if (increment > 0) {
-        // Gunakan jenis kendaraan default dari database jika tersedia
-        const defaultType = vehicleTypes.length > 0 ? vehicleTypes[0].code : 'MOTORCYCLE';
+        // Pastikan ada vehicle_types sebelum memilih default
+        const defaultType = vehicleTypes && vehicleTypes.length > 0
+          ? vehicleTypes[0].code
+          : 'MOTORCYCLE';
+
         newVehicles.push({
           type: defaultType,
           license_plate: '',
@@ -216,8 +301,10 @@ const BookingCreate = () => {
           model: '',
           vehicle_category_id: ''
         });
+      } else if (newCount === 0) {
+        newVehicles = [];
       } else {
-        newVehicles.pop();
+        newVehicles = newVehicles.slice(0, newCount);
       }
 
       setFormData({
@@ -227,6 +314,7 @@ const BookingCreate = () => {
       });
     }
   };
+
 
   const updatePaymentChannels = () => {
     const channels = {
@@ -280,10 +368,11 @@ const BookingCreate = () => {
     }).format(amount);
   };
 
+  // Perbaikan pada handleSubmit
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validasi data sebelum kirim
+    // Validasi dasar
     if (!formData.schedule_id) {
       alert('Silakan pilih jadwal terlebih dahulu');
       return;
@@ -312,11 +401,11 @@ const BookingCreate = () => {
     // Validasi vehicles jika ada
     if (formData.vehicle_count > 0) {
       const isVehiclesValid = formData.vehicles.every(v =>
-        v.type && v.license_plate
+        v.type && v.license_plate && v.vehicle_category_id
       );
 
       if (!isVehiclesValid) {
-        alert('Silakan lengkapi data semua kendaraan');
+        alert('Silakan lengkapi data semua kendaraan (tipe, plat nomor, dan kategori)');
         return;
       }
     }
@@ -325,13 +414,64 @@ const BookingCreate = () => {
     setErrors([]);
 
     try {
-      // Siapkan data untuk dikirim
+      // Lakukan validasi ulang jadwal sebelum submit
+      console.log('Verifying schedule availability before booking...');
+      const verifyResponse = await api.get('/admin-panel/bookings/get-schedules', {
+        params: {
+          route_id: formData.route_id,
+          date: formData.booking_date
+        }
+      });
+
+      if (!verifyResponse.data.success || verifyResponse.data.data.length === 0) {
+        setErrors(['Jadwal tidak tersedia untuk tanggal yang dipilih, silakan pilih jadwal lain']);
+        setLoading(false);
+        return;
+      }
+
+      // Cek apakah jadwal yang dipilih masih ada di hasil pencarian
+      const selectedScheduleStillAvailable = verifyResponse.data.data.some(
+        schedule => schedule.id == formData.schedule_id
+      );
+
+      if (!selectedScheduleStillAvailable) {
+        setErrors(['Jadwal yang Anda pilih sudah tidak tersedia, silakan pilih jadwal lain']);
+        setScheduleData(verifyResponse.data.data);
+        setLoading(false);
+        return;
+      }
+
+      // Siapkan data untuk dikirim dengan format yang tepat
       const dataToSend = {
         ...formData,
-        departure_date: formData.booking_date, // Backend mengharapkan departure_date
-        // Pastikan vehicles kosong jika tidak ada kendaraan
-        vehicles: formData.vehicle_count > 0 ? formData.vehicles : []
+        // Pastikan ID dikonversi ke number jika diperlukan backend
+        route_id: parseInt(formData.route_id, 10),
+        schedule_id: parseInt(formData.schedule_id, 10),
+        user_id: parseInt(formData.user_id, 10),
+        // Pastikan tanggal keberangkatan terkirim dengan benar
+        departure_date: formData.booking_date,
+        // Perbaiki format jumlah
+        passenger_count: parseInt(formData.passenger_count, 10),
+        vehicle_count: parseInt(formData.vehicle_count, 10),
       };
+
+      // Pastikan format data kendaraan benar
+      if (formData.vehicle_count > 0) {
+        // Pastikan semua kendaraan memiliki semua field yang diperlukan
+        dataToSend.vehicles = formData.vehicles.map(vehicle => ({
+          type: vehicle.type,
+          license_plate: vehicle.license_plate,
+          vehicle_category_id: parseInt(vehicle.vehicle_category_id, 10),
+          brand: vehicle.brand || '',
+          model: vehicle.model || ''
+        }));
+      } else {
+        // Jangan sertakan field vehicles sama sekali jika tidak ada kendaraan
+        dataToSend.vehicle_count = 0;
+        delete dataToSend.vehicles;
+      }
+
+      console.log('Submitting booking with data:', dataToSend);
 
       const response = await api.post('/admin-panel/bookings', dataToSend);
 
@@ -343,16 +483,84 @@ const BookingCreate = () => {
         });
       }
     } catch (error) {
+      console.error('Error creating booking:', error);
+      console.error('Error response:', error.response?.data);
+
       if (error.response?.data?.errors) {
         setErrors(Object.values(error.response.data.errors).flat());
+
+        // Jika error terkait jadwal, refresh data jadwal
+        if (error.response.data.errors.schedule_id) {
+          try {
+            const refreshResponse = await api.get('/admin-panel/bookings/get-schedules', {
+              params: {
+                route_id: formData.route_id,
+                date: formData.booking_date
+              }
+            });
+
+            if (refreshResponse.data.success) {
+              setScheduleData(refreshResponse.data.data);
+              setFormData({ ...formData, schedule_id: '' });
+            }
+          } catch (refreshError) {
+            console.error('Error refreshing schedules:', refreshError);
+          }
+        }
+      } else if (error.response?.data?.message) {
+        setErrors([error.response.data.message]);
       } else {
         setErrors(['Terjadi kesalahan saat membuat booking']);
       }
-      console.error('Error creating booking:', error);
+
       // Scroll to top to show error messages
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Tambahkan di bagian awal komponen
+  const refreshSchedules = async () => {
+    if (!formData.route_id || !formData.booking_date) {
+      return;
+    }
+
+    try {
+      setScheduleInfo('Menyegarkan data jadwal...');
+      const response = await api.get('/admin-panel/bookings/get-schedules', {
+        params: {
+          route_id: formData.route_id,
+          date: formData.booking_date
+        }
+      });
+
+      console.log('Refreshed schedules response:', response.data);
+
+      if (response.data.success) {
+        setScheduleData(response.data.data);
+
+        if (response.data.data.length === 0) {
+          setScheduleInfo('Tidak ada jadwal tersedia untuk tanggal yang dipilih');
+          // Reset selected schedule if not available anymore
+          setFormData({ ...formData, schedule_id: '' });
+        } else {
+          // Check if current selected schedule is still available
+          const isCurrentScheduleAvailable = response.data.data.some(
+            schedule => schedule.id == formData.schedule_id
+          );
+
+          if (!isCurrentScheduleAvailable && formData.schedule_id) {
+            setScheduleInfo('Jadwal yang Anda pilih sudah tidak tersedia, silakan pilih jadwal lain');
+            setFormData({ ...formData, schedule_id: '' });
+          } else {
+            setScheduleInfo('Jadwal tersedia, silakan pilih jadwal');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing schedules:', error);
+      setScheduleInfo('Gagal menyegarkan data jadwal');
     }
   };
 
@@ -538,7 +746,7 @@ const BookingCreate = () => {
                             <i className="fas fa-clock text-gray-400"></i>
                           </div>
                           <select
-                            className="block w-full pl-10 pr-3 py-2.5 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
+                            className="block w-full pl-10 pr-12 py-2.5 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
                             id="schedule_id"
                             value={formData.schedule_id}
                             onChange={handleScheduleChange}
@@ -552,6 +760,17 @@ const BookingCreate = () => {
                               </option>
                             ))}
                           </select>
+                          <div className="absolute inset-y-0 right-0 flex items-center">
+                            <button
+                              type="button"
+                              onClick={refreshSchedules}
+                              disabled={loading || !formData.route_id || !formData.booking_date}
+                              className="h-full px-3 text-gray-600 bg-gray-100 rounded-r-lg hover:bg-gray-200 transition-colors border-l border-gray-300"
+                              title="Refresh jadwal"
+                            >
+                              <i className={`fas ${loading ? 'fa-spinner fa-spin' : 'fa-sync-alt'}`}></i>
+                            </button>
+                          </div>
                         </div>
                         {scheduleInfo && (
                           <div className="mt-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-100">
@@ -766,59 +985,129 @@ const BookingCreate = () => {
                                     Kendaraan {index + 1}
                                   </h4>
                                 </div>
-                                <div className="p-4">
-                                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                    <div>
-                                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Kategori <span className="text-red-500">*</span>
-                                      </label>
-                                      <div className="relative rounded-md shadow-sm">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                          <i className="fas fa-tag text-gray-400"></i>
-                                        </div>
-                                        <select
-                                          className="block w-full pl-10 pr-3 py-2 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
-                                          value={vehicle.vehicle_category_id}
-                                          onChange={(e) => {
-                                            const newVehicles = [...formData.vehicles];
-                                            newVehicles[index].vehicle_category_id = e.target.value;
-                                            setFormData({ ...formData, vehicles: newVehicles });
-                                          }}
-                                          required
-                                        >
-                                          <option value="">Pilih Kategori</option>
-                                          {vehicleCategories
-                                            .filter(cat => cat.vehicle_type === vehicle.type)
-                                            .map(category => (
-                                              <option key={category.id} value={category.id}>
-                                                {category.code} - {category.name}
-                                              </option>
-                                            ))}
-                                        </select>
+                                <div className="p-4 space-y-4">
+                                  {/* Tipe Kendaraan */}
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                      Tipe Kendaraan <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="relative rounded-md shadow-sm">
+                                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <i className="fas fa-car text-gray-400"></i>
                                       </div>
+                                      <select
+                                        className="block w-full pl-10 pr-3 py-2 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                        value={vehicle.type || ''}
+                                        onChange={(e) => {
+                                          console.log('Selected vehicle type:', e.target.value);
+                                          const newVehicles = [...formData.vehicles];
+                                          const oldType = newVehicles[index].type;
+                                          newVehicles[index].type = e.target.value;
+
+                                          // Reset kategori hanya jika tipe berubah
+                                          if (oldType !== e.target.value) {
+                                            newVehicles[index].vehicle_category_id = '';
+                                            console.log('Reset vehicle category due to type change');
+                                          }
+
+                                          setFormData({ ...formData, vehicles: newVehicles });
+
+                                          // Tambahkan log kategori yang tersedia
+                                          const availableCategories = vehicleCategories.filter(
+                                            cat => cat.vehicle_type === e.target.value
+                                          );
+                                          console.log(`Available categories for ${e.target.value}:`, availableCategories);
+                                        }}
+                                        required
+                                      >
+                                        <option value="">Pilih Tipe Kendaraan</option>
+                                        {vehicleTypes.length > 0 ? (
+                                          vehicleTypes.map(type => (
+                                            <option key={type.code} value={type.code}>
+                                              {type.name}
+                                            </option>
+                                          ))
+                                        ) : (
+                                          <option value="" disabled>Memuat tipe kendaraan...</option>
+                                        )}
+                                      </select>
                                     </div>
-                                    <div>
-                                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Plat Nomor <span className="text-red-500">*</span>
-                                      </label>
-                                      <div className="relative rounded-md shadow-sm">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                          <i className="fas fa-id-card text-gray-400"></i>
-                                        </div>
-                                        <input
-                                          type="text"
-                                          className="block w-full pl-10 pr-3 py-2 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
-                                          value={vehicle.license_plate}
-                                          onChange={(e) => {
-                                            const newVehicles = [...formData.vehicles];
-                                            newVehicles[index].license_plate = e.target.value;
-                                            setFormData({ ...formData, vehicles: newVehicles });
-                                          }}
-                                          placeholder="B 1234 ABC"
-                                          required
-                                        />
+                                    {vehicleTypes.length === 0 && (
+                                      <p className="mt-1 text-xs text-red-500">
+                                        Data tipe kendaraan tidak tersedia. Harap periksa koneksi.
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  {/* Kategori Kendaraan */}
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                      Kategori <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="relative rounded-md shadow-sm">
+                                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <i className="fas fa-tag text-gray-400"></i>
                                       </div>
+                                      <select
+                                        className="block w-full pl-10 pr-3 py-2 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                        value={vehicle.vehicle_category_id || ''}
+                                        onChange={(e) => {
+                                          const newVehicles = [...formData.vehicles];
+                                          newVehicles[index].vehicle_category_id = e.target.value;
+                                          setFormData({ ...formData, vehicles: newVehicles });
+                                          console.log('Selected category:', e.target.value);
+                                        }}
+                                        required
+                                        disabled={!vehicle.type}
+                                      >
+                                        <option value="">
+                                          {vehicle.type ? 'Pilih Kategori' : 'Pilih tipe kendaraan terlebih dahulu'}
+                                        </option>
+                                        {vehicle.type && vehicleCategories
+                                          .filter(cat => cat.vehicle_type === vehicle.type)
+                                          .map(category => (
+                                            <option key={category.id} value={category.id}>
+                                              {category.code} - {category.name} ({formatCurrency(category.base_price)})
+                                            </option>
+                                          ))}
+                                        {vehicle.type && vehicleCategories.filter(cat => cat.vehicle_type === vehicle.type).length === 0 && (
+                                          <option value="" disabled>Tidak ada kategori untuk tipe kendaraan ini</option>
+                                        )}
+                                      </select>
                                     </div>
+                                    {vehicle.type && vehicleCategories.filter(cat => cat.vehicle_type === vehicle.type).length === 0 && (
+                                      <p className="mt-1 text-xs text-orange-500">
+                                        Tidak ada kategori tersedia untuk tipe kendaraan ini.
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  {/* Plat Nomor */}
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                      Plat Nomor <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="relative rounded-md shadow-sm">
+                                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <i className="fas fa-id-card text-gray-400"></i>
+                                      </div>
+                                      <input
+                                        type="text"
+                                        className="block w-full pl-10 pr-3 py-2 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                        value={vehicle.license_plate}
+                                        onChange={(e) => {
+                                          const newVehicles = [...formData.vehicles];
+                                          newVehicles[index].license_plate = e.target.value;
+                                          setFormData({ ...formData, vehicles: newVehicles });
+                                        }}
+                                        placeholder="B 1234 ABC"
+                                        required
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {/* Info Tambahan: Grid dengan 2 kolom untuk Merk dan Model */}
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                       <label className="block text-sm font-medium text-gray-700 mb-1">
                                         Merk

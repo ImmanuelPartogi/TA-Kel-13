@@ -8,7 +8,7 @@ class AdminVehicleCategoriesService {
    */
   async getCategories(params = {}) {
     try {
-      // Ubah vehicleCategories menjadi vehicle-categories
+      // Menggunakan endpoint yang benar sesuai dengan API routes di Laravel
       const response = await api.get('/admin-panel/vehicle-categories', { params });
       return response.data;
     } catch (error) {
@@ -219,49 +219,6 @@ class AdminVehicleCategoriesService {
   }
 
   /**
-   * Build filter params
-   * @param {Object} filters - Filter object
-   * @returns {Object}
-   */
-  buildFilterParams(filters) {
-    const params = {};
-
-    if (filters.code) {
-      params.code = filters.code;
-    }
-
-    if (filters.name) {
-      params.name = filters.name;
-    }
-
-    if (filters.vehicle_type) {
-      params.vehicle_type = filters.vehicle_type;
-    }
-
-    if (filters.is_active !== undefined) {
-      params.is_active = filters.is_active;
-    }
-
-    if (filters.per_page) {
-      params.per_page = filters.per_page;
-    }
-
-    if (filters.page) {
-      params.page = filters.page;
-    }
-
-    if (filters.sort_by) {
-      params.sort_by = filters.sort_by;
-    }
-
-    if (filters.sort_direction) {
-      params.sort_direction = filters.sort_direction;
-    }
-
-    return params;
-  }
-
-  /**
    * Export categories data
    * @param {Array} categories - Categories array
    * @returns {Array}
@@ -278,33 +235,6 @@ class AdminVehicleCategoriesService {
       'Dibuat Pada': this.formatDateTime(category.created_at),
       'Diperbarui Pada': this.formatDateTime(category.updated_at)
     }));
-  }
-
-  /**
-   * Format data untuk dropdown select
-   * @param {Array} categories - Categories array
-   * @returns {Array}
-   */
-  formatForSelect(categories) {
-    return categories.map(category => ({
-      value: category.id,
-      label: `${category.code} - ${category.name} (${this.formatPrice(category.base_price)})`
-    }));
-  }
-
-  /**
-   * Format statistik kategori
-   * @param {Object} category - Category object with stats
-   * @returns {Object}
-   */
-  formatCategoryStats(category) {
-    return {
-      totalVehicles: category.vehicles_count || 0,
-      activeVehicles: category.active_vehicles_count || 0,
-      totalRevenue: category.total_revenue || 0,
-      formattedRevenue: this.formatPrice(category.total_revenue || 0),
-      lastUsed: this.formatDateTime(category.last_used_at)
-    };
   }
 }
 

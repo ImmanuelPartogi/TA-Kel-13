@@ -263,7 +263,6 @@ Route::prefix('admin-panel')->middleware(['auth:sanctum'])->group(function () {
         Route::get('/search-users', [AdminBookingController::class, 'searchUsers']);
         Route::get('/{id}', [AdminBookingController::class, 'show']);
         Route::put('/{id}/status', [AdminBookingController::class, 'updateStatus']);
-        Route::get('/admin-panel/bookings/get-schedules', [AdminBookingController::class, 'getSchedules']);
 
         // Reschedule
         Route::get('/{id}/reschedule', [AdminBookingController::class, 'rescheduleForm']);
@@ -310,12 +309,11 @@ Route::prefix('admin-panel')->middleware(['auth:sanctum'])->group(function () {
     Route::prefix('vehicle-categories')->group(function () {
         Route::get('/', [AdminVehicleCategoryController::class, 'index']);
         Route::post('/', [AdminVehicleCategoryController::class, 'store']);
-        Route::get('/{id}', [AdminVehicleCategoryController::class, 'show']);
-        Route::put('/{id}', [AdminVehicleCategoryController::class, 'update']);
-        Route::delete('/{id}', [AdminVehicleCategoryController::class, 'destroy']);
-        Route::put('/{id}/status', [AdminVehicleCategoryController::class, 'toggleStatus']);
-        Route::get('/by-type', [AdminVehicleCategoryController::class, 'getCategoriesByType'])->withoutMiddleware(['auth:sanctum']);
-        Route::get('/types', [AdminVehicleCategoryController::class, 'getVehicleTypes']);
+        Route::get('/{vehicleCategory}', [AdminVehicleCategoryController::class, 'show']);
+        Route::put('/{vehicleCategory}', [AdminVehicleCategoryController::class, 'update']);
+        Route::delete('/{vehicleCategory}', [AdminVehicleCategoryController::class, 'destroy']);
+        Route::put('/{vehicleCategory}/status', [AdminVehicleCategoryController::class, 'toggleStatus']);
+        Route::get('/by-type', [AdminVehicleCategoryController::class, 'getCategoriesByType']);
     });
 });
 

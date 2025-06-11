@@ -16,20 +16,16 @@ const VehicleCategoriesShow = () => {
     const fetchCategory = async () => {
       setLoading(true);
       try {
-        // Menggunakan getCategoryDetail dari service baru
         const response = await AdminVehicleCategoriesService.getCategoryDetail(id);
 
-        // Periksa dan sesuaikan cara mengakses data
-        if (response.data) {
+        // Ekstrak data kategori dari response
+        if (response && response.data) {
           setCategory(response.data);
         } else if (response) {
-          // Jika data langsung pada respons tanpa wrapping .data
           setCategory(response);
         } else {
           setError('Data kategori tidak lengkap');
         }
-
-        setError(null);
       } catch (err) {
         setError('Gagal memuat data kategori kendaraan');
         console.error('Error fetching category:', err);
@@ -57,7 +53,6 @@ const VehicleCategoriesShow = () => {
   // Handler untuk delete kategori
   const handleDelete = async () => {
     try {
-      // Menggunakan deleteCategory dari service baru
       await AdminVehicleCategoriesService.deleteCategory(id);
       setNotification({
         show: true,
@@ -92,15 +87,14 @@ const VehicleCategoriesShow = () => {
   // Handler untuk toggle status
   const handleToggleStatus = async () => {
     try {
-      // Menggunakan toggleCategoryStatus dari service baru
       await AdminVehicleCategoriesService.toggleCategoryStatus(id);
 
       // Refresh data
       const response = await AdminVehicleCategoriesService.getCategoryDetail(id);
       
-      // Periksa dan sesuaikan cara mengakses data (sama seperti di useEffect)
+      // Ekstrak data kategori dari response
       let categoryData;
-      if (response.data) {
+      if (response && response.data) {
         categoryData = response.data;
         setCategory(response.data);
       } else if (response && typeof response === 'object') {
@@ -387,63 +381,6 @@ const VehicleCategoriesShow = () => {
                   </div>
                 </div>
               </div>
-
-              {/* Statistik */}
-              {category.vehicles_count !== undefined && (
-                <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-lg transition-all duration-300 mb-6">
-                  <div className="bg-gradient-to-r from-gray-700 to-gray-800 px-4 py-3 text-white">
-                    <h3 className="text-lg font-semibold flex items-center">
-                      <i className="fas fa-chart-bar mr-2"></i>
-                      Statistik Penggunaan
-                    </h3>
-                  </div>
-                  <div className="p-5">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {/* Total Kendaraan */}
-                      <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200 relative overflow-hidden group hover:shadow-md transition-all">
-                        <div className="absolute -right-4 -bottom-4 text-blue-200 text-6xl opacity-30 group-hover:opacity-50 transition-opacity">
-                          <i className="fas fa-car"></i>
-                        </div>
-                        <h4 className="text-xs font-medium text-blue-700 uppercase tracking-wider mb-1">Total Kendaraan</h4>
-                        <p className="text-3xl font-bold text-blue-700">{category.vehicles_count || 0}</p>
-                        <p className="text-blue-600 text-xs mt-1 opacity-75">Jumlah keseluruhan kendaraan</p>
-                      </div>
-
-                      {/* Kendaraan Aktif */}
-                      <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg p-4 border border-emerald-200 relative overflow-hidden group hover:shadow-md transition-all">
-                        <div className="absolute -right-4 -bottom-4 text-emerald-200 text-6xl opacity-30 group-hover:opacity-50 transition-opacity">
-                          <i className="fas fa-car-side"></i>
-                        </div>
-                        <h4 className="text-xs font-medium text-emerald-700 uppercase tracking-wider mb-1">Kendaraan Aktif</h4>
-                        <p className="text-3xl font-bold text-emerald-700">{category.active_vehicles_count || 0}</p>
-                        <p className="text-emerald-600 text-xs mt-1 opacity-75">Kendaraan dengan status aktif</p>
-                      </div>
-
-                      {/* Total Tiket */}
-                      <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg p-4 border border-amber-200 relative overflow-hidden group hover:shadow-md transition-all">
-                        <div className="absolute -right-4 -bottom-4 text-amber-200 text-6xl opacity-30 group-hover:opacity-50 transition-opacity">
-                          <i className="fas fa-ticket-alt"></i>
-                        </div>
-                        <h4 className="text-xs font-medium text-amber-700 uppercase tracking-wider mb-1">Total Tiket</h4>
-                        <p className="text-3xl font-bold text-amber-700">{category.tickets_count || 0}</p>
-                        <p className="text-amber-600 text-xs mt-1 opacity-75">Tiket yang terjual</p>
-                      </div>
-
-                      {/* Total Pendapatan */}
-                      <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200 relative overflow-hidden group hover:shadow-md transition-all">
-                        <div className="absolute -right-4 -bottom-4 text-purple-200 text-6xl opacity-30 group-hover:opacity-50 transition-opacity">
-                          <i className="fas fa-money-bill-wave"></i>
-                        </div>
-                        <h4 className="text-xs font-medium text-purple-700 uppercase tracking-wider mb-1">Total Pendapatan</h4>
-                        <p className="text-3xl font-bold text-purple-700">
-                          {AdminVehicleCategoriesService.formatPrice(category.total_revenue || 0)}
-                        </p>
-                        <p className="text-purple-600 text-xs mt-1 opacity-75">Pendapatan dari tiket</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* Action Buttons */}
               <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">

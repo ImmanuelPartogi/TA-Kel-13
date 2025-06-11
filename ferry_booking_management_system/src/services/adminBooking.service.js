@@ -32,20 +32,6 @@ class adminBookingService {
   }
 
   /**
-   * Mendapatkan data untuk form pembuatan booking
-   * @returns {Promise}
-   */
-  async getCreateFormData() {
-    try {
-      const response = await api.get('/admin-panel/bookings/create');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching create form data:', error);
-      throw error;
-    }
-  }
-
-  /**
    * Mendapatkan jadwal berdasarkan rute dan tanggal
    * @param {Object} data - Request data
    * @returns {Promise}
@@ -56,36 +42,6 @@ class adminBookingService {
       return response.data;
     } catch (error) {
       console.error('Error fetching schedules:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Mencari pengguna berdasarkan query
-   * @param {Object} params - Search parameters
-   * @returns {Promise}
-   */
-  async searchUsers(params) {
-    try {
-      const response = await api.get('/admin-panel/bookings/users/search', { params });
-      return response.data;
-    } catch (error) {
-      console.error('Error searching users:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Membuat booking baru
-   * @param {Object} data - Booking data
-   * @returns {Promise}
-   */
-  async createBooking(data) {
-    try {
-      const response = await api.post('/admin-panel/bookings', data);
-      return response.data;
-    } catch (error) {
-      console.error('Error creating booking:', error);
       throw error;
     }
   }
@@ -241,52 +197,6 @@ class adminBookingService {
       'RESCHEDULED': 'Dijadwalkan Ulang'
     };
     return texts[status] || status;
-  }
-
-  /**
-   * Validate booking form
-   * @param {Object} formData - Form data
-   * @returns {Object}
-   */
-  validateBookingForm(formData) {
-    const errors = {};
-
-    if (!formData.user_id) {
-      errors.user_id = 'Pengguna harus dipilih';
-    }
-
-    if (!formData.schedule_id) {
-      errors.schedule_id = 'Jadwal harus dipilih';
-    }
-
-    if (!formData.departure_date) {
-      errors.departure_date = 'Tanggal keberangkatan harus diisi';
-    }
-
-    if (!formData.passenger_count || formData.passenger_count < 1) {
-      errors.passenger_count = 'Jumlah penumpang minimal 1';
-    }
-
-    if (formData.vehicle_count > 0 && (!formData.vehicles || formData.vehicles.length === 0)) {
-      errors.vehicles = 'Data kendaraan harus diisi jika ada kendaraan';
-    }
-
-    if (!formData.passengers || formData.passengers.length === 0) {
-      errors.passengers = 'Data penumpang harus diisi';
-    }
-
-    if (!formData.payment_method) {
-      errors.payment_method = 'Metode pembayaran harus dipilih';
-    }
-
-    if (!formData.payment_channel) {
-      errors.payment_channel = 'Channel pembayaran harus dipilih';
-    }
-
-    return {
-      isValid: Object.keys(errors).length === 0,
-      errors
-    };
   }
 
   /**

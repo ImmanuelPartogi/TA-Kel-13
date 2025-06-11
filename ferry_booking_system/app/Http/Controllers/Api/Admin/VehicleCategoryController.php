@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\VehicleCategory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class VehicleCategoryController extends Controller
 {
@@ -66,14 +67,21 @@ class VehicleCategoryController extends Controller
         ], 201);
     }
 
-    // Modifikasi method lainnya untuk mengembalikan response JSON
-
     /**
      * Display the specified resource.
      */
     public function show(VehicleCategory $vehicleCategory)
     {
-        return response()->json($vehicleCategory);
+        try {
+            // Mengembalikan data kategori tanpa statistik
+            return response()->json($vehicleCategory);
+        } catch (\Exception $e) {
+            Log::error('Error mengambil kategori kendaraan: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Gagal mengambil data kategori kendaraan',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -104,7 +112,7 @@ class VehicleCategoryController extends Controller
     public function destroy(VehicleCategory $vehicleCategory)
     {
         // Cek apakah kategori digunakan oleh kendaraan
-        if ($vehicleCategory->vehicles()->count() > 0) {
+        if (method_exists($vehicleCategory, 'vehicles') && $vehicleCategory->vehicles()->count() > 0) {
             return response()->json([
                 'message' => 'Kategori ini tidak dapat dihapus karena masih digunakan oleh kendaraan'
             ], 422);
@@ -140,8 +148,8 @@ class VehicleCategoryController extends Controller
     {
         $type = $request->input('type');
         $categories = VehicleCategory::where('vehicle_type', $type)
-                                    ->where('is_active', true)
-                                    ->get(['id', 'code', 'name', 'base_price']);
+            ->where('is_active', true)
+            ->get(['id', 'code', 'name', 'base_price']);
 
         return response()->json($categories);
     }

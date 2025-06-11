@@ -278,7 +278,7 @@ const RefundsList = () => {
 
             <div>
               <Link
-                to="/admin/refunds"
+                to="/admin/refunds/settings"
                 className="inline-flex items-center px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-white/20 shadow-sm"
               >
                 <i className="fas fa-cog mr-2"></i> Kebijakan Refund

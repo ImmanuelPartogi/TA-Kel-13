@@ -34,15 +34,11 @@ const VehicleCategoriesEdit = () => {
     const fetchCategory = async () => {
       setIsLoading(true);
       try {
-        // Menggunakan getCategoryDetail dari service baru
         const response = await AdminVehicleCategoriesService.getCategoryDetail(id);
-
-        // Log untuk debugging
-        console.log('API Response:', response);
-
-        // Cek struktur data - mungkin data ada langsung di response, bukan di response.data
+        
+        // Ekstrak data kategori dari response, menangani berbagai kemungkinan struktur
         let categoryData;
-        if (response.data) {
+        if (response && response.data) {
           categoryData = response.data;
         } else if (response && typeof response === 'object') {
           categoryData = response;
@@ -57,8 +53,9 @@ const VehicleCategoriesEdit = () => {
           description: categoryData.description || '',
           vehicle_type: categoryData.vehicle_type || '',
           base_price: categoryData.base_price?.toString() || '',
-          is_active: categoryData.is_active || false
+          is_active: categoryData.is_active === undefined ? true : categoryData.is_active
         });
+        setErrors({});
       } catch (error) {
         console.error('Error fetching category:', error);
         setNotification({
@@ -146,41 +143,40 @@ const VehicleCategoriesEdit = () => {
   };
 
   // Reset form to original data
-  const resetForm = () => {
+  const resetForm = async () => {
     setIsLoading(true);
-    AdminVehicleCategoriesService.getCategoryDetail(id)
-      .then(response => {
-        // Cek struktur data
-        let categoryData;
-        if (response.data) {
-          categoryData = response.data;
-        } else if (response && typeof response === 'object') {
-          categoryData = response;
-        } else {
-          throw new Error('Invalid response format');
-        }
+    try {
+      const response = await AdminVehicleCategoriesService.getCategoryDetail(id);
+      
+      // Ekstrak data kategori
+      let categoryData;
+      if (response && response.data) {
+        categoryData = response.data;
+      } else if (response && typeof response === 'object') {
+        categoryData = response;
+      } else {
+        throw new Error('Invalid response format');
+      }
 
-        setFormData({
-          code: categoryData.code || '',
-          name: categoryData.name || '',
-          description: categoryData.description || '',
-          vehicle_type: categoryData.vehicle_type || '',
-          base_price: categoryData.base_price?.toString() || '',
-          is_active: categoryData.is_active || false
-        });
-        setErrors({});
-      })
-      .catch(error => {
-        console.error('Error resetting form:', error);
-        setNotification({
-          show: true,
-          message: 'Gagal memuat ulang data kategori kendaraan',
-          type: 'error'
-        });
-      })
-      .finally(() => {
-        setIsLoading(false);
+      setFormData({
+        code: categoryData.code || '',
+        name: categoryData.name || '',
+        description: categoryData.description || '',
+        vehicle_type: categoryData.vehicle_type || '',
+        base_price: categoryData.base_price?.toString() || '',
+        is_active: categoryData.is_active === undefined ? true : categoryData.is_active
       });
+      setErrors({});
+    } catch (error) {
+      console.error('Error resetting form:', error);
+      setNotification({
+        show: true,
+        message: 'Gagal memuat ulang data kategori kendaraan',
+        type: 'error'
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

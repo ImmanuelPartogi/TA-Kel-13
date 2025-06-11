@@ -239,15 +239,6 @@ const BookingsList = () => {
                 <p className="mt-1 text-blue-100">Kelola seluruh booking tiket kapal ferry dalam sistem</p>
               </div>
             </div>
-            
-            <div>
-              <Link
-                to="/admin/bookings/create"
-                className="inline-flex items-center px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-white/20 shadow-sm"
-              >
-                <i className="fas fa-plus mr-2"></i> Buat Booking Baru
-              </Link>
-            </div>
           </div>
           
           {/* Quick Stats */}
@@ -526,12 +517,6 @@ const BookingsList = () => {
               >
                 <i className="fas fa-sync-alt mr-2"></i> Reset Filter
               </button>
-              <Link
-                to="/admin/bookings/create"
-                className="inline-flex items-center px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-sm"
-              >
-                <i className="fas fa-plus mr-2"></i> Buat Booking Baru
-              </Link>
             </div>
           </div>
         )}

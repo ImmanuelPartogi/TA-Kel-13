@@ -33,7 +33,6 @@ import AdminScheduleDates from './pages/admin/schedules/ScheduleDates';
 
 // Admin pages - Bookings
 import AdminBookingList from './pages/admin/bookings/BookingsList';
-import AdminBookingCreate from './pages/admin/bookings/BookingCreate';
 import AdminBookingReschedule from './pages/admin/bookings/BookingReschedule';
 import AdminBookingShow from './pages/admin/bookings/BookingShow';
 
@@ -170,7 +169,6 @@ function App() {
 
           {/* Bookings management */}
           <Route path="bookings" element={<AdminBookingList />} />
-          <Route path="bookings/create" element={<AdminBookingCreate />} />
           <Route path="bookings/:id/reschedule" element={<AdminBookingReschedule />} />
           <Route path="bookings/:id" element={<AdminBookingShow />} />
 

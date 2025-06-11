@@ -218,7 +218,7 @@ const UserList = () => {
           </div>
           
           {/* Quick Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mt-8">
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Total Pengguna</p>
               <div className="flex items-center mt-1">
@@ -232,14 +232,6 @@ const UserList = () => {
               <div className="flex items-center mt-1">
                 <i className="fas fa-user-plus mr-2 text-blue-100"></i>
                 <span className="text-2xl font-bold">{stats.newUsersThisMonth}</span>
-              </div>
-            </div>
-            
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-              <p className="text-blue-100 text-sm">Pengguna Aktif</p>
-              <div className="flex items-center mt-1">
-                <i className="fas fa-user-check mr-2 text-blue-100"></i>
-                <span className="text-2xl font-bold">{stats.activeUsers}</span>
               </div>
             </div>
             

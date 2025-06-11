@@ -58,7 +58,7 @@ class UserController extends Controller
                 'stats' => [
                     'total_users' => $totalUsers,
                     'new_users_this_month' => $newUsersThisMonth,
-                    'active_users' => $activeUsers,
+                    // 'active_users' => $activeUsers,
                     'avg_bookings_per_user' => $avgBookingsPerUser
                 ]
             ]

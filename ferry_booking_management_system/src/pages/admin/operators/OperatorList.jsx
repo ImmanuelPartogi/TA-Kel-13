@@ -520,7 +520,6 @@ const OperatorList = () => {
                           </div>
                           <div className="ml-4">
                             <div className="text-sm font-medium text-gray-900">{operator.company_name}</div>
-                            <div className="text-xs text-gray-500">ID: {operator.id}</div>
                           </div>
                         </div>
                       </td>

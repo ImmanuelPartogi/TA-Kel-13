@@ -128,28 +128,6 @@ const UserShow = () => {
     );
   };
 
-  const getUserStatusBadge = (user) => {
-    if (!user) return null;
-    
-    const isActive = user.total_bookings > 0 || new Date(user.created_at) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    
-    if (isActive) {
-      return (
-        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
-          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5 animate-pulse"></span>
-          Aktif
-        </span>
-      );
-    } else {
-      return (
-        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
-          <span className="w-1.5 h-1.5 bg-gray-500 rounded-full mr-1.5"></span>
-          Tidak Aktif
-        </span>
-      );
-    }
-  };
-
   if (loading) {
     return (
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -269,9 +247,6 @@ const UserShow = () => {
                     </span>
                   </div>
                 )}
-                <div className="absolute -bottom-2 -right-2">
-                  {getUserStatusBadge(user)}
-                </div>
               </div>
               
               <div className="flex-1 text-center md:text-left">
@@ -280,10 +255,6 @@ const UserShow = () => {
                 <p className="text-blue-200 text-sm">
                   <i className="fas fa-calendar-alt mr-1"></i>
                   Member sejak {formatDate(user.created_at)}
-                </p>
-                <p className="text-blue-200 text-sm mt-1">
-                  <i className="fas fa-hashtag mr-1"></i>
-                  ID Pengguna: {user.id}
                 </p>
               </div>
 

@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import '../styles/welcome.css';  // Import CSS
 
 const Welcome = () => {
-  const navigate = useNavigate();
-  
+
   // State management
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [appModalOpen, setAppModalOpen] = useState(false);
@@ -12,13 +11,15 @@ const Welcome = () => {
   const [activeSection, setActiveSection] = useState('home');
   const [activeTab, setActiveTab] = useState('features');
 
+  const [allRoutes] = useState([]);
+
   // Settings - ini nanti bisa diambil dari API
   const settings = {
     hero_image: 'https://images.unsplash.com/photo-1523292562811-8fa7962a78c8?q=80&w=2070',
     hero_title: 'Jelajahi Keindahan Danau dengan Layanan Ferry Kami',
     hero_subtitle: 'Pesan tiket ferry Anda secara online untuk pengalaman perjalanan yang mulus. Transportasi air yang aman, nyaman, dan terjangkau ke tujuan Anda.',
-    primary_button_text: 'Telusuri Rute Pilihan Anda',
-    secondary_button_text: 'Panduan Mudah Memesan Tiket',
+    primary_button_text: 'Telusuri Rute',
+    secondary_button_text: 'Panduan Tiket',
     routes_title: 'Rute yang Tersedia',
     routes_subtitle: 'Jelajahi semua rute feri kami yang menghubungkan pulau-pulau',
     features_title: 'Mengapa Memilih Layanan Ferry Kami',
@@ -79,40 +80,6 @@ const Welcome = () => {
     social_youtube: '#'
   };
 
-  // Sample routes data - nanti bisa diambil dari API
-  const allRoutes = [
-    {
-      id: 1,
-      origin: 'Parapat',
-      destination: 'Samosir',
-      duration: '2',
-      schedule_description: '10 jadwal tersedia',
-      base_price: 60000,
-      is_popular: true,
-      image_url: 'https://images.unsplash.com/photo-1597466599360-3b9775841aec?q=80&w=1978'
-    },
-    {
-      id: 2,
-      origin: 'Ajibata',
-      destination: 'Tomok',
-      duration: '1.5',
-      schedule_description: '8 jadwal tersedia',
-      base_price: 45000,
-      is_popular: false,
-      image_url: 'https://images.unsplash.com/photo-1597466599360-3b9775841aec?q=80&w=1978'
-    },
-    {
-      id: 3,
-      origin: 'Tigaras',
-      destination: 'Simanindo',
-      duration: '3',
-      schedule_description: '6 jadwal tersedia',
-      base_price: 75000,
-      is_popular: true,
-      image_url: 'https://images.unsplash.com/photo-1597466599360-3b9775841aec?q=80&w=1978'
-    }
-  ];
-
   // Scroll effects
   useEffect(() => {
     const handleScroll = () => {
@@ -122,7 +89,7 @@ const Welcome = () => {
       // Update active section
       const sections = document.querySelectorAll('section[id]');
       let currentSection = '';
-      
+
       sections.forEach(section => {
         const sectionTop = section.offsetTop;
         const sectionBottom = sectionTop + section.offsetHeight;
@@ -134,7 +101,7 @@ const Welcome = () => {
       });
 
       if (scrollTop < 50) currentSection = 'home';
-      
+
       if ((window.innerHeight + scrollTop) >= document.body.offsetHeight - 50) {
         currentSection = 'contact';
       }
@@ -153,7 +120,7 @@ const Welcome = () => {
 
     const handleNavbarScroll = () => {
       const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-      
+
       if (window.innerWidth < 640 && navbar) {
         if (scrollTop > lastScrollTop && scrollTop > 300) {
           navbar.style.transform = 'translateY(-100%)';
@@ -200,7 +167,7 @@ const Welcome = () => {
   return (
     <div className="antialiased bg-gray-50">
       {/* Navigation */}
-      <nav 
+      <nav
         className={`${scrolled ? 'bg-white/95 shadow-md' : 'bg-white/80'} backdrop-blur-sm fixed w-full z-50 transition-all duration-300`}
         id="navbar"
       >
@@ -208,7 +175,7 @@ const Welcome = () => {
           <div className="flex justify-between h-16">
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
-                <img className="h-16 sm:h-20 md:h-24 w-auto" src="/images/logo.png" alt="Ferry Ticket Logo" />
+                <img className="h-16 sm:h-20 md:h-24 w-auto" src="/src/assets/logo.png" alt="Ferry Ticket Logo" />
                 <span className="ml-4 text-1xl sm:text-1xl font-bold text-primary-600 truncate">FerryTicket</span>
               </div>
               <div className="hidden sm:ml-6 sm:flex sm:space-x-4 md:space-x-8" id="desktop-menu">
@@ -216,11 +183,10 @@ const Welcome = () => {
                   <a
                     key={section}
                     href={`#${section}`}
-                    className={`nav-link inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                      activeSection === section
-                        ? 'border-primary-500 text-gray-900'
-                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                    }`}
+                    className={`nav-link inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${activeSection === section
+                      ? 'border-primary-500 text-gray-900'
+                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                      }`}
                     data-section={section}
                     onClick={(e) => {
                       e.preventDefault();
@@ -228,10 +194,10 @@ const Welcome = () => {
                     }}
                   >
                     {section === 'home' ? 'Beranda' :
-                     section === 'routes' ? 'Rute' :
-                     section === 'howto' ? 'Cara Pemesanan' :
-                     section === 'about' ? 'Tentang Kami' :
-                     'Kontak'}
+                      section === 'routes' ? 'Rute' :
+                        section === 'howto' ? 'Cara Pemesanan' :
+                          section === 'about' ? 'Tentang Kami' :
+                            'Kontak'}
                   </a>
                 ))}
               </div>
@@ -269,11 +235,10 @@ const Welcome = () => {
               <a
                 key={section}
                 href={`#${section}`}
-                className={`mobile-nav-link block pl-3 pr-4 py-2 border-l-4 text-base font-medium touch-target ${
-                  activeSection === section
-                    ? 'bg-primary-50 border-primary-500 text-primary-700'
-                    : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
-                }`}
+                className={`mobile-nav-link block pl-3 pr-4 py-2 border-l-4 text-base font-medium touch-target ${activeSection === section
+                  ? 'bg-primary-50 border-primary-500 text-primary-700'
+                  : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
+                  }`}
                 data-section={section}
                 onClick={(e) => {
                   e.preventDefault();
@@ -281,17 +246,17 @@ const Welcome = () => {
                 }}
               >
                 {section === 'home' ? 'Beranda' :
-                 section === 'routes' ? 'Rute' :
-                 section === 'howto' ? 'Cara Pemesanan' :
-                 section === 'about' ? 'Tentang Kami' :
-                 'Kontak'}
+                  section === 'routes' ? 'Rute' :
+                    section === 'howto' ? 'Cara Pemesanan' :
+                      section === 'about' ? 'Tentang Kami' :
+                        'Kontak'}
               </a>
             ))}
           </div>
           <div className="pt-4 pb-3 border-t border-gray-200">
             <div className="mt-3 space-y-1 px-4">
-              <Link 
-                to="/operator/login" 
+              <Link
+                to="/operator/login"
                 className="block px-4 py-2 text-base font-medium text-primary-600 hover:text-primary-800 hover:bg-gray-100 touch-target"
               >
                 Login
@@ -303,43 +268,49 @@ const Welcome = () => {
 
       {/* Hero Section */}
       <section id="home" className="relative pt-16 pb-32 flex content-center items-center justify-center" style={{ minHeight: '100vh' }}>
-        <div 
+        <div
           className="absolute top-0 w-full h-full bg-center bg-cover"
           style={{ backgroundImage: `url('${settings.hero_image}')` }}
         >
           <span id="blackOverlay" className="w-full h-full absolute opacity-50 bg-black"></span>
         </div>
 
-        <div className="container relative mx-auto px-4">
+        <div className="container relative mx-auto px-4 sm:px-6 lg:px-8 z-10">
           <div className="items-center flex flex-wrap">
-            <div className="w-full lg:w-6/12 px-4 ml-auto mr-auto text-center">
-              <div className="mt-8 sm:mt-12">
-                <h1 className="text-white font-semibold text-3xl sm:text-4xl md:text-5xl mb-4 sm:mb-6 leading-tight">
+            <div className="w-full lg:w-6/12 px-4 mx-auto text-center">
+              <div className="mt-8 sm:mt-12 p-6 sm:p-8 rounded-xl border border-white/10">
+                <h1 className="text-white font-bold text-3xl sm:text-4xl md:text-5xl mb-4 sm:mb-6 leading-tight drop-shadow-md">
                   {settings.hero_title}
                 </h1>
-                <p className="mt-2 sm:mt-4 text-base sm:text-lg text-gray-300 mb-6 sm:mb-8">
+                <p className="mt-2 sm:mt-4 text-base sm:text-lg text-gray-100 mb-6 sm:mb-8 drop-shadow">
                   {settings.hero_subtitle}
                 </p>
-                <div className="flex flex-col xs:flex-row justify-center xs:space-x-4 space-y-4 xs:space-y-0">
-                  <a 
+                <div className="flex flex-col sm:flex-row justify-center sm:space-x-5 space-y-4 sm:space-y-0">
+                  <a
                     href="#routes"
-                    className="bg-primary-600 text-white font-bold px-6 py-3 rounded-lg inline-block transition-all duration-300 hover:bg-primary-700 hover:shadow-lg touch-target"
+                    className="group bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold px-6 py-3.5 rounded-lg inline-flex items-center justify-center transition-all duration-300 hover:from-blue-600 hover:to-blue-700 shadow-lg shadow-blue-500/30 hover:shadow-blue-600/40 transform hover:-translate-y-0.5"
                     onClick={(e) => {
                       e.preventDefault();
                       scrollToSection('routes');
                     }}
                   >
-                    {settings.primary_button_text}
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path>
+                    </svg>
+                    <span>{settings.primary_button_text}</span>
                   </a>
-                  <a 
+                  <a
                     href="#howto"
-                    className="bg-transparent border-2 border-white text-white font-bold px-6 py-3 rounded-lg inline-block transition-all duration-300 hover:bg-white hover:text-primary-600 touch-target"
+                    className="group bg-white/10 backdrop-blur-sm border border-white/60 text-white font-semibold px-6 py-3.5 rounded-lg inline-flex items-center justify-center transition-all duration-300 hover:bg-white hover:text-blue-600 transform hover:-translate-y-0.5 shadow-lg shadow-black/5 hover:shadow-xl hover:shadow-black/10"
                     onClick={(e) => {
                       e.preventDefault();
                       scrollToSection('howto');
                     }}
                   >
-                    {settings.secondary_button_text}
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span>{settings.secondary_button_text}</span>
                   </a>
                 </div>
               </div>
@@ -374,10 +345,10 @@ const Welcome = () => {
           <div className="mt-8 sm:mt-12 grid gap-6 sm:gap-8 md:grid-cols-2 lg:grid-cols-3">
             {allRoutes.length > 0 ? (
               allRoutes.map((route) => (
-                <RouteCard 
-                  key={route.id} 
-                  route={route} 
-                  onBookClick={() => setAppModalOpen(true)} 
+                <RouteCard
+                  key={route.id}
+                  route={route}
+                  onBookClick={() => setAppModalOpen(true)}
                 />
               ))
             ) : (
@@ -392,7 +363,7 @@ const Welcome = () => {
           </div>
 
           <div className="mt-8 sm:mt-12 text-center">
-            <a 
+            <a
               href="#download-app"
               className="show-app-modal inline-flex items-center px-5 sm:px-6 py-2 sm:py-3 border border-primary-600 text-sm sm:text-base font-medium rounded-md text-primary-600 bg-white hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 touch-target"
               onClick={(e) => {
@@ -424,7 +395,7 @@ const Welcome = () => {
               transform="translate(100 100)" />
           </svg>
         </div>
-        
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center">
             <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">{settings.features_title}</h2>
@@ -433,7 +404,7 @@ const Welcome = () => {
 
           <div className="mt-10 sm:mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {[1, 2, 3, 4].map((num) => (
-              <FeatureCard 
+              <FeatureCard
                 key={num}
                 icon={settings[`feature${num}_icon`]}
                 title={settings[`feature${num}_title`]}
@@ -454,7 +425,7 @@ const Welcome = () => {
 
           <div className="mt-10 sm:mt-16 relative">
             <div className="hidden lg:block absolute top-1/2 transform -translate-y-1/2 left-0 right-0 h-0.5 bg-gray-200"></div>
-            
+
             <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
               {[1, 2, 3, 4].map((num) => (
                 <StepCard
@@ -478,7 +449,7 @@ const Welcome = () => {
               <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">{settings.about_title}</h2>
               <p className="text-primary-100 mb-4 sm:mb-6 text-sm sm:text-lg">{settings.about_content}</p>
               <p className="text-primary-100 mb-4 sm:mb-6 text-sm sm:text-lg">{settings.about_mission}</p>
-              
+
               <div className="grid grid-cols-2 gap-4 sm:gap-6 mt-6 sm:mt-10">
                 <StatCard number={settings.stats_daily_trips} label="Perjalanan Harian" />
                 <StatCard number={settings.stats_ferries} label="Kapal Ferry" />
@@ -486,7 +457,7 @@ const Welcome = () => {
                 <StatCard number={settings.stats_passengers} label="Penumpang Bahagia" />
               </div>
             </div>
-            
+
             <div className="mt-10 lg:mt-0 relative">
               <div className="boat-animation">
                 <img src={settings.about_image} alt="Ferry Boat" className="rounded-lg shadow-2xl w-full h-auto" />
@@ -513,7 +484,7 @@ const Welcome = () => {
           <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-8">{settings.cta_title}</h2>
           <p className="text-lg sm:text-xl text-primary-100 mb-8 sm:mb-12 max-w-3xl mx-auto">{settings.cta_subtitle}</p>
           <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6">
-            <a 
+            <a
               href="#routes"
               className="inline-flex items-center justify-center px-6 sm:px-8 py-3 sm:py-4 border border-transparent text-sm sm:text-base font-medium rounded-md text-primary-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white touch-target"
               onClick={(e) => {
@@ -523,7 +494,7 @@ const Welcome = () => {
             >
               <i className="fas fa-ship mr-2"></i> Jelajahi Rute
             </a>
-            <a 
+            <a
               href="#download-app"
               className="show-app-modal inline-flex items-center justify-center px-6 sm:px-8 py-3 sm:py-4 border border-white text-sm sm:text-base font-medium rounded-md text-white hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white touch-target"
               onClick={(e) => {
@@ -562,7 +533,7 @@ const Welcome = () => {
               <ul className="space-y-2 sm:space-y-3">
                 {['Beranda', 'Rute', 'Cara Pemesanan', 'Tentang Kami', 'Syarat & Ketentuan', 'Kebijakan Privasi'].map((item, index) => (
                   <li key={index}>
-                    <a 
+                    <a
                       href="#"
                       className="text-gray-400 hover:text-white text-sm sm:text-base block touch-target py-1"
                       onClick={(e) => {
@@ -605,7 +576,7 @@ const Welcome = () => {
 
       {/* App Download Modal */}
       {appModalOpen && (
-        <AppDownloadModal 
+        <AppDownloadModal
           onClose={() => setAppModalOpen(false)}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -620,7 +591,7 @@ const RouteCard = ({ route, onBookClick }) => {
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden transition-all duration-300 hover:shadow-xl h-full flex flex-col">
       <div className="relative h-40 sm:h-48">
-        <img 
+        <img
           className="h-full w-full object-cover"
           src={route.image_url || 'https://images.unsplash.com/photo-1597466599360-3b9775841aec?q=80&w=1978'}
           alt={`${route.origin} - ${route.destination}`}
@@ -656,7 +627,7 @@ const RouteCard = ({ route, onBookClick }) => {
               Rp {route.base_price?.toLocaleString('id-ID') || '60.000'}
             </p>
           </div>
-          <a 
+          <a
             href="#download-app"
             className="inline-flex items-center px-3 sm:px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 touch-target"
             onClick={(e) => {
@@ -737,10 +708,10 @@ const AppDownloadModal = ({ onClose, activeTab, setActiveTab }) => {
   useEffect(() => {
     // Prevent body scroll when modal is open
     document.body.style.overflow = 'hidden';
-    
+
     // Reset to first tab when opening modal
     setActiveTab('features');
-    
+
     return () => {
       document.body.style.overflow = '';
     };
@@ -759,7 +730,7 @@ const AppDownloadModal = ({ onClose, activeTab, setActiveTab }) => {
   }, [onClose]);
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -767,7 +738,7 @@ const AppDownloadModal = ({ onClose, activeTab, setActiveTab }) => {
     >
       <div className="bg-white rounded-xl p-5 sm:p-8 max-w-md w-full mx-4 relative overflow-hidden modal-fade-in">
         {/* Close button */}
-        <button 
+        <button
           onClick={onClose}
           className="absolute top-2 right-2 sm:top-4 sm:right-4 text-gray-500 hover:text-gray-700 z-20 bg-white bg-opacity-80 rounded-full w-8 h-8 flex items-center justify-center touch-target"
         >
@@ -800,23 +771,21 @@ const AppDownloadModal = ({ onClose, activeTab, setActiveTab }) => {
           {/* Tab Navigation */}
           <div className="mb-6 mt-3">
             <div className="flex border-b border-gray-200 mb-4">
-              <button 
+              <button
                 onClick={() => setActiveTab('features')}
-                className={`w-1/2 py-2 text-center text-sm font-medium ${
-                  activeTab === 'features' 
-                    ? 'text-primary-600 border-b-2 border-primary-500' 
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
+                className={`w-1/2 py-2 text-center text-sm font-medium ${activeTab === 'features'
+                  ? 'text-primary-600 border-b-2 border-primary-500'
+                  : 'text-gray-500 hover:text-gray-700'
+                  }`}
               >
                 Fitur Aplikasi
               </button>
-              <button 
+              <button
                 onClick={() => setActiveTab('download')}
-                className={`w-1/2 py-2 text-center text-sm font-medium ${
-                  activeTab === 'download' 
-                    ? 'text-primary-600 border-b-2 border-primary-500' 
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
+                className={`w-1/2 py-2 text-center text-sm font-medium ${activeTab === 'download'
+                  ? 'text-primary-600 border-b-2 border-primary-500'
+                  : 'text-gray-500 hover:text-gray-700'
+                  }`}
               >
                 Unduh Aplikasi
               </button>
@@ -866,9 +835,9 @@ const AppFeaturesTab = () => {
           <div className="relative mx-auto w-40 sm:w-48 h-auto phone-float">
             <div className="relative z-10 mx-auto">
               <div className="relative rounded-xl overflow-hidden border-4 border-gray-800 w-full h-full shadow-lg">
-                <img 
+                <img
                   src="https://images.unsplash.com/photo-1606768666853-403c90a981ad?q=80&w=2574&auto=format&fit=crop&ixlib=rb-4.0.3"
-                  alt="Ferry Ticket App" 
+                  alt="Ferry Ticket App"
                   className="w-full h-auto"
                 />
                 <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-gray-800 rounded-full"></div>
@@ -909,9 +878,9 @@ const DownloadTab = () => {
       <div className="flex flex-col items-center">
         <div className="relative bounce-animation mb-4 mt-2">
           <div className="p-3 sm:p-4 bg-white border-2 border-primary-100 rounded-lg shadow-lg">
-            <img 
+            <img
               src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https://ferryticket.com/app"
-              alt="Download App QR Code" 
+              alt="Download App QR Code"
               className="h-32 w-32 sm:h-36 sm:w-36"
             />
           </div>
@@ -935,7 +904,7 @@ const DownloadTab = () => {
 // App Store Button Component
 const AppStoreButton = ({ platform }) => {
   return (
-    <a 
+    <a
       href="#"
       className="flex items-center justify-center bg-black text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-800 touch-target"
     >

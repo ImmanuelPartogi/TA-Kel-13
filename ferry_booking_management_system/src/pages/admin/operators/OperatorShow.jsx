@@ -162,7 +162,7 @@ const OperatorShow = () => {
                 </div>
               </div>
             </div>
-            {/* <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <div className="flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white/70 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -174,7 +174,7 @@ const OperatorShow = () => {
                   </p>
                 </div>
               </div>
-            </div> */}
+            </div>
           </div>
         </div>
       </div>

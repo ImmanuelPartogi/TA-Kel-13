@@ -139,7 +139,7 @@ const UserEdit = () => {
   if (loading) {
     return (
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-        <div className="bg-gradient-to-br from-amber-800 via-amber-600 to-amber-500 p-8 text-white">
+        <div className="bg-gradient-to-br from-blue-800 via-blue-600 to-blue-500 p-8 text-white">
           <div className="flex items-start">
             <div className="bg-white/20 backdrop-blur-sm p-3 rounded-lg mr-4">
               <i className="fas fa-user-edit text-2xl"></i>
@@ -202,23 +202,6 @@ const UserEdit = () => {
               </Link>
             </div>
           </div>
-
-          {/* User Info Header */}
-          {formData.name && (
-            <div className="mt-8 bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
-              <div className="flex items-center">
-                <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center mr-4">
-                  <span className="text-xl font-bold text-white">
-                    {formData.name.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white">{formData.name}</h2>
-                  <p className="text-amber-100 text-sm">{formData.email}</p>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 

@@ -66,4 +66,16 @@ class WelcomeController extends Controller
 
         ];
     }
+
+    public function getRoutes()
+    {
+        // Ambil rute aktif
+        $allRoutes = Route::where('status', 'ACTIVE')->get();
+
+        // Kembalikan sebagai JSON dengan header yang tepat
+        return response()->json($allRoutes, 200, [
+            'Content-Type' => 'application/json',
+            'Access-Control-Allow-Origin' => '*'
+        ]);
+    }
 }

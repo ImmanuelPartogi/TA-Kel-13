@@ -76,6 +76,7 @@ use App\Http\Controllers\Api\Operator\CheckInController;
 Route::get('/', [WelcomeController::class, 'index'])->name('home');
 Route::get('/search', [WelcomeController::class, 'searchSchedule'])->name('search.schedule');
 Route::get('/booking/{route_id}', [WelcomeController::class, 'bookingForm'])->name('booking.form');
+Route::get('/public/routes', [WelcomeController::class, 'getRoutes']);
 
 // Authentication Routes
 Route::post('/auth/register', [AuthController::class, 'register']);

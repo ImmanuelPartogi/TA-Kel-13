@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import '../styles/welcome.css';  // Import CSS
+import { welcomeService } from '../services/welcome.service';
 
 const Welcome = () => {
 
@@ -11,7 +12,26 @@ const Welcome = () => {
   const [activeSection, setActiveSection] = useState('home');
   const [activeTab, setActiveTab] = useState('features');
 
-  const [allRoutes] = useState([]);
+  const [allRoutes, setAllRoutes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchRoutes = async () => {
+      try {
+        setLoading(true);
+        const response = await welcomeService.getRoutes();
+        setAllRoutes(response.data);
+      } catch (error) {
+        console.error('Error fetching routes:', error);
+        setError(error.message || 'Terjadi kesalahan saat mengambil data rute');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRoutes();
+  }, []);
 
   // Settings - ini nanti bisa diambil dari API
   const settings = {
@@ -253,16 +273,6 @@ const Welcome = () => {
               </a>
             ))}
           </div>
-          <div className="pt-4 pb-3 border-t border-gray-200">
-            <div className="mt-3 space-y-1 px-4">
-              <Link
-                to="/operator/login"
-                className="block px-4 py-2 text-base font-medium text-primary-600 hover:text-primary-800 hover:bg-gray-100 touch-target"
-              >
-                Login
-              </Link>
-            </div>
-          </div>
         </div>
       </nav>
 
@@ -343,7 +353,22 @@ const Welcome = () => {
           </div>
 
           <div className="mt-8 sm:mt-12 grid gap-6 sm:gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {allRoutes.length > 0 ? (
+            {loading ? (
+              // Tampilkan loading state
+              <div className="col-span-1 md:col-span-2 lg:col-span-3 py-8 text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+                <p className="mt-4 text-gray-600">Memuat data rute...</p>
+              </div>
+            ) : error ? (
+              // Tampilkan pesan error jika terjadi masalah
+              <div className="col-span-1 md:col-span-2 lg:col-span-3 py-8 text-center">
+                <div className="mx-auto max-w-md">
+                  <i className="fas fa-exclamation-triangle text-3xl sm:text-4xl text-red-400 mb-4"></i>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Gagal memuat data rute</h3>
+                  <p className="text-gray-500">{error}</p>
+                </div>
+              </div>
+            ) : allRoutes.length > 0 ? (
               allRoutes.map((route) => (
                 <RouteCard
                   key={route.id}
@@ -624,7 +649,7 @@ const RouteCard = ({ route, onBookClick }) => {
           <div>
             <span className="text-gray-500 text-xs sm:text-sm">Mulai dari</span>
             <p className="text-base sm:text-lg font-bold text-primary-600">
-              Rp {route.base_price?.toLocaleString('id-ID') || '60.000'}
+              Rp {route.base_price?.toLocaleString('id-ID') || 'Tidak ada harga'}
             </p>
           </div>
           <a
@@ -731,7 +756,7 @@ const AppDownloadModal = ({ onClose, activeTab, setActiveTab }) => {
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center"
+      className="fixed inset-0 bg-opacity-60 backdrop-blur-lg z-50 flex items-center justify-center"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}

@@ -109,24 +109,64 @@ const ScheduleCreateDate = () => {
 
       navigate(`/operator/schedules/${id}/dates`);
     } catch (error) {
-      if (error.response?.data?.errors) {
-        setErrors(error.response.data.errors);
-      } else {
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: error.response?.data?.message || 'Terjadi kesalahan saat menyimpan data',
+      console.error('Submit error:', error.response?.data);
+      setSubmitting(false);
+
+      // Penanganan error duplikasi tanggal
+      if (error.response?.data?.errors?.date &&
+        error.response?.data?.errors?.date.some(err => err.includes('sudah ada'))) {
+        setErrors({
+          ...error.response?.data?.errors,
+          general: [
+            'Tanggal ini sudah ada dalam jadwal!',
+            'Silakan pilih tanggal lain yang belum terdaftar.'
+          ]
         });
       }
+      // Penanganan khusus untuk error konflik jadwal
+      else if (error.response?.data?.conflicting_schedule) {
+        const conflict = error.response.data.conflicting_schedule;
+        setErrors({
+          ...error.response?.data?.errors,
+          general: [
+            'Terjadi konflik jadwal untuk kapal yang dipilih.',
+            `Jadwal yang bertabrakan: Hari ${operatorSchedulesService.formatDays(conflict.days)}`,
+            '1. Pilih kapal lain yang tersedia',
+            '2. Pilih hari operasional yang berbeda (hindari hari yang sama)',
+            '3. Hubungi admin untuk menyesuaikan jadwal yang sudah ada'
+          ]
+        });
+      }
+      // Penanganan error hari operasi tidak sesuai
+      else if (error.response?.data?.errors?.date &&
+        error.response?.data?.errors?.date.some(err => err.includes('tidak beroperasi'))) {
+        setErrors({
+          ...error.response?.data?.errors,
+          general: [
+            'Tanggal yang dipilih tidak sesuai dengan hari operasi kapal.',
+            'Silakan pilih tanggal yang sesuai dengan hari operasi kapal:',
+            `Hari operasi kapal: ${getDayNames().join(', ')}`
+          ]
+        });
+      }
+      // Penanganan error lainnya tetap sama
+      else if (error.response?.data?.errors) {
+        setErrors(error.response.data.errors);
+      } else {
+        // Error umum jika tidak ada detail spesifik
+        setErrors({
+          general: ['Terjadi kesalahan saat menyimpan data. Silakan coba lagi.']
+        });
+      }
+    } finally {
+      setLoading(false);
     }
-    setSubmitting(false);
   };
 
   const getDayNames = () => {
     if (!schedule || !schedule.days) return [];
 
     const dayNames = {
-      '0': 'Minggu',
       '1': 'Senin',
       '2': 'Selasa',
       '3': 'Rabu',
@@ -365,6 +405,31 @@ const ScheduleCreateDate = () => {
               <h2 className="text-lg font-semibold text-gray-800">Tambah Tanggal Baru</h2>
             </div>
             <div className="p-6">
+              {errors.general && (
+                <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 shadow-md rounded-md animate-fadeIn">
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-red-800">Perhatian: Konflik Jadwal</h3>
+                      <div className="mt-2 text-sm text-red-700">
+                        {Array.isArray(errors.general) ? (
+                          <ul className="list-disc pl-5 space-y-1">
+                            {errors.general.map((err, index) => (
+                              <li key={index}>{err}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p>{errors.general}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>

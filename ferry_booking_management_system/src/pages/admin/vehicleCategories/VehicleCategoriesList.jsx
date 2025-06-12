@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Edit, 
-  Eye, 
-  Trash2, 
-  Plus, 
-  Search, 
-  ToggleLeft, 
-  ToggleRight, 
+import {
+  Edit,
+  Eye,
+  Trash2,
+  Plus,
+  Search,
+  ToggleLeft,
+  ToggleRight,
   FileText,
   CheckCircle,
   XCircle
@@ -41,19 +41,19 @@ const VehicleCategoriesList = () => {
       const response = await AdminVehicleCategoriesService.getCategories();
       const categoriesData = response.data || [];
       setCategories(categoriesData);
-      
+
       // Hitung statistik
       const activeCategories = categoriesData.filter(cat => cat.is_active).length;
-      const avgBasePrice = categoriesData.length > 0 
-        ? categoriesData.reduce((sum, cat) => sum + parseFloat(cat.base_price || 0), 0) / categoriesData.length 
+      const avgBasePrice = categoriesData.length > 0
+        ? categoriesData.reduce((sum, cat) => sum + parseFloat(cat.base_price || 0), 0) / categoriesData.length
         : 0;
-      
+
       // Hitung tipe kendaraan terpopuler
       const vehicleTypeCounts = {};
       categoriesData.forEach(cat => {
         vehicleTypeCounts[cat.vehicle_type] = (vehicleTypeCounts[cat.vehicle_type] || 0) + 1;
       });
-      
+
       let maxCount = 0;
       let popularType = '';
       Object.entries(vehicleTypeCounts).forEach(([type, count]) => {
@@ -62,14 +62,14 @@ const VehicleCategoriesList = () => {
           popularType = type;
         }
       });
-      
+
       setStats({
         totalCategories: categoriesData.length,
         activeCategories: activeCategories,
         avgBasePrice: avgBasePrice,
         popularVehicleType: popularType
       });
-      
+
       setError(null);
     } catch (err) {
       setError('Gagal memuat data kategori kendaraan');
@@ -81,11 +81,11 @@ const VehicleCategoriesList = () => {
 
   useEffect(() => {
     fetchCategories();
-    
+
     // Auto-hide alert after 5 seconds
     if (notification.show) {
       const timer = setTimeout(() => {
-        setNotification({...notification, show: false});
+        setNotification({ ...notification, show: false });
       }, 5000);
       return () => clearTimeout(timer);
     }
@@ -103,28 +103,28 @@ const VehicleCategoriesList = () => {
   // Proses data untuk sorting dan filtering
   const processData = () => {
     let filteredData = [...categories];
-    
+
     // Filtering
     if (searchTerm) {
-      filteredData = filteredData.filter(category => 
+      filteredData = filteredData.filter(category =>
         category.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         category.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         AdminVehicleCategoriesService.getVehicleTypeText(category.vehicle_type)?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    
+
     // Sorting
     if (sortConfig.key) {
       filteredData.sort((a, b) => {
         let aValue = a[sortConfig.key];
         let bValue = b[sortConfig.key];
-        
+
         // Handle special cases like vehicle_type yang perlu dikonversi
         if (sortConfig.key === 'vehicle_type') {
           aValue = AdminVehicleCategoriesService.getVehicleTypeText(a.vehicle_type);
           bValue = AdminVehicleCategoriesService.getVehicleTypeText(b.vehicle_type);
         }
-        
+
         if (aValue < bValue) {
           return sortConfig.direction === 'asc' ? -1 : 1;
         }
@@ -134,12 +134,12 @@ const VehicleCategoriesList = () => {
         return 0;
       });
     }
-    
+
     return filteredData;
   };
 
   const processedData = processData();
-  
+
   // Pagination
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -199,33 +199,68 @@ const VehicleCategoriesList = () => {
 
   // Pagination navigation
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
-  
+
   const getFirstItem = () => ((currentPage - 1) * itemsPerPage) + 1;
   const getLastItem = () => Math.min(currentPage * itemsPerPage, processedData.length);
 
   // Handler untuk export data
   const handleExport = () => {
-    // Menggunakan metode exportCategoriesData dari service baru
-    const exportData = AdminVehicleCategoriesService.exportCategoriesData(categories);
-    
-    // Logic untuk export ke Excel bisa ditambahkan disini
-    console.log('Data to export:', exportData);
-    
-    // Contoh sederhana: Convert to CSV dan download
-    const header = Object.keys(exportData[0]).join(',');
-    const csv = [
-      header,
-      ...exportData.map(row => Object.values(row).join(','))
-    ].join('\n');
-    
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'vehicle_categories.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      // Menggunakan metode exportCategoriesData dari service
+      const exportData = AdminVehicleCategoriesService.exportCategoriesData(categories);
+
+      // Fungsi untuk escape karakter khusus dalam CSV
+      const escapeCSV = (value) => {
+        // Konversi ke string dan escape nilai
+        const stringValue = String(value || '');
+        // Jika mengandung koma, petik, atau baris baru, bungkus dengan tanda petik
+        if (stringValue.includes(',') || stringValue.includes('"') ||
+          stringValue.includes('\n') || stringValue.includes('\r')) {
+          // Ganti tanda petik dengan double petik untuk escape
+          return `"${stringValue.replace(/"/g, '""')}"`;
+        }
+        return stringValue;
+      };
+
+      // Membuat header CSV dengan format yang benar
+      const header = Object.keys(exportData[0]).map(key => escapeCSV(key)).join(',');
+
+      // Membuat baris data dengan escape nilai yang benar
+      const rows = exportData.map(row =>
+        Object.values(row).map(value => escapeCSV(value)).join(',')
+      );
+
+      // Gabungkan header dan rows
+      const csv = [header, ...rows].join('\n');
+
+      // Tambahkan BOM untuk support UTF-8 di Excel
+      const BOM = '\uFEFF';
+      const csvWithBOM = BOM + csv;
+
+      // Buat blob dan download
+      const blob = new Blob([csvWithBOM], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'kategori_kendaraan.csv');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Notifikasi sukses
+      setNotification({
+        show: true,
+        message: 'Data berhasil diekspor ke CSV',
+        type: 'success'
+      });
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      setNotification({
+        show: true,
+        message: 'Gagal mengekspor data',
+        type: 'error'
+      });
+    }
   };
 
   return (
@@ -234,13 +269,13 @@ const VehicleCategoriesList = () => {
       <div className="bg-gradient-to-br from-blue-800 via-blue-600 to-blue-500 p-8 text-white relative">
         <div className="absolute inset-0 opacity-20">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" className="w-full h-full">
-            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                  fill="#fff" opacity="0.2" />
-            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                  fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
+            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+              fill="#fff" opacity="0.2" />
+            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+              fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
           </svg>
         </div>
-        
+
         <div className="relative z-10">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div className="flex items-start">
@@ -253,7 +288,7 @@ const VehicleCategoriesList = () => {
               </div>
             </div>
           </div>
-          
+
           {/* Quick Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-8">
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
@@ -263,7 +298,7 @@ const VehicleCategoriesList = () => {
                 <span className="text-2xl font-bold">{stats.totalCategories}</span>
               </div>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Kategori Aktif</p>
               <div className="flex items-center mt-1">
@@ -271,7 +306,7 @@ const VehicleCategoriesList = () => {
                 <span className="text-2xl font-bold">{stats.activeCategories}</span>
               </div>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Rata-rata Harga</p>
               <div className="flex items-center mt-1">
@@ -279,7 +314,7 @@ const VehicleCategoriesList = () => {
                 <span className="text-2xl font-bold">Rp {stats.avgBasePrice.toLocaleString('id-ID')}</span>
               </div>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Tipe Kendaraan Terpopuler</p>
               <div className="flex items-center mt-1">
@@ -302,7 +337,7 @@ const VehicleCategoriesList = () => {
                 <i className={`fas ${notification.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-2`}></i>
                 <span className="font-medium">{notification.type === 'success' ? 'Sukses' : 'Error'}</span>
               </div>
-              <button onClick={() => setNotification({...notification, show: false})} className="text-white/80 hover:text-white">
+              <button onClick={() => setNotification({ ...notification, show: false })} className="text-white/80 hover:text-white">
                 <i className="fas fa-times"></i>
               </button>
             </div>
@@ -340,24 +375,24 @@ const VehicleCategoriesList = () => {
           <p className="text-sm text-gray-600">
             {processedData.length > 0 ? (
               <>
-                Menampilkan <span className="font-medium">{getFirstItem()}</span> - 
-                <span className="font-medium"> {getLastItem()}</span> dari 
+                Menampilkan <span className="font-medium">{getFirstItem()}</span> -
+                <span className="font-medium"> {getLastItem()}</span> dari
                 <span className="font-medium"> {processedData.length}</span> kategori
               </>
             ) : (
               <span>Tidak ada hasil yang ditemukan</span>
             )}
           </p>
-          
+
           <div className="flex items-center space-x-2">
             <div className="p-1 bg-gray-100 rounded-lg flex">
-              <button 
+              <button
                 onClick={() => setViewMode('table')}
                 className={`px-3 py-1 rounded ${viewMode === 'table' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-800'}`}
               >
                 <i className="fas fa-list"></i>
               </button>
-              <button 
+              <button
                 onClick={() => setViewMode('grid')}
                 className={`px-3 py-1 rounded ${viewMode === 'grid' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-800'}`}
               >
@@ -372,7 +407,7 @@ const VehicleCategoriesList = () => {
           <div className="bg-white rounded-xl border border-gray-100 shadow-md p-8 text-center">
             <div className="inline-block relative">
               <div className="h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-500 animate-spin"></div>
-              <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-200 animate-spin" style={{animationDirection: 'reverse', animationDuration: '1.5s'}}></div>
+              <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-200 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
             </div>
             <p className="mt-4 text-gray-600">Memuat data kategori kendaraan...</p>
           </div>
@@ -387,7 +422,7 @@ const VehicleCategoriesList = () => {
             <h3 className="text-xl font-semibold text-gray-800 mb-2">Belum Ada Data Kategori</h3>
             <p className="text-gray-600 mb-6">Belum ada kategori kendaraan yang ditemukan atau sesuai dengan filter yang Anda pilih</p>
             <div className="flex justify-center space-x-4">
-              <button 
+              <button
                 onClick={() => setSearchTerm('')}
                 className="inline-flex items-center px-5 py-2.5 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors shadow-sm">
                 <i className="fas fa-sync-alt mr-2"></i> Reset Filter
@@ -406,7 +441,7 @@ const VehicleCategoriesList = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th 
+                    <th
                       onClick={() => requestSort('code')}
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                     >
@@ -414,15 +449,15 @@ const VehicleCategoriesList = () => {
                         Kode Golongan
                         {sortConfig.key === 'code' && (
                           <span className="ml-1">
-                            {sortConfig.direction === 'asc' ? 
-                              <i className="fas fa-sort-up"></i> : 
+                            {sortConfig.direction === 'asc' ?
+                              <i className="fas fa-sort-up"></i> :
                               <i className="fas fa-sort-down"></i>
                             }
                           </span>
                         )}
                       </div>
                     </th>
-                    <th 
+                    <th
                       onClick={() => requestSort('name')}
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                     >
@@ -430,15 +465,15 @@ const VehicleCategoriesList = () => {
                         Nama
                         {sortConfig.key === 'name' && (
                           <span className="ml-1">
-                            {sortConfig.direction === 'asc' ? 
-                              <i className="fas fa-sort-up"></i> : 
+                            {sortConfig.direction === 'asc' ?
+                              <i className="fas fa-sort-up"></i> :
                               <i className="fas fa-sort-down"></i>
                             }
                           </span>
                         )}
                       </div>
                     </th>
-                    <th 
+                    <th
                       onClick={() => requestSort('vehicle_type')}
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                     >
@@ -446,15 +481,15 @@ const VehicleCategoriesList = () => {
                         Tipe Kendaraan
                         {sortConfig.key === 'vehicle_type' && (
                           <span className="ml-1">
-                            {sortConfig.direction === 'asc' ? 
-                              <i className="fas fa-sort-up"></i> : 
+                            {sortConfig.direction === 'asc' ?
+                              <i className="fas fa-sort-up"></i> :
                               <i className="fas fa-sort-down"></i>
                             }
                           </span>
                         )}
                       </div>
                     </th>
-                    <th 
+                    <th
                       onClick={() => requestSort('base_price')}
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                     >
@@ -462,15 +497,15 @@ const VehicleCategoriesList = () => {
                         Harga Dasar
                         {sortConfig.key === 'base_price' && (
                           <span className="ml-1">
-                            {sortConfig.direction === 'asc' ? 
-                              <i className="fas fa-sort-up"></i> : 
+                            {sortConfig.direction === 'asc' ?
+                              <i className="fas fa-sort-up"></i> :
                               <i className="fas fa-sort-down"></i>
                             }
                           </span>
                         )}
                       </div>
                     </th>
-                    <th 
+                    <th
                       onClick={() => requestSort('is_active')}
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                     >
@@ -478,8 +513,8 @@ const VehicleCategoriesList = () => {
                         Status
                         {sortConfig.key === 'is_active' && (
                           <span className="ml-1">
-                            {sortConfig.direction === 'asc' ? 
-                              <i className="fas fa-sort-up"></i> : 
+                            {sortConfig.direction === 'asc' ?
+                              <i className="fas fa-sort-up"></i> :
                               <i className="fas fa-sort-down"></i>
                             }
                           </span>
@@ -501,7 +536,6 @@ const VehicleCategoriesList = () => {
                           </div>
                           <div className="ml-4">
                             <div className="text-sm font-medium text-gray-900">{category.code}</div>
-                            <div className="text-xs text-gray-500">ID: {category.id}</div>
                           </div>
                         </div>
                       </td>
@@ -519,14 +553,12 @@ const VehicleCategoriesList = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                          category.is_active ? 
-                          'bg-emerald-100 text-emerald-800 border border-emerald-200' : 
-                          'bg-gray-100 text-gray-800 border border-gray-200'
-                        }`}>
-                          <span className={`w-1.5 h-1.5 ${
-                            category.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-gray-500'
-                          } rounded-full mr-1.5`}></span>
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${category.is_active ?
+                            'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                            'bg-gray-100 text-gray-800 border border-gray-200'
+                          }`}>
+                          <span className={`w-1.5 h-1.5 ${category.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-gray-500'
+                            } rounded-full mr-1.5`}></span>
                           {AdminVehicleCategoriesService.getStatusText(category.is_active)}
                         </span>
                       </td>
@@ -552,11 +584,10 @@ const VehicleCategoriesList = () => {
                           </button>
                           <button
                             onClick={() => handleToggleStatus(category.id)}
-                            className={`btn-icon ${
-                              category.is_active ? 
-                              'bg-amber-50 hover:bg-amber-100 text-amber-600' : 
-                              'bg-emerald-50 hover:bg-emerald-100 text-emerald-600'
-                            } p-2 rounded-lg transition-colors`}
+                            className={`btn-icon ${category.is_active ?
+                                'bg-amber-50 hover:bg-amber-100 text-amber-600' :
+                                'bg-emerald-50 hover:bg-emerald-100 text-emerald-600'
+                              } p-2 rounded-lg transition-colors`}
                             title={category.is_active ? "Nonaktifkan" : "Aktifkan"}
                           >
                             <i className={`fas ${category.is_active ? 'fa-toggle-on' : 'fa-toggle-off'}`}></i>
@@ -586,19 +617,17 @@ const VehicleCategoriesList = () => {
                     <p className="text-sm text-white/80">{category.name}</p>
                   </div>
                   <div className="absolute top-3 right-3">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                      category.is_active ? 
-                      'bg-emerald-100 text-emerald-800 border border-emerald-200' : 
-                      'bg-gray-100 text-gray-800 border border-gray-200'
-                    }`}>
-                      <span className={`w-1.5 h-1.5 ${
-                        category.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-gray-500'
-                      } rounded-full mr-1.5`}></span>
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${category.is_active ?
+                        'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                        'bg-gray-100 text-gray-800 border border-gray-200'
+                      }`}>
+                      <span className={`w-1.5 h-1.5 ${category.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-gray-500'
+                        } rounded-full mr-1.5`}></span>
                       {AdminVehicleCategoriesService.getStatusText(category.is_active)}
                     </span>
                   </div>
                 </div>
-                
+
                 <div className="p-4">
                   <div className="grid grid-cols-2 gap-2 mb-4">
                     <div className="bg-blue-50 p-2 rounded-lg text-center">
@@ -610,7 +639,7 @@ const VehicleCategoriesList = () => {
                         </span>
                       </div>
                     </div>
-                    
+
                     <div className="bg-amber-50 p-2 rounded-lg text-center">
                       <p className="text-xs text-amber-600 mb-1">Harga Dasar</p>
                       <div className="flex items-center justify-center">
@@ -621,14 +650,14 @@ const VehicleCategoriesList = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="bg-gray-50 p-3 rounded-lg mb-4">
                     <p className="text-xs text-gray-500 mb-1">Deskripsi</p>
                     <p className="text-sm font-medium line-clamp-2">
                       {category.description || 'Tidak ada deskripsi'}
                     </p>
                   </div>
-                  
+
                   <div className="flex justify-between border-t border-gray-100 pt-4">
                     <Link
                       to={`/admin/vehicleCategories/${category.id}`}
@@ -641,11 +670,10 @@ const VehicleCategoriesList = () => {
                     </Link>
                     <button
                       onClick={() => handleToggleStatus(category.id)}
-                      className={`btn-icon ${
-                        category.is_active ? 
-                        'bg-amber-50 hover:bg-amber-100 text-amber-600' : 
-                        'bg-emerald-50 hover:bg-emerald-100 text-emerald-600'
-                      } p-2 rounded-lg transition-colors`}
+                      className={`btn-icon ${category.is_active ?
+                          'bg-amber-50 hover:bg-amber-100 text-amber-600' :
+                          'bg-emerald-50 hover:bg-emerald-100 text-emerald-600'
+                        } p-2 rounded-lg transition-colors`}
                     >
                       <i className={`fas ${category.is_active ? 'fa-toggle-on' : 'fa-toggle-off'}`}></i>
                     </button>
@@ -666,26 +694,26 @@ const VehicleCategoriesList = () => {
         {!loading && processedData.length > itemsPerPage && (
           <div className="flex flex-col md:flex-row justify-between items-center bg-white rounded-xl border border-gray-100 shadow-sm p-4">
             <div className="text-sm text-gray-600 mb-4 md:mb-0">
-              Menampilkan <span className="font-medium">{getFirstItem()}</span> - 
-              <span className="font-medium"> {getLastItem()}</span> dari 
+              Menampilkan <span className="font-medium">{getFirstItem()}</span> -
+              <span className="font-medium"> {getLastItem()}</span> dari
               <span className="font-medium"> {processedData.length}</span> hasil
             </div>
             <div className="flex space-x-1">
-              <button 
+              <button
                 onClick={() => paginate(1)}
                 disabled={currentPage === 1}
                 className="px-3 py-1 rounded-md bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
               >
                 <i className="fas fa-angle-double-left"></i>
               </button>
-              <button 
+              <button
                 onClick={() => paginate(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
                 className="px-3 py-1 rounded-md bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
               >
                 <i className="fas fa-angle-left"></i>
               </button>
-              
+
               {/* Page numbers */}
               <div className="flex space-x-1">
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -703,7 +731,7 @@ const VehicleCategoriesList = () => {
                     // Middle cases
                     pageNum = currentPage - 2 + i;
                   }
-                  
+
                   return (
                     <button
                       key={i}
@@ -716,15 +744,15 @@ const VehicleCategoriesList = () => {
                   );
                 })}
               </div>
-              
-              <button 
+
+              <button
                 onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
                 className="px-3 py-1 rounded-md bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
               >
                 <i className="fas fa-angle-right"></i>
               </button>
-              <button 
+              <button
                 onClick={() => paginate(totalPages)}
                 disabled={currentPage === totalPages}
                 className="px-3 py-1 rounded-md bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
@@ -761,7 +789,7 @@ const VehicleCategoriesList = () => {
                 <h3 className="text-xl font-bold text-gray-900">Konfirmasi Hapus</h3>
                 <p className="text-gray-600 mt-2">Apakah Anda yakin ingin menghapus kategori kendaraan ini?</p>
               </div>
-              
+
               <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-r mb-6">
                 <div className="flex">
                   <div className="flex-shrink-0">
@@ -774,15 +802,15 @@ const VehicleCategoriesList = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex space-x-3">
-                <button 
+                <button
                   onClick={() => setIsDeleting(false)}
                   className="w-full py-3 px-4 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-gray-200 transition-colors"
                 >
                   Batal
                 </button>
-                <button 
+                <button
                   onClick={handleDelete}
                   className="w-full py-3 px-4 bg-red-500 rounded-lg text-white font-medium hover:bg-red-600 focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
                 >

@@ -117,6 +117,63 @@ class ScheduleController extends Controller
             'status_expiry_date' => 'nullable|date|after:now',
         ]);
 
+        $existingSchedules = Schedule::where('ferry_id', $request->ferry_id)
+            ->where('id', '!=', $id ?? 0) // Kecualikan jadwal saat ini pada kasus update
+            ->get();
+
+        // Deteksi tumpang tindih hari
+        $requestDays = $request->days; // Array hari yang diminta
+        $conflictingSchedule = null;
+
+        foreach ($existingSchedules as $schedule) {
+            $scheduleDays = explode(',', $schedule->days);
+
+            // Periksa apakah ada hari yang tumpang tindih
+            $overlappingDays = array_intersect($requestDays, $scheduleDays);
+
+            if (!empty($overlappingDays)) {
+                $conflictingSchedule = $schedule;
+                break;
+            }
+        }
+
+        if ($conflictingSchedule) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Jadwal bertabrakan dengan jadwal yang sudah ada untuk kapal yang sama pada hari yang sama',
+                'errors' => [
+                    'days' => ['Kapal ini sudah memiliki jadwal pada hari: ' . implode(', ', array_map(function ($day) {
+                        $dayNames = [1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu'];
+                        return $dayNames[$day] ?? $day;
+                    }, array_intersect($requestDays, explode(',', $conflictingSchedule->days))))],
+                    'ferry_id' => ['Pilih kapal lain atau ubah hari operasional']
+                ],
+                'conflicting_schedule' => [
+                    'id' => $conflictingSchedule->id,
+                    'days' => $conflictingSchedule->days,
+                    'departure_time' => $conflictingSchedule->departure_time,
+                    'arrival_time' => $conflictingSchedule->arrival_time
+                ]
+            ], 422);
+        }
+
+        // Validasi duplikasi jadwal dengan rute dan waktu yang sama persis
+        $existingExactSchedule = Schedule::where('route_id', $request->route_id)
+            ->where('departure_time', $request->departure_time)
+            ->where('arrival_time', $request->arrival_time)
+            ->where('days', implode(',', $request->days))
+            ->first();
+
+        if ($existingExactSchedule) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Jadwal dengan rute dan waktu yang sama sudah ada',
+                'errors' => [
+                    'general' => ['Jadwal dengan rute, waktu keberangkatan, waktu kedatangan dan hari yang sama sudah ada']
+                ]
+            ], 422);
+        }
+
         // Validasi jadwal duplikat untuk feri yang sama
         $existingSchedule = Schedule::where('ferry_id', $request->ferry_id)
             ->where(function ($query) use ($request) {
@@ -182,25 +239,64 @@ class ScheduleController extends Controller
             'status_expiry_date' => 'nullable|date|after:now',
         ]);
 
-        // Validasi jadwal duplikat untuk feri yang sama kecuali jadwal ini sendiri
-        $existingSchedule = Schedule::where('ferry_id', $request->ferry_id)
-            ->where('id', '!=', $id)
-            ->where(function ($query) use ($request) {
-                $query->whereRaw("STR_TO_DATE(?, '%H:%i') BETWEEN departure_time AND arrival_time", [$request->departure_time])
-                    ->orWhereRaw("STR_TO_DATE(?, '%H:%i') BETWEEN departure_time AND arrival_time", [$request->arrival_time]);
-            })
-            ->whereRaw("FIND_IN_SET(?, days)", [implode(',', $request->days)])
-            ->first();
+        $existingSchedules = Schedule::where('ferry_id', $request->ferry_id)
+            ->where('id', '!=', $id ?? 0) // Kecualikan jadwal saat ini pada kasus update
+            ->get();
 
-        if ($existingSchedule) {
+        // Deteksi tumpang tindih hari
+        $requestDays = $request->days; // Array hari yang diminta
+        $conflictingSchedule = null;
+
+        foreach ($existingSchedules as $schedule) {
+            $scheduleDays = explode(',', $schedule->days);
+
+            // Periksa apakah ada hari yang tumpang tindih
+            $overlappingDays = array_intersect($requestDays, $scheduleDays);
+
+            if (!empty($overlappingDays)) {
+                $conflictingSchedule = $schedule;
+                break;
+            }
+        }
+
+        if ($conflictingSchedule) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Jadwal bertabrakan dengan jadwal yang sudah ada untuk feri yang sama',
+                'message' => 'Jadwal bertabrakan dengan jadwal yang sudah ada untuk kapal yang sama pada hari yang sama',
                 'errors' => [
-                    'departure_time' => ['Jadwal bertabrakan dengan jadwal yang sudah ada untuk feri yang sama']
+                    'days' => ['Kapal ini sudah memiliki jadwal pada hari: ' . implode(', ', array_map(function ($day) {
+                        $dayNames = [1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu'];
+                        return $dayNames[$day] ?? $day;
+                    }, array_intersect($requestDays, explode(',', $conflictingSchedule->days))))],
+                    'ferry_id' => ['Pilih kapal lain atau ubah hari operasional']
+                ],
+                'conflicting_schedule' => [
+                    'id' => $conflictingSchedule->id,
+                    'days' => $conflictingSchedule->days,
+                    'departure_time' => $conflictingSchedule->departure_time,
+                    'arrival_time' => $conflictingSchedule->arrival_time
                 ]
             ], 422);
         }
+
+        // Validasi jadwal duplikat untuk feri yang sama kecuali jadwal ini sendiri
+        $existingExactSchedule = Schedule::where('route_id', $request->route_id)
+            ->where('departure_time', $request->departure_time)
+            ->where('arrival_time', $request->arrival_time)
+            ->where('days', implode(',', $request->days))
+            ->where('id', '!=', $id)
+            ->first();
+
+        if ($existingExactSchedule) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Jadwal dengan rute dan waktu yang sama sudah ada',
+                'errors' => [
+                    'general' => ['Jadwal dengan rute, waktu keberangkatan, waktu kedatangan dan hari yang sama sudah ada']
+                ]
+            ], 422);
+        }
+
 
         // Check if status changed
         $statusChanged = $schedule->status !== $request->status;
@@ -375,10 +471,24 @@ class ScheduleController extends Controller
             'status_expiry_date' => 'nullable|date|after:now',
         ]);
 
-        // Single date
+        // Validasi untuk tanggal tunggal
         if ($request->date_type === 'single') {
-            // Validasi jika tanggal tunggal sesuai dengan hari operasi
             $selectedDate = Carbon::parse($request->date);
+
+            // Check if date already exists
+            $existingDate = ScheduleDate::where('schedule_id', $schedule->id)
+                ->where('date', $selectedDate->format('Y-m-d'))
+                ->first();
+
+            if ($existingDate) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Tanggal jadwal sudah ada',
+                    'errors' => [
+                        'date' => ['Tanggal ini sudah ada dalam jadwal']
+                    ]
+                ], 422);
+            }
 
             // PERBAIKAN: Carbon menggunakan 0 untuk Minggu, tapi kita gunakan 1-7
             // Konversi yang benar untuk Carbon: 0=Minggu → 7, 1=Senin → 1, dst.

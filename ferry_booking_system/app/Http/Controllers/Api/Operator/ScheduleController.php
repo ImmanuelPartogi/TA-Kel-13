@@ -249,12 +249,16 @@ class ScheduleController extends Controller
         // Cek apakah jadwal ini berjalan pada hari dari tanggal yang dipilih
         $date = Carbon::parse($request->date);
         $dayOfWeek = $date->dayOfWeek;
+        if ($dayOfWeek == 0) $dayOfWeek = 7;
         $scheduleDays = explode(',', $schedule->days);
 
         if (!in_array($dayOfWeek, $scheduleDays)) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Jadwal tidak beroperasi pada hari ini: ' . $date->isoFormat('dddd')
+                'message' => 'Jadwal tidak beroperasi pada hari ini: ' . $date->isoFormat('dddd'),
+                'errors' => [
+                    'date' => ['Jadwal tidak beroperasi pada hari ini: ' . $date->isoFormat('dddd')]
+                ]
             ], 400);
         }
 
@@ -266,7 +270,10 @@ class ScheduleController extends Controller
         if ($existingDate) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Tanggal ini sudah ada di dalam jadwal'
+                'message' => 'Tanggal ini sudah ada di dalam jadwal',
+                'errors' => [
+                    'date' => ['Tanggal ini sudah ada di dalam jadwal']
+                ]
             ], 400);
         }
 

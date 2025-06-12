@@ -430,7 +430,7 @@ class adminScheduleService {
     const ferry = scheduleDate.schedule?.ferry;
     if (!ferry) return null;
 
-    const passengerOccupancy = ferry.capacity_passenger > 0 
+    const passengerOccupancy = ferry.capacity_passenger > 0   
       ? (scheduleDate.passenger_count / ferry.capacity_passenger * 100).toFixed(1)
       : 0;
 

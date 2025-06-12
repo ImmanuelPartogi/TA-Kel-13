@@ -10,8 +10,9 @@ const ScheduleCreate = () => {
   const [errors, setErrors] = useState({});
   const [currentStep, setCurrentStep] = useState(1);
   const [isDataLoading, setIsDataLoading] = useState(true);
-  const [isArrivalTimeAuto, setIsArrivalTimeAuto] = useState(false);
-  
+  const [isArrivalTimeAuto, setIsArrivalTimeAuto] = useState(true); // Default ke true
+  const [nextDayArrival, setNextDayArrival] = useState(false); // Menandai jika kedatangan di hari berikutnya
+
   const [formData, setFormData] = useState({
     route_id: '',
     ferry_id: '',
@@ -32,6 +33,13 @@ const ScheduleCreate = () => {
     fetchData();
   }, []);
 
+  // Effect untuk otomatis menghitung waktu kedatangan saat rute atau waktu keberangkatan berubah
+  useEffect(() => {
+    if (isArrivalTimeAuto && formData.route_id && formData.departure_time) {
+      calculateArrivalTime();
+    }
+  }, [formData.route_id, formData.departure_time, isArrivalTimeAuto]);
+
   const fetchData = async () => {
     setIsDataLoading(true);
     try {
@@ -39,16 +47,16 @@ const ScheduleCreate = () => {
         adminScheduleService.get('/admin-panel/routes'),
         adminScheduleService.get('/admin-panel/ferries')
       ]);
-      
+
       // Log respons untuk debugging
       console.log('Routes response:', routesRes);
-      
+
       // Extract routes array dengan berbagai kemungkinan struktur
       const routesData = routesRes.data.data || routesRes.data;
       const ferriesData = ferriesRes.data.data || ferriesRes.data;
-      
+
       let extractedRoutes = [];
-      
+
       if (Array.isArray(routesData)) {
         extractedRoutes = routesData;
       } else if (routesData.routes && Array.isArray(routesData.routes)) {
@@ -59,7 +67,7 @@ const ScheduleCreate = () => {
         console.error('Unexpected routes data structure:', routesData);
         extractedRoutes = [];
       }
-      
+
       // Verifikasi apakah setiap rute memiliki properti duration
       const routesWithDuration = extractedRoutes.map(route => {
         if (route.duration === undefined || route.duration === null) {
@@ -67,20 +75,20 @@ const ScheduleCreate = () => {
           // Opsional: Tambahkan durasi default jika perlu
           return { ...route, duration: 0 };
         }
-        
+
         // Pastikan durasi adalah angka
         const duration = parseInt(route.duration, 10);
         if (isNaN(duration)) {
           console.warn(`Rute ${route.id} memiliki durasi yang bukan angka: ${route.duration}`);
           return { ...route, duration: 0 };
         }
-        
+
         return route;
       });
-      
+
       console.log('Routes dengan durasi:', routesWithDuration);
       setRoutes(routesWithDuration);
-      
+
       // Proses data kapal seperti biasa
       let extractedFerries = [];
       if (Array.isArray(ferriesData)) {
@@ -93,7 +101,7 @@ const ScheduleCreate = () => {
         console.error('Unexpected ferries data structure:', ferriesData);
         extractedFerries = [];
       }
-      
+
       setFerries(extractedFerries);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -105,18 +113,28 @@ const ScheduleCreate = () => {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
-    if (type === 'checkbox') {
+
+    if (name === 'auto_arrival') {
+      // Toggle mode otomatis/manual untuk waktu kedatangan
+      console.log("Toggle auto_arrival:", checked);
+      setIsArrivalTimeAuto(checked);
+      if (checked && formData.route_id && formData.departure_time) {
+        // Recalculate arrival time when turning auto back on
+        calculateArrivalTime();
+      }
+    } else if (type === 'checkbox' && name === 'days') {
       const numValue = parseInt(value); // Konversi ke number
-      const newDays = checked 
+      const newDays = checked
         ? [...formData.days, numValue]
         : formData.days.filter(day => day !== numValue);
+      // Note: Kita tetap simpan days sesuai urutan klik user di state
+      // Pengurutan dilakukan saat menampilkan dan mengirim data
       setFormData({ ...formData, days: newDays });
     } else if (name === 'departure_time' || name === 'arrival_time') {
       // Khusus untuk input waktu, hanya update langsung
       // Pemformatan akan dilakukan di onBlur
       setFormData({ ...formData, [name]: value });
-      
+
       // Jika pengguna mengubah waktu kedatangan secara manual, tandai bahwa ini bukan hasil otomatis
       if (name === 'arrival_time') {
         setIsArrivalTimeAuto(false);
@@ -131,74 +149,158 @@ const ScheduleCreate = () => {
       console.log('Tidak dapat menghitung waktu kedatangan: waktu keberangkatan atau rute belum dipilih');
       return;
     }
-    
+
+    // Validasi format waktu keberangkatan
+    if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(formData.departure_time)) {
+      console.warn('Format waktu keberangkatan tidak valid:', formData.departure_time);
+      return;
+    }
+
     const route = routes.find(r => r.id === parseInt(formData.route_id));
     if (!route || !route.duration) {
       console.warn('Durasi rute tidak ditemukan atau tidak valid:', route);
       return;
     }
-    
+
     // Parse departure time
     const parts = formData.departure_time.split(':');
-    if (parts.length !== 2) {
-      console.warn('Format waktu keberangkatan tidak valid:', formData.departure_time);
-      return;
-    }
-    
     const hours = parseInt(parts[0], 10);
     const minutes = parseInt(parts[1], 10);
-    
-    if (isNaN(hours) || isNaN(minutes)) {
-      console.warn('Jam atau menit tidak valid:', hours, minutes);
-      return;
-    }
-    
+
     const duration = parseInt(route.duration, 10);
     if (isNaN(duration)) {
       console.warn('Durasi rute bukan angka valid:', route.duration);
       return;
     }
-    
+
     console.log(`Menghitung waktu kedatangan: ${hours}:${minutes} + ${duration} menit`);
-    
+
     let totalMinutes = hours * 60 + minutes + duration;
-    const arrivalHours = Math.floor(totalMinutes / 60) % 24;
+    let isNextDay = false;
+
+    // Cek apakah waktu kedatangan di hari berikutnya
+    if (totalMinutes >= 24 * 60) {
+      isNextDay = true;
+      totalMinutes = totalMinutes % (24 * 60);
+    }
+
+    const arrivalHours = Math.floor(totalMinutes / 60);
     const arrivalMinutes = totalMinutes % 60;
-    
+
     const formattedHours = arrivalHours.toString().padStart(2, '0');
     const formattedMinutes = arrivalMinutes.toString().padStart(2, '0');
-    
+
     const newArrivalTime = `${formattedHours}:${formattedMinutes}`;
-    console.log(`Waktu kedatangan yang dihitung: ${newArrivalTime}`);
-    
-    // Update arrival_time dan tandai bahwa ini hasil otomatis
+    console.log(`Waktu kedatangan yang dihitung: ${newArrivalTime} ${isNextDay ? '(hari berikutnya)' : ''}`);
+
+    // Update arrival_time, tandai ini hasil otomatis, dan status hari berikutnya
     setFormData(prev => ({
       ...prev,
       arrival_time: newArrivalTime
     }));
     setIsArrivalTimeAuto(true);
+    setNextDayArrival(isNextDay);
+  };
+
+  // Fungsi untuk menangani perubahan jam keberangkatan
+  const handleDepartureHourChange = (e) => {
+    const hour = e.target.value;
+    const minute = formData.departure_time ? formData.departure_time.split(':')[1] || '00' : '00';
+    const newTime = `${hour}:${minute}`;
+
+    // Perbarui waktu keberangkatan
+    setFormData({ ...formData, departure_time: newTime });
+
+    // calculateArrivalTime akan dipanggil melalui useEffect
+  };
+
+  // Fungsi untuk menangani perubahan menit keberangkatan
+  const handleDepartureMinuteChange = (e) => {
+    const minute = e.target.value;
+    const hour = formData.departure_time ? formData.departure_time.split(':')[0] || '00' : '00';
+    const newTime = `${hour}:${minute}`;
+
+    // Perbarui waktu keberangkatan
+    setFormData({ ...formData, departure_time: newTime });
+
+    // calculateArrivalTime akan dipanggil melalui useEffect
+  };
+
+  // Fungsi untuk menangani perubahan jam kedatangan
+  const handleArrivalHourChange = (e) => {
+    const hour = e.target.value;
+    const minute = formData.arrival_time ? formData.arrival_time.split(':')[1] || '00' : '00';
+    const newTime = `${hour}:${minute}`;
+
+    setFormData({ ...formData, arrival_time: newTime });
+    setIsArrivalTimeAuto(false); // User mengubah manual
+  };
+
+  // Fungsi untuk menangani perubahan menit kedatangan
+  const handleArrivalMinuteChange = (e) => {
+    const minute = e.target.value;
+    const hour = formData.arrival_time ? formData.arrival_time.split(':')[0] || '00' : '00';
+    const newTime = `${hour}:${minute}`;
+
+    setFormData({ ...formData, arrival_time: newTime });
+    setIsArrivalTimeAuto(false); // User mengubah manual
+  };
+
+  // Fungsi untuk menghitung durasi perjalanan dari waktu keberangkatan dan kedatangan
+  const calculateTravelDuration = () => {
+    if (!formData.departure_time || !formData.arrival_time) {
+      return null;
+    }
+
+    // Parse departure time
+    const [depHours, depMinutes] = formData.departure_time.split(':').map(num => parseInt(num, 10));
+    const [arrHours, arrMinutes] = formData.arrival_time.split(':').map(num => parseInt(num, 10));
+
+    // Convert to minutes
+    let depTotalMinutes = depHours * 60 + depMinutes;
+    let arrTotalMinutes = arrHours * 60 + arrMinutes;
+
+    // Handle next day arrival
+    if (nextDayArrival || arrTotalMinutes < depTotalMinutes) {
+      arrTotalMinutes += 24 * 60; // Add a full day in minutes
+    }
+
+    // Calculate duration
+    return arrTotalMinutes - depTotalMinutes;
   };
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     if (!formData.route_id) newErrors.route_id = 'Rute harus dipilih';
     if (!formData.ferry_id) newErrors.ferry_id = 'Kapal harus dipilih';
-    
+
     if (!formData.departure_time) {
       newErrors.departure_time = 'Waktu keberangkatan harus diisi';
     } else if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(formData.departure_time)) {
       newErrors.departure_time = 'Pilih jam dan menit keberangkatan';
     }
-    
+
     if (!formData.arrival_time) {
       newErrors.arrival_time = 'Waktu kedatangan harus diisi';
     } else if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(formData.arrival_time)) {
       newErrors.arrival_time = 'Pilih jam dan menit kedatangan';
+    } else if (!nextDayArrival) {
+      // Verifikasi waktu kedatangan hanya jika bukan di hari berikutnya
+      // Parse waktu
+      const [dHour, dMinute] = formData.departure_time.split(':').map(Number);
+      const [aHour, aMinute] = formData.arrival_time.split(':').map(Number);
+
+      const departureMinutes = dHour * 60 + dMinute;
+      const arrivalMinutes = aHour * 60 + aMinute;
+
+      if (arrivalMinutes <= departureMinutes && !nextDayArrival) {
+        newErrors.arrival_time = 'Waktu kedatangan harus setelah waktu keberangkatan';
+      }
     }
-    
+
     if (formData.days.length === 0) newErrors.days = 'Pilih minimal satu hari operasional';
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -207,12 +309,12 @@ const ScheduleCreate = () => {
     if (currentStep === 1) {
       const requiredFields = ['route_id', 'ferry_id', 'departure_time', 'arrival_time'];
       const hasErrors = requiredFields.some(field => !formData[field]);
-      
+
       if (hasErrors) {
         validateForm();
         return;
       }
-      
+
       setCurrentStep(2);
       // Scroll to top
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -227,28 +329,42 @@ const ScheduleCreate = () => {
     }
   };
 
+  // Fungsi untuk mengurutkan array hari
+  const getSortedDays = (days) => {
+    // Urutkan hari-hari secara numerik (1=Senin, 2=Selasa, dst.)
+    return [...days].sort((a, b) => a - b);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setLoading(true);
     try {
+      // Urutkan array hari operasional sebelum dikirim
+      const sortedDays = getSortedDays(formData.days);
+
+      console.log('Hari operasional asli:', formData.days);
+      console.log('Hari operasional berurutan:', sortedDays);
+
+      // Tambahkan informasi durasi dan flag hari berikutnya ke data yang dikirim
       await adminScheduleService.post('/admin-panel/schedules', {
         ...formData,
-        days: formData.days
+        days: sortedDays, // Gunakan array hari yang sudah diurutkan
+        next_day_arrival: nextDayArrival
       });
-      
+
       // Success notification
       const notification = document.getElementById('notification');
       if (notification) {
         notification.classList.remove('opacity-0');
         notification.classList.add('opacity-100');
-        
+
         setTimeout(() => {
           notification.classList.remove('opacity-100');
           notification.classList.add('opacity-0');
-          
+
           setTimeout(() => {
             navigate('/admin/schedules');
           }, 300);
@@ -258,7 +374,22 @@ const ScheduleCreate = () => {
       }
     } catch (error) {
       console.error('Submit error:', error.response?.data);
-      if (error.response?.data?.errors) {
+
+      // Tambahkan penanganan khusus untuk error konflik jadwal
+      if (error.response?.data?.conflicting_schedule) {
+        const conflict = error.response.data.conflicting_schedule;
+        setErrors({
+          ...error.response?.data?.errors,
+          general: [
+            'Terjadi konflik jadwal untuk kapal yang dipilih.',
+            `Jadwal yang bertabrakan: Hari ${adminScheduleService.formatDays(conflict.days)}`,
+            '1. Pilih kapal lain yang tersedia',
+            '2. Pilih hari operasional yang berbeda (hindari hari yang sama)',
+            '3. Hubungi admin untuk menyesuaikan jadwal yang sudah ada'
+          ]
+        });
+      } else if (error.response?.data?.errors) {
+        // Penanganan error lainnya tetap sama
         setErrors(error.response.data.errors);
       }
       setLoading(false);
@@ -277,12 +408,19 @@ const ScheduleCreate = () => {
     if (!minutes) return "-";
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
-    return `${hours}j ${mins}m`;
+    return hours > 0 ? `${hours}j ${mins}m` : `${mins}m`;
   };
 
   // Cek apakah rute yang dipilih memiliki durasi
   const selectedRoute = formData.route_id ? routes.find(r => r.id === parseInt(formData.route_id)) : null;
   const isDurationAvailable = selectedRoute && selectedRoute.duration > 0;
+
+  // Menghitung perbedaan antara durasi terhitung dan durasi rute
+  const calculatedDuration = calculateTravelDuration();
+  const durationDifference = calculatedDuration !== null && getSelectedRouteDuration() !== null
+    ? calculatedDuration - getSelectedRouteDuration()
+    : null;
+  const hasDurationDiscrepancy = durationDifference !== null && Math.abs(durationDifference) > 5;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 relative">
@@ -306,13 +444,13 @@ const ScheduleCreate = () => {
             <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
               <defs>
                 <pattern id="smallGrid" width="20" height="20" patternUnits="userSpaceOnUse">
-                  <path d="M 20 0 L 0 0 0 20" fill="none" stroke="white" strokeWidth="0.5"/>
+                  <path d="M 20 0 L 0 0 0 20" fill="none" stroke="white" strokeWidth="0.5" />
                 </pattern>
               </defs>
               <rect width="100%" height="100%" fill="url(#smallGrid)" />
             </svg>
           </div>
-          
+
           <div className="flex justify-between items-center relative z-10">
             <h1 className="text-2xl font-bold flex items-center">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 mr-3 text-blue-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -320,7 +458,7 @@ const ScheduleCreate = () => {
               </svg>
               Tambah Jadwal Baru
             </h1>
-            <Link to="/admin/schedules" 
+            <Link to="/admin/schedules"
               className="inline-flex items-center px-4 py-2 bg-black/20 backdrop-blur-sm rounded-lg font-medium text-sm text-white hover:bg-black/30 transition-all duration-200">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -328,7 +466,7 @@ const ScheduleCreate = () => {
               Kembali
             </Link>
           </div>
-          
+
           {/* Breadcrumb */}
           <div className="mt-2 flex items-center text-sm text-blue-100/80">
             <Link to="/admin/dashboard" className="hover:text-white">Dashboard</Link>
@@ -382,6 +520,33 @@ const ScheduleCreate = () => {
               </div>
             </div>
 
+            {/* Tambahkan di bawah Progress Steps, sekitar baris 200 */}
+            {errors.general && (
+              <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 shadow-md rounded-md animate-fadeIn">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-red-800">Perhatian: Konflik Jadwal</h3>
+                    <div className="mt-2 text-sm text-red-700">
+                      {Array.isArray(errors.general) ? (
+                        <ul className="list-disc pl-5 space-y-1">
+                          {errors.general.map((err, index) => (
+                            <p key={index}>{err}</p>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p>{errors.general}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Form */}
             <form onSubmit={handleSubmit} noValidate className="space-y-6">
               {/* Step 1: Basic Info */}
@@ -409,16 +574,10 @@ const ScheduleCreate = () => {
                           </div>
                           <select
                             className={`pl-10 bg-white border ${errors.route_id ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-300'} rounded-lg text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm transition-all duration-200`}
-                            id="route_id" 
-                            name="route_id" 
+                            id="route_id"
+                            name="route_id"
                             value={formData.route_id}
-                            onChange={(e) => {
-                              handleInputChange(e);
-                              // Gunakan setTimeout untuk memastikan formData terupdate
-                              setTimeout(() => {
-                                calculateArrivalTime();
-                              }, 100);
-                            }}
+                            onChange={handleInputChange}
                             required
                           >
                             <option value="">-- Pilih Rute --</option>
@@ -455,15 +614,7 @@ const ScheduleCreate = () => {
                               id="departure_hour"
                               name="departure_hour"
                               value={formData.departure_time ? formData.departure_time.split(':')[0] : ''}
-                              onChange={(e) => {
-                                const hour = e.target.value;
-                                const minute = formData.departure_time ? formData.departure_time.split(':')[1] || '00' : '00';
-                                const newTime = `${hour}:${minute}`;
-                                setFormData({...formData, departure_time: newTime});
-                                setTimeout(() => {
-                                  calculateArrivalTime();
-                                }, 100);
-                              }}
+                              onChange={handleDepartureHourChange}
                               required
                             >
                               <option value="">Jam</option>
@@ -485,7 +636,7 @@ const ScheduleCreate = () => {
                               Jam
                             </div>
                           </div>
-                          
+
                           <div className="relative flex-1">
                             <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -497,15 +648,7 @@ const ScheduleCreate = () => {
                               id="departure_minute"
                               name="departure_minute"
                               value={formData.departure_time ? formData.departure_time.split(':')[1] || '' : ''}
-                              onChange={(e) => {
-                                const minute = e.target.value;
-                                const hour = formData.departure_time ? formData.departure_time.split(':')[0] || '00' : '00';
-                                const newTime = `${hour}:${minute}`;
-                                setFormData({...formData, departure_time: newTime});
-                                setTimeout(() => {
-                                  calculateArrivalTime();
-                                }, 100);
-                              }}
+                              onChange={handleDepartureMinuteChange}
                               required
                             >
                               <option value="">Menit</option>
@@ -528,7 +671,7 @@ const ScheduleCreate = () => {
                             </div>
                           </div>
                         </div>
-                        
+
                         {/* Selected Time Display */}
                         {formData.departure_time && formData.departure_time.includes(':') && (
                           <div className="mt-2 flex items-center text-sm text-blue-700 font-medium">
@@ -538,7 +681,7 @@ const ScheduleCreate = () => {
                             Waktu keberangkatan: {formData.departure_time}
                           </div>
                         )}
-                        
+
                         {errors.departure_time && (
                           <p className="mt-1 text-sm text-red-600 flex items-center">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -561,8 +704,8 @@ const ScheduleCreate = () => {
                           </div>
                           <select
                             className="pl-10 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm transition-all duration-200"
-                            id="status" 
-                            name="status" 
+                            id="status"
+                            name="status"
                             value={formData.status}
                             onChange={handleInputChange}
                             required
@@ -584,11 +727,11 @@ const ScheduleCreate = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                               </svg>
                             </div>
-                            <input 
+                            <input
                               type="text"
                               className="pl-10 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm"
-                              id="status_reason" 
-                              name="status_reason" 
+                              id="status_reason"
+                              name="status_reason"
                               value={formData.status_reason}
                               onChange={handleInputChange}
                               placeholder="Mis. Cuaca buruk, Pemeliharaan kapal"
@@ -613,8 +756,8 @@ const ScheduleCreate = () => {
                           </div>
                           <select
                             className={`pl-10 bg-white border ${errors.ferry_id ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-300'} rounded-lg text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm transition-all duration-200`}
-                            id="ferry_id" 
-                            name="ferry_id" 
+                            id="ferry_id"
+                            name="ferry_id"
                             value={formData.ferry_id}
                             onChange={handleInputChange}
                             required
@@ -638,14 +781,40 @@ const ScheduleCreate = () => {
                       </div>
 
                       <div>
-                        <label htmlFor="arrival_time" className="block text-sm font-medium text-gray-700 mb-1">
-                          Waktu Kedatangan <span className="text-red-500">*</span>
-                          {isArrivalTimeAuto && isDurationAvailable && (
-                            <span className="ml-2 text-xs font-normal text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
-                              Otomatis Dihitung
-                            </span>
-                          )}
-                        </label>
+                        <div className="flex justify-between items-center mb-1">
+                          <label htmlFor="arrival_time" className="block text-sm font-medium text-gray-700">
+                            Waktu Kedatangan <span className="text-red-500">*</span>
+                            {isArrivalTimeAuto && isDurationAvailable && (
+                              <span className="ml-2 text-xs font-normal text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                                Otomatis Dihitung
+                              </span>
+                            )}
+                          </label>
+
+                          {/* Toggle switch for automatic arrival time */}
+                          <div className="flex items-center">
+                            <span className="text-xs text-gray-500 mr-2">Otomatis</span>
+                            <label className="inline-flex relative items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                className="sr-only peer"
+                                id="auto_arrival"
+                                name="auto_arrival"
+                                checked={isArrivalTimeAuto}
+                                onChange={() => {
+                                  console.log("Toggle clicked, new state will be:", !isArrivalTimeAuto);
+                                  setIsArrivalTimeAuto(!isArrivalTimeAuto);
+                                  if (!isArrivalTimeAuto && formData.route_id && formData.departure_time) {
+                                    // Jika berubah dari manual ke otomatis, hitung ulang waktu kedatangan
+                                    setTimeout(() => calculateArrivalTime(), 100);
+                                  }
+                                }}
+                              />
+                              <div className={`w-9 h-5 ${isArrivalTimeAuto ? 'bg-blue-600' : 'bg-gray-200'} peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all`}></div>
+                            </label>
+                          </div>
+                        </div>
+
                         <div className="flex space-x-2">
                           <div className="relative flex-1">
                             <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -654,18 +823,12 @@ const ScheduleCreate = () => {
                               </svg>
                             </div>
                             <select
-                              className={`block w-full pl-10 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg shadow-sm transition-all duration-200 ${errors.arrival_time ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-300 hover:border-gray-400'} appearance-none bg-white`}
+                              className={`block w-full pl-10 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg shadow-sm transition-all duration-200 ${errors.arrival_time ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-300 hover:border-gray-400'} appearance-none bg-white ${isArrivalTimeAuto ? 'bg-gray-50' : ''}`}
                               id="arrival_hour"
                               name="arrival_hour"
                               value={formData.arrival_time ? formData.arrival_time.split(':')[0] : ''}
-                              onChange={(e) => {
-                                const hour = e.target.value;
-                                const minute = formData.arrival_time ? formData.arrival_time.split(':')[1] || '00' : '00';
-                                const newTime = `${hour}:${minute}`;
-                                setFormData({...formData, arrival_time: newTime});
-                                // Pengguna mengubah nilai secara manual
-                                setIsArrivalTimeAuto(false);
-                              }}
+                              onChange={handleArrivalHourChange}
+                              disabled={isArrivalTimeAuto}
                               required
                             >
                               <option value="">Jam</option>
@@ -687,7 +850,7 @@ const ScheduleCreate = () => {
                               Jam
                             </div>
                           </div>
-                          
+
                           <div className="relative flex-1">
                             <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -695,18 +858,12 @@ const ScheduleCreate = () => {
                               </svg>
                             </div>
                             <select
-                              className={`block w-full pl-10 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg shadow-sm transition-all duration-200 ${errors.arrival_time ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-300 hover:border-gray-400'} appearance-none bg-white`}
+                              className={`block w-full pl-10 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg shadow-sm transition-all duration-200 ${errors.arrival_time ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-300 hover:border-gray-400'} appearance-none bg-white ${isArrivalTimeAuto ? 'bg-gray-50' : ''}`}
                               id="arrival_minute"
                               name="arrival_minute"
                               value={formData.arrival_time ? formData.arrival_time.split(':')[1] || '' : ''}
-                              onChange={(e) => {
-                                const minute = e.target.value;
-                                const hour = formData.arrival_time ? formData.arrival_time.split(':')[0] || '00' : '00';
-                                const newTime = `${hour}:${minute}`;
-                                setFormData({...formData, arrival_time: newTime});
-                                // Pengguna mengubah nilai secara manual
-                                setIsArrivalTimeAuto(false);
-                              }}
+                              onChange={handleArrivalMinuteChange}
+                              disabled={isArrivalTimeAuto}
                               required
                             >
                               <option value="">Menit</option>
@@ -729,21 +886,41 @@ const ScheduleCreate = () => {
                             </div>
                           </div>
                         </div>
-                        
+
+                        {/* Next Day Arrival Indicator */}
+                        {nextDayArrival && (
+                          <div className="mt-2 flex items-center text-sm text-orange-700 font-medium bg-orange-50 p-2 rounded">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            Kedatangan di hari berikutnya
+                          </div>
+                        )}
+
                         {isArrivalTimeAuto && isDurationAvailable && (
                           <div className="mt-2 flex items-center text-sm text-blue-700 font-medium bg-blue-50 p-2 rounded">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            Waktu kedatangan dihitung otomatis berdasarkan durasi rute ({formatDuration(selectedRoute.duration)})
+                            Waktu kedatangan dihitung otomatis ({formatDuration(selectedRoute.duration)})
+                            <button
+                              type="button"
+                              onClick={() => calculateArrivalTime()}
+                              className="ml-2 text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition-colors"
+                            >
+                              Hitung Ulang
+                            </button>
                           </div>
                         )}
-                        
+
                         {!isArrivalTimeAuto && isDurationAvailable && (
                           <div className="mt-2 text-xs">
-                            <button 
+                            <button
                               type="button"
-                              onClick={calculateArrivalTime}
+                              onClick={() => {
+                                setIsArrivalTimeAuto(true);
+                                calculateArrivalTime();
+                              }}
                               className="text-blue-600 bg-blue-50 px-2 py-1 rounded hover:bg-blue-100 transition-colors"
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -753,17 +930,7 @@ const ScheduleCreate = () => {
                             </button>
                           </div>
                         )}
-                        
-                        {/* Selected Time Display */}
-                        {formData.arrival_time && formData.arrival_time.includes(':') && (
-                          <div className="mt-2 flex items-center text-sm text-blue-700 font-medium">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            Waktu kedatangan: {formData.arrival_time}
-                          </div>
-                        )}
-                        
+
                         {errors.arrival_time && (
                           <p className="mt-1 text-sm text-red-600 flex items-center">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -786,8 +953,25 @@ const ScheduleCreate = () => {
                           <div className="space-y-2">
                             <p className="text-sm text-gray-700 flex justify-between">
                               <span className="font-medium">Durasi Perjalanan:</span>
-                              <span className="text-blue-700 font-medium">{formatDuration(getSelectedRouteDuration())}</span>
+                              <span className="text-blue-700 font-medium">
+                                {formatDuration(getSelectedRouteDuration())}
+                              </span>
                             </p>
+
+                            {calculatedDuration !== null && (
+                              <p className="text-sm text-gray-700 flex justify-between">
+                                <span className="font-medium">Durasi Terhitung:</span>
+                                <span className={`font-medium ${hasDurationDiscrepancy ? 'text-orange-600' : 'text-blue-700'}`}>
+                                  {formatDuration(calculatedDuration)}
+                                  {hasDurationDiscrepancy && (
+                                    <span className="ml-2 text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded">
+                                      {durationDifference > 0 ? '+' : ''}{formatDuration(durationDifference)}
+                                    </span>
+                                  )}
+                                </span>
+                              </p>
+                            )}
+
                             <p className="text-sm text-gray-700 flex justify-between">
                               <span className="font-medium">Rute:</span>
                               <span className="text-blue-700">
@@ -801,6 +985,13 @@ const ScheduleCreate = () => {
                                 <span className="font-medium">Kode Rute:</span>
                                 <span className="text-blue-700">{routes.find(r => r.id === parseInt(formData.route_id))?.route_code}</span>
                               </p>
+                            )}
+
+                            {hasDurationDiscrepancy && (
+                              <div className="mt-2 p-2 bg-orange-50 border border-orange-100 rounded text-xs text-orange-800">
+                                <p className="font-medium mb-1">Perhatian!</p>
+                                <p>Durasi terhitung berbeda dari durasi rute yang diatur. Ini mungkin memengaruhi jadwal perjalanan.</p>
+                              </div>
                             )}
                           </div>
                         </div>
@@ -819,7 +1010,8 @@ const ScheduleCreate = () => {
                     <ul className="text-sm text-gray-700 space-y-1 ml-6 list-disc">
                       <li>Pilih jam dan menit untuk waktu keberangkatan dalam format 24 jam</li>
                       <li>Waktu kedatangan akan dihitung otomatis berdasarkan durasi rute yang dipilih</li>
-                      <li>Anda dapat menyesuaikan waktu kedatangan jika diperlukan</li>
+                      <li>Toggle "Otomatis" dapat dinonaktifkan jika Anda ingin mengatur waktu kedatangan secara manual</li>
+                      <li>Jika durasi menyebabkan waktu kedatangan di hari berikutnya, sistem akan otomatis menandainya</li>
                       <li>Pastikan semua informasi yang dimasukkan sudah benar sebelum melanjutkan</li>
                     </ul>
                   </div>
@@ -838,13 +1030,14 @@ const ScheduleCreate = () => {
 
                   <div className="mb-8">
                     <p className="mb-4 text-gray-700">Pilih hari-hari di mana jadwal ini beroperasi:</p>
+                    {/* Menampilkan hari dalam urutan tetap (Senin-Minggu) */}
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
                       {Object.entries(dayNames).map(([value, name]) => {
                         const numValue = parseInt(value);
                         const isChecked = formData.days.includes(numValue);
                         return (
-                          <div 
-                            key={value} 
+                          <div
+                            key={value}
                             className={`relative flex items-center p-4 ${isChecked ? 'bg-blue-50 border-blue-300' : 'bg-white border-gray-200'} border rounded-lg shadow-sm hover:shadow-md transition-all duration-200 group cursor-pointer`}
                             onClick={() => {
                               const e = {
@@ -858,8 +1051,8 @@ const ScheduleCreate = () => {
                               handleInputChange(e);
                             }}
                           >
-                            <input 
-                              type="checkbox" 
+                            <input
+                              type="checkbox"
                               id={`day_${value}`}
                               name="days"
                               value={value}
@@ -905,19 +1098,19 @@ const ScheduleCreate = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                           </svg>
                           <span>
-                            {formData.route_id 
-                              ? routes.find(r => r.id === parseInt(formData.route_id))?.origin + ' → ' + 
-                                routes.find(r => r.id === parseInt(formData.route_id))?.destination
+                            {formData.route_id
+                              ? routes.find(r => r.id === parseInt(formData.route_id))?.origin + ' → ' +
+                              routes.find(r => r.id === parseInt(formData.route_id))?.destination
                               : '-'}
                           </span>
                         </p>
                         <p className="text-sm text-gray-600 mt-1 ml-7">
-                          {formData.route_id && routes.find(r => r.id === parseInt(formData.route_id))?.route_code 
+                          {formData.route_id && routes.find(r => r.id === parseInt(formData.route_id))?.route_code
                             ? `Kode Rute: ${routes.find(r => r.id === parseInt(formData.route_id))?.route_code}`
                             : ''}
                         </p>
                       </div>
-                      
+
                       <div className="bg-white p-4 rounded-lg border border-blue-100 shadow-sm hover:shadow-md transition-all duration-200">
                         <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Kapal:</p>
                         <p className="font-medium text-gray-900 flex items-center">
@@ -931,12 +1124,12 @@ const ScheduleCreate = () => {
                           </span>
                         </p>
                         <p className="text-sm text-gray-600 mt-1 ml-7">
-                          {formData.ferry_id && ferries.find(f => f.id === parseInt(formData.ferry_id))?.registration_number 
+                          {formData.ferry_id && ferries.find(f => f.id === parseInt(formData.ferry_id))?.registration_number
                             ? `Nomor Registrasi: ${ferries.find(f => f.id === parseInt(formData.ferry_id))?.registration_number}`
                             : ''}
                         </p>
                       </div>
-                      
+
                       <div className="bg-white p-4 rounded-lg border border-blue-100 shadow-sm hover:shadow-md transition-all duration-200">
                         <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Waktu:</p>
                         <p className="font-medium text-gray-900 flex items-center">
@@ -948,14 +1141,21 @@ const ScheduleCreate = () => {
                               ? `${formData.departure_time} → ${formData.arrival_time}`
                               : '-'}
                           </span>
+                          {nextDayArrival && (
+                            <span className="ml-2 text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded">
+                              +1 hari
+                            </span>
+                          )}
                         </p>
                         <p className="text-sm text-gray-600 mt-1 ml-7">
-                          {getSelectedRouteDuration() 
-                            ? `Durasi: ${formatDuration(getSelectedRouteDuration())}`
-                            : ''}
+                          {calculatedDuration
+                            ? `Durasi: ${formatDuration(calculatedDuration)}`
+                            : getSelectedRouteDuration()
+                              ? `Durasi: ${formatDuration(getSelectedRouteDuration())}`
+                              : ''}
                         </p>
                       </div>
-                      
+
                       <div className="bg-white p-4 rounded-lg border border-blue-100 shadow-sm hover:shadow-md transition-all duration-200">
                         <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Hari Operasional:</p>
                         <p className="font-medium text-gray-900 flex items-center">
@@ -964,13 +1164,13 @@ const ScheduleCreate = () => {
                           </svg>
                           <span>
                             {formData.days.length > 0
-                              ? formData.days.map(day => dayNames[day]).join(', ')
+                              ? getSortedDays(formData.days).map(day => dayNames[day]).join(', ')
                               : '-'}
                           </span>
                         </p>
                         <p className="text-sm text-gray-600 mt-1 ml-7">
-                          {formData.status === 'ACTIVE' 
-                            ? 'Status: Aktif' 
+                          {formData.status === 'ACTIVE'
+                            ? 'Status: Aktif'
                             : `Status: Tidak Aktif (${formData.status_reason || 'Tidak ada alasan'})`}
                         </p>
                       </div>
@@ -982,8 +1182,8 @@ const ScheduleCreate = () => {
               {/* Form Actions */}
               <div className="flex justify-between mt-8">
                 {currentStep === 2 ? (
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={handlePrev}
                     className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-2.5 px-5 rounded-lg transition-all duration-200 shadow-sm flex items-center border border-gray-300"
                   >
@@ -1004,10 +1204,10 @@ const ScheduleCreate = () => {
                     </svg>
                     Batal
                   </Link>
-                  
+
                   {currentStep === 1 ? (
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={handleNext}
                       className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-6 rounded-lg transition-all duration-200 shadow-md flex items-center group"
                     >
@@ -1017,7 +1217,7 @@ const ScheduleCreate = () => {
                       </svg>
                     </button>
                   ) : (
-                    <button 
+                    <button
                       type="submit"
                       disabled={loading}
                       className="bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-6 rounded-lg transition-all duration-200 shadow-md flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1065,7 +1265,7 @@ const ScheduleCreate = () => {
                 <p className="mt-1 text-sm text-gray-600">Pilih rute dan kapal dari daftar yang tersedia.</p>
               </div>
             </div>
-            
+
             <div className="flex items-start">
               <div className="flex-shrink-0 mt-0.5">
                 <div className="flex items-center justify-center h-8 w-8 rounded-full bg-blue-100 text-blue-600">
@@ -1077,7 +1277,7 @@ const ScheduleCreate = () => {
                 <p className="mt-1 text-sm text-gray-600">Tentukan waktu keberangkatan. Waktu kedatangan akan dihitung otomatis dari durasi rute.</p>
               </div>
             </div>
-            
+
             <div className="flex items-start">
               <div className="flex-shrink-0 mt-0.5">
                 <div className="flex items-center justify-center h-8 w-8 rounded-full bg-blue-100 text-blue-600">
@@ -1089,7 +1289,7 @@ const ScheduleCreate = () => {
                 <p className="mt-1 text-sm text-gray-600">Tentukan hari apa saja jadwal ini beroperasi.</p>
               </div>
             </div>
-            
+
             <div className="flex items-start">
               <div className="flex-shrink-0 mt-0.5">
                 <div className="flex items-center justify-center h-8 w-8 rounded-full bg-blue-100 text-blue-600">

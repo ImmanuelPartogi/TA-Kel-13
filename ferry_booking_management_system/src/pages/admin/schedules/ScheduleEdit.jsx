@@ -28,6 +28,12 @@ const ScheduleEdit = () => {
     5: 'Jumat', 6: 'Sabtu', 7: 'Minggu'
   };
 
+  // Fungsi untuk mengurutkan array hari
+  const getSortedDays = (days) => {
+    // Urutkan hari-hari secara numerik (1=Senin, 2=Selasa, dst.)
+    return [...days].sort((a, b) => parseInt(a) - parseInt(b));
+  };
+
   useEffect(() => {
     fetchData();
 
@@ -71,12 +77,15 @@ const ScheduleEdit = () => {
         return `${hours}:${minutes}`;
       };
 
+      // Parse days dari string menjadi array
+      const parsedDays = schedule.days ? schedule.days.split(',') : [];
+
       setFormData({
         route_id: schedule.route_id,
         ferry_id: schedule.ferry_id,
         departure_time: formatTime(schedule.departure_time),
         arrival_time: formatTime(schedule.arrival_time),
-        days: schedule.days.split(','),
+        days: parsedDays,
         status: schedule.status,
         status_reason: schedule.status_reason || '',
         status_expiry_date: schedule.status_expiry_date || ''
@@ -117,32 +126,84 @@ const ScheduleEdit = () => {
     }
   };
 
+  // Fungsi untuk memvalidasi waktu
+  const validateTimes = () => {
+    // Jika salah satu waktu belum diisi, abaikan validasi
+    if (!formData.departure_time || !formData.arrival_time) {
+      return true;
+    }
+
+    // Parse waktu keberangkatan dan kedatangan
+    const [departureHour, departureMinute] = formData.departure_time.split(':').map(Number);
+    const [arrivalHour, arrivalMinute] = formData.arrival_time.split(':').map(Number);
+
+    // Konversi ke menit untuk memudahkan perbandingan
+    const departureTimeInMinutes = departureHour * 60 + departureMinute;
+    const arrivalTimeInMinutes = arrivalHour * 60 + arrivalMinute;
+
+    // Jika waktu kedatangan lebih awal dari waktu keberangkatan
+    if (arrivalTimeInMinutes < departureTimeInMinutes) {
+      return false;
+    }
+
+    return true;
+  };
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
 
     if (type === 'checkbox') {
+      // Untuk checkbox days, simpan tanpa mengurutkan terlebih dahulu
+      // Urutan hanya diterapkan saat menampilkan dan menyimpan ke server
       const newDays = checked
         ? [...formData.days, value]
         : formData.days.filter(day => day !== value);
       setFormData({ ...formData, days: newDays });
     } else {
       setFormData({ ...formData, [name]: value });
+
+      // Hapus error jika user sudah memperbaiki input
+      if (name === 'departure_time' || name === 'arrival_time') {
+        const newErrors = { ...errors };
+        delete newErrors.arrival_time;
+        setErrors(newErrors);
+      }
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Reset errors
+    const newErrors = {};
+
+    // Validasi hari operasional
     if (formData.days.length === 0) {
-      setErrors({ days: 'Pilih minimal satu hari operasional' });
+      newErrors.days = 'Pilih minimal satu hari operasional';
+    }
+
+    // Validasi waktu
+    if (!validateTimes()) {
+      newErrors.arrival_time = 'Waktu kedatangan tidak boleh lebih awal dari waktu keberangkatan';
+    }
+
+    // Jika ada error, tampilkan dan hentikan proses submit
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
     setSaving(true);
     try {
+      // Urutkan array hari operasional sebelum dikirim
+      const sortedDays = getSortedDays(formData.days);
+
+      console.log('Hari operasional asli:', formData.days);
+      console.log('Hari operasional berurutan:', sortedDays);
+
       await adminScheduleService.put(`/admin-panel/schedules/${id}`, {
         ...formData,
-        days: formData.days // Kirim sebagai array, tidak perlu join
+        days: sortedDays // Gunakan array hari yang sudah diurutkan
       });
 
       setAlert({
@@ -155,15 +216,32 @@ const ScheduleEdit = () => {
         navigate('/admin/schedules');
       }, 2000);
     } catch (error) {
-      if (error.response?.data?.errors) {
+      console.error('Submit error:', error.response?.data);
+
+      // Tambahkan penanganan khusus untuk error konflik jadwal
+      if (error.response?.data?.conflicting_schedule) {
+        const conflict = error.response.data.conflicting_schedule;
+        setErrors({
+          ...error.response?.data?.errors,
+          general: [
+            'Terjadi konflik jadwal untuk kapal yang dipilih.',
+            `Jadwal yang bertabrakan: Hari ${adminScheduleService.formatDays(conflict.days)}`,
+            '1. Pilih kapal lain yang tersedia',
+            '2. Pilih hari operasional yang berbeda (hindari hari yang sama)',
+            '3. Hubungi admin untuk menyesuaikan jadwal yang sudah ada'
+          ]
+        });
+        // Scroll ke atas agar pengguna dapat melihat pesan error
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else if (error.response?.data?.errors) {
         setErrors(error.response.data.errors);
+      } else {
+        setAlert({
+          show: true,
+          type: 'error',
+          message: 'Gagal memperbarui jadwal: ' + (error.response?.data?.message || 'Terjadi kesalahan')
+        });
       }
-      setAlert({
-        show: true,
-        type: 'error',
-        message: 'Gagal memperbarui jadwal'
-      });
-    } finally {
       setSaving(false);
     }
   };
@@ -247,41 +325,31 @@ const ScheduleEdit = () => {
 
       <div className="p-8">
         {/* Alert Messages - sama dengan SchedulesList */}
-        {alert.show && (
-          <div className={`mb-6 rounded-lg shadow-lg overflow-hidden animate-slideIn`}>
-            <div className={`${alert.type === 'success' ? 'bg-emerald-500' : 'bg-red-500'} px-4 py-2 text-white flex items-center justify-between`}>
-              <div className="flex items-center">
-                <i className={`fas ${alert.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-2`}></i>
-                <span className="font-medium">{alert.type === 'success' ? 'Sukses' : 'Error'}</span>
+        {errors.general && (
+          <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 shadow-md rounded-md animate-slideIn">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <i className="fas fa-exclamation-circle text-red-500"></i>
               </div>
-              <button onClick={() => setAlert({ ...alert, show: false })} className="text-white/80 hover:text-white">
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-            <div className={`${alert.type === 'success' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-red-50 border-red-100 text-red-700'} px-4 py-3 border-t`}>
-              {alert.message}
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">Perhatian: Konflik Jadwal</h3>
+                <div className="mt-2 text-sm text-red-700">
+                  {Array.isArray(errors.general) ? (
+                    <ul className="list-disc pl-5 space-y-1">
+                      {errors.general.map((err, index) => (
+                        <p key={index}>{err}</p>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>{errors.general}</p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Error Messages */}
-        {Object.keys(errors).length > 0 && (
-          <div className="mb-6 rounded-lg shadow-lg overflow-hidden">
-            <div className="bg-red-500 px-4 py-2 text-white flex items-center justify-between">
-              <div className="flex items-center">
-                <i className="fas fa-exclamation-circle mr-2"></i>
-                <span className="font-medium">Error</span>
-              </div>
-            </div>
-            <div className="bg-red-50 border-red-100 text-red-700 px-4 py-3 border-t">
-              <ul className="list-disc list-inside space-y-1">
-                {Object.values(errors).flat().map((error, index) => (
-                  <li key={index}>{error}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        )}
+
 
         {/* Form Card */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow duration-300">
@@ -386,6 +454,11 @@ const ScheduleEdit = () => {
                           const minute = formData.departure_time ? formData.departure_time.split(':')[1] || '00' : '00';
                           const newTime = `${hour}:${minute}`;
                           setFormData({ ...formData, departure_time: newTime });
+
+                          // Reset error saat user mengubah waktu
+                          const newErrors = { ...errors };
+                          delete newErrors.arrival_time;
+                          setErrors(newErrors);
                         }}
                         required
                       >
@@ -418,6 +491,11 @@ const ScheduleEdit = () => {
                           const hour = formData.departure_time ? formData.departure_time.split(':')[0] || '00' : '00';
                           const newTime = `${hour}:${minute}`;
                           setFormData({ ...formData, departure_time: newTime });
+
+                          // Reset error saat user mengubah waktu
+                          const newErrors = { ...errors };
+                          delete newErrors.arrival_time;
+                          setErrors(newErrors);
                         }}
                         required
                       >
@@ -455,7 +533,7 @@ const ScheduleEdit = () => {
                         <i className="fas fa-clock text-blue-600"></i>
                       </div>
                       <select
-                        className="block w-full pl-10 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg shadow-sm transition-all duration-200 appearance-none bg-white"
+                        className={`block w-full pl-10 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg shadow-sm transition-all duration-200 appearance-none bg-white ${errors.arrival_time ? 'border-red-500 ring-1 ring-red-500' : ''}`}
                         id="arrival_hour"
                         name="arrival_hour"
                         value={formData.arrival_time ? formData.arrival_time.split(':')[0] : ''}
@@ -464,6 +542,11 @@ const ScheduleEdit = () => {
                           const minute = formData.arrival_time ? formData.arrival_time.split(':')[1] || '00' : '00';
                           const newTime = `${hour}:${minute}`;
                           setFormData({ ...formData, arrival_time: newTime });
+
+                          // Reset error saat user mengubah waktu
+                          const newErrors = { ...errors };
+                          delete newErrors.arrival_time;
+                          setErrors(newErrors);
                         }}
                         required
                       >
@@ -487,7 +570,7 @@ const ScheduleEdit = () => {
                         <i className="fas fa-stopwatch text-blue-600"></i>
                       </div>
                       <select
-                        className="block w-full pl-10 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg shadow-sm transition-all duration-200 appearance-none bg-white"
+                        className={`block w-full pl-10 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg shadow-sm transition-all duration-200 appearance-none bg-white ${errors.arrival_time ? 'border-red-500 ring-1 ring-red-500' : ''}`}
                         id="arrival_minute"
                         name="arrival_minute"
                         value={formData.arrival_time ? formData.arrival_time.split(':')[1] || '' : ''}
@@ -496,6 +579,11 @@ const ScheduleEdit = () => {
                           const hour = formData.arrival_time ? formData.arrival_time.split(':')[0] || '00' : '00';
                           const newTime = `${hour}:${minute}`;
                           setFormData({ ...formData, arrival_time: newTime });
+
+                          // Reset error saat user mengubah waktu
+                          const newErrors = { ...errors };
+                          delete newErrors.arrival_time;
+                          setErrors(newErrors);
                         }}
                         required
                       >
@@ -514,7 +602,7 @@ const ScheduleEdit = () => {
                       </div>
                     </div>
                   </div>
-                  {/* Error message */}
+                  {/* Error message untuk waktu kedatangan */}
                   {errors.arrival_time && (
                     <p className="mt-1 text-sm text-red-600">
                       <i className="fas fa-exclamation-circle mr-1"></i>
@@ -529,6 +617,7 @@ const ScheduleEdit = () => {
                   Hari Operasi <span className="text-red-500">*</span>
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                  {/* Urutan checkbox hari tetap Senin-Minggu */}
                   {Object.entries(dayNames).map(([value, name]) => {
                     const isChecked = formData.days.includes(value);
                     return (
@@ -560,6 +649,16 @@ const ScheduleEdit = () => {
                     <span className="font-medium">Error:</span> {errors.days}
                   </p>
                 )}
+              </div>
+
+              {/* Summary of Selected Days (Displayed in Order) */}
+              <div className="mt-3">
+                <p className="text-sm text-gray-700">
+                  <span className="font-medium">Hari terpilih:</span>{' '}
+                  {formData.days.length > 0
+                    ? getSortedDays(formData.days).map(day => dayNames[day]).join(', ')
+                    : 'Belum ada hari yang dipilih'}
+                </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">

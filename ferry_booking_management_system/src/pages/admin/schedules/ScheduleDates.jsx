@@ -76,7 +76,36 @@ const ScheduleDates = () => {
     setSaving(true);
     setErrors({});
 
+    // Validasi dasar
+    const newErrors = {};
+
+    if (!formData.date) {
+      newErrors.date = 'Tanggal harus diisi';
+    }
+
+    if (dateType === 'range' && !formData.end_date) {
+      newErrors.end_date = 'Tanggal akhir harus diisi';
+    }
+
+    // Validasi tanggal sudah ada di daftar
+    const formattedDate = new Date(formData.date).toISOString().split('T')[0];
+    const dateExists = scheduleDates.some(date =>
+      new Date(date.date).toISOString().split('T')[0] === formattedDate
+    );
+
+    if (dateExists) {
+      newErrors.date = 'Tanggal ini sudah ada dalam jadwal';
+    }
+
+    // Jika ada error, tampilkan dan stop
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      setSaving(false);
+      return;
+    }
+
     try {
+      // Lanjutkan dengan pengiriman data ke server
       await adminScheduleService.post(`/admin-panel/schedules/${id}/dates`, {
         ...formData,
         date_type: dateType

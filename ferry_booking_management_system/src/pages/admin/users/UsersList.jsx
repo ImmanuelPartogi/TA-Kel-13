@@ -36,6 +36,7 @@ const UserList = () => {
       }, 5000);
       return () => clearTimeout(timer);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pagination.currentPage, filters, alert.show]);
 
   const fetchUsers = async () => {
@@ -410,9 +411,6 @@ const UserList = () => {
                 className="inline-flex items-center px-5 py-2.5 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors shadow-sm">
                 <i className="fas fa-sync-alt mr-2"></i> Reset Filter
               </button>
-              <Link to="/admin/users/create" className="inline-flex items-center px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-sm">
-                <i className="fas fa-user-plus mr-2"></i> Tambah Pengguna
-              </Link>
             </div>
           </div>
         )}

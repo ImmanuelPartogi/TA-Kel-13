@@ -61,15 +61,15 @@ class adminReportService {
   }
 
   /**
-   * Export laporan booking
-   * @param {Object} params - Export parameters
-   * @returns {Promise}
-   */
+ * Export laporan booking
+ * @param {Object} params - Export parameters
+ * @returns {Promise}
+ */
   async exportBookingReport(params) {
     try {
-      const response = await api.get('/admin-panel/reports/booking/export', { 
+      // Pastikan hanya menggunakan API endpoint standar tanpa mengarahkan ulang browser
+      const response = await api.get('/admin-panel/reports/booking', {
         params,
-        responseType: 'blob' 
       });
       return response.data;
     } catch (error) {
@@ -85,9 +85,9 @@ class adminReportService {
    */
   async exportRevenueReport(params) {
     try {
-      const response = await api.get('/admin-panel/reports/revenue/export', { 
+      // Pastikan hanya menggunakan API endpoint standar tanpa mengarahkan ulang browser
+      const response = await api.get('/admin-panel/reports/revenue', {
         params,
-        responseType: 'blob' 
       });
       return response.data;
     } catch (error) {
@@ -97,15 +97,15 @@ class adminReportService {
   }
 
   /**
-   * Export laporan jadwal
-   * @param {Object} params - Export parameters
-   * @returns {Promise}
-   */
+ * Export laporan jadwal
+ * @param {Object} params - Export parameters
+ * @returns {Promise}
+ */
   async exportScheduleReport(params) {
     try {
-      const response = await api.get('/admin-panel/reports/schedule/export', { 
+      // Pastikan hanya menggunakan API endpoint standar tanpa mengarahkan ulang browser
+      const response = await api.get('/admin-panel/reports/schedule', {
         params,
-        responseType: 'blob' 
       });
       return response.data;
     } catch (error) {

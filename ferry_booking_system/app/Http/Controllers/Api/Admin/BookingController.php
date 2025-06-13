@@ -392,7 +392,7 @@ class BookingController extends Controller
                 }
 
                 // Jika status schedule date bukan AVAILABLE
-                if ($scheduleDate->status !== 'AVAILABLE') {
+                if ($scheduleDate->status !== 'ACTIVE') {
                     return [
                         'id' => $schedule->id,
                         'departure_time' => $schedule->departure_time,
@@ -514,7 +514,7 @@ class BookingController extends Controller
                             $nextScheduleIds = $nextSchedules->pluck('id');
                             $nextScheduleDates = ScheduleDate::whereIn('schedule_id', $nextScheduleIds)
                                 ->where('date', $nextDate->format('Y-m-d'))
-                                ->where('status', 'AVAILABLE')
+                                ->where('status', 'ACTIVE')
                                 ->get();
 
                             if ($nextScheduleDates->isNotEmpty()) {
@@ -658,7 +658,7 @@ class BookingController extends Controller
                 ], 422);
             }
 
-            if ($scheduleDate->status !== 'AVAILABLE') {
+            if ($scheduleDate->status !== 'ACTIVE') {
                 return response()->json([
                     'success' => false,
                     'message' => 'Jadwal tidak tersedia untuk tanggal yang dipilih',

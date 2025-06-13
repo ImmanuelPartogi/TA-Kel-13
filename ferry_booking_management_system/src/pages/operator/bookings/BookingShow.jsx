@@ -475,9 +475,6 @@ const BookingShow = () => {
                   <thead>
                     <tr className="bg-gray-50">
                       <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        ID PEMBAYARAN
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                         METODE
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -492,9 +489,6 @@ const BookingShow = () => {
                     {booking?.payments && booking.payments.length > 0 ? (
                       booking.payments.map((payment) => (
                         <tr key={payment.id} className="hover:bg-gray-50 transition-colors duration-150">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-mono font-medium text-gray-900">
-                            {payment.payment_code || payment.id}
-                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700">
                             {payment.payment_method || 'VIRTUAL_ACCOUNT'}
                           </td>

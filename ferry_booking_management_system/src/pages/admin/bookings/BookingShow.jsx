@@ -845,13 +845,13 @@ const BookingShow = () => {
                             {booking.status === 'PENDING' && (
                               <>
                                 <option value="CONFIRMED">Konfirmasi</option>
-                                <option value="CANCELLED">Batalkan</option>
+                                {/* <option value="CANCELLED">Batalkan</option> */}
                               </>
                             )}
                             {booking.status === 'CONFIRMED' && (
                               <>
                                 <option value="COMPLETED">Selesai</option>
-                                <option value="CANCELLED">Batalkan</option>
+                                {/* <option value="CANCELLED">Batalkan</option> */}
                               </>
                             )}
                             {booking.status === 'COMPLETED' && (

@@ -19,10 +19,10 @@ const RevenueReport = () => {
     groupBy: searchParams.get('group_by') || 'monthly',
     revenueGrowth: 0
   });
-  
+
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
-  
+
   const [filters, setFilters] = useState({
     start_date: searchParams.get('start_date') || new Date().toISOString().slice(0, 10),
     end_date: searchParams.get('end_date') || new Date().toISOString().slice(0, 10),
@@ -62,7 +62,7 @@ const RevenueReport = () => {
     try {
       setLoading(true);
       const response = await adminReportService.getRevenueReport(Object.fromEntries(searchParams));
-      
+
       if (response.success) {
         setData(response.data);
       } else {
@@ -98,7 +98,7 @@ const RevenueReport = () => {
   const handleFilter = (e) => {
     e.preventDefault();
     setLoading(true);
-    
+
     // Update URL tanpa refresh halaman
     const params = new URLSearchParams(filters);
     setSearchParams(params);
@@ -122,15 +122,79 @@ const RevenueReport = () => {
       });
   };
 
-  const handleExport = () => {
+  // Fungsi handleExport yang diperbaiki untuk RevenueReport.jsx
+  const handleExport = async () => {
     try {
-      const params = new URLSearchParams(searchParams);
-      params.append('export', 'csv');
-      window.location.href = `/admin/reports/revenue/export?${params.toString()}`;
-      toast.success('Mengunduh laporan pendapatan...');
+      setLoading(true);
+      // Gunakan data yang sudah ada dari state, tidak perlu panggil API lagi
+      const revenuesData = data.revenues || [];
+
+      if (revenuesData.length === 0) {
+        toast.error('Tidak ada data untuk diekspor');
+        return;
+      }
+
+      // Buat file CSV dari data yang sudah ada
+      let csvContent = "data:text/csv;charset=utf-8,";
+
+      // Tambahkan informasi laporan di bagian atas
+      csvContent += "Laporan Pendapatan\r\n";
+      csvContent += `Periode: ${formatDate(data.startDate)} - ${formatDate(data.endDate)}\r\n`;
+      csvContent += `Pengelompokan: ${getPeriodLabel(data.groupBy)}\r\n`;
+      csvContent += `Total Pendapatan: ${formatCurrency(data.totalRevenue)}\r\n`;
+      csvContent += `Total Transaksi: ${data.totalTransactions}\r\n`;
+      csvContent += `Rata-rata per Transaksi: ${formatCurrency(data.averageTransaction)}\r\n\r\n`;
+
+      // Tambahkan header kolom
+      const periodLabel = data.groupBy === 'daily' ? 'Tanggal' :
+        data.groupBy === 'weekly' ? 'Minggu' : 'Bulan';
+
+      const headers = [
+        periodLabel,
+        "Jumlah Transaksi",
+        "Total Pendapatan",
+        "Rata-rata per Transaksi"
+      ];
+      csvContent += headers.join(',') + "\r\n";
+
+      // Tambahkan data baris
+      revenuesData.forEach(revenue => {
+        const row = [
+          revenue.formatted_period,
+          revenue.transaction_count,
+          formatCurrency(revenue.total_amount).replace(/Rp\s/g, ''),
+          formatCurrency(revenue.average_amount).replace(/Rp\s/g, '')
+        ];
+
+        // Escape nilai yang mungkin berisi koma
+        const formattedRow = row.map(value => {
+          if (value === null || value === undefined) return '';
+          if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+            return `"${value.replace(/"/g, '""')}"`;
+          }
+          return value;
+        });
+
+        csvContent += formattedRow.join(',') + "\r\n";
+      });
+
+      // Buat element anchor untuk mengunduh file
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `revenue_report_${filters.start_date}_to_${filters.end_date}.csv`);
+      document.body.appendChild(link);
+
+      // Trigger unduhan
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success('Laporan pendapatan berhasil diunduh');
     } catch (error) {
-      console.error('Error exporting revenue:', error);
-      toast.error('Gagal mengunduh laporan');
+      console.error('Error exporting revenue report:', error);
+      toast.error('Gagal mengunduh laporan: ' + (error.message || 'Terjadi kesalahan'));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -161,7 +225,7 @@ const RevenueReport = () => {
     setItemsPerPage(Number(e.target.value));
     setCurrentPage(1); // Reset to first page when changing items per page
   };
-  
+
   // Format currency
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('id-ID', {
@@ -526,13 +590,28 @@ const RevenueReport = () => {
         <div className="flex space-x-3 mt-4 md:mt-0">
           <button
             onClick={handleExport}
-            className="flex items-center px-4 py-2.5 bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl transition-all shadow-md hover:shadow-lg font-medium"
-            disabled={loading}
+            disabled={loading || !data.revenues || data.revenues.length === 0}
+            className={`flex items-center px-4 py-2.5 ${loading || !data.revenues || data.revenues.length === 0
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700'
+              } text-white rounded-xl transition-all shadow-md hover:shadow-lg font-medium`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Export CSV
+            {loading ? (
+              <>
+                <svg className="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Mengunduh...
+              </>
+            ) : (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Export CSV
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -1037,7 +1116,7 @@ const RevenueReport = () => {
                 <option value={50}>50 data</option>
               </select>
             </div>
-            
+
             {data.revenues.length > itemsPerPage && (
               <div className="flex items-center gap-2">
                 <button
@@ -1065,7 +1144,7 @@ const RevenueReport = () => {
                 </button>
               </div>
             )}
-            
+
             <div className="flex items-center space-x-4 mt-4 md:mt-0">
               <div className="text-xs bg-gray-100 text-gray-700 py-1.5 px-3 rounded-lg flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">

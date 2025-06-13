@@ -549,7 +549,7 @@ const FerryShow = () => {
                               <td className="px-6 py-4">
                                 <div className="flex flex-col">
                                   <div className="flex items-center text-sm text-gray-900">
-                                    <i className="fas fa-plane-departure text-emerald-500 mr-2"></i>
+                                    <i className="fas fa-ship text-emerald-500 mr-2"></i>
                                     {schedule.departure_time ? new Intl.DateTimeFormat('id-ID', {
                                       hour: '2-digit',
                                       minute: '2-digit',
@@ -557,7 +557,7 @@ const FerryShow = () => {
                                     }).format(new Date(schedule.departure_time)) : 'N/A'}
                                   </div>
                                   <div className="flex items-center text-sm text-gray-900 mt-1">
-                                    <i className="fas fa-plane-arrival text-red-500 mr-2"></i>
+                                    <i className="fas fa-ship text-red-500 mr-2"></i>
                                     {schedule.arrival_time ? new Intl.DateTimeFormat('id-ID', {
                                       hour: '2-digit',
                                       minute: '2-digit',

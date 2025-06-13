@@ -518,11 +518,94 @@ const BookingReport = () => {
       });
   };
 
-  const handleExport = () => {
-    const params = new URLSearchParams(searchParams);
-    params.append('export', 'csv');
-    window.location.href = `/admin/reports/booking/export?${params.toString()}`;
-    toast.success('Mengunduh laporan booking...');
+  // Fungsi handleExport yang diperbaiki untuk BookingReport.jsx
+  const handleExport = async () => {
+    try {
+      setLoading(true);
+      // Gunakan data yang sudah ada dari state, tidak perlu panggil API lagi
+      const bookingsData = data.bookings || [];
+
+      if (bookingsData.length === 0) {
+        toast.error('Tidak ada data untuk diekspor');
+        return;
+      }
+
+      // Buat file CSV dari data yang sudah ada
+      let csvContent = "data:text/csv;charset=utf-8,";
+
+      // Tambahkan informasi laporan di bagian atas
+      csvContent += "Laporan Booking\r\n";
+      csvContent += `Periode: ${formattedDateRange.start} - ${formattedDateRange.end}\r\n`;
+      csvContent += `Total Booking: ${data.totalBookings}\r\n`;
+      csvContent += `Total Penumpang: ${data.totalPassengers}\r\n`;
+      csvContent += `Total Kendaraan: ${data.totalVehicles}\r\n`;
+      csvContent += `Total Pendapatan: Rp ${data.totalRevenue.toLocaleString('id-ID')}\r\n\r\n`;
+
+      // Tambahkan header kolom
+      const headers = [
+        "Booking Code",
+        "Tanggal Booking",
+        "Pengguna",
+        "Rute",
+        "Jadwal",
+        "Tanggal Keberangkatan",
+        "Jumlah Penumpang",
+        "Jumlah Kendaraan",
+        "Total Harga",
+        "Status",
+        "Metode Pembayaran"
+      ];
+      csvContent += headers.join(',') + "\r\n";
+
+      // Tambahkan data baris
+      bookingsData.forEach(booking => {
+        const paymentMethod = booking.payments && booking.payments.length > 0 ?
+          booking.payments[0].payment_method : 'N/A';
+
+        const row = [
+          booking.booking_code,
+          new Date(booking.created_at).toLocaleString('id-ID'),
+          booking.user?.name || 'N/A',
+          `${booking.schedule?.route?.origin || 'N/A'} - ${booking.schedule?.route?.destination || 'N/A'}`,
+          `${booking.schedule?.departure_time || 'N/A'} - ${booking.schedule?.arrival_time || 'N/A'}`,
+          booking.departure_date || booking.booking_date || 'N/A',
+          booking.passenger_count,
+          booking.vehicle_count,
+          booking.total_amount,
+          booking.status,
+          paymentMethod
+        ];
+
+        // Escape nilai yang mungkin berisi koma
+        const formattedRow = row.map(value => {
+          if (value === null || value === undefined) return '';
+          if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+            return `"${value.replace(/"/g, '""')}"`;
+          }
+          return value;
+        });
+
+        csvContent += formattedRow.join(',') + "\r\n";
+      });
+
+      // Buat element anchor untuk mengunduh file
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `booking_report_${filters.start_date}_to_${filters.end_date}.csv`);
+      document.body.appendChild(link);
+
+      // Trigger unduhan
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success('Laporan booking berhasil diunduh');
+    } catch (error) {
+      console.error('Error exporting booking report:', error);
+      toast.error('Gagal mengunduh laporan: ' + (error.message || 'Terjadi kesalahan'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -602,15 +685,31 @@ const BookingReport = () => {
         <div className="flex space-x-3 mt-4 md:mt-0">
           <button
             onClick={handleExport}
-            className="flex items-center px-4 py-2.5 bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl transition-all shadow-md hover:shadow-lg font-medium"
-            disabled={loading}
+            disabled={loading || !data.bookings || data.bookings.length === 0}
+            className={`flex items-center px-4 py-2.5 ${loading || !data.bookings || data.bookings.length === 0
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700'
+              } text-white rounded-xl transition-all shadow-md hover:shadow-lg font-medium`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Export CSV
+            {loading ? (
+              <>
+                <svg className="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Mengunduh...
+              </>
+            ) : (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Export CSV
+              </>
+            )}
           </button>
         </div>
+
       </div>
 
       {/* Indikator Loading Global */}

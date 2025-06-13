@@ -112,7 +112,8 @@ const ScheduleDates = () => {
       });
 
       setShowAddModal(false);
-      fetchScheduleData();
+      // Pastikan data direfresh setelah penambahan
+      await fetchScheduleData(); // Fetch ulang data jadwal
       resetForm();
 
       setAlert({

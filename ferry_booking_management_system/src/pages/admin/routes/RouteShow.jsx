@@ -7,7 +7,7 @@ const RouteShow = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [route, setRoute] = useState(null);
-  const [schedules, setSchedules] = useState([]);
+  const [, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [vehicleCategories, setVehicleCategories] = useState([]);
@@ -93,45 +93,11 @@ const RouteShow = () => {
     }
   };
 
-  const formatTime = (timeString) => {
-    if (!timeString) return '-';
-    try {
-      // Handle jika timeString sudah termasuk tanggal
-      if (timeString.includes('T')) {
-        return new Date(timeString).toLocaleTimeString('id-ID', {
-          hour: '2-digit',
-          minute: '2-digit'
-        });
-      }
-      // Handle jika hanya waktu (HH:mm:ss)
-      return new Date(`2000-01-01T${timeString}`).toLocaleTimeString('id-ID', {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (error) {
-      console.error('Failed to parse time:', error);
-      return timeString;
-    }
-  };
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('id-ID').format(price);
   };
 
-  const getDayNames = (days) => {
-    if (!days) return [];
-    const dayNames = {
-      '1': 'Sen',
-      '2': 'Sel',
-      '3': 'Rab',
-      '4': 'Kam',
-      '5': 'Jum',
-      '6': 'Sab',
-      '7': 'Min'
-    };
-    const dayArray = typeof days === 'string' ? days.split(',') : [days];
-    return dayArray.map(day => dayNames[day] || day);
-  };
 
   // Get vehicle categories by type
   const getVehicleCategoriesByType = (type) => {
@@ -567,130 +533,6 @@ const RouteShow = () => {
                 </div>
               )}
 
-            </div>
-          </div>
-        </div>
-
-        {/* Schedules Section - Tampilan ditingkatkan */}
-        <div className="mt-8">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-semibold flex items-center">
-              <div className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-100 text-blue-600 mr-2 shadow-sm">
-                <i className="fas fa-ship"></i>
-              </div>
-              Jadwal Keberangkatan
-            </h3>
-            <Link to={`/admin/schedules/create?route_id=${route.id}`}
-              className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition duration-300 flex items-center text-sm shadow-md">
-              <i className="fas fa-plus mr-2"></i> Tambah Jadwal
-            </Link>
-          </div>
-
-          {/* Schedules Table */}
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full">
-                <thead>
-                  <tr className="bg-gradient-to-r from-gray-50 to-gray-100 text-gray-600">
-                    <th className="py-3 px-4 border-b border-gray-200 text-left text-xs font-medium uppercase tracking-wider">Kapal</th>
-                    <th className="py-3 px-4 border-b border-gray-200 text-left text-xs font-medium uppercase tracking-wider">Hari</th>
-                    <th className="py-3 px-4 border-b border-gray-200 text-left text-xs font-medium uppercase tracking-wider">Keberangkatan</th>
-                    <th className="py-3 px-4 border-b border-gray-200 text-left text-xs font-medium uppercase tracking-wider">Kedatangan</th>
-                    <th className="py-3 px-4 border-b border-gray-200 text-left text-xs font-medium uppercase tracking-wider">Status</th>
-                    <th className="py-3 px-4 border-b border-gray-200 text-left text-xs font-medium uppercase tracking-wider">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {schedules.length > 0 ? schedules.map(schedule => (
-                    <tr key={schedule.id} className="hover:bg-gray-50 transition duration-150">
-                      <td className="py-3 px-4 text-sm font-medium text-gray-900">
-                        <div className="flex items-center">
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3 text-blue-600">
-                            <i className="fas fa-ship"></i>
-                          </div>
-                          {schedule.ferry?.name || 'N/A'}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-sm text-gray-700">
-                        <div className="flex flex-wrap gap-1">
-                          {getDayNames(schedule.days).map((day, index) => (
-                            <span key={index} className="px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-medium">
-                              {day}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-sm font-medium text-gray-700">
-                        <div className="flex items-center">
-                          <div className="w-6 h-6 bg-blue-50 rounded-full flex items-center justify-center mr-2 text-blue-500">
-                            <i className="far fa-clock text-xs"></i>
-                          </div>
-                          <span>{formatTime(schedule.departure_time)}</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-sm font-medium text-gray-700">
-                        <div className="flex items-center">
-                          <div className="w-6 h-6 bg-green-50 rounded-full flex items-center justify-center mr-2 text-green-500">
-                            <i className="far fa-clock text-xs"></i>
-                          </div>
-                          <span>{formatTime(schedule.arrival_time)}</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-sm">
-                        {schedule.status === 'ACTIVE' ? (
-                          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 border border-green-200">
-                            <i className="fas fa-check-circle mr-1"></i> Aktif
-                          </span>
-                        ) : schedule.status === 'DELAYED' ? (
-                          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200">
-                            <i className="fas fa-clock mr-1"></i> Tertunda
-                            {route.status === 'WEATHER_ISSUE' && ' (Cuaca)'}
-                          </span>
-                        ) : schedule.status === 'FULL' ? (
-                          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 border border-blue-200">
-                            <i className="fas fa-users mr-1"></i> Penuh
-                          </span>
-                        ) : (
-                          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 border border-red-200">
-                            <i className="fas fa-ban mr-1"></i> Dibatalkan
-                            {route.status === 'INACTIVE' && ' (Rute)'}
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-sm">
-                        <div className="flex items-center space-x-2">
-                          <Link to={`/admin/schedules/${schedule.id}`}
-                            className="text-blue-600 hover:text-blue-900 bg-blue-100 hover:bg-blue-200 p-2 rounded-lg transition-colors">
-                            <i className="fas fa-eye"></i>
-                          </Link>
-                          <Link to={`/admin/schedules/${schedule.id}/edit`}
-                            className="text-yellow-600 hover:text-yellow-900 bg-yellow-100 hover:bg-yellow-200 p-2 rounded-lg transition-colors">
-                            <i className="fas fa-edit"></i>
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  )) : (
-                    <tr>
-                      <td colSpan="6" className="py-8 px-4 text-center bg-gray-50">
-                        <div className="flex flex-col items-center justify-center py-8">
-                          <div className="bg-gray-100 p-6 rounded-full text-gray-300 mb-4">
-                            <svg className="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                            </svg>
-                          </div>
-                          <p className="text-lg font-medium text-gray-600">Tidak ada jadwal keberangkatan</p>
-                          <p className="text-sm text-gray-400 mb-5">Belum ada jadwal yang ditambahkan untuk rute ini</p>
-                          <Link to={`/admin/schedules/create?route_id=${route.id}`}
-                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition-colors">
-                            <i className="fas fa-plus mr-2"></i> Tambah Jadwal Baru
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
             </div>
           </div>
         </div>

@@ -29,7 +29,7 @@ const ScheduleReport = () => {
     end_date: searchParams.get('end_date') || new Date().toISOString().slice(0, 10),
     route_id: searchParams.get('route_id') || ''
   });
-  
+
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [searchTerm, setSearchTerm] = useState('');
@@ -594,15 +594,91 @@ const ScheduleReport = () => {
       });
   };
 
-  const handleExport = () => {
+  // Fungsi handleExport yang diperbaiki untuk ScheduleReport.jsx
+  const handleExport = async () => {
     try {
-      const params = new URLSearchParams(searchParams);
-      params.append('export', 'csv');
-      window.location.href = `/admin/reports/schedule/export?${params.toString()}`;
-      toast.success('Mengunduh laporan jadwal...');
+      setLoading(true);
+      // Gunakan data yang sudah ada dari state, tidak perlu panggil API lagi
+      const scheduleStatsData = data.scheduleStats || [];
+
+      if (scheduleStatsData.length === 0) {
+        toast.error('Tidak ada data untuk diekspor');
+        return;
+      }
+
+      // Buat file CSV dari data yang sudah ada
+      let csvContent = "data:text/csv;charset=utf-8,";
+
+      // Tambahkan informasi laporan di bagian atas
+      csvContent += "Laporan Jadwal\r\n";
+      csvContent += `Periode: ${formatDate(data.startDate)} - ${formatDate(data.endDate)}\r\n`;
+      csvContent += `Tingkat Okupansi Keseluruhan: ${data.overallOccupancyRate?.toFixed(2) || '0.00'}%\r\n`;
+      csvContent += `Total Penumpang: ${data.totalPassengers}\r\n`;
+      csvContent += `Total Kendaraan: ${data.totalVehicles}\r\n\r\n`;
+
+      // Tambahkan header kolom
+      const headers = [
+        "ID Jadwal",
+        "Rute",
+        "Kapal",
+        "Waktu",
+        "Hari",
+        "Jumlah Penumpang",
+        "Jumlah Kendaraan",
+        "Motor",
+        "Mobil",
+        "Bus",
+        "Truk",
+        "Okupansi Penumpang (%)"
+      ];
+      csvContent += headers.join(',') + "\r\n";
+
+      // Tambahkan data baris
+      scheduleStatsData.forEach(stat => {
+        const row = [
+          stat.schedule_id,
+          stat.route,
+          stat.ferry,
+          stat.time,
+          stat.days,
+          stat.passenger_count,
+          stat.vehicle_count,
+          stat.motorcycle_count,
+          stat.car_count,
+          stat.bus_count,
+          stat.truck_count,
+          stat.passenger_occupancy_rate?.toFixed(2) || '0.00'
+        ];
+
+        // Escape nilai yang mungkin berisi koma
+        const formattedRow = row.map(value => {
+          if (value === null || value === undefined) return '';
+          if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+            return `"${value.replace(/"/g, '""')}"`;
+          }
+          return value;
+        });
+
+        csvContent += formattedRow.join(',') + "\r\n";
+      });
+
+      // Buat element anchor untuk mengunduh file
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `schedule_report_${filters.start_date}_to_${filters.end_date}.csv`);
+      document.body.appendChild(link);
+
+      // Trigger unduhan
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success('Laporan jadwal berhasil diunduh');
     } catch (error) {
-      console.error('Error exporting schedule:', error);
-      toast.error('Gagal mengunduh laporan');
+      console.error('Error exporting schedule report:', error);
+      toast.error('Gagal mengunduh laporan: ' + (error.message || 'Terjadi kesalahan'));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -669,13 +745,28 @@ const ScheduleReport = () => {
         <div className="flex space-x-3 mt-4 md:mt-0">
           <button
             onClick={handleExport}
-            className="flex items-center px-4 py-2.5 bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl transition-all shadow-md hover:shadow-lg font-medium"
-            disabled={loading}
+            disabled={loading || !data.scheduleStats || data.scheduleStats.length === 0}
+            className={`flex items-center px-4 py-2.5 ${loading || !data.scheduleStats || data.scheduleStats.length === 0
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700'
+              } text-white rounded-xl transition-all shadow-md hover:shadow-lg font-medium`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Export CSV
+            {loading ? (
+              <>
+                <svg className="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Mengunduh...
+              </>
+            ) : (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Export CSV
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -727,7 +818,7 @@ const ScheduleReport = () => {
               <div className="bg-indigo-100 p-3 rounded-xl mr-4">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
+                </svg>
               </div>
               <div>
                 <span className="text-xs uppercase text-gray-500 font-semibold tracking-wider">Okupansi Rata-rata</span>
@@ -1024,7 +1115,7 @@ const ScheduleReport = () => {
         </div>
       </div>
 
-              {/* Daftar Jadwal */}
+      {/* Daftar Jadwal */}
       <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-xl mb-8">
         <div className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white px-6 py-5 flex justify-between items-center">
           <h2 className="text-lg font-bold text-gray-800 flex items-center">
@@ -1136,7 +1227,7 @@ const ScheduleReport = () => {
                             // Convert numeric day to name
                             const dayName = (() => {
                               const num = parseInt(day.trim());
-                              switch(num) {
+                              switch (num) {
                                 case 1: return "Sen";
                                 case 2: return "Sel";
                                 case 3: return "Rab";
@@ -1147,7 +1238,7 @@ const ScheduleReport = () => {
                                 default: return day.trim();
                               }
                             })();
-                            
+
                             return (
                               <span key={i} className="inline-flex items-center justify-center w-8 h-8 text-xs font-bold rounded-full bg-blue-100 text-blue-800 border border-blue-200 shadow-sm">
                                 {dayName}
@@ -1165,10 +1256,10 @@ const ScheduleReport = () => {
                             <span className="font-bold text-base">{stat.passenger_count}</span>
                             <span className="mx-1 text-gray-400">/</span>
                             <span className="text-xs text-green-600">
-                              {stat.capacity_passenger || 
-                               (stat.ferry && Array.isArray(data.scheduleStats) && 
-                                data.scheduleStats.find(s => s.ferry === stat.ferry)?.capacity_passenger) || 
-                               "N/A"}
+                              {stat.capacity_passenger ||
+                                (stat.ferry && Array.isArray(data.scheduleStats) &&
+                                  data.scheduleStats.find(s => s.ferry === stat.ferry)?.capacity_passenger) ||
+                                "N/A"}
                             </span>
                           </div>
                         </div>
@@ -1196,34 +1287,34 @@ const ScheduleReport = () => {
                       <td className="py-4 px-4 whitespace-nowrap">
                         <div className="flex items-center space-x-2">
                           <div className="flex-grow bg-gray-200 rounded-full h-2.5 overflow-hidden shadow-inner">
-                          <div
-                              className={`h-2.5 rounded-full shadow-sm ${
-                                stat.passenger_count && stat.capacity_passenger
-                                  ? (stat.passenger_count / stat.capacity_passenger) * 100 > 80
-                                    ? 'bg-gradient-to-r from-green-400 to-green-600'
-                                    : (stat.passenger_count / stat.capacity_passenger) * 100 > 50
+                            <div
+                              className={`h-2.5 rounded-full shadow-sm ${stat.passenger_count && stat.capacity_passenger
+                                ? (stat.passenger_count / stat.capacity_passenger) * 100 > 80
+                                  ? 'bg-gradient-to-r from-green-400 to-green-600'
+                                  : (stat.passenger_count / stat.capacity_passenger) * 100 > 50
                                     ? 'bg-gradient-to-r from-indigo-400 to-indigo-600'
                                     : 'bg-gradient-to-r from-amber-400 to-amber-600'
-                                  : stat.passenger_occupancy_rate > 80
+                                : stat.passenger_occupancy_rate > 80
                                   ? 'bg-gradient-to-r from-green-400 to-green-600'
                                   : stat.passenger_occupancy_rate > 50
-                                  ? 'bg-gradient-to-r from-indigo-400 to-indigo-600'
-                                  : 'bg-gradient-to-r from-amber-400 to-amber-600'
-                              }`}
-                              style={{ width: `${Math.min(100, stat.passenger_count && stat.capacity_passenger 
-                                ? (stat.passenger_count / stat.capacity_passenger) * 100 
-                                : stat.passenger_occupancy_rate || 0)}%` }}
+                                    ? 'bg-gradient-to-r from-indigo-400 to-indigo-600'
+                                    : 'bg-gradient-to-r from-amber-400 to-amber-600'
+                                }`}
+                              style={{
+                                width: `${Math.min(100, stat.passenger_count && stat.capacity_passenger
+                                  ? (stat.passenger_count / stat.capacity_passenger) * 100
+                                  : stat.passenger_occupancy_rate || 0)}%`
+                              }}
                             ></div>
                           </div>
-                        <span className={`text-sm font-bold px-3 py-1.5 rounded-md shadow-sm ${
-                            stat.passenger_occupancy_rate > 80
-                              ? 'bg-green-100 text-green-700 border border-green-200'
-                              : stat.passenger_occupancy_rate > 50
+                          <span className={`text-sm font-bold px-3 py-1.5 rounded-md shadow-sm ${stat.passenger_occupancy_rate > 80
+                            ? 'bg-green-100 text-green-700 border border-green-200'
+                            : stat.passenger_occupancy_rate > 50
                               ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
                               : 'bg-amber-100 text-amber-700 border border-amber-200'
-                          }`}>
-                            {stat.passenger_count && stat.capacity_passenger 
-                              ? ((stat.passenger_count / stat.capacity_passenger) * 100).toFixed(1) 
+                            }`}>
+                            {stat.passenger_count && stat.capacity_passenger
+                              ? ((stat.passenger_count / stat.capacity_passenger) * 100).toFixed(1)
                               : stat.passenger_occupancy_rate?.toFixed(1) || '0.0'}%
                           </span>
                         </div>
@@ -1255,7 +1346,7 @@ const ScheduleReport = () => {
               <div className="text-sm text-gray-700 mb-4 md:mb-0">
                 Menampilkan {paginatedSchedules.length} dari {filteredSchedules.length} jadwal
               </div>
-              
+
               {filteredSchedules.length > itemsPerPage && (
                 <div className="flex items-center gap-2">
                   <button

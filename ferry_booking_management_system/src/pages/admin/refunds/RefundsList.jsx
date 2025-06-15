@@ -787,7 +787,7 @@ const RefundsList = () => {
                       key={i}
                       onClick={() => handlePageChange(pageNum)}
                       className={`w-8 h-8 flex items-center justify-center rounded-md text-sm transition-colors shadow-sm 
-                        ${pagination.current_page === pageNum ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                            ${pagination.current_page === pageNum ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
                     >
                       {pageNum}
                     </button>
@@ -818,50 +818,50 @@ const RefundsList = () => {
 
       {/* CSS for animations and button styling */}
       <style>{`
-        .btn-icon {
-          width: 36px;
-          height: 36px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 8px;
-          transition: all 0.2s ease;
-        }
-        
-        .btn-icon:hover {
-          transform: translateY(-2px);
-        }
-        
-        @keyframes modal-in {
-          0% {
-            opacity: 0;
-            transform: scale(0.95) translateY(10px);
-          }
-          100% {
-            opacity: 1;
-            transform: scale(1) translateY(0);
-          }
-        }
-        
-        .animate-modal-in {
-          animation: modal-in 0.3s ease-out forwards;
-        }
-        
-        @keyframes slideIn {
-          0% {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          100% {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        .animate-slideIn {
-          animation: slideIn 0.4s ease-out forwards;
-        }
-      `}</style>
+            .btn-icon {
+              width: 36px;
+              height: 36px;
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              border-radius: 8px;
+              transition: all 0.2s ease;
+            }
+            
+            .btn-icon:hover {
+              transform: translateY(-2px);
+            }
+            
+            @keyframes modal-in {
+              0% {
+                opacity: 0;
+                transform: scale(0.95) translateY(10px);
+              }
+              100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+              }
+            }
+            
+            .animate-modal-in {
+              animation: modal-in 0.3s ease-out forwards;
+            }
+            
+            @keyframes slideIn {
+              0% {
+                opacity: 0;
+                transform: translateY(-10px);
+              }
+              100% {
+                opacity: 1;
+                transform: translateY(0);
+              }
+            }
+            
+            .animate-slideIn {
+              animation: slideIn 0.4s ease-out forwards;
+            }
+          `}</style>
     </div>
   );
 };

@@ -38,7 +38,6 @@ const RefundCreate = () => {
   const fetchBookingDetails = async () => {
     try {
       setLoading(true);
-      // Perbaikan URL API - Menggunakan endpoint yang benar sesuai dengan route di backend
       const response = await api.get(`/admin-panel/bookings/${bookingId}/refund/create`);
       
       console.log('Booking details response:', response.data); // Debugging
@@ -47,7 +46,7 @@ const RefundCreate = () => {
         const data = response.data.data;
         setBookingData(data);
         
-        // Set default amount berdasarkan suggested amount
+        // Set default amount ke full refund karena admin tidak dibatasi kebijakan
         setFormData(prev => ({
           ...prev,
           amount: data.suggested_refund_amount || data.payment.amount
@@ -134,7 +133,6 @@ const RefundCreate = () => {
     setAlert({ show: false, type: '', message: '' });
 
     try {
-      // Perbaikan URL API - Menggunakan endpoint yang benar sesuai dengan route di backend
       const response = await api.post(`/admin-panel/bookings/${bookingId}/refund`, formData);
       
       console.log('Create refund response:', response.data); // Debugging
@@ -308,27 +306,34 @@ const RefundCreate = () => {
               <div className="bg-gray-50 px-6 py-4 border-b border-gray-100">
                 <h2 className="text-lg font-semibold text-gray-800 flex items-center">
                   <i className="fas fa-edit text-emerald-500 mr-2"></i>
-                  Form Refund
+                  Form Refund (Admin)
                 </h2>
               </div>
 
               <div className="p-6">
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* Refund Policy Info */}
+                  {/* Informasi Admin Box */}
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <h3 className="text-sm font-medium text-blue-800 mb-2 flex items-center">
                       <i className="fas fa-info-circle mr-2"></i>
-                      Kebijakan Refund
+                      Informasi Refund Admin
                     </h3>
-                    <p className="text-sm text-blue-700 mb-2">{bookingData.refund_policy}</p>
-                    <div className="grid grid-cols-2 gap-4 text-xs text-blue-600">
-                      <div>
-                        <span className="font-medium">Hari hingga keberangkatan:</span> {bookingData.days_until_departure} hari
+                    <p className="text-sm text-blue-700 mb-2">
+                      Sebagai admin, Anda memiliki kendali penuh untuk menentukan jumlah refund tanpa dibatasi oleh kebijakan refund.
+                    </p>
+                    <p className="text-sm text-blue-700 mb-2">
+                      Refund yang dibuat oleh admin akan ditandai secara otomatis pada catatan dan alasan refund.
+                    </p>
+                    {bookingData?.policy_based_amount && bookingData.refund_policy && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-blue-600 mt-2">
+                        <div>
+                          <span className="font-medium">Kebijakan yang berlaku:</span> {bookingData.refund_policy}
+                        </div>
+                        <div>
+                          <span className="font-medium">Jumlah berdasarkan kebijakan:</span> {formatCurrency(bookingData.policy_based_amount || 0)}
+                        </div>
                       </div>
-                      <div>
-                        <span className="font-medium">Persentase refund:</span> {bookingData.refund_percentage}%
-                      </div>
-                    </div>
+                    )}
                   </div>
 
                   {/* Amount */}
@@ -356,11 +361,11 @@ const RefundCreate = () => {
                     </div>
                     <div className="mt-1 flex justify-between text-xs text-gray-500">
                       <span>Maksimal: {formatCurrency(bookingData.payment.amount)}</span>
-                      <span>Disarankan: {formatCurrency(bookingData.suggested_refund_amount)}</span>
+                      <span>Disarankan: {formatCurrency(bookingData.suggested_refund_amount || bookingData.payment.amount)}</span>
                     </div>
                     <button
                       type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, amount: bookingData.suggested_refund_amount }))}
+                      onClick={() => setFormData(prev => ({ ...prev, amount: bookingData.suggested_refund_amount || bookingData.payment.amount }))}
                       className="mt-2 text-xs text-emerald-600 hover:text-emerald-800 underline"
                     >
                       Gunakan jumlah yang disarankan
@@ -389,6 +394,9 @@ const RefundCreate = () => {
                       <option value="ADMIN_DECISION">Keputusan Admin</option>
                       <option value="OTHER">Lainnya</option>
                     </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Alasan akan otomatis diberi awalan "[ADMIN]" untuk identifikasi.
+                    </p>
                   </div>
 
                   {/* Refund Method */}
@@ -480,8 +488,11 @@ const RefundCreate = () => {
                       value={formData.notes}
                       onChange={handleInputChange}
                       className="block w-full py-3 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                      placeholder="Catatan tambahan untuk refund ini..."
+                      placeholder="Catatan khusus untuk refund ini yang dibuat oleh admin..."
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Catatan akan otomatis diberi awalan "[ADMIN REFUND]" untuk identifikasi.
+                    </p>
                   </div>
 
                   {/* Submit Button */}
@@ -499,7 +510,7 @@ const RefundCreate = () => {
                       ) : (
                         <>
                           <i className="fas fa-check-circle mr-2"></i>
-                          Buat Refund
+                          Buat Refund (Admin)
                         </>
                       )}
                     </button>

@@ -51,18 +51,34 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
     });
 
     final refundProvider = Provider.of<RefundProvider>(context, listen: false);
-    
+
     try {
       final eligibility = await refundProvider.checkRefundEligibility(
         widget.booking.id,
         isMounted: () => mounted,
       );
-      
+
       if (mounted) {
         setState(() {
           _eligibilityData = eligibility;
           _isLoadingEligibility = false;
         });
+
+        // PERBAIKAN: Mengatasi masalah null safety dengan benar
+        if (_eligibilityData != null &&
+            !(_eligibilityData!['eligible'] ?? false) &&
+            _eligibilityData!['days_before_departure'] != null &&
+            (_eligibilityData!['days_before_departure'] as num) < 2) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Refund hanya dapat dilakukan minimal 2 hari sebelum keberangkatan',
+              ),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -103,8 +119,10 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
       );
 
       if (success && mounted) {
-        final message = refundProvider.successMessage ?? 'Permintaan refund berhasil disubmit';
-        
+        final message =
+            refundProvider.successMessage ??
+            'Permintaan refund berhasil disubmit';
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(message),
@@ -117,9 +135,7 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              refundProvider.errorMessage ?? 'Gagal submit refund',
-            ),
+            content: Text(refundProvider.errorMessage ?? 'Gagal submit refund'),
             backgroundColor: Colors.red,
           ),
         );
@@ -156,9 +172,7 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
           title: 'Permintaan Refund',
           showBackButton: true,
         ),
-        body: const Center(
-          child: CircularProgressIndicator(),
-        ),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -174,11 +188,7 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.info_outline,
-                size: 64,
-                color: Colors.orange,
-              ),
+              const Icon(Icons.info_outline, size: 64, color: Colors.orange),
               const SizedBox(height: 16),
               Text(
                 'Tidak Dapat Melakukan Refund',
@@ -189,7 +199,8 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                _eligibilityData!['message'] ?? 'Booking ini tidak memenuhi syarat untuk refund',
+                _eligibilityData!['message'] ??
+                    'Booking ini tidak memenuhi syarat untuk refund',
                 style: const TextStyle(fontSize: 16),
                 textAlign: TextAlign.center,
               ),
@@ -221,6 +232,7 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
     final refundFee = refundPolicy['refund_fee'] ?? 0;
     final refundAmount = refundPolicy['refund_amount'] ?? originalAmount;
     final refundPercentage = refundPolicy['percentage'] ?? 100;
+    final String policyDescription = refundPolicy['description'] ?? "Potongan biaya kepada penumpang yang melakukan refund sebesar ${100 - refundPercentage}%";
 
     return Scaffold(
       appBar: const CustomAppBar(
@@ -292,7 +304,9 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                             const SizedBox(width: 8),
                             Text(
                               'Perhitungan Refund',
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              style: Theme.of(
+                                context,
+                              ).textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: Colors.amber[800],
                               ),
@@ -300,7 +314,7 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                           ],
                         ),
                         const SizedBox(height: 16),
-                        
+
                         _buildCalculationRow(
                           'Total Pembayaran',
                           currencyFormat.format(originalAmount),
@@ -324,7 +338,7 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                           isBold: true,
                           isLarge: true,
                         ),
-                        
+
                         if (refundPolicy['description'] != null) ...[
                           const SizedBox(height: 12),
                           Text(
@@ -360,7 +374,9 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                             const SizedBox(width: 8),
                             Text(
                               'Informasi Refund',
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              style: Theme.of(
+                                context,
+                              ).textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: Colors.blue[800],
                               ),
@@ -368,7 +384,7 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        
+
                         if (_eligibilityData != null) ...[
                           if (_eligibilityData!['can_auto_refund'] == true) ...[
                             const Text(
@@ -403,7 +419,7 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                           ],
                           const SizedBox(height: 8),
                         ],
-                        
+
                         const Text(
                           '• Dana akan dikembalikan ke rekening bank yang Anda masukkan di bawah',
                           style: TextStyle(height: 1.4),
@@ -422,9 +438,9 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                 // Refund Form
                 Text(
                   'Informasi Refund',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
 
@@ -471,12 +487,13 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.account_balance),
                   ),
-                  items: Refund.bankOptions.entries.map((entry) {
-                    return DropdownMenuItem<String>(
-                      value: entry.key,
-                      child: Text(entry.value),
-                    );
-                  }).toList(),
+                  items:
+                      Refund.bankOptions.entries.map((entry) {
+                        return DropdownMenuItem<String>(
+                          value: entry.key,
+                          child: Text(entry.value),
+                        );
+                      }).toList(),
                   onChanged: (value) {
                     setState(() {
                       _selectedBankName = value!;
@@ -548,24 +565,25 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: _isSubmitting
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
+                    child:
+                        _isSubmitting
+                            ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                            : const Text(
+                              'Ajukan Refund',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                          )
-                        : const Text(
-                            'Ajukan Refund',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
                   ),
                 ),
 
@@ -575,7 +593,8 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: TextButton(
-                    onPressed: _isSubmitting ? null : () => Navigator.pop(context),
+                    onPressed:
+                        _isSubmitting ? null : () => Navigator.pop(context),
                     child: const Text('Batal'),
                   ),
                 ),
@@ -611,7 +630,7 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
   }
 
   Widget _buildCalculationRow(
-    String label, 
+    String label,
     String value, {
     bool isPercentage = false,
     bool isNegative = false,
@@ -634,7 +653,10 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
           style: TextStyle(
             fontSize: isLarge ? 18 : 14,
             fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
-            color: isNegative ? Colors.red : (isPercentage ? Colors.blue : Colors.black),
+            color:
+                isNegative
+                    ? Colors.red
+                    : (isPercentage ? Colors.blue : Colors.black),
           ),
         ),
       ],

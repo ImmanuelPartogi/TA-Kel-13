@@ -9,6 +9,7 @@ const RefundShow = () => {
   const [processing, setProcessing] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [showApproveModal, setShowApproveModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [transactionId, setTransactionId] = useState('');
   const [completionNotes, setCompletionNotes] = useState('');
@@ -61,10 +62,6 @@ const RefundShow = () => {
   };
 
   const handleApprove = async () => {
-    if (!window.confirm('Apakah Anda yakin ingin menyetujui refund ini?')) {
-      return;
-    }
-
     try {
       setProcessing(true);
       const response = await api.post(`/admin-panel/refunds/${id}/approve`, {
@@ -77,6 +74,7 @@ const RefundShow = () => {
           type: 'success', 
           message: 'Refund berhasil disetujui' 
         });
+        setShowApproveModal(false);
         fetchRefundDetails();
       }
     } catch (error) {
@@ -151,6 +149,12 @@ const RefundShow = () => {
     } finally {
       setProcessing(false);
     }
+  };
+
+  // Helper function untuk memeriksa apakah refund dibuat admin
+  const isAdminRefund = (refund) => {
+    return (refund.reason && refund.reason.startsWith('[ADMIN]')) || 
+           (refund.notes && refund.notes.startsWith('[ADMIN REFUND]'));
   };
 
   const getStatusConfig = (status) => {
@@ -272,6 +276,7 @@ const RefundShow = () => {
   }
 
   const statusConfig = getStatusConfig(refund.status);
+  const adminCreated = isAdminRefund(refund);
 
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -345,6 +350,14 @@ const RefundShow = () => {
               </div>
 
               <div className="p-6 space-y-4">
+                {/* Tambahkan badge Admin Refund jika dibuat oleh admin */}
+                {adminCreated && (
+                  <div className="bg-purple-100 text-purple-800 px-4 py-2 rounded-lg inline-flex items-center mb-2">
+                    <i className="fas fa-user-shield mr-2"></i>
+                    <span className="font-medium">Dibuat oleh Admin</span>
+                  </div>
+                )}
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-500 mb-1">ID Refund</p>
@@ -396,13 +409,30 @@ const RefundShow = () => {
 
                 <div className="border-t border-gray-100 pt-4">
                   <p className="text-sm text-gray-500 mb-1">Alasan Refund</p>
-                  <p className="bg-gray-50 p-3 rounded-lg">{refund.reason || 'Tidak ada alasan yang dicantumkan'}</p>
+                  <p className="bg-gray-50 p-3 rounded-lg">
+                    {refund.reason ? 
+                      (refund.reason.startsWith('[ADMIN]') ? 
+                        refund.reason.substring(7).trim() : 
+                        refund.reason) : 
+                      'Tidak ada alasan yang dicantumkan'}
+                  </p>
                 </div>
 
                 {refund.notes && (
                   <div className="border-t border-gray-100 pt-4">
                     <p className="text-sm text-gray-500 mb-1">Catatan</p>
-                    <p className="bg-blue-50 p-3 rounded-lg text-blue-800">{refund.notes}</p>
+                    <p className="bg-blue-50 p-3 rounded-lg text-blue-800">
+                      {refund.notes.startsWith('[ADMIN REFUND]') ? 
+                        refund.notes.substring(14).trim() : 
+                        refund.notes}
+                    </p>
+                  </div>
+                )}
+
+                {refund.rejection_reason && (
+                  <div className="border-t border-gray-100 pt-4">
+                    <p className="text-sm text-gray-500 mb-1">Alasan Penolakan</p>
+                    <p className="bg-red-50 p-3 rounded-lg text-red-800">{refund.rejection_reason}</p>
                   </div>
                 )}
               </div>
@@ -559,30 +589,21 @@ const RefundShow = () => {
               <div className="p-6 space-y-4">
                 {refund.status === 'PENDING' && (
                   <>
-                    <div className="space-y-3">
-                      <textarea
-                        placeholder="Catatan persetujuan (opsional)..."
-                        value={approvalNotes}
-                        onChange={(e) => setApprovalNotes(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                        rows="2"
-                      />
-                      <button
-                        onClick={handleApprove}
-                        disabled={processing}
-                        className="w-full flex justify-center items-center px-4 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-medium rounded-lg shadow-sm transition-colors"
-                      >
-                        {processing ? (
-                          <>
-                            <i className="fas fa-spinner fa-spin mr-2"></i> Memproses...
-                          </>
-                        ) : (
-                          <>
-                            <i className="fas fa-check-circle mr-2"></i> Setujui Refund
-                          </>
-                        )}
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => setShowApproveModal(true)}
+                      disabled={processing}
+                      className="w-full flex justify-center items-center px-4 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-medium rounded-lg shadow-sm transition-colors"
+                    >
+                      {processing ? (
+                        <>
+                          <i className="fas fa-spinner fa-spin mr-2"></i> Memproses...
+                        </>
+                      ) : (
+                        <>
+                          <i className="fas fa-check-circle mr-2"></i> Setujui Refund
+                        </>
+                      )}
+                    </button>
 
                     <button
                       onClick={() => setShowRejectModal(true)}
@@ -615,6 +636,63 @@ const RefundShow = () => {
           </div>
         </div>
       </div>
+
+      {/* Approve Modal */}
+      {showApproveModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all animate-modal-in">
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                <i className="fas fa-check-circle text-emerald-500 mr-2"></i>
+                Setujui Refund
+              </h3>
+              <button
+                onClick={() => setShowApproveModal(false)}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <label htmlFor="approval_notes" className="block text-sm font-medium text-gray-700 mb-1">
+                  Catatan Persetujuan <span className="text-gray-400">(Opsional)</span>
+                </label>
+                <textarea
+                  id="approval_notes"
+                  rows="4"
+                  value={approvalNotes}
+                  onChange={(e) => setApprovalNotes(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="Tambahkan catatan persetujuan (opsional)..."
+                ></textarea>
+              </div>
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setShowApproveModal(false)}
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleApprove}
+                  disabled={processing}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white rounded-lg transition-colors"
+                >
+                  {processing ? (
+                    <>
+                      <i className="fas fa-spinner fa-spin mr-2"></i> Menyetujui...
+                    </>
+                  ) : (
+                    'Setujui'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Reject Modal */}
       {showRejectModal && (

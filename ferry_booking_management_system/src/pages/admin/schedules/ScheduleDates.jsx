@@ -44,12 +44,25 @@ const ScheduleDates = () => {
   const fetchScheduleData = async () => {
     try {
       setLoading(true);
+
+      // Tambahkan parameter timestamp untuk menghindari caching
+      const timestamp = new Date().getTime();
+
       const [scheduleRes, datesRes] = await Promise.all([
-        adminScheduleService.get(`/admin-panel/schedules/${id}`),
-        adminScheduleService.get(`/admin-panel/schedules/${id}/dates`)
+        adminScheduleService.get(`/admin-panel/schedules/${id}?_=${timestamp}`),
+        adminScheduleService.get(`/admin-panel/schedules/${id}/dates?_=${timestamp}`)
       ]);
+
+      // Tambahkan log untuk debugging
+      console.log('Data tanggal yang diambil dari server:', datesRes.data.data.dates.data);
+
       setSchedule(scheduleRes.data.data);
-      setScheduleDates(datesRes.data.data.dates.data || []);
+
+      // Pastikan state scheduleDates diperbarui dengan data terbaru
+      const newScheduleDates = datesRes.data.data.dates.data || [];
+      setScheduleDates(newScheduleDates);
+
+      console.log('State scheduleDates diperbarui:', newScheduleDates);
     } catch (error) {
       console.error('Error fetching data:', error);
       setAlert({
@@ -87,15 +100,15 @@ const ScheduleDates = () => {
       newErrors.end_date = 'Tanggal akhir harus diisi';
     }
 
-    // Validasi tanggal sudah ada di daftar
-    const formattedDate = new Date(formData.date).toISOString().split('T')[0];
-    const dateExists = scheduleDates.some(date =>
-      new Date(date.date).toISOString().split('T')[0] === formattedDate
-    );
-
-    if (dateExists) {
-      newErrors.date = 'Tanggal ini sudah ada dalam jadwal';
-    }
+    // HAPUS VALIDASI TANGGAL DUPLIKAT DI CLIENT-SIDE
+    // Kode yang dihapus:
+    // const formattedDate = new Date(formData.date).toISOString().split('T')[0];
+    // const dateExists = scheduleDates.some(date =>
+    //   new Date(date.date).toISOString().split('T')[0] === formattedDate
+    // );
+    // if (dateExists) {
+    //   newErrors.date = 'Tanggal ini sudah ada dalam jadwal';
+    // }
 
     // Jika ada error, tampilkan dan stop
     if (Object.keys(newErrors).length > 0) {
@@ -112,6 +125,8 @@ const ScheduleDates = () => {
       });
 
       setShowAddModal(false);
+      // Tambahkan log sebelum fetch data
+      console.log('Berhasil menambahkan tanggal, memperbarui data...');
       // Pastikan data direfresh setelah penambahan
       await fetchScheduleData(); // Fetch ulang data jadwal
       resetForm();
@@ -124,7 +139,16 @@ const ScheduleDates = () => {
     } catch (error) {
       console.error('Error adding date:', error);
       if (error.response?.data?.errors) {
+        // Tampilkan pesan error dari server
         setErrors(error.response.data.errors);
+        console.log('Server validation errors:', error.response.data.errors);
+      } else if (error.response?.data?.message) {
+        // Tampilkan pesan spesifik dari server jika ada
+        setAlert({
+          show: true,
+          type: 'error',
+          message: error.response.data.message
+        });
       } else {
         setAlert({
           show: true,
@@ -183,7 +207,19 @@ const ScheduleDates = () => {
       await adminScheduleService.delete(`/admin-panel/schedules/${id}/dates/${selectedDate.id}`);
 
       setShowDeleteModal(false);
-      fetchScheduleData();
+
+      // Tambahkan log sebelum dan sesudah refresh data
+      console.log('Berhasil menghapus tanggal, memperbarui data...');
+      console.log('Tanggal yang dihapus:', selectedDate.date);
+
+      // Untuk memastikan bahwa state diperbarui dengan benar setelah penghapusan,
+      // kita bisa menghapus tanggal tersebut dari state scheduleDates secara manual
+      // sebelum melakukan fetch ulang data dari server
+      setScheduleDates(prev => prev.filter(date => date.id !== selectedDate.id));
+
+      // Kemudian fetch data dari server untuk memastikan sinkronisasi
+      await fetchScheduleData();
+
       setSelectedDate(null);
 
       setAlert({
@@ -540,12 +576,22 @@ const ScheduleDates = () => {
               <i className="fas fa-calendar-alt text-blue-500 mr-2"></i>
               Tanggal Jadwal ({scheduleDates.length})
             </h2>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
-              <i className="fas fa-plus mr-2"></i>
-              Tambah Tanggal
-            </button>
+            <div className="flex space-x-2">
+              {/* Tambahkan tombol refresh */}
+              <button
+                onClick={() => fetchScheduleData()}
+                className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+              >
+                <i className="fas fa-sync-alt mr-2"></i>
+                Refresh Data
+              </button>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                <i className="fas fa-plus mr-2"></i>
+                Tambah Tanggal
+              </button>
+            </div>
           </div>
 
           <div className="p-6">

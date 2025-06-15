@@ -236,6 +236,7 @@ class RefundController extends Controller
 
     /**
      * Get refund creation form data
+     * FIXED: Perbaikan perhitungan hari dan penyampaian informasi kebijakan
      */
     public function create($bookingId)
     {
@@ -271,22 +272,27 @@ class RefundController extends Controller
                 ], 400);
             }
 
-            // Calculate refund policy
-            $departureDate = Carbon::parse($booking->departure_date);
-            $daysBeforeDeparture = now()->diffInDays($departureDate, false);
+            // PERBAIKAN: Perhitungan hari yang lebih akurat
+            $departureDate = Carbon::parse($booking->departure_date)->startOfDay();
+            $today = Carbon::now()->startOfDay();
+            $daysBeforeDeparture = $departureDate->diffInDays($today);
 
-            $policy = RefundPolicy::getApplicablePolicy($daysBeforeDeparture);
-            $refundPolicy = 'Tidak ada kebijakan refund yang berlaku';
-            $suggestedAmount = 0;
-            $refundPercentage = 0;
+            // Log untuk debugging
+            Log::info("Booking ID: {$bookingId}, Departure date: {$departureDate}, Current date: {$today}, Days difference: {$daysBeforeDeparture}");
 
-            if ($policy) {
-                $refundCalculation = $policy->calculateRefundAmount($payment->amount);
-                $suggestedAmount = $refundCalculation['refund_amount'];
-                $refundPercentage = $policy->refund_percentage;
-                $refundPolicy = $policy->description;
-            }
+            // Admin tidak dibatasi oleh kebijakan refund
+            // Namun tetap menampilkan informasi kebijakan sebagai referensi
+            $policy = RefundPolicy::getApplicablePolicy($booking->departure_date);
+            $refundPolicy = $policy ? $policy->description : 'Tidak ada kebijakan refund yang berlaku';
+            $refundPercentage = $policy ? $policy->refund_percentage : 100;
 
+            // Untuk admin, default suggested amount adalah full refund
+            $suggestedAmount = $payment->amount;
+
+            // Jika ada kebijakan, tampilkan juga perhitungan berdasarkan kebijakan sebagai referensi
+            $policyBasedAmount = $policy ? ($payment->amount * $policy->refund_percentage / 100) : $payment->amount;
+
+            // PERBAIKAN: Menambahkan informasi tentang perhitungan hari
             return response()->json([
                 'success' => true,
                 'message' => 'Data form refund berhasil diambil',
@@ -294,9 +300,17 @@ class RefundController extends Controller
                     'booking' => $booking,
                     'payment' => $payment,
                     'suggested_refund_amount' => $suggestedAmount,
+                    'policy_based_amount' => $policyBasedAmount,
                     'refund_percentage' => $refundPercentage,
                     'refund_policy' => $refundPolicy,
-                    'days_until_departure' => max(0, $daysBeforeDeparture)
+                    'days_until_departure' => $daysBeforeDeparture,
+                    'calculated_days' => [
+                        'departure_date' => $booking->departure_date,
+                        'current_date' => now()->format('Y-m-d H:i:s'),
+                        'days_before_departure' => $daysBeforeDeparture,
+                        'calculation_method' => 'Selisih hari antara tanggal sekarang dan tanggal keberangkatan'
+                    ],
+                    'admin_note' => 'Admin dapat menentukan jumlah refund tanpa dibatasi oleh kebijakan refund'
                 ]
             ], 200);
         } catch (\Exception $e) {
@@ -315,6 +329,7 @@ class RefundController extends Controller
 
     /**
      * Store new refund
+     * FIXED: Memastikan catatan dan persentase refund konsisten
      */
     public function store(Request $request, $bookingId)
     {
@@ -367,8 +382,34 @@ class RefundController extends Controller
             // Calculate refund fee
             $originalAmount = $payment->amount;
             $refundAmount = $request->amount;
+
+            // Validasi jumlah refund tidak melebihi total pembayaran
+            if ($refundAmount > $originalAmount) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Jumlah refund tidak boleh melebihi total pembayaran'
+                ], 400);
+            }
+
             $refundFee = $originalAmount - $refundAmount;
-            $refundPercentage = ($refundAmount / $originalAmount) * 100;
+
+            // PERBAIKAN: Kalkulasi persentase refund yang akurat
+            $refundPercentage = round(($refundAmount / $originalAmount) * 100, 2);
+
+            // PERBAIKAN: Catatan dengan persentase yang benar
+            $policyNote = "Potongan biaya kepada penumpang yang melakukan refund sebesar " .
+                (100 - $refundPercentage) . "%";
+
+            // Tambahan catatan admin dengan prefix untuk identifikasi
+            $adminNotes = "[ADMIN REFUND] ";
+            if ($request->notes) {
+                $adminNotes .= $request->notes . "\n" . $policyNote;
+            } else {
+                $adminNotes .= "Refund dibuat oleh admin.\n" . $policyNote;
+            }
+
+            // Untuk reason, tambahkan prefix untuk mengidentifikasi admin
+            $reason = "[ADMIN] " . $request->reason;
 
             // Create refund
             $refund = new Refund([
@@ -378,14 +419,14 @@ class RefundController extends Controller
                 'refund_fee' => $refundFee,
                 'refund_percentage' => $refundPercentage,
                 'amount' => $refundAmount,
-                'reason' => $request->reason,
+                'reason' => $reason,
                 'status' => 'PENDING',
                 'refund_method' => $request->refund_method,
                 'bank_account_number' => $request->bank_account_number,
                 'bank_account_name' => $request->bank_account_name,
                 'bank_name' => $request->bank_name,
-                'notes' => $request->notes,
-                'refunded_by' => optional(auth())->id()
+                'notes' => $adminNotes,
+                'refunded_by' => optional(auth())->id(),
             ]);
 
             $refund->save();

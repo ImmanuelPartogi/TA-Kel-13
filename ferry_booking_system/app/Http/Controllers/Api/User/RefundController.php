@@ -25,6 +25,7 @@ class RefundController extends Controller
 
     /**
      * Check refund eligibility for a booking
+     * UPDATED: Support for default no-fee refund and minimum days check
      */
     public function checkRefundEligibility($bookingId)
     {
@@ -72,20 +73,23 @@ class RefundController extends Controller
         $departureDate = Carbon::parse($booking->departure_date);
         $daysBeforeDeparture = now()->diffInDays($departureDate, false);
 
-        // Get applicable refund policy
-        $policy = RefundPolicy::getApplicablePolicy($daysBeforeDeparture);
-
-        if (!$policy || $policy->refund_percentage == 0) {
+        // TAMBAHAN: Cek minimum days (2 hari)
+        if ($daysBeforeDeparture < 2) {
             return response()->json([
                 'success' => true,
-                'message' => 'Periode refund untuk booking ini telah berakhir',
+                'message' => 'Refund hanya dapat dilakukan minimal 2 hari sebelum keberangkatan',
                 'eligible' => false,
                 'days_before_departure' => $daysBeforeDeparture
             ], 200);
         }
 
-        // Calculate refund amount
-        $refundCalculation = $policy->calculateRefundAmount($payment->amount);
+        // Get applicable refund policy
+        $policy = RefundPolicy::getApplicablePolicy($daysBeforeDeparture);
+
+        // PERUBAHAN: Jika tidak ada policy yang sesuai, gunakan refund penuh
+        $refundCalculation = $policy
+            ? $policy->calculateRefundAmount($payment->amount)
+            : RefundPolicy::getDefaultFullRefund($payment->amount);
 
         $canAutoRefund = $this->midtransService->isRefundable(
             $payment->payment_method,
@@ -108,17 +112,19 @@ class RefundController extends Controller
             'payment_date' => $payment->payment_date,
             'days_before_departure' => $daysBeforeDeparture,
             'refund_policy' => [
-                'description' => $policy->description,
-                'percentage' => $policy->refund_percentage,
+                'description' => $policy ? $policy->description : 'Refund penuh tanpa potongan',
+                'percentage' => $refundCalculation['refund_percentage'],
                 'original_amount' => $refundCalculation['original_amount'],
                 'refund_fee' => $refundCalculation['refund_fee'],
-                'refund_amount' => $refundCalculation['refund_amount']
+                'refund_amount' => $refundCalculation['refund_amount'],
+                'is_default_policy' => $refundCalculation['is_default_policy'] ?? false
             ]
         ], 200);
     }
 
     /**
      * Request a refund for a booking
+     * UPDATED: Support for default no-fee refund and minimum days check
      */
     public function requestRefund(Request $request)
     {
@@ -181,18 +187,21 @@ class RefundController extends Controller
             $departureDate = Carbon::parse($booking->departure_date);
             $daysBeforeDeparture = now()->diffInDays($departureDate, false);
 
-            // Get applicable refund policy
-            $policy = RefundPolicy::getApplicablePolicy($daysBeforeDeparture);
-
-            if (!$policy || $policy->refund_percentage == 0) {
+            // TAMBAHAN: Cek minimum days (2 hari)
+            if ($daysBeforeDeparture < 2) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Periode refund untuk booking ini telah berakhir'
+                    'message' => 'Refund hanya dapat dilakukan minimal 2 hari sebelum keberangkatan'
                 ], 400);
             }
 
-            // Calculate refund amount
-            $refundCalculation = $policy->calculateRefundAmount($payment->amount);
+            // Get applicable refund policy
+            $policy = RefundPolicy::getApplicablePolicy($daysBeforeDeparture);
+
+            // PERUBAHAN: Jika tidak ada policy yang sesuai, gunakan refund penuh
+            $refundCalculation = $policy
+                ? $policy->calculateRefundAmount($payment->amount)
+                : RefundPolicy::getDefaultFullRefund($payment->amount);
 
             // Cek apakah metode pembayaran dapat di-refund otomatis
             $canAutoRefund = $this->midtransService->isRefundable(
@@ -231,6 +240,14 @@ class RefundController extends Controller
                 }
             }
 
+            // Tambahkan catatan refund untuk kebijakan default
+            $policyNotes = '';
+            if (isset($refundCalculation['is_default_policy']) && $refundCalculation['is_default_policy']) {
+                $policyNotes = 'Refund menggunakan kebijakan default (tidak ada potongan)';
+            } elseif ($policy) {
+                $policyNotes = $policy->description;
+            }
+
             // Buat record refund
             $refund = new Refund([
                 'booking_id' => $booking->id,
@@ -246,6 +263,7 @@ class RefundController extends Controller
                 'bank_account_number' => $request->bank_account_number,
                 'bank_account_name' => $request->bank_account_name,
                 'bank_name' => $request->bank_name,
+                'notes' => $policyNotes
             ]);
 
             $refund->save();
@@ -271,13 +289,12 @@ class RefundController extends Controller
                 'message' => $message,
                 'data' => array_merge($refund->toArray(), [
                     'refund_calculation' => $refundCalculation,
-                    'policy_description' => $policy->description
+                    'policy_description' => $policy ? $policy->description : 'Refund penuh tanpa potongan'
                 ]),
                 'sla_period' => $slaPeriod,
                 'requires_manual_process' => $requiresManualProcess,
                 'can_auto_refund' => $canAutoRefund
             ], 201);
-
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -428,7 +445,6 @@ class RefundController extends Controller
                 'message' => 'Permintaan refund berhasil dibatalkan',
                 'data' => $refund
             ], 200);
-
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -467,7 +483,8 @@ class RefundController extends Controller
 
 // Helper function for currency formatting
 if (!function_exists('formatCurrency')) {
-    function formatCurrency($amount) {
+    function formatCurrency($amount)
+    {
         return 'Rp ' . number_format($amount, 0, ',', '.');
     }
 }

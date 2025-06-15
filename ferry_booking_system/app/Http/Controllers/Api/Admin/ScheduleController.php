@@ -474,26 +474,6 @@ class ScheduleController extends Controller
         // Validasi untuk tanggal tunggal
         if ($request->date_type === 'single') {
             $selectedDate = Carbon::parse($request->date);
-            $selectedDate = Carbon::parse($request->date);
-            $dayOfWeek = $selectedDate->dayOfWeek;
-            if ($dayOfWeek == 0) $dayOfWeek = 7;
-
-            $scheduleDays = explode(',', $schedule->days);
-
-            if (!in_array((string)$dayOfWeek, $scheduleDays)) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Tanggal yang dipilih tidak sesuai dengan hari operasi jadwal',
-                    'errors' => [
-                        'date' => ['Tanggal yang dipilih (' . $selectedDate->format('Y-m-d') . ') jatuh pada hari ' .
-                            $this->getDayName($dayOfWeek) . ' yang bukan hari operasi jadwal']
-                    ],
-                    'debug' => [
-                        'selected_day' => $dayOfWeek,
-                        'schedule_days' => $scheduleDays
-                    ]
-                ], 422);
-            }
 
             // Check if date already exists
             $existingDate = ScheduleDate::where('schedule_id', $schedule->id)
@@ -582,14 +562,6 @@ class ScheduleController extends Controller
                 // PERBAIKAN: Konversi yang benar untuk dayOfWeek
                 $dayOfWeek = $currentDate->dayOfWeek;
                 if ($dayOfWeek == 0) $dayOfWeek = 7; // Mengubah Minggu dari 0 menjadi 7
-
-                // Debug untuk memastikan nilai dayOfWeek dan scheduleDays benar
-                Log::debug('Adding date check', [
-                    'date' => $currentDate->format('Y-m-d'),
-                    'dayOfWeek' => $dayOfWeek,
-                    'scheduleDays' => $scheduleDays,
-                    'match' => in_array((string)$dayOfWeek, $scheduleDays)
-                ]);
 
                 if (in_array((string)$dayOfWeek, $scheduleDays)) {
                     // Check if this date already exists

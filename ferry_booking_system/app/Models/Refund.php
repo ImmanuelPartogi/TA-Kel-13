@@ -35,6 +35,20 @@ class Refund extends Model
         'amount' => 'decimal:2'
     ];
 
+    // Tambahkan method untuk mengecek apakah refund dibuat oleh admin
+    public function isAdminCreated()
+    {
+        // Cek berdasarkan prefix pada reason atau notes
+        return strpos($this->reason, '[ADMIN]') === 0 ||
+            strpos($this->notes, '[ADMIN REFUND]') === 0;
+    }
+
+    // Tambahkan accessor untuk mendapatkan status admin created
+    public function getIsAdminCreatedAttribute()
+    {
+        return $this->isAdminCreated();
+    }
+
     // Bank options
     const BANK_OPTIONS = [
         'BCA' => 'Bank Central Asia',

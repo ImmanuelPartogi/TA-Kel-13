@@ -31,26 +31,20 @@ class RefundPolicy extends Model
      * Get active policy for given days before departure
      * FIXED: Perbaikan perhitungan hari dan logika penerapan kebijakan
      */
-    public static function getApplicablePolicy($departureDate)
+    public static function getApplicablePolicy($daysBeforeDeparture)
     {
-        // PERBAIKAN: Menggunakan Carbon untuk menghitung selisih hari
-        $departureDateTime = Carbon::parse($departureDate)->startOfDay();
-        $currentDateTime = Carbon::now()->startOfDay();
-
-        // Menghitung selisih hari dengan benar (inklusif pada hari keberangkatan)
-        $daysBeforeDeparture = $departureDateTime->diffInDays($currentDateTime);
-
-
-        // Tambahan validasi: Refund tidak dapat diajukan kurang dari 2 hari
+        // Pastikan minimal 2 hari
         if ($daysBeforeDeparture < 2) {
-            return false; // Mengembalikan false untuk menandakan refund tidak diizinkan
+            return null;
         }
 
-        // PERBAIKAN: Memastikan query mengambil kebijakan yang sesuai
-        return self::where('is_active', true)
+        // Cari kebijakan berdasarkan days_before_departure yang aktif
+        $policy = self::where('is_active', 1)
             ->where('days_before_departure', '<=', $daysBeforeDeparture)
             ->orderBy('days_before_departure', 'desc')
             ->first();
+
+        return $policy;
     }
 
     /**
@@ -70,28 +64,40 @@ class RefundPolicy extends Model
             ];
         }
 
-        // PERBAIKAN: Memastikan perhitungan jumlah refund yang konsisten
+        // PERBAIKAN YANG BENAR: Perhitungan refund yang konsisten
         $refundPercentage = $this->refund_percentage;
-        $refundAmount = $originalAmount * ($refundPercentage / 100);
 
-        // Apply min/max fee constraints
-        if ($this->min_fee && $refundAmount < $this->min_fee) {
-            $refundAmount = $this->min_fee;
+        // Hitung fee (jumlah yang TIDAK direfund)
+        $fee = $originalAmount * ((100 - $refundPercentage) / 100);
+
+        // Pastikan fee memenuhi batas minimum dan maksimum jika ada
+        if ($this->min_fee && $this->min_fee > 0 && $fee < $this->min_fee) {
+            $fee = $this->min_fee;
         }
 
-        if ($this->max_fee && $refundAmount > $this->max_fee) {
-            $refundAmount = $this->max_fee;
+        if ($this->max_fee && $this->max_fee > 0 && $fee > $this->max_fee) {
+            $fee = $this->max_fee;
         }
 
-        $fee = $originalAmount - $refundAmount;
+        // Hitung jumlah refund setelah fee
+        $refundAmount = $originalAmount - $fee;
 
-        // PERBAIKAN: Membuat catatan yang sesuai dengan persentase refund yang sebenarnya
+        // Pastikan refund amount tidak negatif
+        if ($refundAmount < 0) {
+            $refundAmount = 0;
+            $fee = $originalAmount;
+        }
+
+        // Persentase refund yang sebenarnya (mungkin berubah karena min/max fee)
+        $actualRefundPercentage = ($refundAmount / $originalAmount) * 100;
+
+        // PERBAIKAN: Membuat catatan yang sesuai
         $description = "Potongan biaya kepada penumpang yang melakukan refund sebesar " .
-            (100 - $refundPercentage) . "%";
+            number_format(100 - $actualRefundPercentage, 0) . "%";
 
         return [
             'original_amount' => $originalAmount,
-            'refund_percentage' => $refundPercentage,
+            'refund_percentage' => $actualRefundPercentage,
             'refund_fee' => $fee,
             'refund_amount' => $refundAmount,
             'description' => $description

@@ -1539,40 +1539,13 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
         context: context,
         builder:
             (context) => AlertDialog(
-              title: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.warning_amber_rounded,
-                      color: Colors.orange,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  const Flexible(child: Text('Tidak Memenuhi Syarat')),
-                ],
-              ),
+              title: const Text('Tidak Memenuhi Syarat'),
               content: const Text(
-                'Refund hanya dapat dilakukan minimal 2 hari sebelum keberangkatan. Mohon maaf, tiket Anda tidak memenuhi syarat untuk refund.',
+                'Refund hanya dapat dilakukan minimal 2 hari sebelum keberangkatan.',
               ),
               actions: [
                 ElevatedButton(
                   onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    backgroundColor: Theme.of(context).primaryColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                  ),
                   child: const Text('Mengerti'),
                 ),
               ],

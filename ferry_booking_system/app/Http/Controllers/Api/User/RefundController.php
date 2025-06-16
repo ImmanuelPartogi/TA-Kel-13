@@ -97,16 +97,12 @@ class RefundController extends Controller
             'policy_max_fee' => $policy ? $policy->max_fee : null
         ]);
 
-        // PERUBAHAN: Jika tidak ada policy yang sesuai, gunakan refund penuh
+        // PERBAIKAN: Jika tidak ada policy yang sesuai, gunakan refund penuh
         if (!$policy) {
-            // Tolak refund jika tidak ada kebijakan yang sesuai
-            return response()->json([
-                'success' => false,
-                'message' => 'Tidak ada kebijakan refund yang berlaku untuk ' . $daysBeforeDeparture . ' hari sebelum keberangkatan'
-            ], 400);
+            $refundCalculation = RefundPolicy::getDefaultFullRefund($payment->amount);
+        } else {
+            $refundCalculation = $policy->calculateRefundAmount($payment->amount);
         }
-
-        $refundCalculation = $policy->calculateRefundAmount($payment->amount);
 
         $canAutoRefund = $this->midtransService->isRefundable(
             $payment->payment_method,
@@ -204,14 +200,7 @@ class RefundController extends Controller
             $departureDate = Carbon::parse($booking->departure_date);
             $daysBeforeDeparture = now()->diffInDays($departureDate, false);
 
-            // TAMBAHAN: Cek minimum days (2 hari)
-            if ($daysBeforeDeparture < 2) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Refund hanya dapat dilakukan minimal 2 hari sebelum keberangkatan'
-                ], 400);
-            }
-
+            // Get applicable refund policy
             // Get applicable refund policy
             $policy = RefundPolicy::getApplicablePolicy($daysBeforeDeparture);
 
@@ -226,16 +215,22 @@ class RefundController extends Controller
                 'policy_max_fee' => $policy ? $policy->max_fee : null
             ]);
 
-            // PERUBAHAN: Jika tidak ada policy yang sesuai, gunakan refund penuh
-            if (!$policy) {
-                // Tolak refund jika tidak ada kebijakan yang sesuai
+            // PERBAIKAN: Jika refundPercentage 0%, tolak refund
+            if ($policy && $policy->refund_percentage <= 0) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Tidak ada kebijakan refund yang berlaku untuk ' . $daysBeforeDeparture . ' hari sebelum keberangkatan'
-                ], 400);
+                    'message' => 'Refund tidak diperbolehkan untuk ' . $daysBeforeDeparture . ' hari sebelum keberangkatan',
+                    'eligible' => false,
+                    'days_before_departure' => $daysBeforeDeparture
+                ], 200);
             }
 
-            $refundCalculation = $policy->calculateRefundAmount($payment->amount);
+            // PERBAIKAN: Jika tidak ada policy yang sesuai, gunakan refund penuh
+            if (!$policy) {
+                $refundCalculation = RefundPolicy::getDefaultFullRefund($payment->amount);
+            } else {
+                $refundCalculation = $policy->calculateRefundAmount($payment->amount);
+            }
 
             // Cek apakah metode pembayaran dapat di-refund otomatis
             $canAutoRefund = $this->midtransService->isRefundable(

@@ -1,10 +1,12 @@
 import 'dart:ui';
 
+import 'package:ferry_booking_app/models/booking.dart';
 import 'package:ferry_booking_app/models/route.dart';
 import 'package:ferry_booking_app/providers/ticket_status_provider.dart';
 import 'package:ferry_booking_app/screens/notification/notification_screen.dart';
 import 'package:ferry_booking_app/screens/payment/payment_method_screen.dart';
 import 'package:ferry_booking_app/screens/booking/schedule_selection_screen.dart';
+import 'package:ferry_booking_app/screens/refund/refund_request_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ferry_booking_app/config/theme.dart';
@@ -174,6 +176,12 @@ class MyApp extends StatelessWidget {
                     email: args['email']!,
                     token: args['token'] ?? '',
                   ),
+            );
+          } else if (settings.name == '/refund/request') {
+            final booking = settings.arguments as Booking;
+            return MaterialPageRoute(
+              builder: (context) => RefundRequestScreen(booking: booking),
+              settings: settings,
             );
           }
 

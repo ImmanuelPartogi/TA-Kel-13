@@ -34,7 +34,13 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
     _reasonController = TextEditingController();
     _accountNumberController = TextEditingController();
     _accountNameController = TextEditingController();
-    _checkRefundEligibility();
+
+    // Gunakan WidgetsBinding untuk menunda pemanggilan hingga setelah build selesai
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _checkRefundEligibility();
+      }
+    });
   }
 
   @override
@@ -159,7 +165,27 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
+    // Validasi hari sebelum keberangkatan untuk memastikan konsistensi dengan backend
+    final departureDate = DateTime.parse(widget.booking.departureDate);
+    final daysBeforeDeparture = departureDate.difference(DateTime.now()).inDays;
+
+    // Redirect ke halaman sebelumnya jika kurang dari 2 hari
+    if (daysBeforeDeparture < 2) {
+      // Gunakan Future.microtask untuk menghindari build error
+      Future.microtask(() {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Refund hanya dapat dilakukan minimal 2 hari sebelum keberangkatan',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      });
+    }
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp ',
@@ -228,11 +254,38 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
 
     // Extract refund policy data
     final refundPolicy = _eligibilityData?['refund_policy'] ?? {};
-    final originalAmount = refundPolicy['original_amount'] ?? widget.booking.totalAmount;
-    final refundFee = refundPolicy['refund_fee'] ?? 0;
-    final refundAmount = refundPolicy['refund_amount'] ?? originalAmount;
-    final refundPercentage = refundPolicy['percentage'] ?? 100;
-    final String policyDescription = refundPolicy['description'] ?? "Potongan biaya kepada penumpang yang melakukan refund sebesar ${100 - refundPercentage}%";
+
+    // Konversi nilai string ke double dengan aman
+    // Konversi nilai string ke double dengan aman
+    final originalAmount =
+        refundPolicy['original_amount'] != null
+            ? (refundPolicy['original_amount'] is num)
+                ? (refundPolicy['original_amount'] as num).toDouble()
+                : double.tryParse(refundPolicy['original_amount'].toString()) ??
+                    widget.booking.totalAmount
+            : widget.booking.totalAmount;
+
+    // Gunakan persentase refund dari API
+    final refundPercentage =
+        refundPolicy['percentage'] != null
+            ? (refundPolicy['percentage'] is num)
+                ? (refundPolicy['percentage'] as num).toDouble()
+                : double.tryParse(refundPolicy['percentage'].toString()) ??
+                    100.0
+            : 100.0;
+
+    // Gunakan jumlah refund dari API
+    final refundAmount =
+        refundPolicy['refund_amount'] != null
+            ? (refundPolicy['refund_amount'] is num)
+                ? (refundPolicy['refund_amount'] as num).toDouble()
+                : double.tryParse(refundPolicy['refund_amount'].toString()) ??
+                    (originalAmount * refundPercentage / 100)
+            : (originalAmount * refundPercentage / 100);
+
+    final String policyDescription =
+        refundPolicy['description'] ??
+        "Potongan biaya kepada penumpang yang melakukan refund sebesar ${(100 - refundPercentage).toStringAsFixed(0)}%";
 
     return Scaffold(
       appBar: const CustomAppBar(
@@ -325,12 +378,7 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                           '${refundPercentage.toStringAsFixed(0)}%',
                           isPercentage: true,
                         ),
-                        const SizedBox(height: 8),
-                        _buildCalculationRow(
-                          'Biaya Administrasi',
-                          '- ${currencyFormat.format(refundFee)}',
-                          isNegative: true,
-                        ),
+                        // Hapus baris biaya administrasi
                         const Divider(thickness: 2, height: 24),
                         _buildCalculationRow(
                           'Jumlah Refund',
@@ -339,10 +387,20 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                           isLarge: true,
                         ),
 
+                        // Tambahkan penjelasan refund yang lebih jelas
+                        const SizedBox(height: 12),
                         if (refundPolicy['description'] != null) ...[
-                          const SizedBox(height: 12),
                           Text(
                             refundPolicy['description'],
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.amber[700],
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ] else ...[
+                          Text(
+                            "Pengembalian dana sebesar ${refundPercentage.toStringAsFixed(0)}% dari total pembayaran sesuai kebijakan untuk ${_eligibilityData?['days_before_departure']} hari sebelum keberangkatan",
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.amber[700],
@@ -427,6 +485,40 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                         const Text(
                           '• Pastikan data rekening bank sudah benar untuk menghindari keterlambatan proses',
                           style: TextStyle(height: 1.4),
+                        ),
+
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Kebijakan Refund:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            height: 1.4,
+                          ),
+                        ),
+                        Container(
+                          margin: const EdgeInsets.only(top: 8),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.7),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Colors.blue.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Text(
+                            'Persentase pengembalian dana berdasarkan waktu keberangkatan:\n'
+                            '• 40+ hari: 100% refund\n'
+                            '• 8-9 hari: 90% refund\n'
+                            '• 7 hari: 70% refund\n'
+                            '• 5 hari: 60% refund\n'
+                            '• 3 hari: 40% refund\n'
+                            '• <2 hari: Tidak dapat refund',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.blue[900],
+                              height: 1.5,
+                            ),
+                          ),
                         ),
                       ],
                     ),

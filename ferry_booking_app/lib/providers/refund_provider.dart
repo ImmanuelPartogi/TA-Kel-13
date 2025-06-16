@@ -4,51 +4,63 @@ import 'package:ferry_booking_app/models/refund.dart';
 
 class RefundProvider extends ChangeNotifier {
   final RefundApi _refundApi = RefundApi();
-  
+
   bool _isLoading = false;
   String? _errorMessage;
   String? _successMessage;
   Refund? _currentRefund;
   Map<String, dynamic>? _eligibilityData;
-  
+
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   String? get successMessage => _successMessage;
   Refund? get currentRefund => _currentRefund;
   Map<String, dynamic>? get eligibilityData => _eligibilityData;
-  
+
   // Clear messages
   void clearMessages() {
     _errorMessage = null;
     _successMessage = null;
   }
-  
+
   // Check refund eligibility
   Future<Map<String, dynamic>?> checkRefundEligibility(
     int bookingId, {
     required bool Function() isMounted,
   }) async {
+    // Set nilai tanpa memanggil notifyListeners() di awal
     _isLoading = true;
     _errorMessage = null;
-    
-    if (isMounted()) notifyListeners();
-    
+
+    // Gunakan Future.microtask untuk notify listeners diluar cycle build
+    Future.microtask(() {
+      if (isMounted()) notifyListeners();
+    });
+
     try {
       _eligibilityData = await _refundApi.checkRefundEligibility(bookingId);
-      
+
       _isLoading = false;
-      if (isMounted()) notifyListeners();
-      
+
+      // Gunakan Future.microtask untuk notify listeners diluar cycle build
+      Future.microtask(() {
+        if (isMounted()) notifyListeners();
+      });
+
       return _eligibilityData;
     } catch (e) {
       _isLoading = false;
       _errorMessage = e.toString();
-      if (isMounted()) notifyListeners();
-      
+
+      // Gunakan Future.microtask untuk notify listeners diluar cycle build
+      Future.microtask(() {
+        if (isMounted()) notifyListeners();
+      });
+
       throw e;
     }
   }
-  
+
   // Request refund dengan pesan yang lebih informatif
   Future<bool> requestRefund({
     required int bookingId,
@@ -61,9 +73,9 @@ class RefundProvider extends ChangeNotifier {
     _isLoading = true;
     _errorMessage = null;
     _successMessage = null;
-    
+
     if (isMounted()) notifyListeners();
-    
+
     try {
       final response = await _refundApi.requestRefund({
         'booking_id': bookingId,
@@ -72,11 +84,12 @@ class RefundProvider extends ChangeNotifier {
         'bank_account_name': bankAccountName,
         'bank_name': bankName,
       });
-      
+
       if (response['success'] == true) {
         _currentRefund = Refund.fromJson(response['data']);
-        _successMessage = response['message'] ?? 'Permintaan refund berhasil disubmit';
-        
+        _successMessage =
+            response['message'] ?? 'Permintaan refund berhasil disubmit';
+
         _isLoading = false;
         if (isMounted()) notifyListeners();
         return true;
@@ -93,7 +106,7 @@ class RefundProvider extends ChangeNotifier {
       return false;
     }
   }
-  
+
   // Get refund details
   Future<void> getRefundDetailsByBookingId(
     int bookingId, {
@@ -101,18 +114,18 @@ class RefundProvider extends ChangeNotifier {
   }) async {
     _isLoading = true;
     _errorMessage = null;
-    
+
     if (isMounted()) notifyListeners();
-    
+
     try {
       final response = await _refundApi.getRefundDetailsByBookingId(bookingId);
-      
+
       if (response['success'] == true && response['data'] != null) {
         _currentRefund = Refund.fromJson(response['data']);
       } else {
         _currentRefund = null;
       }
-      
+
       _isLoading = false;
       if (isMounted()) notifyListeners();
     } catch (e) {
@@ -121,7 +134,7 @@ class RefundProvider extends ChangeNotifier {
       if (isMounted()) notifyListeners();
     }
   }
-  
+
   // Cancel refund
   Future<bool> cancelRefund(
     int refundId, {
@@ -130,16 +143,16 @@ class RefundProvider extends ChangeNotifier {
     _isLoading = true;
     _errorMessage = null;
     _successMessage = null;
-    
+
     if (isMounted()) notifyListeners();
-    
+
     try {
       final response = await _refundApi.cancelRefund(refundId);
-      
+
       if (response['success'] == true) {
         _currentRefund = Refund.fromJson(response['data']);
         _successMessage = response['message'] ?? 'Refund berhasil dibatalkan';
-        
+
         _isLoading = false;
         if (isMounted()) notifyListeners();
         return true;
@@ -156,14 +169,19 @@ class RefundProvider extends ChangeNotifier {
       return false;
     }
   }
-  
+
   // Refresh current refund
-  Future<void> refreshCurrentRefund({required bool Function() isMounted}) async {
+  Future<void> refreshCurrentRefund({
+    required bool Function() isMounted,
+  }) async {
     if (_currentRefund == null) return;
-    
-    await getRefundDetailsByBookingId(_currentRefund!.bookingId, isMounted: isMounted);
+
+    await getRefundDetailsByBookingId(
+      _currentRefund!.bookingId,
+      isMounted: isMounted,
+    );
   }
-  
+
   // Clear refund data
   void clearRefund() {
     _currentRefund = null;
@@ -172,7 +190,7 @@ class RefundProvider extends ChangeNotifier {
     _eligibilityData = null;
     notifyListeners();
   }
-  
+
   // Parse error message to be more user-friendly
   String _parseErrorMessage(String error) {
     // Handle common error patterns
@@ -195,7 +213,7 @@ class RefundProvider extends ChangeNotifier {
     } else if (error.contains('network') || error.contains('connection')) {
       return 'Koneksi internet bermasalah. Periksa koneksi Anda dan coba lagi';
     }
-    
+
     // Return the original error if we can't parse it
     return error.replaceAll('Exception: ', '');
   }

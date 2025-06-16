@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:ferry_booking_app/providers/booking_provider.dart';
+import 'package:ferry_booking_app/providers/refund_provider.dart'; // Import RefundProvider
 import 'package:ferry_booking_app/widgets/custom_appbar.dart';
 import 'dart:typed_data';
 import 'package:flutter/services.dart';
@@ -92,6 +93,21 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
         listen: false,
       );
       await bookingProvider.getBookingDetails(widget.bookingId);
+
+      // Jika status booking adalah REFUND_PENDING atau REFUNDED, load refund details
+      final booking = bookingProvider.currentBooking;
+      if (booking != null &&
+          (booking.status == 'REFUND_PENDING' ||
+              booking.status == 'REFUNDED')) {
+        final refundProvider = Provider.of<RefundProvider>(
+          context,
+          listen: false,
+        );
+        await refundProvider.getRefundDetailsByBookingId(
+          widget.bookingId,
+          isMounted: () => mounted,
+        );
+      }
     } catch (e) {
       _showSnackBar('Gagal memuat detail tiket: $e');
     } finally {
@@ -230,9 +246,74 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
     }
   }
 
+  // Method untuk pembatalan refund
+  Future<void> _cancelRefund(int refundId) async {
+    final result =
+        await showDialog<bool>(
+          context: context,
+          builder:
+              (context) => AlertDialog(
+                title: const Text('Batalkan Refund?'),
+                content: const Text(
+                  'Apakah Anda yakin ingin membatalkan permintaan refund ini?',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Tidak'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    child: const Text('Ya, Batalkan'),
+                  ),
+                ],
+              ),
+        ) ??
+        false;
+
+    if (result) {
+      setState(() {
+        _isLoading = true;
+      });
+
+      try {
+        final refundProvider = Provider.of<RefundProvider>(
+          context,
+          listen: false,
+        );
+        final success = await refundProvider.cancelRefund(
+          refundId,
+          isMounted: () => mounted,
+        );
+
+        if (success && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Refund berhasil dibatalkan'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _loadTicketDetails();
+        }
+      } catch (e) {
+        if (mounted) {
+          _showSnackBar('Terjadi kesalahan: $e');
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bookingProvider = Provider.of<BookingProvider>(context);
+    final refundProvider = Provider.of<RefundProvider>(context);
     final booking = bookingProvider.currentBooking;
     final theme = Theme.of(context);
     final size = MediaQuery.of(context).size;
@@ -340,6 +421,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
     final isPending = booking.status == 'PENDING';
     final payment =
         booking.payments?.isNotEmpty == true ? booking.payments?.first : null;
+    final refund = refundProvider.currentRefund;
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -1087,6 +1169,68 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                       ),
                   ],
 
+                  // Refund Information (jika ada)
+                  if (booking.status == 'REFUND_PENDING' ||
+                      booking.status == 'REFUNDED') ...[
+                    const SizedBox(height: 20),
+
+                    if (refund != null)
+                      _buildSectionCard(
+                        title: 'Informasi Refund',
+                        icon: Icons.monetization_on_rounded,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildStatusBox(
+                              icon: _getRefundStatusIcon(refund.status),
+                              title: 'Status Refund: ${refund.readableStatus}',
+                              description: refund.getStatusDescription(),
+                              color: Color(refund.getStatusColor()),
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            _buildInfoRow(
+                              label: 'Jumlah Refund',
+                              value: refund.formattedAmount,
+                              valueColor: Colors.green,
+                            ),
+
+                            const Divider(height: 24),
+
+                            _buildInfoRow(
+                              label: 'Persentase Refund',
+                              value:
+                                  '${refund.refundPercentage.toStringAsFixed(0)}%',
+                            ),
+
+                            const SizedBox(height: 8),
+
+                            _buildInfoRow(
+                              label: 'Tanggal Pengajuan',
+                              value: refund.formattedCreatedDate,
+                            ),
+
+                            // Tombol Cancel jika status masih PENDING
+                            if (refund.status.toUpperCase() == 'PENDING') ...[
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton(
+                                  onPressed: () => _cancelRefund(refund.id),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.red,
+                                    side: const BorderSide(color: Colors.red),
+                                  ),
+                                  child: const Text('Batalkan Refund'),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                  ],
+
                   // Action Buttons
                   if (canCancel || canRefund) ...[
                     const SizedBox(height: 20),
@@ -1100,7 +1244,19 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                             Column(
                               children: [
                                 ElevatedButton.icon(
-                                  onPressed: _showRefundDialog,
+                                  onPressed: () {
+                                    // Navigasi ke halaman RefundRequestScreen
+                                    Navigator.pushNamed(
+                                      context,
+                                      '/refund/request',
+                                      arguments: booking,
+                                    ).then((result) {
+                                      // Refresh data tiket jika refund berhasil dibuat
+                                      if (result == true) {
+                                        _loadTicketDetails();
+                                      }
+                                    });
+                                  },
                                   icon: const Icon(
                                     Icons.monetization_on_rounded,
                                   ),
@@ -1138,7 +1294,13 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: Text(
-                                          'Refund hanya dapat dilakukan minimal 2 hari sebelum keberangkatan',
+                                          'Persentase refund menurun seiring mendekati waktu keberangkatan:\n'
+                                          '• 10-40 hari: 100% refund\n'
+                                          '• 8-9 hari: 90% refund\n'
+                                          '• 6-7 hari: 70% refund\n'
+                                          '• 4-5 hari: 60% refund\n'
+                                          '• 2-3 hari: 40% refund\n'
+                                          '• <2 hari: Tidak dapat refund',
                                           style: TextStyle(
                                             fontSize: 12,
                                             color: Colors.grey[600],
@@ -1519,221 +1681,6 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
     }
   }
 
-  Future<void> _showRefundDialog() async {
-    // Cek apakah memenuhi syarat refund (2 hari sebelum keberangkatan)
-    final booking =
-        Provider.of<BookingProvider>(context, listen: false).currentBooking;
-    if (booking == null) return;
-
-    final departureDateTime = DateTimeHelper.combineDateAndTime(
-      booking.departureDate,
-      booking.schedule?.departureTime ?? '',
-    );
-
-    final departureDiff = departureDateTime?.difference(DateTime.now());
-    final daysBeforeDeparture = departureDiff?.inDays ?? 0;
-
-    // Jika kurang dari 2 hari, tampilkan pesan peringatan
-    if (daysBeforeDeparture < 2) {
-      showDialog(
-        context: context,
-        builder:
-            (context) => AlertDialog(
-              title: const Text('Tidak Memenuhi Syarat'),
-              content: const Text(
-                'Refund hanya dapat dilakukan minimal 2 hari sebelum keberangkatan.',
-              ),
-              actions: [
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Mengerti'),
-                ),
-              ],
-            ),
-      );
-      return;
-    }
-
-    // Lanjutkan dengan kode dialog refund yang sudah ada
-    TextEditingController reasonController = TextEditingController();
-    TextEditingController bankNameController = TextEditingController();
-    TextEditingController accountNameController = TextEditingController();
-    TextEditingController accountNumberController = TextEditingController();
-
-    final result =
-        await showDialog<bool>(
-          context: context,
-          builder:
-              (context) => AlertDialog(
-                title: const Text('Minta Refund'),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                content: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.blue[50],
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.blue[100]!),
-                        ),
-                        child: Text(
-                          'Permintaan refund akan diproses dalam waktu 3-5 hari kerja. Dana akan dikembalikan sesuai kebijakan refund.',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[800],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      const Text('Alasan Refund:'),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: reasonController,
-                        decoration: InputDecoration(
-                          hintText: 'Masukkan alasan refund',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        maxLines: 3,
-                      ),
-
-                      const SizedBox(height: 20),
-                      const Text('Informasi Rekening:'),
-                      const SizedBox(height: 8),
-
-                      TextField(
-                        controller: bankNameController,
-                        decoration: InputDecoration(
-                          labelText: 'Nama Bank',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: accountNameController,
-                        decoration: InputDecoration(
-                          labelText: 'Nama Pemilik Rekening',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: accountNumberController,
-                        decoration: InputDecoration(
-                          labelText: 'Nomor Rekening',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        keyboardType: TextInputType.number,
-                      ),
-                    ],
-                  ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('Batal'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      if (reasonController.text.isEmpty ||
-                          bankNameController.text.isEmpty ||
-                          accountNameController.text.isEmpty ||
-                          accountNumberController.text.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Semua field harus diisi'),
-                          ),
-                        );
-                        return;
-                      }
-                      Navigator.pop(context, true);
-                    },
-                    child: const Text('Ajukan Refund'),
-                  ),
-                ],
-              ),
-        ) ??
-        false;
-
-    if (result) {
-      setState(() {
-        _isLoading = true;
-      });
-
-      try {
-        final bookingProvider = Provider.of<BookingProvider>(
-          context,
-          listen: false,
-        );
-        final Map<String, dynamic> response = await bookingProvider
-            .requestRefund(
-              widget.bookingId,
-              reasonController.text,
-              bankNameController.text,
-              accountNameController.text,
-              accountNumberController.text,
-            );
-
-        if (mounted) {
-          final bool success = response['success'] ?? false;
-          final bool isManualProcess =
-              response['requires_manual_process'] ?? true;
-
-          if (success) {
-            final String message =
-                isManualProcess
-                    ? 'Permintaan refund berhasil dikirim dan akan diproses dalam 3-7 hari kerja.'
-                    : 'Permintaan refund berhasil dikirim dan sedang diproses.';
-
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(message), backgroundColor: Colors.green),
-            );
-            _loadTicketDetails();
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Gagal mengajukan refund: ${response['error'] ?? ''}',
-                ),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Gagal mengajukan refund: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
-      }
-    }
-  }
-
   String _getReadablePaymentMethod(String method, String type) {
     final methodLower = method.toLowerCase();
     final typeLower = type.toLowerCase();
@@ -1819,6 +1766,24 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
         return Icons.pending;
       default:
         return Icons.info;
+    }
+  }
+
+  IconData _getRefundStatusIcon(String status) {
+    switch (status.toUpperCase()) {
+      case 'COMPLETED':
+      case 'SUCCESS':
+        return Icons.check_circle;
+      case 'PENDING':
+        return Icons.pending;
+      case 'PROCESSING':
+        return Icons.sync;
+      case 'REJECTED':
+        return Icons.cancel;
+      case 'CANCELLED':
+        return Icons.block;
+      default:
+        return Icons.help_outline;
     }
   }
 

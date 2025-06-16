@@ -15,7 +15,7 @@ class TicketDetailScreen extends StatefulWidget {
   final int bookingId;
 
   const TicketDetailScreen({Key? key, required this.bookingId})
-      : super(key: key);
+    : super(key: key);
 
   @override
   _TicketDetailScreenState createState() => _TicketDetailScreenState();
@@ -64,8 +64,13 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
   }
 
   void _startPaymentStatusTimer() {
-    _paymentStatusTimer = Timer.periodic(const Duration(seconds: 30), (timer) async {
-      final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
+    _paymentStatusTimer = Timer.periodic(const Duration(seconds: 30), (
+      timer,
+    ) async {
+      final bookingProvider = Provider.of<BookingProvider>(
+        context,
+        listen: false,
+      );
       final booking = bookingProvider.currentBooking;
 
       if (booking != null && booking.status == 'PENDING') {
@@ -82,7 +87,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
     });
 
     try {
-      final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
+      final bookingProvider = Provider.of<BookingProvider>(
+        context,
+        listen: false,
+      );
       await bookingProvider.getBookingDetails(widget.bookingId);
     } catch (e) {
       _showSnackBar('Gagal memuat detail tiket: $e');
@@ -96,65 +104,68 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
   }
 
   Future<void> _cancelBooking() async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20.0),
-        ),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
-                shape: BoxShape.circle,
+    final result =
+        await showDialog<bool>(
+          context: context,
+          builder:
+              (context) => AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20.0),
+                ),
+                title: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.cancel_outlined,
+                        color: Colors.red,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    const Flexible(child: Text('Batalkan Pemesanan?')),
+                  ],
+                ),
+                content: const Text(
+                  'Apakah Anda yakin ingin membatalkan pemesanan ini? Proses ini tidak dapat dibatalkan.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Tidak'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.grey[600],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: Colors.red,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                    ),
+                    child: const Text('Ya, Batalkan'),
+                  ),
+                ],
               ),
-              child: const Icon(
-                Icons.cancel_outlined,
-                color: Colors.red,
-              ),
-            ),
-            const SizedBox(width: 16),
-            const Flexible(child: Text('Batalkan Pemesanan?')),
-          ],
-        ),
-        content: const Text(
-          'Apakah Anda yakin ingin membatalkan pemesanan ini? Proses ini tidak dapat dibatalkan.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Tidak'),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.grey[600],
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 10,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.white,
-              backgroundColor: Colors.red,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 10,
-              ),
-            ),
-            child: const Text('Ya, Batalkan'),
-          ),
-        ],
-      ),
-    ) ?? false;
+        ) ??
+        false;
 
     if (result) {
       setState(() {
@@ -162,7 +173,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
       });
 
       try {
-        final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
+        final bookingProvider = Provider.of<BookingProvider>(
+          context,
+          listen: false,
+        );
         final success = await bookingProvider.cancelBooking(widget.bookingId);
 
         if (success && mounted) {
@@ -230,10 +244,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                theme.primaryColor.withOpacity(0.7),
-                Colors.white,
-              ],
+              colors: [theme.primaryColor.withOpacity(0.7), Colors.white],
             ),
           ),
           child: const Center(
@@ -265,7 +276,11 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline_rounded, size: 80, color: Colors.grey[400]),
+              Icon(
+                Icons.error_outline_rounded,
+                size: 80,
+                color: Colors.grey[400],
+              ),
               const SizedBox(height: 24),
               Text(
                 'Tiket tidak ditemukan',
@@ -290,8 +305,13 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                 icon: const Icon(Icons.refresh),
                 label: const Text('Coba Lagi'),
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ],
@@ -305,18 +325,21 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
       booking.departureDate,
       booking.schedule?.departureTime ?? '',
     );
-    
+
     final departureDiff = departureDateTime?.difference(DateTime.now());
-    final isWithin24Hours = departureDiff != null ? departureDiff.inHours <= 24 : false;
-    final canCancel = booking.status == 'PENDING' && !isWithin24Hours;
-    final canRefund = booking.status == 'CONFIRMED' && !isWithin24Hours;
+    final isWithin2Days =
+        departureDiff != null ? departureDiff.inDays < 2 : false;
+    final canCancel = booking.status == 'PENDING' && !isWithin2Days;
+    final canRefund = booking.status == 'CONFIRMED' && !isWithin2Days;
     final tickets = booking.tickets ?? [];
     final hasMultipleTickets = tickets.length > 1;
-    final selectedTicket = tickets.isNotEmpty && _selectedTicketIndex < tickets.length
-        ? tickets[_selectedTicketIndex]
-        : null;
+    final selectedTicket =
+        tickets.isNotEmpty && _selectedTicketIndex < tickets.length
+            ? tickets[_selectedTicketIndex]
+            : null;
     final isPending = booking.status == 'PENDING';
-    final payment = booking.payments?.isNotEmpty == true ? booking.payments?.first : null;
+    final payment =
+        booking.payments?.isNotEmpty == true ? booking.payments?.first : null;
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -370,7 +393,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                         child: Column(
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 6,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(20),
@@ -409,11 +435,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
           SliverToBoxAdapter(
             child: Container(
               color: _getStatusColor(booking.status),
-              padding: const EdgeInsets.only(
-                left: 20,
-                right: 20,
-                bottom: 24,
-              ),
+              padding: const EdgeInsets.only(left: 20, right: 20, bottom: 24),
               child: Card(
                 margin: EdgeInsets.zero,
                 elevation: 4,
@@ -427,7 +449,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: _getStatusColor(booking.status).withOpacity(0.1),
+                          color: _getStatusColor(
+                            booking.status,
+                          ).withOpacity(0.1),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -542,9 +566,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                             ),
                           ],
                         ),
-                        
+
                         const Divider(height: 30),
-                        
+
                         // Date & Time
                         Row(
                           children: [
@@ -552,7 +576,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                               child: _buildInfoItem(
                                 icon: Icons.calendar_today_rounded,
                                 title: 'Tanggal',
-                                value: DateTimeHelper.formatDate(booking.departureDate),
+                                value: DateTimeHelper.formatDate(
+                                  booking.departureDate,
+                                ),
                                 iconColor: theme.primaryColor,
                               ),
                             ),
@@ -560,23 +586,25 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                               height: 40,
                               width: 1,
                               color: Colors.grey[200],
-                              margin: const EdgeInsets.symmetric(horizontal: 16),
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
                             ),
                             Expanded(
                               child: _buildInfoItem(
                                 icon: Icons.access_time_rounded,
                                 title: 'Waktu',
                                 value: DateTimeHelper.formatTime(
-                                  booking.schedule?.departureTime ?? ''
+                                  booking.schedule?.departureTime ?? '',
                                 ),
                                 iconColor: theme.primaryColor,
                               ),
                             ),
                           ],
                         ),
-                        
+
                         const Divider(height: 30),
-                        
+
                         // Ferry & Passengers
                         Row(
                           children: [
@@ -584,15 +612,17 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                               child: _buildInfoItem(
                                 icon: Icons.directions_boat_filled_rounded,
                                 title: 'Kapal',
-                                value: booking.schedule?.ferry?.name ?? 'Kapal Ferry',
+                                value:
+                                    booking.schedule?.ferry?.name ??
+                                    'Kapal Ferry',
                                 iconColor: theme.primaryColor,
                               ),
                             ),
                           ],
                         ),
-                        
+
                         const SizedBox(height: 16),
-                        
+
                         Row(
                           children: [
                             Expanded(
@@ -608,7 +638,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                                 height: 40,
                                 width: 1,
                                 color: Colors.grey[200],
-                                margin: const EdgeInsets.symmetric(horizontal: 16),
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
                               ),
                               Expanded(
                                 child: _buildInfoItem(
@@ -639,18 +671,18 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                           valueColor: _getPaymentStatusColor(booking),
                           icon: _getPaymentStatusIcon(booking),
                         ),
-                        
+
                         const Divider(height: 24),
-                        
+
                         _buildInfoRow(
                           label: 'Total Pembayaran',
                           value: _formatCurrency(booking.totalAmount),
                           valueColor: theme.primaryColor,
                         ),
-                        
+
                         if (isPending && payment != null) ...[
                           const Divider(height: 24),
-                          
+
                           _buildInfoRow(
                             label: 'Metode Pembayaran',
                             value: _getReadablePaymentMethod(
@@ -658,11 +690,11 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                               payment.paymentType,
                             ),
                           ),
-                          
+
                           if (payment.virtualAccountNumber != null &&
                               payment.virtualAccountNumber!.isNotEmpty) ...[
                             const SizedBox(height: 16),
-                            
+
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -677,11 +709,15 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                                 GestureDetector(
                                   onTap: () {
                                     Clipboard.setData(
-                                      ClipboardData(text: payment.virtualAccountNumber!),
+                                      ClipboardData(
+                                        text: payment.virtualAccountNumber!,
+                                      ),
                                     );
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content: Text('Nomor Virtual Account disalin'),
+                                        content: Text(
+                                          'Nomor Virtual Account disalin',
+                                        ),
                                         behavior: SnackBarBehavior.floating,
                                       ),
                                     );
@@ -692,10 +728,15 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                                     decoration: BoxDecoration(
                                       color: Colors.grey[100],
                                       borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(color: theme.primaryColor.withOpacity(0.5)),
+                                      border: Border.all(
+                                        color: theme.primaryColor.withOpacity(
+                                          0.5,
+                                        ),
+                                      ),
                                     ),
                                     child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
                                         Text(
                                           payment.virtualAccountNumber!,
@@ -717,16 +758,18 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                               ],
                             ),
                           ],
-                          
+
                           const SizedBox(height: 20),
-                          
+
                           if (payment.expiryTime != null) ...[
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
                                 color: Colors.orange.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                                border: Border.all(
+                                  color: Colors.orange.withOpacity(0.3),
+                                ),
                               ),
                               child: Row(
                                 children: [
@@ -748,10 +791,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                                 ],
                               ),
                             ),
-                            
+
                             const SizedBox(height: 20),
                           ],
-                          
+
                           Row(
                             children: [
                               Expanded(
@@ -759,48 +802,67 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                                   icon: const Icon(Icons.help_outline_rounded),
                                   label: const Text('Cara Bayar'),
                                   style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                   ),
-                                  onPressed: () => _showPaymentInstructions(context, payment),
+                                  onPressed:
+                                      () => _showPaymentInstructions(
+                                        context,
+                                        payment,
+                                      ),
                                 ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: ElevatedButton.icon(
-                                  icon: _isCheckingStatus
-                                      ? const SizedBox(
-                                          width: 18,
-                                          height: 18,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                          ),
-                                        )
-                                      : const Icon(Icons.refresh),
-                                  label: Text(_isCheckingStatus ? 'Memeriksa...' : 'Cek Status'),
+                                  icon:
+                                      _isCheckingStatus
+                                          ? const SizedBox(
+                                            width: 18,
+                                            height: 18,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor:
+                                                  AlwaysStoppedAnimation<Color>(
+                                                    Colors.white,
+                                                  ),
+                                            ),
+                                          )
+                                          : const Icon(Icons.refresh),
+                                  label: Text(
+                                    _isCheckingStatus
+                                        ? 'Memeriksa...'
+                                        : 'Cek Status',
+                                  ),
                                   style: ElevatedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                   ),
-                                  onPressed: _isCheckingStatus
-                                      ? null
-                                      : () {
-                                          setState(() {
-                                            _isCheckingStatus = true;
-                                          });
-                                          _refreshPaymentStatus(booking.bookingCode).then((_) {
-                                            if (mounted) {
-                                              setState(() {
-                                                _isCheckingStatus = false;
-                                              });
-                                            }
-                                          });
-                                        },
+                                  onPressed:
+                                      _isCheckingStatus
+                                          ? null
+                                          : () {
+                                            setState(() {
+                                              _isCheckingStatus = true;
+                                            });
+                                            _refreshPaymentStatus(
+                                              booking.bookingCode,
+                                            ).then((_) {
+                                              if (mounted) {
+                                                setState(() {
+                                                  _isCheckingStatus = false;
+                                                });
+                                              }
+                                            });
+                                          },
                                 ),
                               ),
                             ],
@@ -812,7 +874,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
 
                   if (!isPending && tickets.isNotEmpty) ...[
                     const SizedBox(height: 20),
-                    
+
                     // Ticket Tabs (if multiple tickets)
                     if (hasMultipleTickets) ...[
                       Padding(
@@ -826,7 +888,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                           ),
                         ),
                       ),
-                      
+
                       SizedBox(
                         height: 48,
                         child: ListView.builder(
@@ -835,7 +897,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                           itemBuilder: (context, index) {
                             final isSelected = index == _selectedTicketIndex;
                             final ticket = tickets[index];
-                            
+
                             return Padding(
                               padding: const EdgeInsets.only(right: 10),
                               child: GestureDetector(
@@ -851,19 +913,22 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                                     vertical: 8,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? theme.primaryColor
-                                        : Colors.grey[100],
+                                    color:
+                                        isSelected
+                                            ? theme.primaryColor
+                                            : Colors.grey[100],
                                     borderRadius: BorderRadius.circular(24),
-                                    boxShadow: isSelected
-                                        ? [
-                                            BoxShadow(
-                                              color: theme.primaryColor.withOpacity(0.3),
-                                              blurRadius: 8,
-                                              offset: const Offset(0, 3),
-                                            ),
-                                          ]
-                                        : null,
+                                    boxShadow:
+                                        isSelected
+                                            ? [
+                                              BoxShadow(
+                                                color: theme.primaryColor
+                                                    .withOpacity(0.3),
+                                                blurRadius: 8,
+                                                offset: const Offset(0, 3),
+                                              ),
+                                            ]
+                                            : null,
                                   ),
                                   child: Row(
                                     children: [
@@ -872,20 +937,23 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                                             ? Icons.directions_car_rounded
                                             : Icons.person_rounded,
                                         size: 18,
-                                        color: isSelected
-                                            ? Colors.white
-                                            : Colors.grey[600],
+                                        color:
+                                            isSelected
+                                                ? Colors.white
+                                                : Colors.grey[600],
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
                                         'Tiket ${index + 1}',
                                         style: TextStyle(
-                                          color: isSelected
-                                              ? Colors.white
-                                              : Colors.grey[800],
-                                          fontWeight: isSelected
-                                              ? FontWeight.bold
-                                              : FontWeight.normal,
+                                          color:
+                                              isSelected
+                                                  ? Colors.white
+                                                  : Colors.grey[800],
+                                          fontWeight:
+                                              isSelected
+                                                  ? FontWeight.bold
+                                                  : FontWeight.normal,
                                         ),
                                       ),
                                     ],
@@ -896,7 +964,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                           },
                         ),
                       ),
-                      
+
                       const SizedBox(height: 16),
                     ],
 
@@ -904,7 +972,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                     if (selectedTicket != null)
                       _buildSectionCard(
                         title: hasMultipleTickets ? null : 'Tiket Perjalanan',
-                        icon: hasMultipleTickets ? null : Icons.confirmation_number_rounded,
+                        icon:
+                            hasMultipleTickets
+                                ? null
+                                : Icons.confirmation_number_rounded,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -927,7 +998,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                                 const SizedBox(width: 16),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         hasMultipleTickets
@@ -958,11 +1030,15 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                                     color: theme.primaryColor.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(16),
                                     border: Border.all(
-                                      color: theme.primaryColor.withOpacity(0.3),
+                                      color: theme.primaryColor.withOpacity(
+                                        0.3,
+                                      ),
                                     ),
                                   ),
                                   child: Text(
-                                    _getTicketTypeText(selectedTicket.ticketType),
+                                    _getTicketTypeText(
+                                      selectedTicket.ticketType,
+                                    ),
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
@@ -972,29 +1048,33 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                                 ),
                               ],
                             ),
-                            
+
                             const SizedBox(height: 16),
                             const Divider(),
                             const SizedBox(height: 16),
-                            
+
                             // Check-in Status
                             _buildStatusBox(
-                              icon: selectedTicket.checkedIn
-                                  ? Icons.check_circle_rounded
-                                  : Icons.pending_rounded,
-                              title: selectedTicket.checkedIn
-                                  ? 'Sudah Check-In'
-                                  : 'Belum Check-In',
-                              description: selectedTicket.checkedIn
-                                  ? 'Anda sudah melakukan check-in'
-                                  : 'Silakan lakukan check-in di lokasi keberangkatan',
-                              color: selectedTicket.checkedIn
-                                  ? Colors.green
-                                  : Colors.orange,
+                              icon:
+                                  selectedTicket.checkedIn
+                                      ? Icons.check_circle_rounded
+                                      : Icons.pending_rounded,
+                              title:
+                                  selectedTicket.checkedIn
+                                      ? 'Sudah Check-In'
+                                      : 'Belum Check-In',
+                              description:
+                                  selectedTicket.checkedIn
+                                      ? 'Anda sudah melakukan check-in'
+                                      : 'Silakan lakukan check-in di lokasi keberangkatan',
+                              color:
+                                  selectedTicket.checkedIn
+                                      ? Colors.green
+                                      : Colors.orange,
                             ),
-                            
+
                             const SizedBox(height: 12),
-                            
+
                             // Boarding Status
                             _buildStatusBox(
                               icon: Icons.directions_boat_rounded,
@@ -1010,30 +1090,70 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                   // Action Buttons
                   if (canCancel || canRefund) ...[
                     const SizedBox(height: 20),
-                    
+
                     _buildSectionCard(
                       title: 'Aksi Pemesanan',
                       icon: Icons.settings,
                       child: Column(
                         children: [
                           if (canRefund)
-                            ElevatedButton.icon(
-                              onPressed: _showRefundDialog,
-                              icon: const Icon(Icons.monetization_on_rounded),
-                              label: const Text('Minta Refund'),
-                              style: ElevatedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                backgroundColor: Colors.orange[700],
-                                minimumSize: const Size(double.infinity, 48),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                            Column(
+                              children: [
+                                ElevatedButton.icon(
+                                  onPressed: _showRefundDialog,
+                                  icon: const Icon(
+                                    Icons.monetization_on_rounded,
+                                  ),
+                                  label: const Text('Minta Refund'),
+                                  style: ElevatedButton.styleFrom(
+                                    foregroundColor: Colors.white,
+                                    backgroundColor: Colors.orange[700],
+                                    minimumSize: const Size(
+                                      double.infinity,
+                                      48,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                const SizedBox(height: 8),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[100],
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: Colors.grey[300]!,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.info_outline,
+                                        color: Colors.grey[600],
+                                        size: 16,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Refund hanya dapat dilakukan minimal 2 hari sebelum keberangkatan',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
-                            
+
                           if (canCancel) ...[
                             if (canRefund) const SizedBox(height: 12),
-                            
+
                             OutlinedButton.icon(
                               onPressed: _cancelBooking,
                               icon: const Icon(Icons.cancel_rounded),
@@ -1116,10 +1236,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
             ),
             const Divider(height: 1),
           ],
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: child,
-          ),
+          Padding(padding: const EdgeInsets.all(16), child: child),
         ],
       ),
     );
@@ -1140,11 +1257,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
             color: iconColor?.withOpacity(0.1) ?? Colors.grey[100],
             shape: BoxShape.circle,
           ),
-          child: Icon(
-            icon,
-            color: iconColor ?? Colors.grey[600],
-            size: 16,
-          ),
+          child: Icon(icon, color: iconColor ?? Colors.grey[600], size: 16),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -1153,10 +1266,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
             children: [
               Text(
                 title,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               ),
               const SizedBox(height: 4),
               Text(
@@ -1184,18 +1294,11 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
         Expanded(
           child: Text(
             label,
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 14,
-            ),
+            style: TextStyle(color: Colors.grey[600], fontSize: 14),
           ),
         ),
         if (icon != null) ...[
-          Icon(
-            icon,
-            size: 16,
-            color: valueColor ?? Colors.grey[800],
-          ),
+          Icon(icon, size: 16, color: valueColor ?? Colors.grey[800]),
           const SizedBox(width: 8),
         ],
         Text(
@@ -1231,11 +1334,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
               color: color.withOpacity(0.2),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 20,
-            ),
+            child: Icon(icon, color: color, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1253,10 +1352,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                 const SizedBox(height: 2),
                 Text(
                   description,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[700],
-                  ),
+                  style: TextStyle(fontSize: 13, color: Colors.grey[700]),
                 ),
               ],
             ),
@@ -1269,7 +1365,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
   // Helper functions
   Future<void> _refreshPaymentStatus(String bookingCode) async {
     try {
-      final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
+      final bookingProvider = Provider.of<BookingProvider>(
+        context,
+        listen: false,
+      );
       final success = await bookingProvider.refreshPaymentStatus(bookingCode);
 
       if (mounted) {
@@ -1296,7 +1395,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
     });
 
     try {
-      final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
+      final bookingProvider = Provider.of<BookingProvider>(
+        context,
+        listen: false,
+      );
       final String paymentMethod = payment.paymentMethod;
       final String paymentType = payment.paymentType;
 
@@ -1316,91 +1418,95 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
-          builder: (context) => DraggableScrollableSheet(
-            initialChildSize: 0.65,
-            minChildSize: 0.4,
-            maxChildSize: 0.9,
-            expand: false,
-            builder: (context, scrollController) => Padding(
-              padding: const EdgeInsets.all(20),
-              child: ListView(
-                controller: scrollController,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    instructions['title'] ?? 'Cara Pembayaran',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 20),
-                  const Divider(),
-                  const SizedBox(height: 20),
-                  
-                  ...List.generate(
-                    (instructions['steps'] as List<dynamic>).length,
-                    (index) => Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+          builder:
+              (context) => DraggableScrollableSheet(
+                initialChildSize: 0.65,
+                minChildSize: 0.4,
+                maxChildSize: 0.9,
+                expand: false,
+                builder:
+                    (context, scrollController) => Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: ListView(
+                        controller: scrollController,
                         children: [
-                          Container(
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).primaryColor.withOpacity(0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: Text(
-                                '${index + 1}',
-                                style: TextStyle(
-                                  color: Theme.of(context).primaryColor,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                          Center(
+                            child: Container(
+                              width: 40,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[300],
+                                borderRadius: BorderRadius.circular(2),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              instructions['steps'][index],
-                              style: const TextStyle(fontSize: 15),
+                          const SizedBox(height: 20),
+                          Text(
+                            instructions['title'] ?? 'Cara Pembayaran',
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 20),
+                          const Divider(),
+                          const SizedBox(height: 20),
+
+                          ...List.generate(
+                            (instructions['steps'] as List<dynamic>).length,
+                            (index) => Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 28,
+                                    height: 28,
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(
+                                        context,
+                                      ).primaryColor.withOpacity(0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '${index + 1}',
+                                        style: TextStyle(
+                                          color: Theme.of(context).primaryColor,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      instructions['steps'][index],
+                                      style: const TextStyle(fontSize: 15),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 20),
+                          ElevatedButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Tutup'),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              minimumSize: const Size(double.infinity, 48),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                  
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Tutup'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      minimumSize: const Size(double.infinity, 48),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ],
               ),
-            ),
-          ),
         );
       }
     } catch (e) {
@@ -1414,117 +1520,182 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
   }
 
   Future<void> _showRefundDialog() async {
+    // Cek apakah memenuhi syarat refund (2 hari sebelum keberangkatan)
+    final booking =
+        Provider.of<BookingProvider>(context, listen: false).currentBooking;
+    if (booking == null) return;
+
+    final departureDateTime = DateTimeHelper.combineDateAndTime(
+      booking.departureDate,
+      booking.schedule?.departureTime ?? '',
+    );
+
+    final departureDiff = departureDateTime?.difference(DateTime.now());
+    final daysBeforeDeparture = departureDiff?.inDays ?? 0;
+
+    // Jika kurang dari 2 hari, tampilkan pesan peringatan
+    if (daysBeforeDeparture < 2) {
+      showDialog(
+        context: context,
+        builder:
+            (context) => AlertDialog(
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.orange,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  const Flexible(child: Text('Tidak Memenuhi Syarat')),
+                ],
+              ),
+              content: const Text(
+                'Refund hanya dapat dilakukan minimal 2 hari sebelum keberangkatan. Mohon maaf, tiket Anda tidak memenuhi syarat untuk refund.',
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: Theme.of(context).primaryColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                  ),
+                  child: const Text('Mengerti'),
+                ),
+              ],
+            ),
+      );
+      return;
+    }
+
+    // Lanjutkan dengan kode dialog refund yang sudah ada
     TextEditingController reasonController = TextEditingController();
     TextEditingController bankNameController = TextEditingController();
     TextEditingController accountNameController = TextEditingController();
     TextEditingController accountNumberController = TextEditingController();
 
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Minta Refund'),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue[100]!),
+    final result =
+        await showDialog<bool>(
+          context: context,
+          builder:
+              (context) => AlertDialog(
+                title: const Text('Minta Refund'),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                child: Text(
-                  'Permintaan refund akan diproses dalam waktu 3-5 hari kerja. Dana akan dikembalikan sesuai kebijakan refund.',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[800],
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue[100]!),
+                        ),
+                        child: Text(
+                          'Permintaan refund akan diproses dalam waktu 3-5 hari kerja. Dana akan dikembalikan sesuai kebijakan refund.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[800],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      const Text('Alasan Refund:'),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: reasonController,
+                        decoration: InputDecoration(
+                          hintText: 'Masukkan alasan refund',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        maxLines: 3,
+                      ),
+
+                      const SizedBox(height: 20),
+                      const Text('Informasi Rekening:'),
+                      const SizedBox(height: 8),
+
+                      TextField(
+                        controller: bankNameController,
+                        decoration: InputDecoration(
+                          labelText: 'Nama Bank',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: accountNameController,
+                        decoration: InputDecoration(
+                          labelText: 'Nama Pemilik Rekening',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: accountNumberController,
+                        decoration: InputDecoration(
+                          labelText: 'Nomor Rekening',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                    ],
                   ),
                 ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Batal'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      if (reasonController.text.isEmpty ||
+                          bankNameController.text.isEmpty ||
+                          accountNameController.text.isEmpty ||
+                          accountNumberController.text.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Semua field harus diisi'),
+                          ),
+                        );
+                        return;
+                      }
+                      Navigator.pop(context, true);
+                    },
+                    child: const Text('Ajukan Refund'),
+                  ),
+                ],
               ),
-              const SizedBox(height: 20),
-              
-              const Text('Alasan Refund:'),
-              const SizedBox(height: 8),
-              TextField(
-                controller: reasonController,
-                decoration: InputDecoration(
-                  hintText: 'Masukkan alasan refund',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                maxLines: 3,
-              ),
-              
-              const SizedBox(height: 20),
-              const Text('Informasi Rekening:'),
-              const SizedBox(height: 8),
-              
-              TextField(
-                controller: bankNameController,
-                decoration: InputDecoration(
-                  labelText: 'Nama Bank',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-              
-              const SizedBox(height: 12),
-              TextField(
-                controller: accountNameController,
-                decoration: InputDecoration(
-                  labelText: 'Nama Pemilik Rekening',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-              
-              const SizedBox(height: 12),
-              TextField(
-                controller: accountNumberController,
-                decoration: InputDecoration(
-                  labelText: 'Nomor Rekening',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Batal'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (reasonController.text.isEmpty ||
-                  bankNameController.text.isEmpty ||
-                  accountNameController.text.isEmpty ||
-                  accountNumberController.text.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Semua field harus diisi'),
-                  ),
-                );
-                return;
-              }
-              Navigator.pop(context, true);
-            },
-            child: const Text('Ajukan Refund'),
-          ),
-        ],
-      ),
-    ) ?? false;
+        ) ??
+        false;
 
     if (result) {
       setState(() {
@@ -1532,35 +1703,40 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
       });
 
       try {
-        final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
-        final Map<String, dynamic> response = await bookingProvider.requestRefund(
-          widget.bookingId,
-          reasonController.text,
-          bankNameController.text,
-          accountNameController.text,
-          accountNumberController.text,
+        final bookingProvider = Provider.of<BookingProvider>(
+          context,
+          listen: false,
         );
+        final Map<String, dynamic> response = await bookingProvider
+            .requestRefund(
+              widget.bookingId,
+              reasonController.text,
+              bankNameController.text,
+              accountNameController.text,
+              accountNumberController.text,
+            );
 
         if (mounted) {
           final bool success = response['success'] ?? false;
-          final bool isManualProcess = response['requires_manual_process'] ?? true;
+          final bool isManualProcess =
+              response['requires_manual_process'] ?? true;
 
           if (success) {
-            final String message = isManualProcess
-                ? 'Permintaan refund berhasil dikirim dan akan diproses dalam 3-7 hari kerja.'
-                : 'Permintaan refund berhasil dikirim dan sedang diproses.';
+            final String message =
+                isManualProcess
+                    ? 'Permintaan refund berhasil dikirim dan akan diproses dalam 3-7 hari kerja.'
+                    : 'Permintaan refund berhasil dikirim dan sedang diproses.';
 
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(message),
-                backgroundColor: Colors.green,
-              ),
+              SnackBar(content: Text(message), backgroundColor: Colors.green),
             );
             _loadTicketDetails();
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Gagal mengajukan refund: ${response['error'] ?? ''}'),
+                content: Text(
+                  'Gagal mengajukan refund: ${response['error'] ?? ''}',
+                ),
                 backgroundColor: Colors.red,
               ),
             );

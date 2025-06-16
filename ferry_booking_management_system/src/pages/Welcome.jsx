@@ -288,7 +288,7 @@ const Welcome = () => {
         <div className="container relative mx-auto px-4 sm:px-6 lg:px-8 z-10">
           <div className="items-center flex flex-wrap">
             <div className="w-full lg:w-6/12 px-4 mx-auto text-center">
-              <div className="mt-8 sm:mt-12 p-6 sm:p-8 rounded-xl border border-white/10">
+              <div className="mt-8 sm:mt-12 p-6 sm:p-8 rounded-xl">
                 <h1 className="text-white font-bold text-3xl sm:text-4xl md:text-5xl mb-4 sm:mb-6 leading-tight drop-shadow-md">
                   {settings.hero_title}
                 </h1>

@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             ChatbotSeeder::class,
             RefundPolicySeeder::class,
+            VehicleCategorySeeder::class,
         ]);
     }
 }

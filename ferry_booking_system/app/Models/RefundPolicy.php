@@ -29,7 +29,7 @@ class RefundPolicy extends Model
 
     /**
      * Get active policy for given days before departure
-     * UPDATED: Menerapkan kebijakan menurun tanpa celah
+     * UPDATED: Menerapkan kebijakan menurun tanpa celah dengan pendekatan kebijakan terdekat
      */
     public static function getApplicablePolicy($daysBeforeDeparture)
     {
@@ -39,8 +39,14 @@ class RefundPolicy extends Model
             ->orderBy('days_before_departure', 'desc')
             ->first();
 
-        // Mengembalikan null jika tidak ada kebijakan yang berlaku
-        // Ini akan memicu penggunaan kebijakan default di controller
+        // Jika tidak ada kebijakan yang berlaku, cari kebijakan terdekat
+        if (!$policy) {
+            $policy = self::where('is_active', 1)
+                ->where('days_before_departure', '>', $daysBeforeDeparture)
+                ->orderBy('days_before_departure', 'asc')  // Ambil yang terdekat (paling kecil)
+                ->first();
+        }
+
         return $policy;
     }
 

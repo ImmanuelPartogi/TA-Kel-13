@@ -344,15 +344,32 @@ class RefundController extends Controller
     /**
      * Get refund details for a booking
      */
-    public function getRefundDetailsByBookingId($bookingId)
+    /**
+     * Get refund details for a booking
+     */
+    public function getRefundDetailsByBookingId($bookingId, Request $request)
     {
         $user = request()->user();
-        $refund = Refund::where('booking_id', $bookingId)
+
+        // Cek parameter latest untuk menentukan apakah hanya ambil yang terbaru
+        $latest = $request->query('latest', false);
+
+        $query = Refund::where('booking_id', $bookingId)
             ->whereHas('booking', function ($query) use ($user) {
                 $query->where('user_id', $user->id);
-            })
-            ->with(['booking', 'payment'])
-            ->first();
+            });
+
+        if ($latest) {
+            // Jika parameter latest=true, ambil refund yang paling relevan
+            // Prioritaskan PENDING, PROCESSING, APPROVED, COMPLETED, kemudian REJECTED/CANCELLED
+            $query->orderByRaw("FIELD(status, 'PENDING', 'PROCESSING', 'APPROVED', 'COMPLETED', 'REJECTED', 'CANCELLED')")
+                ->orderBy('created_at', 'desc');
+        } else {
+            // Jika tidak, ambil yang paling baru berdasarkan created_at
+            $query->orderBy('created_at', 'desc');
+        }
+
+        $refund = $query->with(['booking', 'payment'])->first();
 
         if (!$refund) {
             return response()->json([
@@ -411,6 +428,46 @@ class RefundController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Detail refund berhasil diambil',
+            'data' => $refundData
+        ], 200);
+    }
+
+    /**
+     * Get refund history for a booking
+     */
+    public function getRefundHistoryByBookingId($bookingId)
+    {
+        $user = request()->user();
+        $refunds = Refund::where('booking_id', $bookingId)
+            ->whereHas('booking', function ($query) use ($user) {
+                $query->where('user_id', $user->id);
+            })
+            ->with(['booking', 'payment'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        if ($refunds->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Riwayat refund tidak ditemukan',
+                'data' => []
+            ], 200);
+        }
+
+        $refundData = $refunds->map(function ($refund) {
+            $data = $refund->toArray();
+            $data['refund_calculation'] = [
+                'original_amount' => $refund->original_amount,
+                'refund_fee' => $refund->refund_fee,
+                'refund_percentage' => $refund->refund_percentage,
+                'refund_amount' => $refund->amount
+            ];
+            return $data;
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Riwayat refund berhasil diambil',
             'data' => $refundData
         ], 200);
     }

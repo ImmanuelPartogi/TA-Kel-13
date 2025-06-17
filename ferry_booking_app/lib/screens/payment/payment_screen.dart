@@ -50,7 +50,7 @@ class _PaymentScreenState extends State<PaymentScreen>
     'bca': const Color(0xFF005BAA),
     'bni': const Color(0xFFFF6600),
     'bri': const Color(0xFF00529C),
-    'mandiri': const Color(0xFF003366),
+    // 'mandiri': const Color(0xFF003366),
     'gopay': const Color(0xFF00AAD2),
     'shopeepay': const Color(0xFFEE4D2D),
     'default': const Color(0xFF2196F3),
@@ -61,7 +61,7 @@ class _PaymentScreenState extends State<PaymentScreen>
     'bca': 'assets/images/payment_methods/bca.png',
     'bni': 'assets/images/payment_methods/bni.png',
     'bri': 'assets/images/payment_methods/bri.png',
-    'mandiri': 'assets/images/payment_methods/mandiri.png',
+    // 'mandiri': 'assets/images/payment_methods/mandiri.png',
     'gopay': 'assets/images/payment_methods/gopay.png',
     'shopeepay': 'assets/images/payment_methods/shopeepay.png',
   };
@@ -541,13 +541,38 @@ class _PaymentScreenState extends State<PaymentScreen>
 
   Color _getBankColor() {
     final method = _paymentMethod ?? 'default';
-    return _bankColors[method] ?? _bankColors['default']!;
+    final bankColors = {
+      'bca': const Color(0xFF005BAA),
+      'bni': const Color(0xFFFF6600),
+      'bri': const Color(0xFF00529C),
+      // 'mandiri': const Color(0xFF003366),
+      'permata': const Color(0xFF1F1F1F),
+      'cimb': const Color(0xFF8C1919),
+      'gopay': const Color(0xFF00AAD2),
+      'shopeepay': const Color(0xFFEE4D2D),
+      'qris': const Color(0xFF4B0082),
+      'default': const Color(0xFF2196F3),
+    };
+    return bankColors[method] ?? bankColors['default']!;
   }
 
   String? _getBankIcon() {
     final method = _paymentMethod;
     if (method == null) return null;
-    return _bankIcons[method];
+
+    final bankIcons = {
+      'bca': 'assets/images/payment_methods/bca.png',
+      'bni': 'assets/images/payment_methods/bni.png',
+      'bri': 'assets/images/payment_methods/bri.png',
+      // 'mandiri': 'assets/images/payment_methods/mandiri.png',
+      'permata': 'assets/images/payment_methods/permata.png',
+      'cimb': 'assets/images/payment_methods/cimb.png',
+      'gopay': 'assets/images/payment_methods/gopay.png',
+      'shopeepay': 'assets/images/payment_methods/shopeepay.png',
+      'qris': 'assets/images/payment_methods/qris.png',
+    };
+
+    return bankIcons[method];
   }
 
   // Fungsi untuk mendapatkan warna berdasarkan waktu tersisa
@@ -895,11 +920,14 @@ class _PaymentScreenState extends State<PaymentScreen>
           'bca': 'BCA Virtual Account',
           'bni': 'BNI Virtual Account',
           'bri': 'BRI Virtual Account',
-          'mandiri': 'Mandiri Bill Payment',
+          // 'mandiri': 'Mandiri Bill Payment',
+          'permata': 'Permata Virtual Account',
+          'cimb': 'CIMB Virtual Account',
           'gopay': 'GoPay',
           'shopeepay': 'ShopeePay',
+          'qris': 'QRIS',
         }[paymentMethod] ??
-        'Virtual Account';
+        'Metode Pembayaran';
 
     return Container(
       width: double.infinity,

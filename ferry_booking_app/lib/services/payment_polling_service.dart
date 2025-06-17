@@ -304,8 +304,11 @@ class PaymentPollingService {
 
   /// Cek apakah pembayaran sudah selesai atau gagal
   bool _isPaymentCompleted(String paymentStatus, String bookingStatus) {
-    // Dianggap selesai jika payment status bukan PENDING
-    if (paymentStatus != 'PENDING') {
+    // Dianggap selesai jika payment status adalah SUCCESS, FAILED, EXPIRED, atau REFUNDED
+    if (paymentStatus == 'SUCCESS' ||
+        paymentStatus == 'FAILED' ||
+        paymentStatus == 'EXPIRED' ||
+        paymentStatus == 'REFUNDED') {
       return true;
     }
 

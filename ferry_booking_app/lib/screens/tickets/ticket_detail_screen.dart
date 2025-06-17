@@ -94,7 +94,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
       );
       await bookingProvider.getBookingDetails(widget.bookingId);
 
-      // Jika status booking adalah REFUND_PENDING atau REFUNDED, load refund details
+      // Jika status booking adalah REFUND_PENDING atau REFUNDED, load refund details dan history
       final booking = bookingProvider.currentBooking;
       if (booking != null &&
           (booking.status == 'REFUND_PENDING' ||
@@ -103,7 +103,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
           context,
           listen: false,
         );
-        await refundProvider.getRefundDetailsByBookingId(
+
+        // Gunakan metode yang diperbarui untuk mendapatkan riwayat dan refund terbaru
+        await refundProvider.getRefundHistoryByBookingId(
           widget.bookingId,
           isMounted: () => mounted,
         );
@@ -1174,7 +1176,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                       booking.status == 'REFUNDED') ...[
                     const SizedBox(height: 20),
 
-                    if (refund != null)
+                    if (refundProvider.currentRefund != null)
                       _buildSectionCard(
                         title: 'Informasi Refund',
                         icon: Icons.monetization_on_rounded,
@@ -1182,17 +1184,25 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _buildStatusBox(
-                              icon: _getRefundStatusIcon(refund.status),
-                              title: 'Status Refund: ${refund.readableStatus}',
-                              description: refund.getStatusDescription(),
-                              color: Color(refund.getStatusColor()),
+                              icon: _getRefundStatusIcon(
+                                refundProvider.currentRefund!.status,
+                              ),
+                              title:
+                                  'Status Refund: ${refundProvider.currentRefund!.readableStatus}',
+                              description:
+                                  refundProvider.currentRefund!
+                                      .getStatusDescription(),
+                              color: Color(
+                                refundProvider.currentRefund!.getStatusColor(),
+                              ),
                             ),
 
                             const SizedBox(height: 16),
 
                             _buildInfoRow(
                               label: 'Jumlah Refund',
-                              value: refund.formattedAmount,
+                              value:
+                                  refundProvider.currentRefund!.formattedAmount,
                               valueColor: Colors.green,
                             ),
 
@@ -1201,23 +1211,31 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                             _buildInfoRow(
                               label: 'Persentase Refund',
                               value:
-                                  '${refund.refundPercentage.toStringAsFixed(0)}%',
+                                  '${refundProvider.currentRefund!.refundPercentage.toStringAsFixed(0)}%',
                             ),
 
                             const SizedBox(height: 8),
 
                             _buildInfoRow(
                               label: 'Tanggal Pengajuan',
-                              value: refund.formattedCreatedDate,
+                              value:
+                                  refundProvider
+                                      .currentRefund!
+                                      .formattedCreatedDate,
                             ),
 
                             // Tombol Cancel jika status masih PENDING
-                            if (refund.status.toUpperCase() == 'PENDING') ...[
+                            if (refundProvider.currentRefund!.status
+                                    .toUpperCase() ==
+                                'PENDING') ...[
                               const SizedBox(height: 16),
                               SizedBox(
                                 width: double.infinity,
                                 child: OutlinedButton(
-                                  onPressed: () => _cancelRefund(refund.id),
+                                  onPressed:
+                                      () => _cancelRefund(
+                                        refundProvider.currentRefund!.id,
+                                      ),
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: Colors.red,
                                     side: const BorderSide(color: Colors.red),
@@ -1225,6 +1243,107 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                                   child: const Text('Batalkan Refund'),
                                 ),
                               ),
+                            ],
+
+                            // Tambahkan bagian untuk riwayat refund jika ada lebih dari 1 refund
+                            if (refundProvider.refundHistory.length > 1) ...[
+                              const SizedBox(height: 24),
+                              const Divider(),
+                              const SizedBox(height: 8),
+
+                              Text(
+                                'Riwayat Refund',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey[800],
+                                ),
+                              ),
+
+                              const SizedBox(height: 12),
+
+                              ...refundProvider.refundHistory
+                                  .where(
+                                    (r) =>
+                                        r.id !=
+                                        refundProvider.currentRefund!.id,
+                                  )
+                                  .map(
+                                    (refund) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey[50],
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          border: Border.all(
+                                            color: Colors.grey[300]!,
+                                          ),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Text(
+                                                  refund.readableStatus,
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Color(
+                                                      refund.getStatusColor(),
+                                                    ),
+                                                  ),
+                                                ),
+                                                Text(
+                                                  refund.formattedCreatedDate,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.grey[600],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Text('Jumlah:'),
+                                                Text(
+                                                  refund.formattedAmount,
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            if (refund.status.toUpperCase() ==
+                                                    'REJECTED' &&
+                                                refund.rejectionReason !=
+                                                    null) ...[
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                'Alasan: ${refund.rejectionReason}',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey[600],
+                                                  fontStyle: FontStyle.italic,
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
                             ],
                           ],
                         ),

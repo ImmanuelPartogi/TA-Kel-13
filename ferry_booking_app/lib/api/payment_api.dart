@@ -30,14 +30,17 @@ class PaymentApi {
       } else {
         throw ApiException(
           code: response.statusCode,
-          message: _getErrorMessage(response) ?? 'Gagal mendapatkan status pembayaran',
+          message:
+              _getErrorMessage(response) ??
+              'Gagal mendapatkan status pembayaran',
         );
       }
     } catch (e) {
       print('Error in getPaymentStatus: $e');
       throw ApiException(
         code: e is ApiException ? e.code : 500,
-        message: 'Terjadi kesalahan saat memeriksa status pembayaran: ${e.toString()}',
+        message:
+            'Terjadi kesalahan saat memeriksa status pembayaran: ${e.toString()}',
       );
     }
   }
@@ -182,17 +185,43 @@ class PaymentApi {
               'Transaksi selesai',
             ],
           };
-        case 'mandiri':
+        // case 'mandiri':
+        //   return {
+        //     'title': 'Mandiri Bill Payment',
+        //     'steps': [
+        //       'Buka aplikasi Livin by Mandiri',
+        //       'Pilih menu "Pembayaran"',
+        //       'Pilih "Multi Payment"',
+        //       'Cari dan pilih nama perusahaan',
+        //       'Masukkan nomor pembayaran',
+        //       'Pastikan nama dan jumlah pembayaran sudah sesuai',
+        //       'Masukkan PIN Livin',
+        //       'Transaksi selesai',
+        //     ],
+        //   };
+        case 'permata':
           return {
-            'title': 'Mandiri Bill Payment',
+            'title': 'Permata Virtual Account',
             'steps': [
-              'Buka aplikasi Livin by Mandiri',
+              'Buka aplikasi PermataMobile X',
               'Pilih menu "Pembayaran"',
-              'Pilih "Multi Payment"',
-              'Cari dan pilih nama perusahaan',
-              'Masukkan nomor pembayaran',
+              'Pilih "Virtual Account"',
+              'Masukkan nomor Virtual Account',
               'Pastikan nama dan jumlah pembayaran sudah sesuai',
-              'Masukkan PIN Livin',
+              'Masukkan password transaksi',
+              'Transaksi selesai',
+            ],
+          };
+        case 'cimb':
+          return {
+            'title': 'CIMB Virtual Account',
+            'steps': [
+              'Buka aplikasi OCTO Mobile',
+              'Pilih menu "Transfer"',
+              'Pilih "Virtual Account"',
+              'Masukkan nomor Virtual Account',
+              'Pastikan nama dan jumlah pembayaran sudah sesuai',
+              'Masukkan password transaksi',
               'Transaksi selesai',
             ],
           };
@@ -238,32 +267,6 @@ class PaymentApi {
               'Transaksi selesai',
             ],
           };
-        case 'dana':
-          return {
-            'title': 'DANA',
-            'steps': [
-              'Buka aplikasi DANA',
-              'Tap tombol "Scan QR"',
-              'Scan QR Code yang ditampilkan di halaman pembayaran',
-              'Pastikan nominal pembayaran sudah sesuai',
-              'Tap tombol "Bayar"',
-              'Masukkan PIN DANA',
-              'Transaksi selesai',
-            ],
-          };
-        case 'ovo':
-          return {
-            'title': 'OVO',
-            'steps': [
-              'Buka aplikasi OVO',
-              'Tap tombol "Scan"',
-              'Scan QR Code yang ditampilkan di halaman pembayaran',
-              'Pastikan nominal pembayaran sudah sesuai',
-              'Tap tombol "Bayar"',
-              'Masukkan PIN OVO',
-              'Transaksi selesai',
-            ],
-          };
         default:
           return {
             'title': 'E-wallet',
@@ -277,6 +280,19 @@ class PaymentApi {
             ],
           };
       }
+    } else if (type == 'qris') {
+      return {
+        'title': 'QRIS',
+        'steps': [
+          'Buka aplikasi e-wallet atau mobile banking yang mendukung QRIS',
+          'Pilih menu "Scan QR"',
+          'Scan QR Code yang ditampilkan di halaman pembayaran',
+          'Pastikan nama merchant dan nominal pembayaran sudah sesuai',
+          'Konfirmasi pembayaran',
+          'Masukkan PIN atau password',
+          'Transaksi selesai',
+        ],
+      };
     }
 
     return {

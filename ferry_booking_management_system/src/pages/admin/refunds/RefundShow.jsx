@@ -360,10 +360,6 @@ const RefundShow = () => {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-gray-500 mb-1">ID Refund</p>
-                    <p className="font-medium">#{refund.id}</p>
-                  </div>
-                  <div>
                     <p className="text-sm text-gray-500 mb-1">Jumlah Refund</p>
                     <p className="font-medium text-emerald-600 text-lg">
                       {formatCurrency(refund.amount || 0)}
@@ -392,7 +388,7 @@ const RefundShow = () => {
                         <p className="text-sm text-gray-500 mb-1">Nomor Rekening</p>
                         <p className="font-mono">{refund.bank_account_number || 'N/A'}</p>
                       </div>
-                      <div className="md:col-span-2">
+                      <div>
                         <p className="text-sm text-gray-500 mb-1">Nama Pemilik Rekening</p>
                         <p>{refund.bank_account_name || 'N/A'}</p>
                       </div>
@@ -503,16 +499,6 @@ const RefundShow = () => {
                 <div className="p-6 space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm text-gray-500 mb-1">ID Pembayaran</p>
-                      <p className="font-medium">#{refund.payment.id}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500 mb-1">Status Pembayaran</p>
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        {refund.payment.status}
-                      </span>
-                    </div>
-                    <div>
                       <p className="text-sm text-gray-500 mb-1">Jumlah Pembayaran</p>
                       <p className="font-medium text-lg">
                         {formatCurrency(refund.payment.amount || 0)}
@@ -529,6 +515,12 @@ const RefundShow = () => {
                       <p>
                         {refund.payment.payment_date ? formatDate(refund.payment.payment_date, true) : 'N/A'}
                       </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Status Pembayaran</p>
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        {refund.payment.status}
+                      </span>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500 mb-1">ID Transaksi</p>

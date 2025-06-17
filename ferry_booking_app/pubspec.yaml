@@ -122,7 +122,18 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-    - assets/images/payment_methods/
+    - assets/images/payment_methods/bca.png
+    - assets/images/payment_methods/bni.png
+    - assets/images/payment_methods/bri.png
+    # - assets/images/payment_methods/mandiri.png
+    - assets/images/payment_methods/permata.png
+    - assets/images/payment_methods/cimb.png
+    - assets/images/payment_methods/gopay.png
+    - assets/images/payment_methods/shopeepay.png
+    - assets/images/payment_methods/qris.png
+    - assets/images/payment_methods/bank.png
+    - assets/images/payment_methods/ewallet.png
+    - assets/images/payment_methods/payment.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

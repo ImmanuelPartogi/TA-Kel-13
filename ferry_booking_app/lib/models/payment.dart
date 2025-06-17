@@ -18,7 +18,7 @@ class Payment {
   final String updatedAt;
   final Map<String, dynamic>? rawData;
 
-  Payment({ 
+  Payment({
     required this.id,
     required this.bookingId,
     this.paymentCode,
@@ -47,20 +47,22 @@ class Payment {
       try {
         // Coba parse sebagai string ISO 8601
         DateTime parsedDate = DateTime.parse(json['expiry_date'].toString());
-        
+
         // Penting: Pastikan tanggal dalam format lokal
         return parsedDate.toLocal();
       } catch (e) {
         // Fallback untuk format lain jika parsing gagal
         try {
           final dateFormat = DateFormat('yyyy-MM-dd HH:mm:ss');
-          DateTime parsedDate = dateFormat.parse(json['expiry_date'].toString());
-          
+          DateTime parsedDate = dateFormat.parse(
+            json['expiry_date'].toString(),
+          );
+
           // Penting: Pastikan tanggal dalam format lokal
           return parsedDate.toLocal();
         } catch (_) {
           print('Error parsing expiry_date: ${json['expiry_date']}');
-          
+
           // Tambahan: Fallback ke 5 menit dari sekarang jika parsing gagal
           return DateTime.now().add(const Duration(minutes: 5));
         }
@@ -90,7 +92,9 @@ class Payment {
     if (expiryDate != null) {
       final now = DateTime.now();
       final diff = expiryDate.difference(now);
-      print('Parsed expiry_date: $expiryDate (${diff.inMinutes} minutes from now)');
+      print(
+        'Parsed expiry_date: $expiryDate (${diff.inMinutes} minutes from now)',
+      );
     }
 
     return Payment(
@@ -173,6 +177,12 @@ class Payment {
       } else if (type.contains('mandiri') ||
           virtualAccountNumber?.toLowerCase().contains('mandiri') == true) {
         return 'assets/images/payment_methods/mandiri.png';
+      } else if (type.contains('permata') ||
+          virtualAccountNumber?.toLowerCase().contains('permata') == true) {
+        return 'assets/images/payment_methods/permata.png';
+      } else if (type.contains('cimb') ||
+          virtualAccountNumber?.toLowerCase().contains('cimb') == true) {
+        return 'assets/images/payment_methods/cimb.png';
       }
       return 'assets/images/payment_methods/bank.png';
     } else if (method.contains('e_wallet') || type.contains('e_wallet')) {
@@ -180,14 +190,10 @@ class Payment {
         return 'assets/images/payment_methods/gopay.png';
       } else if (type.contains('shopeepay')) {
         return 'assets/images/payment_methods/shopeepay.png';
-      } else if (type.contains('dana')) {
-        return 'assets/images/payment_methods/dana.png';
-      } else if (type.contains('ovo')) {
-        return 'assets/images/payment_methods/ovo.png';
       }
       return 'assets/images/payment_methods/ewallet.png';
-    } else if (method.contains('credit_card')) {
-      return 'assets/images/payment_methods/credit_card.png';
+    } else if (type.contains('qris')) {
+      return 'assets/images/payment_methods/qris.png';
     }
 
     // Fallback generic icon
@@ -304,17 +310,21 @@ class Payment {
       this.qrCodeUrl = qrCodeUrl;
     }
   }
-  
+
   // SOLUSI: Getter untuk kompatibilitas dengan kode yang menggunakan expiryDate
   DateTime? get expiryDate => expiryTime;
-  
+
   // Metode debugging untuk melacak masalah waktu
   void debugExpiryTime() {
     if (expiryTime != null) {
       print('Expiry Time: $expiryTime');
       print('Current Time: ${DateTime.now()}');
-      print('Difference in minutes: ${expiryTime!.difference(DateTime.now()).inMinutes}');
-      print('Difference in seconds: ${expiryTime!.difference(DateTime.now()).inSeconds}');
+      print(
+        'Difference in minutes: ${expiryTime!.difference(DateTime.now()).inMinutes}',
+      );
+      print(
+        'Difference in seconds: ${expiryTime!.difference(DateTime.now()).inSeconds}',
+      );
       print('Is local time: ${!expiryTime!.isUtc ? "Yes" : "No (UTC)"}');
     } else {
       print('Expiry Time is null');

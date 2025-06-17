@@ -9,13 +9,121 @@ class RefundProvider extends ChangeNotifier {
   String? _errorMessage;
   String? _successMessage;
   Refund? _currentRefund;
+  List<Refund> _refundHistory = [];
   Map<String, dynamic>? _eligibilityData;
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   String? get successMessage => _successMessage;
   Refund? get currentRefund => _currentRefund;
+  List<Refund> get refundHistory => _refundHistory;
   Map<String, dynamic>? get eligibilityData => _eligibilityData;
+
+  // Metode baru untuk mendapatkan semua riwayat refund
+  Future<void> getRefundHistoryByBookingId(
+    int bookingId, {
+    required bool Function() isMounted,
+  }) async {
+    _isLoading = true;
+    if (isMounted()) notifyListeners();
+
+    try {
+      final response = await _refundApi.getAllRefundHistoryByBookingId(
+        bookingId,
+      );
+
+      if (response['success'] == true && response['data'] != null) {
+        _refundHistory =
+            (response['data'] as List)
+                .map((item) => Refund.fromJson(item))
+                .toList();
+
+        // Urutkan berdasarkan tanggal terbaru
+        _refundHistory.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+        // Set current refund ke refund yang paling relevan (pending/approved/completed)
+        _currentRefund = _getMostRelevantRefund(_refundHistory);
+      } else {
+        _refundHistory = [];
+        _currentRefund = null;
+      }
+
+      _isLoading = false;
+      if (isMounted()) notifyListeners();
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = _parseErrorMessage(e.toString());
+      if (isMounted()) notifyListeners();
+    }
+  }
+
+  // Perbaikan untuk metode getRefundDetailsByBookingId
+  Future<void> getRefundDetailsByBookingId(
+    int bookingId, {
+    required bool Function() isMounted,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+
+    if (isMounted()) notifyListeners();
+
+    try {
+      // Ambil riwayat refund terlebih dahulu
+      await getRefundHistoryByBookingId(bookingId, isMounted: isMounted);
+
+      // Jika tidak ada riwayat yang ditemukan, coba dapatkan refund terbaru saja
+      if (_refundHistory.isEmpty) {
+        final response = await _refundApi.getRefundDetailsByBookingId(
+          bookingId,
+        );
+
+        if (response['success'] == true && response['data'] != null) {
+          _currentRefund = Refund.fromJson(response['data']);
+          _refundHistory = [_currentRefund!];
+        } else {
+          _currentRefund = null;
+          _refundHistory = [];
+        }
+      }
+
+      _isLoading = false;
+      if (isMounted()) notifyListeners();
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = _parseErrorMessage(e.toString());
+      if (isMounted()) notifyListeners();
+    }
+  }
+
+  // Helper untuk mendapatkan refund yang paling relevan
+  Refund? _getMostRelevantRefund(List<Refund> refunds) {
+    if (refunds.isEmpty) return null;
+
+    // Prioritas: PENDING > APPROVED > PROCESSING > COMPLETED > REJECTED > CANCELLED
+    final priorityOrder = {
+      'PENDING': 0,
+      'APPROVED': 1,
+      'PROCESSING': 2,
+      'COMPLETED': 3,
+      'REJECTED': 4,
+      'CANCELLED': 5,
+    };
+
+    // Urutkan berdasarkan prioritas status, lalu berdasarkan waktu (terbaru)
+    refunds.sort((a, b) {
+      final priorityA = priorityOrder[a.status.toUpperCase()] ?? 999;
+      final priorityB = priorityOrder[b.status.toUpperCase()] ?? 999;
+
+      if (priorityA == priorityB) {
+        // Jika status sama, prioritaskan yang terbaru
+        return b.createdAt.compareTo(a.createdAt);
+      }
+
+      return priorityA.compareTo(priorityB);
+    });
+
+    return refunds.first;
+  }
 
   // Clear messages
   void clearMessages() {
@@ -104,34 +212,6 @@ class RefundProvider extends ChangeNotifier {
       _errorMessage = _parseErrorMessage(e.toString());
       if (isMounted()) notifyListeners();
       return false;
-    }
-  }
-
-  // Get refund details
-  Future<void> getRefundDetailsByBookingId(
-    int bookingId, {
-    required bool Function() isMounted,
-  }) async {
-    _isLoading = true;
-    _errorMessage = null;
-
-    if (isMounted()) notifyListeners();
-
-    try {
-      final response = await _refundApi.getRefundDetailsByBookingId(bookingId);
-
-      if (response['success'] == true && response['data'] != null) {
-        _currentRefund = Refund.fromJson(response['data']);
-      } else {
-        _currentRefund = null;
-      }
-
-      _isLoading = false;
-      if (isMounted()) notifyListeners();
-    } catch (e) {
-      _isLoading = false;
-      _errorMessage = _parseErrorMessage(e.toString());
-      if (isMounted()) notifyListeners();
     }
   }
 

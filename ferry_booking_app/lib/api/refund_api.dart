@@ -12,40 +12,77 @@ class RefundApi {
       return response;
     } catch (e) {
       print('Error checking refund eligibility: $e');
-      throw Exception('Terjadi kesalahan saat memeriksa kelayakan refund: ${e.toString()}');
+      throw Exception(
+        'Terjadi kesalahan saat memeriksa kelayakan refund: ${e.toString()}',
+      );
     }
   }
 
   // Request refund dengan penanganan response yang lebih baik
-  Future<Map<String, dynamic>> requestRefund(Map<String, dynamic> refundData) async {
+  Future<Map<String, dynamic>> requestRefund(
+    Map<String, dynamic> refundData,
+  ) async {
     try {
       final response = await _apiService.post('refunds/request', refundData);
       return response;
     } catch (e) {
       print('Error requesting refund: $e');
-      
+
       // Re-throw the original exception untuk mempertahankan error message yang tepat
       rethrow;
     }
   }
 
-  // Get refund details for a booking
-  Future<Map<String, dynamic>> getRefundDetailsByBookingId(int bookingId) async {
+  // Tambahkan metode baru untuk mendapatkan semua riwayat refund untuk suatu booking
+  Future<Map<String, dynamic>> getAllRefundHistoryByBookingId(
+    int bookingId,
+  ) async {
     try {
-      final response = await _apiService.get('refunds/booking/$bookingId');
+      final response = await _apiService.get(
+        'refunds/booking/$bookingId/history',
+      );
+      return response;
+    } catch (e) {
+      print('Error getting refund history: $e');
+
+      if (e.toString().contains('not found') || e.toString().contains('404')) {
+        return {
+          'success': false,
+          'message': 'Riwayat refund tidak ditemukan',
+          'data': [],
+        };
+      }
+
+      throw Exception(
+        'Terjadi kesalahan saat mengambil riwayat refund: ${e.toString()}',
+      );
+    }
+  }
+
+  // Perbaiki metode getRefundDetailsByBookingId untuk meminta refund terbaru
+  Future<Map<String, dynamic>> getRefundDetailsByBookingId(
+    int bookingId,
+  ) async {
+    try {
+      // Tambahkan parameter latest=true untuk memastikan backend mengembalikan refund terbaru
+      final response = await _apiService.get(
+        'refunds/booking/$bookingId?latest=true',
+      );
       return response;
     } catch (e) {
       print('Error getting refund details: $e');
-      
+
       if (e.toString().contains('not found') || e.toString().contains('404')) {
         return {
           'success': false,
           'message': 'Data refund tidak ditemukan',
-          'data': null
+          'data': null,
         };
       }
-      
-      throw Exception('Terjadi kesalahan saat mengambil detail refund: ${e.toString()}');
+
+      throw Exception(
+        'Terjadi kesalahan saat mengambil detail refund: ${e.toString()}',
+      );
     }
   }
 
@@ -56,7 +93,9 @@ class RefundApi {
       return response;
     } catch (e) {
       print('Error cancelling refund: $e');
-      throw Exception('Terjadi kesalahan saat membatalkan refund: ${e.toString()}');
+      throw Exception(
+        'Terjadi kesalahan saat membatalkan refund: ${e.toString()}',
+      );
     }
   }
 }

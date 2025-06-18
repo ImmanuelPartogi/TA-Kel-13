@@ -157,7 +157,7 @@ class PaymentController extends Controller
                 $simulatorUrl = $this->midtransService->getSimulatorUrl($request->payment_method, $request->payment_type);
             }
 
-            // Dapatkan instruksi pembayaran
+            // PERBAIKAN: Dapatkan instruksi pembayaran dengan handling yang lebih baik
             $instructions = $this->midtransService->getPaymentInstructions($request->payment_method, $request->payment_type);
 
             // Tambahkan info device-specific untuk e-wallet
@@ -166,7 +166,7 @@ class PaymentController extends Controller
                 $redirectInfo = $this->midtransService->getEWalletRedirectUrl($payment, $request->header('User-Agent'));
             }
 
-            // Buat respons
+            // PERBAIKAN: Buat respons yang konsisten dan lengkap
             $responseData = [
                 'payment_id' => $payment->id,
                 'status' => $payment->status,
@@ -176,11 +176,42 @@ class PaymentController extends Controller
                 'virtual_account_number' => $payment->virtual_account_number,
                 'qr_code_url' => $payment->qr_code_url,
                 'deep_link_url' => $payment->deep_link_url,
-                'expiry_date' => $payment->expiry_date->format('Y-m-d H:i:s'),
+                'expiry_date' => $payment->expiry_date ? $payment->expiry_date->format('Y-m-d H:i:s') : null,
                 'redirect_info' => $redirectInfo,
                 'instructions' => $instructions,
                 'simulator_url' => $simulatorUrl
             ];
+
+            // TAMBAHAN: Info khusus untuk ShopeePay sandbox
+            if ($request->payment_method == 'shopeepay' && !config('midtrans.is_production')) {
+                $responseData['is_sandbox'] = true;
+                $responseData['payment_info'] = [
+                    'type' => 'simulator',
+                    'message' => 'Gunakan simulator untuk testing pembayaran ShopeePay',
+                    'simulator_instructions' => [
+                        'Buka browser dan kunjungi URL simulator',
+                        'Ikuti instruksi di halaman simulator untuk simulasi pembayaran',
+                        'Pilih status pembayaran (Success/Failed) sesuai kebutuhan testing'
+                    ]
+                ];
+
+                // Override QR code URL untuk memastikan menggunakan simulator
+                if (empty($payment->qr_code_url) || !str_contains($payment->qr_code_url, 'simulator')) {
+                    $responseData['qr_code_url'] = 'https://simulator.sandbox.midtrans.com/shopeepay/qr/index';
+                }
+            }
+
+            // TAMBAHAN: Log response data untuk debugging
+            Log::info('Payment response data', [
+                'payment_id' => $payment->id,
+                'has_qr_code' => !empty($payment->qr_code_url),
+                'has_deep_link' => !empty($payment->deep_link_url),
+                'has_va_number' => !empty($payment->virtual_account_number),
+                'payment_method' => $request->payment_method,
+                'payment_type' => $request->payment_type,
+                'qr_code_url' => $payment->qr_code_url,
+                'is_sandbox' => !config('midtrans.is_production')
+            ]);
 
             return response()->json([
                 'success' => true,

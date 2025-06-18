@@ -841,25 +841,59 @@ class BookingProvider extends ChangeNotifier {
         paymentType,
       );
 
-      // Simpan referensi pembayaran dari hasil API
-      if (result.containsKey('virtual_account_number')) {
-        _currentBooking!.latestPayment?.virtualAccountNumber =
-            result['virtual_account_number'];
-        developer.log('VA number: ${result['virtual_account_number']}');
+      developer.log('Payment API result: $result');
+
+      // PERBAIKAN: Update payment details dari hasil API
+      if (_currentBooking!.latestPayment != null) {
+        _currentBooking!.latestPayment!.updateFromApiResponse(result);
+      } else {
+        // Jika belum ada payment object, buat berdasarkan response
+        final payment = Payment(
+          id: result['payment_id'] ?? -1,
+          bookingId: _currentBooking!.id,
+          amount: _currentBooking!.totalAmount,
+          status: result['status'] ?? 'PENDING',
+          paymentMethod:
+              result['payment_method'] ?? paymentMethod.toUpperCase(),
+          paymentType: result['payment_channel'] ?? paymentType,
+          virtualAccountNumber: result['virtual_account_number'],
+          qrCodeUrl: result['qr_code_url'],
+          deepLinkUrl: result['deep_link_url'],
+          expiryTime:
+              result['expiry_date'] != null
+                  ? DateTime.tryParse(result['expiry_date']) ??
+                      DateTime.now().add(const Duration(minutes: 5))
+                  : DateTime.now().add(const Duration(minutes: 5)),
+          createdAt: DateTime.now().toIso8601String(),
+          updatedAt: DateTime.now().toIso8601String(),
+          rawData: result,
+        );
+
+        // _currentBooking!.latestPayment = payment;
       }
 
-      if (result.containsKey('qr_code_url')) {
-        _currentBooking!.latestPayment?.qrCodeUrl = result['qr_code_url'];
-        developer.log('QR Code URL: ${result['qr_code_url']}');
-      }
+      // Log payment details untuk debugging
+      developer.log('Payment details updated:');
+      developer.log(
+        '- VA Number: ${_currentBooking!.latestPayment?.virtualAccountNumber}',
+      );
+      developer.log(
+        '- QR Code URL: ${_currentBooking!.latestPayment?.qrCodeUrl}',
+      );
+      developer.log(
+        '- Deep Link URL: ${_currentBooking!.latestPayment?.deepLinkUrl}',
+      );
+      developer.log(
+        '- Expiry Time: ${_currentBooking!.latestPayment?.expiryTime}',
+      );
 
-      if (result.containsKey('deep_link_url')) {
-        _currentBooking!.latestPayment?.deepLinkUrl = result['deep_link_url'];
-        developer.log('Deep Link URL: ${result['deep_link_url']}');
+      // PERBAIKAN: Refresh booking data untuk memastikan sinkronisasi
+      try {
+        await getBookingDetails(_currentBooking!.id);
+      } catch (e) {
+        developer.log('Warning: Failed to refresh booking details: $e');
+        // Tidak perlu throw error, payment sudah berhasil
       }
-
-      // Refresh booking data
-      await getBookingDetails(_currentBooking!.id);
 
       _isLoading = false;
       notifyListeners();
@@ -887,9 +921,32 @@ class BookingProvider extends ChangeNotifier {
         paymentMethod,
         paymentType,
       );
+
       _isLoading = false;
       notifyListeners();
-      return result;
+
+      // PERBAIKAN: Validate dan normalize struktur instruksi
+      if (result is Map<String, dynamic>) {
+        // Pastikan ada field 'steps' untuk kompatibilitas
+        if (!result.containsKey('steps')) {
+          // Jika ada qr_code_steps atau deeplink_steps, gunakan yang pertama tersedia
+          if (result.containsKey('qr_code_steps') &&
+              result['qr_code_steps'] is List) {
+            result['steps'] = result['qr_code_steps'];
+          } else if (result.containsKey('deeplink_steps') &&
+              result['deeplink_steps'] is List) {
+            result['steps'] = result['deeplink_steps'];
+          } else {
+            // Fallback ke steps kosong
+            result['steps'] = [];
+          }
+        }
+
+        return result;
+      }
+
+      // Fallback jika response tidak valid
+      return _getStaticInstructions(paymentMethod, paymentType);
     } catch (e) {
       _isLoading = false;
       _errorMessage = e.toString();
@@ -957,16 +1014,31 @@ class BookingProvider extends ChangeNotifier {
   // Metode untuk memeriksa status satu kali
   Future<bool> refreshPaymentStatus(String bookingCode) async {
     try {
+      developer.log('Refreshing payment status for: $bookingCode');
+
+      // Cek menggunakan polling service untuk mendapatkan update terbaru
       final update = await _paymentPollingService.checkPaymentOnce(bookingCode);
 
       if (!update.isError &&
           _currentBooking != null &&
           _currentBooking!.bookingCode == bookingCode) {
         // Update status di memory
+        final previousStatus = _currentBooking!.status;
+        final previousPaymentStatus = _currentBooking!.latestPayment?.status;
+
         _currentBooking!.status = update.bookingStatus;
         if (_currentBooking!.latestPayment != null) {
           _currentBooking!.latestPayment!.status = update.paymentStatus;
         }
+
+        // Log jika ada perubahan status
+        if (previousStatus != update.bookingStatus ||
+            previousPaymentStatus != update.paymentStatus) {
+          developer.log(
+            'Status updated: Booking: $previousStatus -> ${update.bookingStatus}, Payment: $previousPaymentStatus -> ${update.paymentStatus}',
+          );
+        }
+
         notifyListeners();
       }
 

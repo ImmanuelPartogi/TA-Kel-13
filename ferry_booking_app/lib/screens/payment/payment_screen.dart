@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:ferry_booking_app/config/app_config.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/booking_provider.dart';
 import '../../widgets/custom_appbar.dart';
 
@@ -197,58 +199,6 @@ class _PaymentScreenState extends State<PaymentScreen>
       }
     } catch (e) {
       debugPrint('Error loading booking details: $e');
-    }
-  }
-
-  void _initializeTimer(dynamic payment) {
-    if (payment == null || _isTimerInitialized) return;
-
-    // TAMBAHAN: Cek status pembayaran terlebih dahulu
-    if (_bookingProvider?.currentBooking?.status == 'CONFIRMED' ||
-        _bookingProvider?.currentBooking?.status == 'PAID' ||
-        payment.status == 'SUCCESS') {
-      // Jika pembayaran sudah sukses, tidak perlu timer
-      _isTimerInitialized = true;
-      _remainingSeconds = 0;
-      return;
-    }
-
-    _isTimerInitialized = true;
-
-    // Validasi dan set expiry time
-    if (payment.expiryTime != null) {
-      final now = DateTime.now();
-      final difference = payment.expiryTime.difference(now);
-
-      // Validasi waktu expiry
-      if (difference.inMinutes > 60 || difference.isNegative) {
-        // Gunakan default 5 menit jika tidak valid
-        debugPrint(
-          'WARNING: Waktu expiry tidak valid, menggunakan 5 menit default',
-        );
-        _expiryTime = now.add(const Duration(minutes: 5));
-      } else {
-        _expiryTime = payment.expiryTime;
-      }
-    } else {
-      // Default ke 5 menit jika tidak ada expiry time
-      _expiryTime = DateTime.now().add(const Duration(minutes: 5));
-    }
-
-    // Hitung remaining seconds
-    final now = DateTime.now();
-    final remaining = _expiryTime!.difference(now);
-
-    // Set remaining seconds dan mulai timer
-    if (remaining.inSeconds > 0) {
-      setState(() {
-        _remainingSeconds = remaining.inSeconds;
-      });
-      _startCountdownTimer();
-    } else {
-      setState(() {
-        _remainingSeconds = 0;
-      });
     }
   }
 
@@ -1705,92 +1655,8 @@ class _PaymentScreenState extends State<PaymentScreen>
 
               const SizedBox(height: 20),
 
-              Center(
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.06),
-                        blurRadius: 20,
-                        spreadRadius: 2,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                    border: Border.all(color: Colors.grey.shade200, width: 1),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      payment!.qrCodeUrl!,
-                      width: 200,
-                      height: 200,
-                      fit: BoxFit.cover,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Container(
-                          width: 200,
-                          height: 200,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              value:
-                                  loadingProgress.expectedTotalBytes != null
-                                      ? loadingProgress.cumulativeBytesLoaded /
-                                          loadingProgress.expectedTotalBytes!
-                                      : null,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                bankColor,
-                              ),
-                              strokeWidth: 3,
-                            ),
-                          ),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: 200,
-                          height: 200,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.grey.shade300,
-                              width: 1,
-                            ),
-                          ),
-                          child: Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.broken_image_rounded,
-                                  size: 50,
-                                  color: Colors.grey.shade500,
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'QR Code tidak tersedia',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade600,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ),
+              // PERBAIKAN: Handle QR Code berdasarkan payment method
+              Center(child: _buildQRCodeWidget(payment, bankColor)),
 
               const SizedBox(height: 16),
 
@@ -1818,7 +1684,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'Scan dengan aplikasi ${_paymentMethod?.toUpperCase() ?? "e-wallet"} Anda',
+                        _getQRCodeInstructionText(),
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
@@ -1835,6 +1701,819 @@ class _PaymentScreenState extends State<PaymentScreen>
         ),
       ),
     );
+  }
+
+  // TAMBAHAN: Widget khusus untuk handle QR Code
+  Widget _buildQRCodeWidget(dynamic payment, Color bankColor) {
+    final paymentMethod = _paymentMethod?.toLowerCase() ?? '';
+    final qrUrl = payment.qrCodeUrl!;
+
+    // PERBAIKAN: Enhanced ShopeePay simulator handling
+    if (paymentMethod == 'shopeepay') {
+      return _buildShopeepayQRCode(payment, bankColor, qrUrl);
+    }
+
+    // Handle normal QR code image untuk GoPay dan lainnya
+    return _buildNormalQRCode(qrUrl, bankColor);
+  }
+
+  // Widget untuk QR Code simulator (ShopeePay)
+  Widget _buildShopeepayQRCode(dynamic payment, Color bankColor, String qrUrl) {
+    final isSimulator = qrUrl.contains('simulator.sandbox.midtrans.com');
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 20,
+            spreadRadius: 2,
+            offset: const Offset(0, 5),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.shade200, width: 1),
+      ),
+      child: Column(
+        children: [
+          if (isSimulator) ...[
+            // Simulator mode
+            _buildSimulatorQRDisplay(bankColor),
+            const SizedBox(height: 20),
+            _buildSimulatorInstructions(),
+            const SizedBox(height: 16),
+            _buildSimulatorButton(qrUrl),
+          ] else ...[
+            // Production mode - real QR code
+            _buildProductionQRCode(qrUrl, bankColor),
+            const SizedBox(height: 16),
+            _buildProductionInstructions(),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSimulatorQRDisplay(Color bankColor) {
+    return Container(
+      width: 200,
+      height: 200,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFEE4D2D).withOpacity(0.3),
+          width: 2,
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEE4D2D).withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.qr_code_scanner_rounded,
+              size: 40,
+              color: Color(0xFFEE4D2D),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'ShopeePay QR Code',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.amber.shade100,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'Mode Testing',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Colors.amber.shade800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProductionQRCode(String qrUrl, Color bankColor) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Image.network(
+        qrUrl,
+        width: 200,
+        height: 200,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            width: 200,
+            height: 200,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    value:
+                        loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded /
+                                loadingProgress.expectedTotalBytes!
+                            : null,
+                    valueColor: AlwaysStoppedAnimation<Color>(bankColor),
+                    strokeWidth: 3,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Memuat QR Code...',
+                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          print('Error loading ShopeePay QR code: $error');
+          return _buildErrorQRCode(bankColor);
+        },
+      ),
+    );
+  }
+
+  // Widget untuk instruksi simulator
+  Widget _buildSimulatorInstructions() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.shade200, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.info_outline, size: 20, color: Colors.blue.shade700),
+              const SizedBox(width: 8),
+              Text(
+                'Mode Testing',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.blue.shade700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Anda sedang dalam mode testing. Gunakan simulator untuk menyelesaikan pembayaran ShopeePay.',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.blue.shade800,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Widget untuk instruksi production
+  Widget _buildProductionInstructions() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEE4D2D).withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFEE4D2D).withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.smartphone, size: 20, color: const Color(0xFFEE4D2D)),
+              const SizedBox(width: 8),
+              Text(
+                'Cara Pembayaran',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFFEE4D2D),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Buka aplikasi Shopee → Tap "Saya" → Pilih "ShopeePay" → Tap "Scan" → Arahkan kamera ke QR Code di atas',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade700,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Widget untuk tombol simulator
+  Widget _buildSimulatorButton(String simulatorUrl) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: () => _openSimulator(simulatorUrl),
+        icon: const Icon(Icons.open_in_browser, size: 18),
+        label: const Text(
+          'Buka Simulator ShopeePay',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFEE4D2D),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 2,
+        ),
+      ),
+    );
+  }
+
+  // PERBAIKAN: Enhanced method untuk membuka simulator
+  void _openSimulator(String url) async {
+    try {
+      final uri = Uri.parse(url);
+
+      // Tampilkan loading indicator
+      _showSimulatorLoadingDialog();
+
+      // Coba buka simulator
+      bool launched = false;
+
+      try {
+        launched = await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+          webViewConfiguration: const WebViewConfiguration(
+            enableJavaScript: true,
+            enableDomStorage: true,
+          ),
+        );
+      } catch (e) {
+        print('Error launching simulator URL: $e');
+        launched = false;
+      }
+
+      // Tutup loading dialog
+      Navigator.of(context).pop();
+
+      if (launched) {
+        // Jika berhasil dibuka, tampilkan instruksi
+        _showSimulatorSuccessDialog();
+      } else {
+        // Jika gagal, tampilkan alternatif
+        _showSimulatorAlternativeDialog(url);
+      }
+    } catch (e) {
+      print('Error opening simulator: $e');
+      _showSimulatorAlternativeDialog(url);
+    }
+  }
+
+  // Dialog loading simulator
+  void _showSimulatorLoadingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (context) => WillPopScope(
+            onWillPop: () async => false,
+            child: AlertDialog(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      const Color(0xFFEE4D2D),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Membuka simulator...'),
+                ],
+              ),
+            ),
+          ),
+    );
+  }
+
+  // Dialog sukses membuka simulator
+  void _showSimulatorSuccessDialog() {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(
+                  Icons.check_circle,
+                  color: Colors.green.shade600,
+                  size: 24,
+                ),
+                const SizedBox(width: 8),
+                const Text('Simulator Terbuka'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Simulator ShopeePay telah terbuka di browser. Ikuti langkah berikut:',
+                  style: TextStyle(fontSize: 16, color: Colors.grey.shade800),
+                ),
+                const SizedBox(height: 16),
+                _buildSimulatorSteps(),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Mengerti'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  // Widget untuk langkah-langkah simulator
+  Widget _buildSimulatorSteps() {
+    final steps = [
+      'Pilih "Success" untuk simulasi pembayaran berhasil',
+      'Pilih "Failed" untuk simulasi pembayaran gagal',
+      'Status akan otomatis diperbarui dalam aplikasi',
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children:
+          steps.asMap().entries.map((entry) {
+            final index = entry.key;
+            final step = entry.value;
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEE4D2D).withOpacity(0.1),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: const Color(0xFFEE4D2D),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${index + 1}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFEE4D2D),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      step,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade700,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+    );
+  }
+
+  // PERBAIKAN: Enhanced dialog alternatif simulator
+  void _showSimulatorAlternativeDialog(String url) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.blue.shade600, size: 24),
+                const SizedBox(width: 8),
+                const Text('Simulator ShopeePay'),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Untuk menyelesaikan pembayaran ShopeePay di mode testing:',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Manual steps
+                  _buildAlternativeSteps(),
+
+                  const SizedBox(height: 16),
+
+                  // URL untuk copy manual
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'URL Simulator:',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        SelectableText(
+                          url,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: url));
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('URL simulator disalin ke clipboard'),
+                      backgroundColor: Colors.green.shade700,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                child: const Text('Salin URL'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Tutup'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  // Widget untuk langkah alternatif
+  Widget _buildAlternativeSteps() {
+    final steps = [
+      'Buka browser web di perangkat Anda',
+      'Salin dan kunjungi URL simulator di bawah',
+      'Pilih "Success" untuk simulasi pembayaran berhasil',
+      'Pilih "Failed" untuk simulasi pembayaran gagal',
+      'Kembali ke aplikasi untuk melihat status terbaru',
+    ];
+
+    return Column(
+      children:
+          steps.asMap().entries.map((entry) {
+            final index = entry.key;
+            final step = entry.value;
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.blue.shade300,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${index + 1}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade700,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      step,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade700,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+    );
+  }
+
+  // PERBAIKAN: Enhanced timer initialization dengan validasi yang lebih baik
+  void _initializeTimer(dynamic payment) {
+    if (payment == null || _isTimerInitialized) return;
+
+    // Cek status pembayaran terlebih dahulu
+    if (_bookingProvider?.currentBooking?.status == 'CONFIRMED' ||
+        _bookingProvider?.currentBooking?.status == 'PAID' ||
+        payment.status == 'SUCCESS') {
+      _isTimerInitialized = true;
+      _remainingSeconds = 0;
+      return;
+    }
+
+    _isTimerInitialized = true;
+
+    // Enhanced expiry time validation
+    if (payment.expiryTime != null) {
+      final now = DateTime.now();
+      final expiryTime = payment.expiryTime;
+      final difference = expiryTime.difference(now);
+
+      // Validasi range waktu yang masuk akal (5 menit - 24 jam)
+      if (difference.inMinutes < 0 || difference.inMinutes > 1440) {
+        print('WARNING: Invalid expiry time detected');
+        print('  Current time: $now');
+        print('  Expiry time: $expiryTime');
+        print('  Difference: ${difference.inMinutes} minutes');
+        print('  Using 5 minutes default');
+
+        _expiryTime = now.add(const Duration(minutes: 5));
+      } else {
+        _expiryTime = expiryTime;
+      }
+    } else {
+      print('No expiry time provided, using 5 minutes default');
+      _expiryTime = DateTime.now().add(const Duration(minutes: 5));
+    }
+
+    // Hitung remaining seconds dan mulai timer
+    final now = DateTime.now();
+    final remaining = _expiryTime!.difference(now);
+
+    if (remaining.inSeconds > 0) {
+      setState(() {
+        _remainingSeconds = remaining.inSeconds;
+      });
+      _startCountdownTimer();
+    } else {
+      setState(() {
+        _remainingSeconds = 0;
+      });
+    }
+
+    print('Timer initialized: ${_remainingSeconds}s remaining');
+  }
+
+  // Widget untuk QR Code normal (GoPay dan lainnya)
+  Widget _buildNormalQRCode(String qrUrl, Color bankColor) {
+    print('🔍 Building normal QR code for URL: $qrUrl');
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 20,
+            spreadRadius: 2,
+            offset: const Offset(0, 5),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.shade200, width: 1),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.network(
+          qrUrl,
+          width: 200,
+          height: 200,
+          fit: BoxFit.cover,
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(
+                      value:
+                          loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                                  loadingProgress.expectedTotalBytes!
+                              : null,
+                      valueColor: AlwaysStoppedAnimation<Color>(bankColor),
+                      strokeWidth: 3,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Memuat QR Code...',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+          errorBuilder: (context, error, stackTrace) {
+            print('❌ Error loading QR code: $error');
+            return _buildErrorQRCode(bankColor);
+          },
+        ),
+      ),
+    );
+  }
+
+  // Widget untuk QR Code error
+  Widget _buildErrorQRCode(Color bankColor) {
+    return Container(
+      width: 200,
+      height: 200,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300, width: 1),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.broken_image_rounded,
+              size: 50,
+              color: Colors.grey.shade500,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'QR Code tidak tersedia',
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: _refreshPaymentStatus,
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text('Refresh', style: TextStyle(fontSize: 12)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: bankColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                minimumSize: Size.zero,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Method untuk menampilkan info simulator jika tidak bisa buka browser
+  void _showSimulatorInfo() {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Simulator ShopeePay'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Untuk testing ShopeePay di mode sandbox:'),
+                const SizedBox(height: 12),
+                const Text('1. Buka browser web'),
+                const Text('2. Kunjungi:'),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'https://simulator.sandbox.midtrans.com/shopeepay/qr/index',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text('3. Ikuti instruksi untuk simulasi pembayaran'),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  // Method untuk mendapatkan instruction text
+  String _getQRCodeInstructionText() {
+    final paymentMethod = _paymentMethod?.toLowerCase() ?? '';
+
+    switch (paymentMethod) {
+      case 'shopeepay':
+        return 'Gunakan aplikasi Shopee untuk scan QR Code';
+      case 'gopay':
+        return 'Gunakan aplikasi Gojek untuk scan QR Code';
+      default:
+        return 'Scan dengan aplikasi ${_paymentMethod?.toUpperCase() ?? "e-wallet"} Anda';
+    }
   }
 
   Widget _buildPaymentInstructionsCard(Color bankColor) {
@@ -1921,103 +2600,74 @@ class _PaymentScreenState extends State<PaymentScreen>
         {'step': '7', 'text': 'Pembayaran Anda akan diproses secara otomatis'},
       ];
 
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children:
-            steps.asMap().entries.map((entry) {
-              int idx = int.parse(entry.value['step']!) - 1;
-              String text = entry.value['text']!;
-
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 20),
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween<double>(begin: 0.0, end: 1.0),
-                  duration: Duration(milliseconds: 300 + (idx * 100)),
-                  curve: Curves.easeOutCubic,
-                  builder: (context, value, child) {
-                    return Transform.translate(
-                      offset: Offset(30 * (1 - value), 0),
-                      child: Opacity(opacity: value, child: child),
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.shade200, width: 1),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.shade100.withOpacity(0.6),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: bankColor.withOpacity(0.1),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: bankColor.withOpacity(0.3),
-                              width: 1.5,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: bankColor.withOpacity(0.1),
-                                blurRadius: 5,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Text(
-                              entry.value['step']!,
-                              style: TextStyle(
-                                color: bankColor,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 6),
-                            child: Text(
-                              text,
-                              style: TextStyle(
-                                fontSize: 15,
-                                height: 1.4,
-                                color: Colors.grey.shade800,
-                                letterSpacing: 0.2,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-      );
+      return _buildInstructionsList(steps, bankColor);
     }
 
-    // Jika ada instruksi spesifik dari API
-    final steps = _paymentInstructions!['steps'] as List;
+    // PERBAIKAN: Handle struktur instruksi yang berbeda untuk e-wallet
+    List<String> steps = [];
+
+    try {
+      // Cek apakah ada struktur khusus untuk e-wallet (GoPay/ShopeePay)
+      if (_paymentInstructions!.containsKey('qr_code_steps') &&
+          _paymentInstructions!.containsKey('deeplink_steps')) {
+        // Untuk GoPay yang memiliki qr_code_steps dan deeplink_steps
+        final qrSteps = _paymentInstructions!['qr_code_steps'];
+        final deeplinkSteps = _paymentInstructions!['deeplink_steps'];
+
+        if (qrSteps is List && qrSteps.isNotEmpty) {
+          steps = qrSteps.cast<String>();
+        } else if (deeplinkSteps is List && deeplinkSteps.isNotEmpty) {
+          steps = deeplinkSteps.cast<String>();
+        }
+      } else if (_paymentInstructions!.containsKey('steps')) {
+        // Struktur normal dengan 'steps'
+        final stepsData = _paymentInstructions!['steps'];
+        if (stepsData is List) {
+          steps = stepsData.cast<String>();
+        }
+      }
+
+      // Fallback jika masih kosong
+      if (steps.isEmpty) {
+        steps = [
+          'Buka aplikasi ${_paymentMethod?.toUpperCase() ?? "pembayaran"}',
+          'Scan QR Code yang ditampilkan',
+          'Verifikasi jumlah pembayaran',
+          'Konfirmasi dan selesaikan pembayaran',
+        ];
+      }
+    } catch (e) {
+      print('Error parsing payment instructions: $e');
+      // Fallback ke instruksi default
+      steps = [
+        'Buka aplikasi pembayaran',
+        'Scan QR Code atau ikuti instruksi',
+        'Verifikasi jumlah pembayaran',
+        'Konfirmasi pembayaran',
+      ];
+    }
+
+    // Convert ke format yang diharapkan
+    final List<Map<String, String>> stepsFormatted =
+        steps.asMap().entries.map((entry) {
+          return {'step': '${entry.key + 1}', 'text': entry.value};
+        }).toList();
+
+    return _buildInstructionsList(stepsFormatted, bankColor);
+  }
+
+  Widget _buildInstructionsList(
+    List<Map<String, String>> steps,
+    Color bankColor,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children:
           steps.asMap().entries.map((entry) {
             int idx = entry.key;
-            String step = entry.value.toString();
+            Map<String, String> stepData = entry.value;
+            String stepNumber = stepData['step']!;
+            String text = stepData['text']!;
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 20),
@@ -2068,7 +2718,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                         ),
                         child: Center(
                           child: Text(
-                            '${idx + 1}',
+                            stepNumber,
                             style: TextStyle(
                               color: bankColor,
                               fontWeight: FontWeight.bold,
@@ -2082,7 +2732,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                         child: Padding(
                           padding: const EdgeInsets.only(top: 6),
                           child: Text(
-                            step,
+                            text,
                             style: TextStyle(
                               fontSize: 15,
                               height: 1.4,

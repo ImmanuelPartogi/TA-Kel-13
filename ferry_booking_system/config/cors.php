@@ -13,10 +13,17 @@ return [
         'http://127.0.0.1:3000',
         'http://192.168.1.8:8000',
         'http://127.0.0.1:8000',
-        'http://localhost:63268'
+        'http://localhost:63268',
+        // Tambahkan untuk Flutter web development
+        'http://localhost:*',  // Flutter web biasanya menggunakan port random
+        'http://127.0.0.1:*',
     ],
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => [
+        // Alternatif: gunakan pattern untuk semua localhost ports
+        '/^http:\/\/localhost:\d+$/',
+        '/^http:\/\/127\.0\.0\.1:\d+$/',
+    ],
 
     'allowed_headers' => ['*'],
 
@@ -24,5 +31,5 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => true, // Penting untuk authentication
+    'supports_credentials' => true,
 ];

@@ -8,6 +8,11 @@ return [
     'api_url' => env('MIDTRANS_IS_PRODUCTION', false)
         ? 'https://api.midtrans.com'
         : 'https://api.sandbox.midtrans.com',
+
+    'snap_url' => env('MIDTRANS_IS_PRODUCTION', false)
+        ? 'https://app.midtrans.com/snap/snap.js'
+        : 'https://app.stg.midtrans.com/snap/snap.js',
+        
     'notification_url' => env('APP_MIDTRANS_CALLBACK_URL', env('APP_URL', 'http://localhost') . '/api/payments/notification'),
     'finish_url' => env('APP_URL', 'http://localhost') . '/payment/finish',
     'expiry_duration' => env('MIDTRANS_EXPIRY_DURATION', 5),

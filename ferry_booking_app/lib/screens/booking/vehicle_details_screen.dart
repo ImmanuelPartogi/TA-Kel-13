@@ -16,7 +16,8 @@ class VehicleDetailsScreen extends StatefulWidget {
   _VehicleDetailsScreenState createState() => _VehicleDetailsScreenState();
 }
 
-class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> with SingleTickerProviderStateMixin {
+class _VehicleDetailsScreenState extends State<VehicleDetailsScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final currencyFormat = NumberFormat.currency(
     locale: 'id_ID',
@@ -28,7 +29,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> with Single
   String? _errorMessage;
   List<VehicleCategory> _vehicleCategories = [];
   final ApiService _apiService = ApiService();
-  
+
   // Animasi untuk efek transisi
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -36,23 +37,20 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> with Single
   @override
   void initState() {
     super.initState();
-    
+
     // Inisialisasi animasi
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 400),
     );
-    
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeInOut,
-      ),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
-    
+
     _fetchVehicleCategories();
   }
-  
+
   @override
   void dispose() {
     _animationController.dispose();
@@ -74,18 +72,21 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> with Single
         // Parse data kategori kendaraan
         final List<dynamic> categoriesData = response['data'];
         final List<VehicleCategory> categories =
-            categoriesData.map((data) => VehicleCategory.fromJson(data)).toList();
+            categoriesData
+                .map((data) => VehicleCategory.fromJson(data))
+                .toList();
 
         setState(() {
           _vehicleCategories = categories.where((cat) => cat.isActive).toList();
           _isLoading = false;
         });
-        
+
         // Mulai animasi
         _animationController.forward();
       } else {
         setState(() {
-          _errorMessage = response['message'] ?? 'Gagal memuat kategori kendaraan';
+          _errorMessage =
+              response['message'] ?? 'Gagal memuat kategori kendaraan';
           _isLoading = false;
         });
       }
@@ -103,7 +104,10 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> with Single
   }
 
   void _addVehicle() {
-    final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
+    final bookingProvider = Provider.of<BookingProvider>(
+      context,
+      listen: false,
+    );
 
     if (bookingProvider.vehicles.length >= AppConfig.maxVehiclesPerBooking) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -121,7 +125,9 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> with Single
           ),
           backgroundColor: Colors.orange.shade700,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
           margin: const EdgeInsets.all(10),
         ),
       );
@@ -130,101 +136,13 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> with Single
 
     showDialog(
       context: context,
-      builder: (context) => _VehicleDialog(
-        vehicleCategories: _vehicleCategories,
-        onSave: (vehicle) {
-          bookingProvider.addVehicle(vehicle);
-          Navigator.pop(context);
-          
-          // Tampilkan notifikasi sukses
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.white),
-                  const SizedBox(width: 10),
-                  const Expanded(child: Text('Kendaraan berhasil ditambahkan')),
-                ],
-              ),
-              backgroundColor: Colors.green.shade600,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              margin: const EdgeInsets.all(10),
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        },
-      ),
-    );
-  }
+      builder:
+          (context) => _VehicleDialog(
+            vehicleCategories: _vehicleCategories,
+            onSave: (vehicle) {
+              bookingProvider.addVehicle(vehicle);
+              Navigator.pop(context);
 
-  void _editVehicle(int index) {
-    final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
-    final vehicle = bookingProvider.vehicles[index];
-
-    showDialog(
-      context: context,
-      builder: (context) => _VehicleDialog(
-        vehicle: vehicle,
-        vehicleCategories: _vehicleCategories,
-        onSave: (updatedVehicle) {
-          bookingProvider.updateVehicle(index, updatedVehicle);
-          Navigator.pop(context);
-          
-          // Tampilkan notifikasi sukses
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.white),
-                  const SizedBox(width: 10),
-                  const Expanded(child: Text('Kendaraan berhasil diperbarui')),
-                ],
-              ),
-              backgroundColor: Colors.green.shade600,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              margin: const EdgeInsets.all(10),
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  void _removeVehicle(int index) {
-    final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700),
-            const SizedBox(width: 10),
-            const Text('Konfirmasi Hapus'),
-          ],
-        ),
-        content: const Text('Apakah Anda yakin ingin menghapus kendaraan ini?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Batal'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            onPressed: () {
-              bookingProvider.removeVehicle(index);
-              Navigator.of(context).pop();
-              
               // Tampilkan notifikasi sukses
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -232,28 +150,144 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> with Single
                     children: [
                       const Icon(Icons.check_circle, color: Colors.white),
                       const SizedBox(width: 10),
-                      const Expanded(child: Text('Kendaraan berhasil dihapus')),
+                      const Expanded(
+                        child: Text('Kendaraan berhasil ditambahkan'),
+                      ),
                     ],
                   ),
                   backgroundColor: Colors.green.shade600,
                   behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   margin: const EdgeInsets.all(10),
                   duration: const Duration(seconds: 2),
                 ),
               );
             },
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                Icon(Icons.delete_outline, size: 18),
-                SizedBox(width: 4),
-                Text('Hapus'),
+          ),
+    );
+  }
+
+  void _editVehicle(int index) {
+    final bookingProvider = Provider.of<BookingProvider>(
+      context,
+      listen: false,
+    );
+    final vehicle = bookingProvider.vehicles[index];
+
+    showDialog(
+      context: context,
+      builder:
+          (context) => _VehicleDialog(
+            vehicle: vehicle,
+            vehicleCategories: _vehicleCategories,
+            onSave: (updatedVehicle) {
+              bookingProvider.updateVehicle(index, updatedVehicle);
+              Navigator.pop(context);
+
+              // Tampilkan notifikasi sukses
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      const Icon(Icons.check_circle, color: Colors.white),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text('Kendaraan berhasil diperbarui'),
+                      ),
+                    ],
+                  ),
+                  backgroundColor: Colors.green.shade600,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  margin: const EdgeInsets.all(10),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+          ),
+    );
+  }
+
+  void _removeVehicle(int index) {
+    final bookingProvider = Provider.of<BookingProvider>(
+      context,
+      listen: false,
+    );
+
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
+              children: [
+                Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.orange.shade700,
+                ),
+                const SizedBox(width: 10),
+                const Text('Konfirmasi Hapus'),
               ],
             ),
+            content: const Text(
+              'Apakah Anda yakin ingin menghapus kendaraan ini?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Batal'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: () {
+                  bookingProvider.removeVehicle(index);
+                  Navigator.of(context).pop();
+
+                  // Tampilkan notifikasi sukses
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Row(
+                        children: [
+                          const Icon(Icons.check_circle, color: Colors.white),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text('Kendaraan berhasil dihapus'),
+                          ),
+                        ],
+                      ),
+                      backgroundColor: Colors.green.shade600,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      margin: const EdgeInsets.all(10),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.delete_outline, size: 18),
+                    SizedBox(width: 4),
+                    Text('Hapus'),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -280,14 +314,15 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> with Single
     for (var vehicle in vehicles) {
       final category = _vehicleCategories.firstWhere(
         (cat) => cat.id == vehicle.vehicle_category_id,
-        orElse: () => VehicleCategory(
-          id: 0, 
-          code: '', 
-          name: '', 
-          vehicleType: '',
-          basePrice: 0,
-          isActive: false,
-        ),
+        orElse:
+            () => VehicleCategory(
+              id: 0,
+              code: '',
+              name: '',
+              vehicleType: '',
+              basePrice: 0,
+              isActive: false,
+            ),
       );
       totalVehiclePrice += category.basePrice;
     }
@@ -366,9 +401,9 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> with Single
                           vehicles.isEmpty
                               ? _buildEmptyVehicleState()
                               : FadeTransition(
-                                  opacity: _fadeAnimation,
-                                  child: _buildVehicleList(vehicles, theme),
-                                ),
+                                opacity: _fadeAnimation,
+                                child: _buildVehicleList(vehicles, theme),
+                              ),
 
                           // Space at the bottom
                           const SizedBox(height: 100),
@@ -427,7 +462,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> with Single
               ),
               const SizedBox(height: 16),
             ],
-            
+
             // Tombol aksi
             Row(
               children: [
@@ -436,10 +471,13 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> with Single
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.add, size: 18),
                     label: const Text('Tambah'),
-                    onPressed: _isLoading || _vehicleCategories.isEmpty || 
-                              vehicles.length >= AppConfig.maxVehiclesPerBooking 
-                              ? null 
-                              : _addVehicle,
+                    onPressed:
+                        _isLoading ||
+                                _vehicleCategories.isEmpty ||
+                                vehicles.length >=
+                                    AppConfig.maxVehiclesPerBooking
+                            ? null
+                            : _addVehicle,
                     style: ButtonStyle(
                       padding: MaterialStateProperty.all(
                         const EdgeInsets.symmetric(vertical: 16),
@@ -451,7 +489,10 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> with Single
                       ),
                       side: MaterialStateProperty.resolveWith((states) {
                         if (states.contains(MaterialState.disabled)) {
-                          return BorderSide(color: Colors.grey.shade300, width: 1.5);
+                          return BorderSide(
+                            color: Colors.grey.shade300,
+                            width: 1.5,
+                          );
                         }
                         if (states.contains(MaterialState.pressed)) {
                           return BorderSide(
@@ -470,10 +511,10 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> with Single
                     ),
                   ),
                 ),
-                
+
                 // Spacer
                 const SizedBox(width: 16),
-                
+
                 // Tombol Lanjutkan
                 Expanded(
                   child: ElevatedButton.icon(
@@ -484,7 +525,9 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> with Single
                       padding: MaterialStateProperty.all(
                         const EdgeInsets.symmetric(vertical: 16),
                       ),
-                      backgroundColor: MaterialStateProperty.resolveWith((states) {
+                      backgroundColor: MaterialStateProperty.resolveWith((
+                        states,
+                      ) {
                         if (states.contains(MaterialState.pressed)) {
                           return theme.primaryColor.withOpacity(0.9);
                         }
@@ -611,7 +654,8 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> with Single
           ),
           const SizedBox(height: 20),
           ElevatedButton.icon(
-            onPressed: _isLoading || _vehicleCategories.isEmpty ? null : _addVehicle,
+            onPressed:
+                _isLoading || _vehicleCategories.isEmpty ? null : _addVehicle,
             icon: const Icon(Icons.add, size: 18),
             label: const Text('Tambah Kendaraan'),
             style: ElevatedButton.styleFrom(
@@ -628,289 +672,292 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> with Single
 
   Widget _buildVehicleList(List<Vehicle> vehicles, ThemeData theme) {
     return Column(
-      children: vehicles.asMap().entries.map((entry) {
-        final index = entry.key;
-        final vehicle = entry.value;
-        
-        // Mendapatkan kategori kendaraan
-        final category = _vehicleCategories.firstWhere(
-          (cat) => cat.id == vehicle.vehicle_category_id,
-          orElse: () => _vehicleCategories.first,
-        );
+      children:
+          vehicles.asMap().entries.map((entry) {
+            final index = entry.key;
+            final vehicle = entry.value;
 
-        // Mendapatkan icon berdasarkan tipe kendaraan
-        IconData vehicleIcon = _getVehicleTypeIcon(vehicle.type);
+            // Mendapatkan kategori kendaraan
+            final category = _vehicleCategories.firstWhere(
+              (cat) => cat.id == vehicle.vehicle_category_id,
+              orElse: () => _vehicleCategories.first,
+            );
 
-        return Dismissible(
-          key: Key('vehicle_${vehicle.id}_$index'),
-          direction: DismissDirection.endToStart,
-          background: Container(
-            alignment: Alignment.centerRight,
-            padding: const EdgeInsets.only(right: 20),
-            decoration: BoxDecoration(
-              color: Colors.red,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.delete, color: Colors.white),
-                SizedBox(height: 4),
-                Text(
-                  'Hapus',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
+            // Mendapatkan icon berdasarkan tipe kendaraan
+            IconData vehicleIcon = _getVehicleTypeIcon(vehicle.type);
+
+            return Dismissible(
+              key: Key('vehicle_${vehicle.id}_$index'),
+              direction: DismissDirection.endToStart,
+              background: Container(
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.only(right: 20),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              ],
-            ),
-          ),
-          confirmDismiss: (direction) async {
-            bool delete = false;
-            await showDialog(
-              context: context,
-              builder: (BuildContext context) {
-                return AlertDialog(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  title: const Text('Konfirmasi Hapus'),
-                  content: const Text(
-                    'Apakah Anda yakin ingin menghapus kendaraan ini?',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () {
-                        delete = false;
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text('Batal'),
-                    ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
+                child: const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.delete, color: Colors.white),
+                    SizedBox(height: 4),
+                    Text(
+                      'Hapus',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
                       ),
-                      onPressed: () {
-                        delete = true;
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text('Hapus'),
                     ),
                   ],
-                );
-              },
-            );
-            
-            if (delete) {
-              _removeVehicle(index);
-            }
-            
-            return delete;
-          },
-          child: Container(
-            width: double.infinity,
-            margin: const EdgeInsets.only(top: 8, bottom: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
                 ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 12,
-                    horizontal: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _getCategoryColor(category.code).withOpacity(0.05),
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(12),
-                      topRight: Radius.circular(12),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: _getCategoryColor(
-                                category.code,
-                              ).withOpacity(0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              vehicleIcon,
-                              color: _getCategoryColor(category.code),
-                              size: 20,
-                            ),
+              ),
+              confirmDismiss: (direction) async {
+                bool delete = false;
+                await showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      title: const Text('Konfirmasi Hapus'),
+                      content: const Text(
+                        'Apakah Anda yakin ingin menghapus kendaraan ini?',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () {
+                            delete = false;
+                            Navigator.of(context).pop();
+                          },
+                          child: const Text('Batal'),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
                           ),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          onPressed: () {
+                            delete = true;
+                            Navigator.of(context).pop();
+                          },
+                          child: const Text('Hapus'),
+                        ),
+                      ],
+                    );
+                  },
+                );
+
+                if (delete) {
+                  _removeVehicle(index);
+                }
+
+                return delete;
+              },
+              child: Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(top: 8, bottom: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _getCategoryColor(
+                          category.code,
+                        ).withOpacity(0.05),
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(12),
+                          topRight: Radius.circular(12),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
                             children: [
-                              Text(
-                                category.code,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                  color: Colors.black87,
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: _getCategoryColor(
+                                    category.code,
+                                  ).withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  vehicleIcon,
+                                  color: _getCategoryColor(category.code),
+                                  size: 20,
                                 ),
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                vehicle.licensePlate,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.grey.shade700,
-                                  letterSpacing: 1,
+                              const SizedBox(width: 12),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    category.code,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    vehicle.licensePlate,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey.shade700,
+                                      letterSpacing: 1,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              // Tambahkan badge harga
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
                                 ),
+                                decoration: BoxDecoration(
+                                  color: theme.primaryColor.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  currencyFormat.format(category.basePrice),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.primaryColor,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              IconButton(
+                                icon: Icon(
+                                  Icons.edit_outlined,
+                                  color: theme.primaryColor,
+                                  size: 18,
+                                ),
+                                onPressed: () => _editVehicle(index),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                splashRadius: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  color: Colors.red,
+                                  size: 18,
+                                ),
+                                onPressed: () => _removeVehicle(index),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                splashRadius: 20,
                               ),
                             ],
                           ),
                         ],
                       ),
-                      Row(
+                    ),
+
+                    // Details
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Tambahkan badge harga
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: theme.primaryColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              currencyFormat.format(category.basePrice),
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: theme.primaryColor,
-                              ),
-                            ),
+                          _buildDetailItem(
+                            title: 'Plat Nomor',
+                            value: vehicle.licensePlate,
+                            icon: Icons.confirmation_number_outlined,
                           ),
-                          const SizedBox(width: 12),
-                          IconButton(
-                            icon: Icon(
-                              Icons.edit_outlined,
-                              color: theme.primaryColor,
-                              size: 18,
+                          if (vehicle.brand != null &&
+                              vehicle.brand!.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            _buildDetailItem(
+                              title: 'Merk/Model',
+                              value: '${vehicle.brand} ${vehicle.model ?? ''}',
+                              icon: Icons.branding_watermark_outlined,
                             ),
-                            onPressed: () => _editVehicle(index),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            splashRadius: 20,
-                          ),
-                          const SizedBox(width: 12),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.delete_outline,
-                              color: Colors.red,
-                              size: 18,
+                          ],
+                          if (vehicle.weight != null) ...[
+                            const SizedBox(height: 12),
+                            _buildDetailItem(
+                              title: 'Berat',
+                              value: '${vehicle.weight} kg',
+                              icon: Icons.scale_outlined,
                             ),
-                            onPressed: () => _removeVehicle(index),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            splashRadius: 20,
-                          ),
+                          ],
                         ],
                       ),
-                    ],
-                  ),
-                ),
+                    ),
 
-                // Details
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildDetailItem(
-                        title: 'Plat Nomor',
-                        value: vehicle.licensePlate,
-                        icon: Icons.confirmation_number_outlined,
+                    // Divider
+                    Divider(color: Colors.grey.shade200, height: 1),
+
+                    // Footer with vehicle details
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 16,
                       ),
-                      if (vehicle.brand != null &&
-                          vehicle.brand!.isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        _buildDetailItem(
-                          title: 'Merk/Model',
-                          value: '${vehicle.brand} ${vehicle.model ?? ''}',
-                          icon: Icons.branding_watermark_outlined,
-                        ),
-                      ],
-                      if (vehicle.weight != null) ...[
-                        const SizedBox(height: 12),
-                        _buildDetailItem(
-                          title: 'Berat',
-                          value: '${vehicle.weight} kg',
-                          icon: Icons.scale_outlined,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                
-                // Divider
-                Divider(color: Colors.grey.shade200, height: 1),
-                
-                // Footer with vehicle details
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 12,
-                    horizontal: 16,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Icon(
-                            Icons.category_outlined,
-                            size: 16,
-                            color: Colors.grey.shade600,
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.category_outlined,
+                                size: 16,
+                                color: Colors.grey.shade600,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                category.name,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 6),
                           Text(
-                            category.name,
+                            _getVehicleTypeName(vehicle.type),
                             style: TextStyle(
                               fontSize: 13,
-                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey.shade700,
                             ),
                           ),
                         ],
                       ),
-                      Text(
-                        _getVehicleTypeName(vehicle.type),
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.grey.shade700,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
+              ),
+            );
+          }).toList(),
     );
   }
 
@@ -932,7 +979,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> with Single
         return Icons.directions_car;
     }
   }
-  
+
   String _getVehicleTypeName(String vehicleType) {
     switch (vehicleType) {
       case 'MOTORCYCLE':
@@ -1039,7 +1086,7 @@ class __VehicleDialogState extends State<_VehicleDialog> {
   @override
   void initState() {
     super.initState();
-    
+
     // Set nilai awal
     _licensePlateController = TextEditingController(
       text: widget.vehicle?.licensePlate ?? '',
@@ -1087,10 +1134,12 @@ class __VehicleDialogState extends State<_VehicleDialog> {
         licensePlate: _licensePlateController.text.trim().toUpperCase(),
         brand: _brandController.text.trim(),
         model: _modelController.text.trim(),
-        weight: _weightController.text.isNotEmpty 
-            ? double.tryParse(_weightController.text.trim()) 
-            : null,
-        createdAt: widget.vehicle?.createdAt ?? DateTime.now().toIso8601String(),
+        weight:
+            _weightController.text.isNotEmpty
+                ? double.tryParse(_weightController.text.trim())
+                : null,
+        createdAt:
+            widget.vehicle?.createdAt ?? DateTime.now().toIso8601String(),
         updatedAt: DateTime.now().toIso8601String(),
       );
 
@@ -1101,7 +1150,7 @@ class __VehicleDialogState extends State<_VehicleDialog> {
   void _selectVehicleCategory(int categoryId) {
     setState(() {
       _vehicleCategoryId = categoryId;
-      
+
       // Juga update tipe kendaraan
       final selectedCategory = widget.vehicleCategories.firstWhere(
         (cat) => cat.id == categoryId,
@@ -1114,7 +1163,7 @@ class __VehicleDialogState extends State<_VehicleDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     // Mengelompokkan kategori berdasarkan tipe kendaraan
     final Map<String, List<VehicleCategory>> categoriesByType = {};
     for (var category in widget.vehicleCategories) {
@@ -1188,18 +1237,15 @@ class __VehicleDialogState extends State<_VehicleDialog> {
                 const SizedBox(height: 4),
                 Text(
                   'Pilih kategori yang sesuai dengan kendaraan Anda',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey.shade600,
-                  ),
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Kategori kendaraan dengan expandable sections
                 ...categoriesByType.entries.map((entry) {
                   final vehicleType = entry.key;
                   final categories = entry.value;
-                  
+
                   return ExpansionTile(
                     initiallyExpanded: true,
                     leading: Icon(
@@ -1225,12 +1271,14 @@ class __VehicleDialogState extends State<_VehicleDialog> {
                       GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          childAspectRatio: 3.0, // Meningkatkan nilai ratio secara signifikan
-                          crossAxisSpacing: 10,
-                          mainAxisSpacing: 10,
-                        ),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              childAspectRatio:
+                                  2.0, // Meningkatkan nilai ratio secara signifikan
+                              crossAxisSpacing: 10,
+                              mainAxisSpacing: 10,
+                            ),
                         itemCount: categories.length,
                         itemBuilder: (context, index) {
                           final category = categories[index];
@@ -1241,9 +1289,9 @@ class __VehicleDialogState extends State<_VehicleDialog> {
                     ],
                   );
                 }).toList(),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // License Plate Field
                 const Text(
                   'Informasi Kendaraan',
@@ -1313,7 +1361,7 @@ class __VehicleDialogState extends State<_VehicleDialog> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Weight Field
                 TextFormField(
                   controller: _weightController,
@@ -1389,7 +1437,7 @@ class __VehicleDialogState extends State<_VehicleDialog> {
     final isSelected = _vehicleCategoryId == category.id;
     final theme = Theme.of(context);
     final categoryColor = _getCategoryColor(category.code);
-    
+
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp ',
@@ -1420,16 +1468,17 @@ class __VehicleDialogState extends State<_VehicleDialog> {
                 color: categoryColor.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: isSelected
-                ? Icon(Icons.check_circle, color: categoryColor, size: 14)
-                : Text(
-                    category.code.substring(0, 3),
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: categoryColor,
-                    ),
-                  ),
+              child:
+                  isSelected
+                      ? Icon(Icons.check_circle, color: categoryColor, size: 14)
+                      : Text(
+                        category.code.substring(0, 3),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: categoryColor,
+                        ),
+                      ),
             ),
             const SizedBox(width: 6),
             // Informasi kategori dan harga
@@ -1486,7 +1535,7 @@ class __VehicleDialogState extends State<_VehicleDialog> {
         return Icons.directions_car;
     }
   }
-  
+
   String _getVehicleTypeName(String vehicleType) {
     switch (vehicleType) {
       case 'MOTORCYCLE':
@@ -1582,11 +1631,7 @@ Widget buildDetailedPriceSection(
         // Header Section
         Row(
           children: [
-            Icon(
-              Icons.payments_outlined,
-              color: theme.primaryColor,
-              size: 18,
-            ),
+            Icon(Icons.payments_outlined, color: theme.primaryColor, size: 18),
             const SizedBox(width: 8),
             const Text(
               'Biaya Tambahan untuk Kendaraan',
@@ -1599,7 +1644,7 @@ Widget buildDetailedPriceSection(
           ],
         ),
         const SizedBox(height: 8),
-        
+
         // Info tooltip
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -1615,10 +1660,7 @@ Widget buildDetailedPriceSection(
               Expanded(
                 child: Text(
                   'Tarif kendaraan berdasarkan golongan. Klik kartu untuk informasi detail.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.blue.shade700,
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.blue.shade700),
                 ),
               ),
             ],
@@ -1630,12 +1672,12 @@ Widget buildDetailedPriceSection(
         ...categoriesByType.entries.map((entry) {
           final vehicleType = entry.key;
           final vehicleCategories = entry.value;
-          
+
           return _buildVehicleTypeExpansion(
-            context, 
-            vehicleType, 
+            context,
+            vehicleType,
             vehicleCategories,
-            currencyFormat
+            currencyFormat,
           );
         }).toList(),
       ],
@@ -1643,7 +1685,7 @@ Widget buildDetailedPriceSection(
   );
 }
 
-  Widget _buildVehicleTypeExpansion(
+Widget _buildVehicleTypeExpansion(
   BuildContext context,
   String vehicleType,
   List<VehicleCategory> categories,
@@ -1651,7 +1693,7 @@ Widget buildDetailedPriceSection(
 ) {
   final vehicleTypeName = _getVehicleTypeName(vehicleType);
   final icon = _getVehicleTypeIcon(vehicleType);
-  
+
   return Card(
     margin: const EdgeInsets.only(bottom: 12),
     elevation: 0,
@@ -1666,17 +1708,11 @@ Widget buildDetailedPriceSection(
         leading: Icon(icon, size: 20, color: Theme.of(context).primaryColor),
         title: Text(
           vehicleTypeName,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
           '${categories.length} golongan',
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey.shade600,
-          ),
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
         ),
         children: [
           // Mengubah ListView menjadi Wrap untuk layout yang lebih fleksibel
@@ -1685,9 +1721,16 @@ Widget buildDetailedPriceSection(
             child: Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: categories.map((category) => 
-                _buildSimpleDetailedCategoryCard(context, category, currencyFormat)
-              ).toList(),
+              children:
+                  categories
+                      .map(
+                        (category) => _buildSimpleDetailedCategoryCard(
+                          context,
+                          category,
+                          currencyFormat,
+                        ),
+                      )
+                      .toList(),
             ),
           ),
         ],
@@ -1698,17 +1741,19 @@ Widget buildDetailedPriceSection(
 
 // Versi sederhana dari kartu kategori untuk ditampilkan dalam daftar
 Widget _buildSimpleDetailedCategoryCard(
-  BuildContext context, 
+  BuildContext context,
   VehicleCategory category,
   NumberFormat currencyFormat,
 ) {
   final categoryColor = _getCategoryColor(category.code);
-  
+
   return InkWell(
     onTap: () => _showCategoryDetailDialog(context, category, currencyFormat),
     borderRadius: BorderRadius.circular(10),
     child: Container(
-      width: (MediaQuery.of(context).size.width - 72) / 2, // 2 columns, minus padding
+      width:
+          (MediaQuery.of(context).size.width - 72) /
+          2, // 2 columns, minus padding
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.grey.shade50,
@@ -1734,7 +1779,7 @@ Widget _buildSimpleDetailedCategoryCard(
             ),
           ),
           const SizedBox(width: 8),
-          
+
           // Informasi kategori dengan harga
           Expanded(
             child: Column(
@@ -1767,8 +1812,8 @@ Widget _buildSimpleDetailedCategoryCard(
 }
 
 // Helper function for _buildVehicleTypeExpansion
-  Widget _buildDetailedCategoryCard(
-  BuildContext context, 
+Widget _buildDetailedCategoryCard(
+  BuildContext context,
   VehicleCategory category,
   NumberFormat currencyFormat,
 ) {
@@ -1802,7 +1847,7 @@ Widget _buildSimpleDetailedCategoryCard(
             ),
           ),
           const SizedBox(width: 12),
-          
+
           // Informasi kategori
           Expanded(
             child: Column(
@@ -1816,7 +1861,8 @@ Widget _buildSimpleDetailedCategoryCard(
                     fontSize: 14,
                   ),
                 ),
-                if (category.description != null && category.description!.isNotEmpty)
+                if (category.description != null &&
+                    category.description!.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
@@ -1832,7 +1878,7 @@ Widget _buildSimpleDetailedCategoryCard(
               ],
             ),
           ),
-          
+
           // Harga
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1857,139 +1903,139 @@ Widget _buildSimpleDetailedCategoryCard(
 
 // Helper function for _buildDetailedCategoryCard
 void _showCategoryDetailDialog(
-  BuildContext context, 
+  BuildContext context,
   VehicleCategory category,
   NumberFormat currencyFormat,
 ) {
   showDialog(
     context: context,
-    builder: (context) => Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
+    builder:
+        (context) => Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: _getCategoryColor(category.code).withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    _getVehicleTypeIcon(category.vehicleType),
-                    color: _getCategoryColor(category.code),
-                    size: 24,
-                  ),
+                // Header
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: _getCategoryColor(
+                          category.code,
+                        ).withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        _getVehicleTypeIcon(category.vehicleType),
+                        color: _getCategoryColor(category.code),
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            category.code,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: _getCategoryColor(category.code),
+                            ),
+                          ),
+                          Text(
+                            category.name,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Expanded(
+                const SizedBox(height: 16),
+
+                // Harga
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        category.code,
+                        'Tarif',
                         style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: _getCategoryColor(category.code),
+                          fontSize: 14,
+                          color: Colors.grey.shade700,
                         ),
                       ),
+                      const SizedBox(height: 4),
                       Text(
-                        category.name,
-                        style: const TextStyle(
-                          fontSize: 18,
+                        currencyFormat.format(category.basePrice),
+                        style: TextStyle(
+                          fontSize: 22,
                           fontWeight: FontWeight.bold,
+                          color: Theme.of(context).primaryColor,
                         ),
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            
-            // Harga
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    'Tarif',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade700,
+                const SizedBox(height: 16),
+
+                // Detail informasi
+                const Text(
+                  'Informasi Kendaraan',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+
+                // Tipe kendaraan
+                _buildInfoRow(
+                  'Tipe',
+                  _getVehicleTypeName(category.vehicleType),
+                  Icons.category_outlined,
+                ),
+                const SizedBox(height: 10),
+
+                // Deskripsi
+                _buildInfoRow(
+                  'Deskripsi',
+                  category.description ?? 'Tidak ada deskripsi',
+                  Icons.description_outlined,
+                ),
+                const SizedBox(height: 16),
+
+                // Tombol tutup
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    currencyFormat.format(category.basePrice),
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).primaryColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            
-            // Detail informasi
-            const Text(
-              'Informasi Kendaraan',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            
-            // Tipe kendaraan
-            _buildInfoRow(
-              'Tipe',
-              _getVehicleTypeName(category.vehicleType),
-              Icons.category_outlined,
-            ),
-            const SizedBox(height: 10),
-            
-            // Deskripsi
-            _buildInfoRow(
-              'Deskripsi',
-              category.description ?? 'Tidak ada deskripsi',
-              Icons.description_outlined,
-            ),
-            const SizedBox(height: 16),
-            
-            // Tombol tutup
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    child: const Text('Tutup'),
                   ),
                 ),
-                child: const Text('Tutup'),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
-    ),
   );
 }
 
@@ -2013,18 +2059,12 @@ Widget _buildInfoRow(String label, String value, IconData icon) {
           children: [
             Text(
               label,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey.shade600,
-              ),
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
             ),
             const SizedBox(height: 2),
             Text(
               value,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
             ),
           ],
         ),

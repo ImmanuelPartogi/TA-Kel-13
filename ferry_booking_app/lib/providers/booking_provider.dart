@@ -1033,35 +1033,19 @@ class BookingProvider extends ChangeNotifier {
             ],
           };
       }
-    } else if (type == 'e_wallet') {
-      switch (method.toLowerCase()) {
-        case 'gopay':
-          return {
-            'title': 'GoPay',
-            'steps': [
-              'Buka aplikasi Gojek',
-              'Tap tombol "Scan QR"',
-              'Scan QR Code yang ditampilkan di halaman pembayaran',
-              'Pastikan nominal pembayaran sudah sesuai',
-              'Tap tombol "Bayar"',
-              'Masukkan PIN GoPay',
-              'Transaksi selesai',
-            ],
-          };
-        // Tambahkan case untuk e-wallet lain
-        default:
-          return {
-            'title': 'E-wallet',
-            'steps': [
-              'Buka aplikasi E-wallet',
-              'Pilih menu "Scan QR"',
-              'Scan QR code yang ditampilkan',
-              'Konfirmasi detail pembayaran',
-              'Masukkan PIN',
-              'Transaksi selesai',
-            ],
-          };
-      }
+    } else if (type == 'qris') {
+      return {
+        'title': 'QRIS',
+        'steps': [
+          'Buka aplikasi mobile banking atau e-wallet yang mendukung QRIS',
+          'Pilih menu "Scan QR"',
+          'Scan QR Code yang ditampilkan di halaman pembayaran',
+          'Pastikan nominal pembayaran sudah sesuai',
+          'Konfirmasi pembayaran',
+          'Masukkan PIN atau password',
+          'Transaksi selesai',
+        ],
+      };
     }
 
     return {

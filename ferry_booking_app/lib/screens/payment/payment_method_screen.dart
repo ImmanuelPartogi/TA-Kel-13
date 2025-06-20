@@ -50,14 +50,6 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
         'description': 'Transfer dari mobile banking atau internet banking',
         'color': const Color(0xFF00529C),
       },
-      // {
-      //   'id': 'mandiri',
-      //   'name': 'Mandiri Bill Payment',
-      //   'type': 'virtual_account',
-      //   'iconAsset': 'assets/images/payment_methods/mandiri.png',
-      //   'description': 'Transfer dari mobile banking atau internet banking',
-      //   'color': const Color(0xFF003366),
-      // },
       {
         'id': 'permata',
         'name': 'Permata Virtual Account',
@@ -73,24 +65,6 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
         'iconAsset': 'assets/images/payment_methods/cimb.png',
         'description': 'Transfer dari mobile banking atau internet banking',
         'color': const Color(0xFF8C1919),
-      },
-    ],
-    'E-Wallet': [
-      {
-        'id': 'gopay',
-        'name': 'GoPay',
-        'type': 'e_wallet',
-        'iconAsset': 'assets/images/payment_methods/gopay.png',
-        'description': 'Bayar menggunakan aplikasi e-wallet',
-        'color': const Color(0xFF00AAD2),
-      },
-      {
-        'id': 'shopeepay',
-        'name': 'ShopeePay',
-        'type': 'e_wallet',
-        'iconAsset': 'assets/images/payment_methods/shopeepay.png',
-        'description': 'Bayar menggunakan aplikasi e-wallet',
-        'color': const Color(0xFFEE4D2D),
       },
     ],
     'QRIS': [

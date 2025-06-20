@@ -1,9 +1,14 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
+import 'package:ferry_booking_app/config/app_config.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/booking_provider.dart';
 import '../../widgets/custom_appbar.dart';
 
@@ -50,20 +55,15 @@ class _PaymentScreenState extends State<PaymentScreen>
     'bca': const Color(0xFF005BAA),
     'bni': const Color(0xFFFF6600),
     'bri': const Color(0xFF00529C),
-    // 'mandiri': const Color(0xFF003366),
-    'gopay': const Color(0xFF00AAD2),
-    'shopeepay': const Color(0xFFEE4D2D),
+    'qris': const Color(0xFF4B0082),
     'default': const Color(0xFF2196F3),
   };
 
-  // Ikonografi untuk bank
   final Map<String, String> _bankIcons = {
     'bca': 'assets/images/payment_methods/bca.png',
     'bni': 'assets/images/payment_methods/bni.png',
     'bri': 'assets/images/payment_methods/bri.png',
-    // 'mandiri': 'assets/images/payment_methods/mandiri.png',
-    'gopay': 'assets/images/payment_methods/gopay.png',
-    'shopeepay': 'assets/images/payment_methods/shopeepay.png',
+    'qris': 'assets/images/payment_methods/qris.png',
   };
 
   @override
@@ -197,58 +197,6 @@ class _PaymentScreenState extends State<PaymentScreen>
       }
     } catch (e) {
       debugPrint('Error loading booking details: $e');
-    }
-  }
-
-  void _initializeTimer(dynamic payment) {
-    if (payment == null || _isTimerInitialized) return;
-
-    // TAMBAHAN: Cek status pembayaran terlebih dahulu
-    if (_bookingProvider?.currentBooking?.status == 'CONFIRMED' ||
-        _bookingProvider?.currentBooking?.status == 'PAID' ||
-        payment.status == 'SUCCESS') {
-      // Jika pembayaran sudah sukses, tidak perlu timer
-      _isTimerInitialized = true;
-      _remainingSeconds = 0;
-      return;
-    }
-
-    _isTimerInitialized = true;
-
-    // Validasi dan set expiry time
-    if (payment.expiryTime != null) {
-      final now = DateTime.now();
-      final difference = payment.expiryTime.difference(now);
-
-      // Validasi waktu expiry
-      if (difference.inMinutes > 60 || difference.isNegative) {
-        // Gunakan default 5 menit jika tidak valid
-        debugPrint(
-          'WARNING: Waktu expiry tidak valid, menggunakan 5 menit default',
-        );
-        _expiryTime = now.add(const Duration(minutes: 5));
-      } else {
-        _expiryTime = payment.expiryTime;
-      }
-    } else {
-      // Default ke 5 menit jika tidak ada expiry time
-      _expiryTime = DateTime.now().add(const Duration(minutes: 5));
-    }
-
-    // Hitung remaining seconds
-    final now = DateTime.now();
-    final remaining = _expiryTime!.difference(now);
-
-    // Set remaining seconds dan mulai timer
-    if (remaining.inSeconds > 0) {
-      setState(() {
-        _remainingSeconds = remaining.inSeconds;
-      });
-      _startCountdownTimer();
-    } else {
-      setState(() {
-        _remainingSeconds = 0;
-      });
     }
   }
 
@@ -545,11 +493,8 @@ class _PaymentScreenState extends State<PaymentScreen>
       'bca': const Color(0xFF005BAA),
       'bni': const Color(0xFFFF6600),
       'bri': const Color(0xFF00529C),
-      // 'mandiri': const Color(0xFF003366),
       'permata': const Color(0xFF1F1F1F),
       'cimb': const Color(0xFF8C1919),
-      'gopay': const Color(0xFF00AAD2),
-      'shopeepay': const Color(0xFFEE4D2D),
       'qris': const Color(0xFF4B0082),
       'default': const Color(0xFF2196F3),
     };
@@ -1705,92 +1650,8 @@ class _PaymentScreenState extends State<PaymentScreen>
 
               const SizedBox(height: 20),
 
-              Center(
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.06),
-                        blurRadius: 20,
-                        spreadRadius: 2,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                    border: Border.all(color: Colors.grey.shade200, width: 1),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      payment!.qrCodeUrl!,
-                      width: 200,
-                      height: 200,
-                      fit: BoxFit.cover,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Container(
-                          width: 200,
-                          height: 200,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              value:
-                                  loadingProgress.expectedTotalBytes != null
-                                      ? loadingProgress.cumulativeBytesLoaded /
-                                          loadingProgress.expectedTotalBytes!
-                                      : null,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                bankColor,
-                              ),
-                              strokeWidth: 3,
-                            ),
-                          ),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: 200,
-                          height: 200,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.grey.shade300,
-                              width: 1,
-                            ),
-                          ),
-                          child: Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.broken_image_rounded,
-                                  size: 50,
-                                  color: Colors.grey.shade500,
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'QR Code tidak tersedia',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade600,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ),
+              // PERBAIKAN: Handle QR Code berdasarkan payment method
+              Center(child: _buildQRCodeWidget(payment, bankColor)),
 
               const SizedBox(height: 16),
 
@@ -1809,7 +1670,6 @@ class _PaymentScreenState extends State<PaymentScreen>
                     ),
                   ),
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         Icons.smartphone_rounded,
@@ -1817,13 +1677,17 @@ class _PaymentScreenState extends State<PaymentScreen>
                         color: bankColor,
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        'Scan dengan aplikasi ${_paymentMethod?.toUpperCase() ?? "e-wallet"} Anda',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: bankColor,
-                          letterSpacing: 0.2,
+                      Flexible(
+                        child: Text(
+                          _getQRCodeInstructionText(),
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: bankColor,
+                            letterSpacing: 0.2,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
                         ),
                       ),
                     ],
@@ -1835,6 +1699,409 @@ class _PaymentScreenState extends State<PaymentScreen>
         ),
       ),
     );
+  }
+
+  // TAMBAHAN: Widget khusus untuk handle QR Code
+  Widget _buildQRCodeWidget(dynamic payment, Color bankColor) {
+    final qrUrl = payment.qrCodeUrl!;
+    return _buildNormalQRCode(qrUrl, bankColor, payment);
+  }
+
+  Widget _buildProductionQRCode(String qrUrl, Color bankColor) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Image.network(
+        qrUrl,
+        width: 200,
+        height: 200,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            width: 200,
+            height: 200,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    value:
+                        loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded /
+                                loadingProgress.expectedTotalBytes!
+                            : null,
+                    valueColor: AlwaysStoppedAnimation<Color>(bankColor),
+                    strokeWidth: 3,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Memuat QR Code...',
+                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          print('Error loading ShopeePay QR code: $error');
+          return _buildErrorQRCode(bankColor);
+        },
+      ),
+    );
+  }
+
+  // Widget untuk instruksi production
+  Widget _buildProductionInstructions() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEE4D2D).withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFEE4D2D).withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.smartphone, size: 20, color: const Color(0xFFEE4D2D)),
+              const SizedBox(width: 8),
+              Text(
+                'Cara Pembayaran',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFFEE4D2D),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Buka aplikasi Shopee → Tap "Saya" → Pilih "ShopeePay" → Tap "Scan" → Arahkan kamera ke QR Code di atas',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade700,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // PERBAIKAN: Enhanced timer initialization dengan validasi yang lebih baik
+  void _initializeTimer(dynamic payment) {
+    if (payment == null || _isTimerInitialized) return;
+
+    // PERBAIKAN: Cek status pembayaran terlebih dahulu
+    if (_bookingProvider?.currentBooking?.status == 'CONFIRMED' ||
+        _bookingProvider?.currentBooking?.status == 'PAID' ||
+        payment.status == 'SUCCESS') {
+      _isTimerInitialized = true;
+      _remainingSeconds = 0;
+      return;
+    }
+
+    _isTimerInitialized = true;
+
+    // PERBAIKAN: Enhanced expiry time validation dengan parsing yang benar
+    if (payment.expiryTime != null) {
+      final now = DateTime.now();
+      final expiryTime = payment.expiryTime;
+      final difference = expiryTime.difference(now);
+
+      // PERBAIKAN: Validasi range waktu yang masuk akal (1 menit - 10 menit)
+      if (difference.inMinutes < 1 || difference.inMinutes > 10) {
+        print('WARNING: Invalid expiry time detected');
+        print('  Current time: $now');
+        print('  Expiry time: $expiryTime');
+        print('  Difference: ${difference.inMinutes} minutes');
+        print('  Using 5 minutes default');
+
+        _expiryTime = now.add(const Duration(minutes: 5));
+      } else {
+        _expiryTime = expiryTime;
+      }
+    } else {
+      print('No expiry time provided, using 5 minutes default');
+      _expiryTime = DateTime.now().add(const Duration(minutes: 5));
+    }
+
+    // Hitung remaining seconds dan mulai timer
+    final now = DateTime.now();
+    final remaining = _expiryTime!.difference(now);
+
+    if (remaining.inSeconds > 0) {
+      setState(() {
+        _remainingSeconds = remaining.inSeconds;
+      });
+      _startCountdownTimer();
+    } else {
+      setState(() {
+        _remainingSeconds = 0;
+      });
+    }
+
+    print('Timer initialized: ${_remainingSeconds}s remaining');
+  }
+
+  // Widget untuk QR Code normal (GoPay dan lainnya)
+  Widget _buildNormalQRCode(String qrUrl, Color bankColor, [dynamic payment]) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 20,
+            spreadRadius: 2,
+            offset: const Offset(0, 5),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.shade200, width: 1),
+      ),
+      child: Column(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(
+              qrUrl,
+              width: 200,
+              height: 200,
+              fit: BoxFit.cover,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Container(
+                  width: 200,
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(
+                          value:
+                              loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                  : null,
+                          valueColor: AlwaysStoppedAnimation<Color>(bankColor),
+                          strokeWidth: 3,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Memuat QR Code...',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+              errorBuilder: (context, error, stackTrace) {
+                print('❌ Error loading QR code: $error');
+                // Buat QR Code lokal sebagai fallback
+                return _buildFallbackQRCode(bankColor);
+              },
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Instruksi scan QR
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: bankColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              'Scan QR Code ini dengan aplikasi QRIS',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: bankColor,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Tambahkan metode baru untuk QR code fallback
+  Widget _buildFallbackQRCode(Color bankColor) {
+    // Coba dapatkan QR string dari payment jika ada
+    final booking =
+        Provider.of<BookingProvider>(context, listen: false).currentBooking;
+    final payment = booking?.latestPayment;
+
+    // Coba dapatkan QR string dari rawData jika tersedia
+    String? qrString;
+    if (payment?.rawData != null) {
+      // Coba mendapatkan dari rawData langsung
+      qrString = payment?.rawData?['qr_string'];
+
+      // Jika tidak ada, coba dari payload
+      if (qrString == null && payment?.rawData?['payload'] != null) {
+        try {
+          var payload = payment?.rawData?['payload'];
+          if (payload is String) {
+            final Map<String, dynamic> payloadData = json.decode(payload);
+            qrString = payloadData['qr_string'];
+          } else if (payload is Map) {
+            qrString = payload['qr_string'];
+          }
+        } catch (e) {
+          print('Error parsing payload: $e');
+        }
+      }
+    }
+
+    if (qrString != null && qrString.isNotEmpty) {
+      // Jika qr_string tersedia, buat QR code menggunakan package qr_flutter
+      return Container(
+        width: 200,
+        height: 200,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: QrImageView(
+            data: qrString,
+            version: QrVersions.auto,
+            size: 180.0,
+            errorStateBuilder: (context, error) {
+              return Center(
+                child: Text(
+                  'Error: ${error.toString()}',
+                  style: TextStyle(color: Colors.red),
+                  textAlign: TextAlign.center,
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    }
+
+    // Jika tidak ada qr_string, tampilkan error QR code
+    return Container(
+      width: 200,
+      height: 200,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300, width: 1),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.broken_image_rounded,
+              size: 50,
+              color: Colors.grey.shade500,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'QR Code tidak tersedia',
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: _refreshPaymentStatus,
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text('Refresh', style: TextStyle(fontSize: 12)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: bankColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                minimumSize: Size.zero,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Widget untuk QR Code error
+  Widget _buildErrorQRCode(Color bankColor) {
+    return Container(
+      width: 200,
+      height: 200,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300, width: 1),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.broken_image_rounded,
+              size: 50,
+              color: Colors.grey.shade500,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'QR Code tidak tersedia',
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: _refreshPaymentStatus,
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text('Refresh', style: TextStyle(fontSize: 12)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: bankColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                minimumSize: Size.zero,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Method untuk mendapatkan instruction text
+  String _getQRCodeInstructionText() {
+    return 'Scan QR Code ini dengan aplikasi mobile banking atau e-wallet yang mendukung QRIS';
   }
 
   Widget _buildPaymentInstructionsCard(Color bankColor) {
@@ -1921,103 +2188,74 @@ class _PaymentScreenState extends State<PaymentScreen>
         {'step': '7', 'text': 'Pembayaran Anda akan diproses secara otomatis'},
       ];
 
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children:
-            steps.asMap().entries.map((entry) {
-              int idx = int.parse(entry.value['step']!) - 1;
-              String text = entry.value['text']!;
-
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 20),
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween<double>(begin: 0.0, end: 1.0),
-                  duration: Duration(milliseconds: 300 + (idx * 100)),
-                  curve: Curves.easeOutCubic,
-                  builder: (context, value, child) {
-                    return Transform.translate(
-                      offset: Offset(30 * (1 - value), 0),
-                      child: Opacity(opacity: value, child: child),
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.shade200, width: 1),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.shade100.withOpacity(0.6),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: bankColor.withOpacity(0.1),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: bankColor.withOpacity(0.3),
-                              width: 1.5,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: bankColor.withOpacity(0.1),
-                                blurRadius: 5,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Text(
-                              entry.value['step']!,
-                              style: TextStyle(
-                                color: bankColor,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 6),
-                            child: Text(
-                              text,
-                              style: TextStyle(
-                                fontSize: 15,
-                                height: 1.4,
-                                color: Colors.grey.shade800,
-                                letterSpacing: 0.2,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-      );
+      return _buildInstructionsList(steps, bankColor);
     }
 
-    // Jika ada instruksi spesifik dari API
-    final steps = _paymentInstructions!['steps'] as List;
+    // PERBAIKAN: Handle struktur instruksi yang berbeda untuk e-wallet
+    List<String> steps = [];
+
+    try {
+      // Cek apakah ada struktur khusus untuk e-wallet (GoPay/ShopeePay)
+      if (_paymentInstructions!.containsKey('qr_code_steps') &&
+          _paymentInstructions!.containsKey('deeplink_steps')) {
+        // Untuk GoPay yang memiliki qr_code_steps dan deeplink_steps
+        final qrSteps = _paymentInstructions!['qr_code_steps'];
+        final deeplinkSteps = _paymentInstructions!['deeplink_steps'];
+
+        if (qrSteps is List && qrSteps.isNotEmpty) {
+          steps = qrSteps.cast<String>();
+        } else if (deeplinkSteps is List && deeplinkSteps.isNotEmpty) {
+          steps = deeplinkSteps.cast<String>();
+        }
+      } else if (_paymentInstructions!.containsKey('steps')) {
+        // Struktur normal dengan 'steps'
+        final stepsData = _paymentInstructions!['steps'];
+        if (stepsData is List) {
+          steps = stepsData.cast<String>();
+        }
+      }
+
+      // Fallback jika masih kosong
+      if (steps.isEmpty) {
+        steps = [
+          'Buka aplikasi ${_paymentMethod?.toUpperCase() ?? "pembayaran"}',
+          'Scan QR Code yang ditampilkan',
+          'Verifikasi jumlah pembayaran',
+          'Konfirmasi dan selesaikan pembayaran',
+        ];
+      }
+    } catch (e) {
+      print('Error parsing payment instructions: $e');
+      // Fallback ke instruksi default
+      steps = [
+        'Buka aplikasi pembayaran',
+        'Scan QR Code atau ikuti instruksi',
+        'Verifikasi jumlah pembayaran',
+        'Konfirmasi pembayaran',
+      ];
+    }
+
+    // Convert ke format yang diharapkan
+    final List<Map<String, String>> stepsFormatted =
+        steps.asMap().entries.map((entry) {
+          return {'step': '${entry.key + 1}', 'text': entry.value};
+        }).toList();
+
+    return _buildInstructionsList(stepsFormatted, bankColor);
+  }
+
+  Widget _buildInstructionsList(
+    List<Map<String, String>> steps,
+    Color bankColor,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children:
           steps.asMap().entries.map((entry) {
             int idx = entry.key;
-            String step = entry.value.toString();
+            Map<String, String> stepData = entry.value;
+            String stepNumber = stepData['step']!;
+            String text = stepData['text']!;
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 20),
@@ -2068,7 +2306,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                         ),
                         child: Center(
                           child: Text(
-                            '${idx + 1}',
+                            stepNumber,
                             style: TextStyle(
                               color: bankColor,
                               fontWeight: FontWeight.bold,
@@ -2082,7 +2320,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                         child: Padding(
                           padding: const EdgeInsets.only(top: 6),
                           child: Text(
-                            step,
+                            text,
                             style: TextStyle(
                               fontSize: 15,
                               height: 1.4,

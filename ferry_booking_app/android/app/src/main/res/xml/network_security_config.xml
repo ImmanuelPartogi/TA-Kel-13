@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Midtrans Domains -->
+    <domain-config cleartextTrafficPermitted="false">
+        <!-- Midtrans Production -->
+        <domain includeSubdomains="true">api.midtrans.com</domain>
+        <domain includeSubdomains="true">app.midtrans.com</domain>
+        
+        <!-- Midtrans Sandbox -->
+        <domain includeSubdomains="true">api.sandbox.midtrans.com</domain>
+        <domain includeSubdomains="true">simulator.sandbox.midtrans.com</domain>
+        
+        <trust-anchors>
+            <certificates src="system"/>
+            <certificates src="user"/>
+        </trust-anchors>
+    </domain-config>
+
+    <!-- Development backend -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">172.27.65.163</domain>
+        <domain includeSubdomains="true">192.168.40.145</domain>
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+    </domain-config>
+
+    <!-- Default config -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system"/>
+            <certificates src="user"/>
+        </trust-anchors>
+    </base-config>
+</network-security-config>

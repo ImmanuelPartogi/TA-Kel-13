@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import '../utils/secure_storage.dart';
 import '../utils/api_exception.dart';
+import 'dart:io' show Platform;
 
 class PaymentApi {
   final String baseUrl = AppConfig.apiBaseUrl;
@@ -54,6 +55,20 @@ class PaymentApi {
     try {
       final token = await _getTokenWithFallback();
 
+      // Deteksi platform
+      final platform =
+          Platform.isAndroid
+              ? 'android'
+              : Platform.isIOS
+              ? 'ios'
+              : 'web';
+
+      // TAMBAHKAN: Konversi semua e_wallet ke qris
+      if (paymentType == 'e_wallet') {
+        paymentMethod = 'qris';
+        paymentType = 'qris';
+      }
+
       print('Memproses pembayaran untuk booking: $bookingCode');
       print('Method: $paymentMethod, Type: $paymentType');
 
@@ -63,10 +78,12 @@ class PaymentApi {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
           'Authorization': 'Bearer $token',
+          'X-Platform': platform,
         },
         body: json.encode({
           'payment_method': paymentMethod,
           'payment_type': paymentType,
+          'platform': platform,
         }),
       );
 
@@ -74,7 +91,22 @@ class PaymentApi {
       print('Process payment response body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return json.decode(response.body)['data'];
+        final responseData = json.decode(response.body)['data'];
+
+        // TAMBAHKAN: Penanganan QR string yang panjang
+        if (paymentMethod == 'qris' && responseData.containsKey('qr_string')) {
+          // Buat struktur respons yang tidak akan menyebabkan masalah dengan external_reference
+          return {
+            'transaction_id': responseData['transaction_id'],
+            'qr_code_url':
+                responseData['actions']?[0]?['url'] ??
+                responseData['qr_code_url'],
+            // Simpan QR string di payload sebagai JSON, bukan di external_reference
+            'payload': json.encode({'qr_string': responseData['qr_string']}),
+          };
+        }
+
+        return responseData;
       } else {
         throw ApiException(
           code: response.statusCode,
@@ -109,6 +141,12 @@ class PaymentApi {
     String paymentType,
   ) async {
     try {
+      // TAMBAHKAN: Konversi semua e_wallet ke qris
+      if (paymentType == 'e_wallet') {
+        paymentMethod = 'qris';
+        paymentType = 'qris';
+      }
+
       final token = await _getTokenWithFallback();
 
       final response = await http.get(
@@ -185,20 +223,6 @@ class PaymentApi {
               'Transaksi selesai',
             ],
           };
-        // case 'mandiri':
-        //   return {
-        //     'title': 'Mandiri Bill Payment',
-        //     'steps': [
-        //       'Buka aplikasi Livin by Mandiri',
-        //       'Pilih menu "Pembayaran"',
-        //       'Pilih "Multi Payment"',
-        //       'Cari dan pilih nama perusahaan',
-        //       'Masukkan nomor pembayaran',
-        //       'Pastikan nama dan jumlah pembayaran sudah sesuai',
-        //       'Masukkan PIN Livin',
-        //       'Transaksi selesai',
-        //     ],
-        //   };
         case 'permata':
           return {
             'title': 'Permata Virtual Account',
@@ -239,48 +263,7 @@ class PaymentApi {
             ],
           };
       }
-    } else if (type == 'e_wallet') {
-      switch (method.toLowerCase()) {
-        case 'gopay':
-          return {
-            'title': 'GoPay',
-            'steps': [
-              'Buka aplikasi Gojek',
-              'Tap tombol "Scan QR"',
-              'Scan QR Code yang ditampilkan di halaman pembayaran',
-              'Pastikan nominal pembayaran sudah sesuai',
-              'Tap tombol "Bayar"',
-              'Masukkan PIN GoPay',
-              'Transaksi selesai',
-            ],
-          };
-        case 'shopeepay':
-          return {
-            'title': 'ShopeePay',
-            'steps': [
-              'Buka aplikasi Shopee',
-              'Tap tombol "Scan" pada menu bawah',
-              'Scan QR Code yang ditampilkan di halaman pembayaran',
-              'Pastikan nominal pembayaran sudah sesuai',
-              'Tap tombol "Bayar"',
-              'Masukkan PIN ShopeePay',
-              'Transaksi selesai',
-            ],
-          };
-        default:
-          return {
-            'title': 'E-wallet',
-            'steps': [
-              'Buka aplikasi E-wallet',
-              'Pilih menu "Scan QR"',
-              'Scan QR code yang ditampilkan',
-              'Konfirmasi detail pembayaran',
-              'Masukkan PIN',
-              'Transaksi selesai',
-            ],
-          };
-      }
-    } else if (type == 'qris') {
+    } else if (type == 'qris' || type == 'e_wallet') {
       return {
         'title': 'QRIS',
         'steps': [

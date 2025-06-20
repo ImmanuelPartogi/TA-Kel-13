@@ -15,7 +15,7 @@ return new class extends Migration
             $table->enum('payment_method', ['BANK_TRANSFER', 'VIRTUAL_ACCOUNT', 'E_WALLET', 'CREDIT_CARD', 'CASH']);
             $table->string('payment_channel', 50)->comment('BCA, MANDIRI, BNI, GOPAY, SHOPEEPAY, dll');
             $table->string('transaction_id', 100)->nullable()->comment('ID Transaksi dari Payment Gateway');
-            $table->string('external_reference', 100)->nullable()->comment('Referensi eksternal dari payment gateway');
+            $table->string('external_reference', 500)->nullable()->comment('Referensi eksternal dari payment gateway');
             $table->string('virtual_account_number', 100)->nullable()->comment('Nomor Virtual Account');
             $table->text('qr_code_url')->nullable()->comment('URL QR Code untuk e-wallet');
             $table->text('deep_link_url')->nullable()->comment('URL Deep Link untuk e-wallet');

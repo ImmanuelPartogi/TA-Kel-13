@@ -8,11 +8,6 @@ return [
     'api_url' => env('MIDTRANS_IS_PRODUCTION', false)
         ? 'https://api.midtrans.com'
         : 'https://api.sandbox.midtrans.com',
-
-    'snap_url' => env('MIDTRANS_IS_PRODUCTION', false)
-        ? 'https://app.midtrans.com/snap/snap.js'
-        : 'https://app.stg.midtrans.com/snap/snap.js',
-        
     'notification_url' => env('APP_MIDTRANS_CALLBACK_URL', env('APP_URL', 'http://localhost') . '/api/payments/notification'),
     'finish_url' => env('APP_URL', 'http://localhost') . '/payment/finish',
     'expiry_duration' => env('MIDTRANS_EXPIRY_DURATION', 5),
@@ -23,9 +18,8 @@ return [
     // Metode pembayaran yang didukung
     'supported_payment_methods' => [
         'virtual_account' => ['bca', 'bni', 'bri', 'mandiri', 'permata'],
-        'e_wallet' => ['gopay', 'shopeepay'],
-        'credit_card' => ['visa', 'mastercard', 'jcb', 'amex'],
         'qris' => ['qris'],
+        'credit_card' => ['visa', 'mastercard', 'jcb', 'amex'],
     ],
 
     // Pengaturan fallback

@@ -8,9 +8,7 @@ import '../utils/secure_storage.dart';
 import '../models/payment_status.dart';
 
 class PaymentPollingService {
-  // Singleton instance
-  static final PaymentPollingService _instance =
-      PaymentPollingService._internal();
+  static final PaymentPollingService _instance = PaymentPollingService._internal();
   factory PaymentPollingService() => _instance;
   PaymentPollingService._internal();
 
@@ -21,31 +19,20 @@ class PaymentPollingService {
 
   // State management
   final Map<String, PollingSession> _activeSessions = {};
-  final Map<String, StreamController<PaymentStatusUpdate>> _statusControllers =
-      {};
+  final Map<String, StreamController<PaymentStatusUpdate>> _statusControllers = {};
 
-  // Configuration
-  // Konfigurasi polling dengan interval lebih cepat
-  final Duration _initialPollingInterval = const Duration(
-    seconds: 3,
-  ); // Lebih cepat dari sebelumnya
-  final Duration _maxPollingInterval = const Duration(
-    seconds: 30,
-  ); // Lebih cepat dari sebelumnya
-  final int _maxRetries = 30; // Lebih banyak retry karena waktu cepat habis
+  // PERBAIKAN: Konfigurasi polling yang lebih efisien
+  final Duration _initialPollingInterval = const Duration(seconds: 10); // Diperlambat dari 3 detik
+  final Duration _maxPollingInterval = const Duration(seconds: 60);     // Diperlambat dari 30 detik
+  final int _maxRetries = 18; // 18 x 10 detik = 3 menit maksimal
 
   /// Mulai polling untuk kode booking tertentu
-  ///
-  /// [bookingCode] adalah kode unik untuk booking yang akan di-polling
-  /// [initialDelay] adalah delay sebelum polling pertama dimulai
-  /// [manual] menunjukkan apakah polling dimulai secara manual (dari UI)
   Future<void> startPolling(
     String bookingCode, {
     Duration initialDelay = Duration.zero,
     bool manual = false,
   }) async {
     if (_activeSessions.containsKey(bookingCode)) {
-      // Jika sudah ada session, aktifkan kembali jika dinonaktifkan
       if (!_activeSessions[bookingCode]!.isActive) {
         _activeSessions[bookingCode]!.isActive = true;
         _schedulePoll(bookingCode);
@@ -53,13 +40,10 @@ class PaymentPollingService {
       return;
     }
 
-    // Siapkan stream controller jika belum ada
     if (!_statusControllers.containsKey(bookingCode)) {
-      _statusControllers[bookingCode] =
-          StreamController<PaymentStatusUpdate>.broadcast();
+      _statusControllers[bookingCode] = StreamController<PaymentStatusUpdate>.broadcast();
     }
 
-    // Buat session polling baru
     final session = PollingSession(
       currentInterval: _initialPollingInterval,
       retryCount: 0,
@@ -70,11 +54,9 @@ class PaymentPollingService {
     _activeSessions[bookingCode] = session;
 
     try {
-      // Periksa status segera jika manual polling
       if (manual) {
         await _checkPaymentStatus(bookingCode);
       } else {
-        // Tunggu delay awal sebelum mulai polling
         await Future.delayed(initialDelay);
         _schedulePoll(bookingCode);
       }
@@ -86,8 +68,7 @@ class PaymentPollingService {
   /// Dapatkan stream untuk updates status pembayaran
   Stream<PaymentStatusUpdate> getStatusStream(String bookingCode) {
     if (!_statusControllers.containsKey(bookingCode)) {
-      _statusControllers[bookingCode] =
-          StreamController<PaymentStatusUpdate>.broadcast();
+      _statusControllers[bookingCode] = StreamController<PaymentStatusUpdate>.broadcast();
     }
     return _statusControllers[bookingCode]!.stream;
   }
@@ -110,38 +91,42 @@ class PaymentPollingService {
     debugPrint('Stopped all active polling sessions');
   }
 
-  /// Jadwalkan polling selanjutnya dengan exponential backoff
+  /// PERBAIKAN: Jadwalkan polling dengan interval yang lebih wajar
   void _schedulePoll(String bookingCode) {
     final session = _activeSessions[bookingCode];
     if (session == null || !session.isActive) return;
 
-    // Batalkan timer yang sudah ada jika ada
     session.timer?.cancel();
 
-    // Jadwalkan polling selanjutnya
     session.timer = Timer(session.currentInterval, () {
       _checkPaymentStatus(bookingCode);
     });
 
-    debugPrint(
-      'Next payment check for $bookingCode in ${session.currentInterval.inSeconds} seconds',
-    );
+    debugPrint('Next payment check for $bookingCode in ${session.currentInterval.inSeconds} seconds');
   }
 
-  /// Metode untuk pemeriksaan status pembayaran
+  /// PERBAIKAN: Pemeriksaan status dengan rate limiting
   Future<void> _checkPaymentStatus(String bookingCode) async {
     final session = _activeSessions[bookingCode];
     if (session == null || !session.isActive) return;
 
+    // PERBAIKAN: Rate limiting - jangan polling terlalu sering
+    if (session.lastChecked != null) {
+      final timeSinceLastCheck = DateTime.now().difference(session.lastChecked!);
+      if (timeSinceLastCheck.inSeconds < 5) {
+        debugPrint('Skipping check for $bookingCode - too soon since last check');
+        _schedulePoll(bookingCode);
+        return;
+      }
+    }
+
     try {
-      // Catat waktu polling terakhir
       session.lastChecked = DateTime.now();
       session.retryCount++;
 
-      // Get token untuk request
       final token = await _secureStorage.getToken();
 
-      // Panggil endpoint publik untuk refresh status
+      // PERBAIKAN: Tambahkan timeout yang wajar
       final response = await http.get(
         Uri.parse('$_baseUrl/payments/$bookingCode/refresh-status'),
         headers: {
@@ -149,16 +134,19 @@ class PaymentPollingService {
           'Accept': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
         },
+      ).timeout(
+        const Duration(seconds: 15), // Timeout 15 detik
+        onTimeout: () {
+          throw TimeoutException('Request timeout', const Duration(seconds: 15));
+        },
       );
 
-      // Jika sukses, ambil data dari response
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
         if (data['success'] == true) {
           final responseData = data['data'] ?? {};
 
-          // Buat objek update status
           final update = PaymentStatusUpdate(
             bookingCode: bookingCode,
             paymentStatus: responseData['payment_status'] ?? 'UNKNOWN',
@@ -169,185 +157,159 @@ class PaymentPollingService {
             isError: false,
           );
 
-          // Notify listeners
           if (_statusControllers.containsKey(bookingCode)) {
             _statusControllers[bookingCode]!.add(update);
           }
 
-          // Cek apakah pembayaran sudah selesai atau gagal
-          final isCompleted = _isPaymentCompleted(
-            update.paymentStatus,
-            update.bookingStatus,
-          );
+          final isCompleted = _isPaymentCompleted(update.paymentStatus, update.bookingStatus);
 
           if (isCompleted) {
-            // Hentikan polling jika status sudah final
-            stopPolling(bookingCode);
-
-            // Delay close controller agar UI dapat menampilkan status terakhir
-            Future.delayed(const Duration(seconds: 10), () {
+            // PERBAIKAN: Beri delay sebelum stop polling untuk UI update
+            Future.delayed(const Duration(seconds: 2), () {
+              stopPolling(bookingCode);
               _cleanupResources(bookingCode);
             });
-
             return;
           }
 
-          // Jika respon berhasil, kurangi interval (mempercepat polling untuk status success)
-          _adjustPollingInterval(session, success: true);
+          // PERBAIKAN: Sesuaikan interval berdasarkan status
+          _adjustPollingInterval(session, success: true, status: update.paymentStatus);
         } else {
-          // Jika success: false, notify dengan error
-          if (_statusControllers.containsKey(bookingCode)) {
-            _statusControllers[bookingCode]!.add(
-              PaymentStatusUpdate(
-                bookingCode: bookingCode,
-                paymentStatus: 'UNKNOWN',
-                bookingStatus: 'UNKNOWN',
-                message:
-                    'Gagal memperbarui status: ${data['message'] ?? 'Unknown error'}',
-                timestamp: DateTime.now(),
-                isError: true,
-              ),
-            );
-          }
-
-          // Jika respon gagal, tingkatkan interval (exponential backoff)
-          _adjustPollingInterval(session, success: false);
+          _handleErrorResponse(bookingCode, session, data['message'] ?? 'Unknown error');
         }
+      } else if (response.statusCode == 429) {
+        // PERBAIKAN: Handle rate limiting dari server
+        debugPrint('Rate limited for $bookingCode, backing off');
+        _adjustPollingInterval(session, success: false, isRateLimit: true);
       } else {
-        // Jika response code bukan 200, notify dengan error
-        if (_statusControllers.containsKey(bookingCode)) {
-          _statusControllers[bookingCode]!.add(
-            PaymentStatusUpdate(
-              bookingCode: bookingCode,
-              paymentStatus: 'UNKNOWN',
-              bookingStatus: 'UNKNOWN',
-              message: 'Gagal memperbarui status: ${response.statusCode}',
-              timestamp: DateTime.now(),
-              isError: true,
-            ),
-          );
-        }
-
-        // Jika respon gagal, tingkatkan interval (exponential backoff)
-        _adjustPollingInterval(session, success: false);
+        _handleErrorResponse(bookingCode, session, 'HTTP ${response.statusCode}');
       }
 
-      // Cek jika sudah melebihi batas retry
+      // PERBAIKAN: Check max retries dengan lebih flexible
       if (session.retryCount >= _maxRetries) {
+        debugPrint('Max retries reached for $bookingCode, stopping polling');
+        _notifyMaxRetriesReached(bookingCode);
         stopPolling(bookingCode);
-
-        // Notify listeners bahwa polling dihentikan karena max retries
-        if (_statusControllers.containsKey(bookingCode)) {
-          _statusControllers[bookingCode]!.add(
-            PaymentStatusUpdate(
-              bookingCode: bookingCode,
-              paymentStatus: 'UNKNOWN',
-              bookingStatus: 'UNKNOWN',
-              message: 'Batas maksimum pemeriksaan status tercapai',
-              timestamp: DateTime.now(),
-              isError: true,
-            ),
-          );
-        }
-
         return;
       }
 
       // Jadwalkan polling selanjutnya
-      _schedulePoll(bookingCode);
-    } catch (e) {
-      debugPrint('Error checking payment status: $e');
-
-      // Notify listeners dengan error
-      if (_statusControllers.containsKey(bookingCode)) {
-        _statusControllers[bookingCode]!.add(
-          PaymentStatusUpdate(
-            bookingCode: bookingCode,
-            paymentStatus: 'UNKNOWN',
-            bookingStatus: 'UNKNOWN',
-            message: 'Error: ${e.toString()}',
-            timestamp: DateTime.now(),
-            isError: true,
-          ),
-        );
+      if (session.isActive) {
+        _schedulePoll(bookingCode);
       }
 
-      // Tingkatkan interval untuk exponential backoff
-      _adjustPollingInterval(session, success: false);
-
-      // Jadwalkan polling selanjutnya jika masih aktif
-      if (session.isActive) {
+    } on TimeoutException catch (e) {
+      debugPrint('Timeout checking payment status for $bookingCode: $e');
+      _handleErrorResponse(bookingCode, session, 'Request timeout');
+      
+      if (session.isActive && session.retryCount < _maxRetries) {
+        _schedulePoll(bookingCode);
+      }
+    } catch (e) {
+      debugPrint('Error checking payment status for $bookingCode: $e');
+      _handleErrorResponse(bookingCode, session, e.toString());
+      
+      if (session.isActive && session.retryCount < _maxRetries) {
         _schedulePoll(bookingCode);
       }
     }
   }
 
-  /// Sesuaikan interval polling dengan exponential backoff
-  void _adjustPollingInterval(PollingSession session, {required bool success}) {
-    if (success) {
-      // Jika berhasil, kurangi interval polling (max 5 detik)
-      session.currentInterval = const Duration(seconds: 5);
-    } else {
-      // Jika gagal, tingkatkan interval dengan exponential backoff
-      // Formula: min(maxInterval, initialInterval * 2^retryCount)
-      final backoffFactor = (1 << session.retryCount.clamp(0, 6));
-      final nextIntervalSeconds =
-          _initialPollingInterval.inSeconds * backoffFactor;
-      session.currentInterval = Duration(
-        seconds: nextIntervalSeconds.clamp(
-          _initialPollingInterval.inSeconds,
-          _maxPollingInterval.inSeconds,
+  /// PERBAIKAN: Handle error response dengan lebih baik
+  void _handleErrorResponse(String bookingCode, PollingSession session, String errorMessage) {
+    if (_statusControllers.containsKey(bookingCode)) {
+      _statusControllers[bookingCode]!.add(
+        PaymentStatusUpdate(
+          bookingCode: bookingCode,
+          paymentStatus: 'UNKNOWN',
+          bookingStatus: 'UNKNOWN',
+          message: 'Gagal memperbarui status: $errorMessage',
+          timestamp: DateTime.now(),
+          isError: true,
+        ),
+      );
+    }
+
+    _adjustPollingInterval(session, success: false);
+  }
+
+  /// PERBAIKAN: Notify ketika max retries tercapai
+  void _notifyMaxRetriesReached(String bookingCode) {
+    if (_statusControllers.containsKey(bookingCode)) {
+      _statusControllers[bookingCode]!.add(
+        PaymentStatusUpdate(
+          bookingCode: bookingCode,
+          paymentStatus: 'UNKNOWN',
+          bookingStatus: 'UNKNOWN',
+          message: 'Pemeriksaan status dihentikan. Silakan refresh manual jika diperlukan.',
+          timestamp: DateTime.now(),
+          isError: true,
         ),
       );
     }
   }
 
-  /// Cek apakah pembayaran sudah selesai atau gagal
+  /// PERBAIKAN: Sesuaikan interval dengan lebih smart
+  void _adjustPollingInterval(
+    PollingSession session, {
+    required bool success,
+    String? status,
+    bool isRateLimit = false,
+  }) {
+    if (success) {
+      // Jika sukses, sesuaikan interval berdasarkan status
+      if (status == 'PENDING') {
+        // Untuk status pending, polling setiap 15 detik
+        session.currentInterval = const Duration(seconds: 15);
+      } else {
+        // Untuk status lain, polling setiap 10 detik
+        session.currentInterval = const Duration(seconds: 10);
+      }
+    } else {
+      // Jika gagal atau rate limited, gunakan exponential backoff
+      if (isRateLimit) {
+        // Untuk rate limit, tunggu lebih lama
+        session.currentInterval = Duration(
+          seconds: (session.currentInterval.inSeconds * 2).clamp(30, 120),
+        );
+      } else {
+        // Untuk error lain, backoff normal
+        final backoffFactor = (1 << (session.retryCount ~/ 3).clamp(0, 4));
+        final nextIntervalSeconds = _initialPollingInterval.inSeconds * backoffFactor;
+        session.currentInterval = Duration(
+          seconds: nextIntervalSeconds.clamp(
+            _initialPollingInterval.inSeconds,
+            _maxPollingInterval.inSeconds,
+          ),
+        );
+      }
+    }
+
+    debugPrint('Adjusted polling interval for ${session.currentInterval.inSeconds}s (success: $success, rate_limit: $isRateLimit)');
+  }
+
+  /// Cek apakah pembayaran sudah selesai
   bool _isPaymentCompleted(String paymentStatus, String bookingStatus) {
-    // Dianggap selesai jika payment status adalah SUCCESS, FAILED, EXPIRED, atau REFUNDED
-    if (paymentStatus == 'SUCCESS' ||
-        paymentStatus == 'FAILED' ||
-        paymentStatus == 'EXPIRED' ||
-        paymentStatus == 'REFUNDED') {
-      return true;
-    }
+    // PERBAIKAN: Daftar status yang lebih lengkap
+    const completedPaymentStatuses = ['SUCCESS', 'FAILED', 'EXPIRED', 'REFUNDED', 'CANCELLED'];
+    const completedBookingStatuses = ['CONFIRMED', 'CANCELLED', 'COMPLETED'];
 
-    // Dianggap selesai jika booking status sudah CONFIRMED atau CANCELLED
-    if (bookingStatus == 'CONFIRMED' || bookingStatus == 'CANCELLED') {
-      return true;
-    }
-
-    return false;
+    return completedPaymentStatuses.contains(paymentStatus.toUpperCase()) ||
+           completedBookingStatuses.contains(bookingStatus.toUpperCase());
   }
 
   /// Bersihkan resources untuk booking tertentu
   void _cleanupResources(String bookingCode) {
-    // Hapus session dari active sessions
-    _activeSessions.remove(bookingCode);
+    // PERBAIKAN: Cleanup dengan delay untuk memastikan UI update
+    Future.delayed(const Duration(seconds: 5), () {
+      _activeSessions.remove(bookingCode);
 
-    // Tutup stream controller jika tidak ada listeners
-    final controller = _statusControllers[bookingCode];
-    if (controller != null && !controller.hasListener) {
-      controller.close();
-      _statusControllers.remove(bookingCode);
-    }
-  }
-
-  /// Bersihkan semua resources saat aplikasi ditutup
-  void dispose() {
-    // Hentikan semua timers
-    for (final session in _activeSessions.values) {
-      session.timer?.cancel();
-    }
-
-    // Tutup semua stream controllers
-    for (final controller in _statusControllers.values) {
-      controller.close();
-    }
-
-    // Kosongkan maps
-    _activeSessions.clear();
-    _statusControllers.clear();
+      final controller = _statusControllers[bookingCode];
+      if (controller != null && !controller.hasListener) {
+        controller.close();
+        _statusControllers.remove(bookingCode);
+      }
+    });
   }
 
   /// Metode untuk polling manual satu kali
@@ -362,7 +324,7 @@ class PaymentPollingService {
           'Accept': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
         },
-      );
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -379,27 +341,18 @@ class PaymentPollingService {
             timestamp: DateTime.now(),
             isError: false,
           );
-        } else {
-          return PaymentStatusUpdate(
-            bookingCode: bookingCode,
-            paymentStatus: 'UNKNOWN',
-            bookingStatus: 'UNKNOWN',
-            message:
-                'Gagal memperbarui status: ${data['message'] ?? 'Unknown error'}',
-            timestamp: DateTime.now(),
-            isError: true,
-          );
         }
-      } else {
-        return PaymentStatusUpdate(
-          bookingCode: bookingCode,
-          paymentStatus: 'UNKNOWN',
-          bookingStatus: 'UNKNOWN',
-          message: 'Gagal memperbarui status: ${response.statusCode}',
-          timestamp: DateTime.now(),
-          isError: true,
-        );
       }
+
+      return PaymentStatusUpdate(
+        bookingCode: bookingCode,
+        paymentStatus: 'UNKNOWN',
+        bookingStatus: 'UNKNOWN',
+        message: 'Gagal memperbarui status: ${response.statusCode}',
+        timestamp: DateTime.now(),
+        isError: true,
+      );
+
     } catch (e) {
       return PaymentStatusUpdate(
         bookingCode: bookingCode,
@@ -410,6 +363,20 @@ class PaymentPollingService {
         isError: true,
       );
     }
+  }
+
+  /// Bersihkan semua resources saat aplikasi ditutup
+  void dispose() {
+    for (final session in _activeSessions.values) {
+      session.timer?.cancel();
+    }
+
+    for (final controller in _statusControllers.values) {
+      controller.close();
+    }
+
+    _activeSessions.clear();
+    _statusControllers.clear();
   }
 }
 

@@ -68,7 +68,7 @@ class Payment extends Model
     public function canBeRefunded()
     {
         return $this->status === self::STATUS_SUCCESS &&
-               !$this->refunds()->whereIn('status', ['PENDING', 'APPROVED', 'PROCESSING', 'COMPLETED'])->exists();
+            !$this->refunds()->whereIn('status', ['PENDING', 'APPROVED', 'PROCESSING', 'COMPLETED'])->exists();
     }
 
     /**
@@ -125,5 +125,34 @@ class Payment extends Model
     public function scopeRefunded($query)
     {
         return $query->whereIn('status', [self::STATUS_REFUNDED, self::STATUS_PARTIAL_REFUND]);
+    }
+
+    /**
+     * Get QR String untuk QRIS
+     */
+    public function getQrStringAttribute()
+    {
+        // Cek apakah QR string tersimpan di external_reference
+        if (
+            $this->payment_method === 'E_WALLET' &&
+            $this->payment_channel === 'qris' &&
+            $this->external_reference
+        ) {
+            return $this->external_reference;
+        }
+
+        // Coba ambil dari payload
+        if ($this->payload) {
+            try {
+                $payload = json_decode($this->payload, true);
+                if (isset($payload['qr_string'])) {
+                    return $payload['qr_string'];
+                }
+            } catch (\Exception $e) {
+                return null;
+            }
+        }
+
+        return null;
     }
 }

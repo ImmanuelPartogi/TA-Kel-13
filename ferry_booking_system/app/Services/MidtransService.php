@@ -66,51 +66,13 @@ class MidtransService
                         ($booking->schedule->route->destination ?? 'Destination'),
                 ]
             ],
-            // PERBAIKAN: Custom expiry yang lebih tepat
+            // Konfigurasi custom expiry - 5 menit untuk semua jenis pembayaran
             'custom_expiry' => [
+                'order_time' => date('Y-m-d H:i:s O'),  // Format: YYYY-MM-DD HH:MM:SS +0700
                 'expiry_duration' => 5,
                 'unit' => 'minute'
             ]
         ];
-
-        // PERBAIKAN: Konfigurasi E-Wallet sesuai dokumentasi Midtrans
-        if ($paymentType == 'e_wallet') {
-            if ($paymentMethod == 'gopay') {
-                $params['payment_type'] = 'gopay';
-
-                // PERBAIKAN: Konfigurasi GoPay sesuai dokumentasi terbaru
-                $params['gopay'] = [
-                    'enable_callback' => true,
-                    'callback_url' => $this->callbackUrl
-                ];
-
-                Log::info('GoPay payment configured', [
-                    'callback_url' => $this->callbackUrl,
-                    'enable_callback' => true
-                ]);
-            } elseif ($paymentMethod == 'shopeepay') {
-                $params['payment_type'] = 'shopeepay';
-
-                // PERBAIKAN: Konfigurasi ShopeePay sesuai dokumentasi terbaru
-                $params['shopeepay'] = [
-                    'callback_url' => $this->callbackUrl
-                ];
-
-                Log::info('ShopeePay payment configured', [
-                    'callback_url' => $this->callbackUrl
-                ]);
-            }
-        } elseif ($paymentType == 'qris') {
-            // PERBAIKAN: Implementasi QRIS sesuai dokumentasi
-            $params['payment_type'] = 'qris';
-            $params['qris'] = [
-                'acquirer' => $options['acquirer'] ?? 'gopay' // Default acquirer
-            ];
-
-            Log::info('QRIS payment configured', [
-                'acquirer' => $params['qris']['acquirer']
-            ]);
-        }
 
         // Konfigurasi berdasarkan tipe pembayaran sesuai dokumentasi Midtrans
         if ($paymentType == 'virtual_account') {
@@ -187,49 +149,30 @@ class MidtransService
                     }
                     break;
             }
-        } elseif ($paymentType == 'e_wallet') {
-            // Implementasi E-Wallet sesuai dokumentasi Midtrans
-            if ($paymentMethod == 'gopay') {
-                $params['payment_type'] = 'gopay';
-
-                // Konfigurasi GoPay dengan callback sesuai dokumentasi
-                $params['gopay'] = [
-                    'enable_callback' => true,
-                    'callback_url' => $this->callbackUrl
-                ];
-            } elseif ($paymentMethod == 'shopeepay') {
-                $params['payment_type'] = 'shopeepay';
-
-                // Konfigurasi ShopeePay sesuai dokumentasi
-                $params['shopeepay'] = [
-                    'callback_url' => $this->callbackUrl
-                ];
-            }
         } elseif ($paymentType == 'qris') {
             // Implementasi QRIS sesuai dokumentasi
             $params['payment_type'] = 'qris';
             $params['qris'] = [
-                'acquirer' => $options['acquirer'] ?? 'gopay' // Acquirer bisa disesuaikan (gopay/shopeepay)
+                'acquirer' => 'gopay' // Menggunakan default acquirer
             ];
         }
 
+        // Log payload lengkap untuk debugging
         Log::debug('Midtrans request payload', ['payload' => $params]);
 
-        // API request dengan retry mechanism
+        // Implementasi retry dengan backoff
         $maxRetries = config('midtrans.retries.max_retries', 3);
-        $backoff = config('midtrans.retries.retry_delay', 1);
+        $backoff = config('midtrans.retries.retry_delay', 1); // detik awal
 
         for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
             try {
                 $response = $this->apiRequest('/v2/charge', 'POST', $params);
 
-                // PERBAIKAN: Log respons untuk e-wallet
+                // Log respons untuk debugging
                 Log::info('Midtrans API response', [
                     'order_id' => $booking->booking_code,
                     'transaction_id' => $response['transaction_id'] ?? null,
-                    'status_code' => $response['status_code'] ?? null,
-                    'payment_type' => $response['payment_type'] ?? null,
-                    'has_actions' => isset($response['actions']) ? count($response['actions']) : 0
+                    'status_code' => $response['status_code'] ?? null
                 ]);
 
                 return $response;
@@ -242,8 +185,9 @@ class MidtransService
 
                 if ($attempt < $maxRetries) {
                     sleep($backoff);
-                    $backoff *= 2;
+                    $backoff *= 2; // Eksponensial backoff
                 } else {
+                    // Jika semua percobaan gagal, gunakan fallback
                     return $this->createFallbackTransaction($booking, $paymentType, $paymentMethod);
                 }
             }
@@ -303,18 +247,10 @@ class MidtransService
                     'is_fallback' => true
                 ];
             }
-        } elseif ($paymentType == 'e_wallet' || $paymentType == 'qris') {
-            // Buat QR code URL dummy dan deeplink
+        } elseif ($paymentType == 'qris') {
+            // Buat QR code URL dummy
             $qrCodeUrl = 'https://api.sandbox.midtrans.com/v2/qris/simulator/static';
             $payment->qr_code_url = $qrCodeUrl;
-
-            // Contoh deeplink berdasarkan payment method
-            if ($paymentMethod == 'gopay') {
-                $payment->deep_link_url = 'gojek://gopay/merchant?=dummy_deeplink_' . $booking->id;
-            } elseif ($paymentMethod == 'shopeepay') {
-                $payment->deep_link_url = 'shopee://wallet?action=dummy_action_' . $booking->id;
-            }
-
             $payment->save();
 
             // Format actions array sesuai format respons Midtrans
@@ -325,14 +261,6 @@ class MidtransService
                     'url' => $qrCodeUrl
                 ]
             ];
-
-            if ($payment->deep_link_url) {
-                $actions[] = [
-                    'name' => 'deeplink-redirect',
-                    'method' => 'GET',
-                    'url' => $payment->deep_link_url
-                ];
-            }
 
             return [
                 'status_code' => '201',
@@ -359,18 +287,11 @@ class MidtransService
     }
 
     /**
-     * Menentukan URL yang tepat berdasarkan jenis device untuk E-Wallet
+     * Menentukan URL QR Code untuk QRIS
      */
-    public function getEWalletRedirectUrl(Payment $payment, $userAgent = null)
+    public function getQrisRedirectUrl(Payment $payment)
     {
-        $isMobile = $userAgent ? $this->isMobileDevice($userAgent) : false;
-
-        if ($isMobile && !empty($payment->deep_link_url)) {
-            return [
-                'type' => 'deeplink',
-                'url' => $payment->deep_link_url
-            ];
-        } elseif (!empty($payment->qr_code_url)) {
+        if (!empty($payment->qr_code_url)) {
             return [
                 'type' => 'qr_code',
                 'url' => $payment->qr_code_url
@@ -432,7 +353,6 @@ class MidtransService
 
     /**
      * Set detail pembayaran dari respons Midtrans
-     * Diperbarui sesuai format respons dokumentasi Midtrans
      */
     public function setPaymentDetails(Payment $payment, $data)
     {
@@ -442,6 +362,28 @@ class MidtransService
             'data_keys' => array_keys($data),
             'payment_type' => $data['payment_type'] ?? 'unknown'
         ]);
+
+        // Untuk QRIS - simpan QR string jika tersedia
+        if (isset($data['qr_string'])) {
+            $payment->payload = json_encode(array_merge(
+                json_decode($payment->payload ?? '{}', true),
+                ['qr_string' => $data['qr_string']]
+            ));
+
+            Log::info('QR string saved to payment payload', [
+                'payment_id' => $payment->id,
+                'qr_string_length' => strlen($data['qr_string'])
+            ]);
+        }
+
+        // Untuk QRIS - simpan QR string jika tersedia
+        if (isset($data['payment_type']) && $data['payment_type'] === 'qris' && isset($data['qr_string'])) {
+            $payment->external_reference = $data['qr_string'];
+            Log::info('QR string saved to payment', [
+                'payment_id' => $payment->id,
+                'qr_string_length' => strlen($data['qr_string'])
+            ]);
+        }
 
         // Untuk Virtual Account - diperbarui sesuai dokumentasi
         if (isset($data['va_numbers']) && !empty($data['va_numbers'])) {
@@ -475,19 +417,11 @@ class MidtransService
             ]);
         }
 
-        // Untuk E-Wallet (GoPay/ShopeePay) dan QRIS
+        // Untuk QRIS dan e-wallet
         if (isset($data['actions']) && is_array($data['actions'])) {
             foreach ($data['actions'] as $action) {
                 if (isset($action['name']) && $action['name'] === 'generate-qr-code' && isset($action['url'])) {
                     $payment->qr_code_url = $action['url'];
-                    Log::info('QR code URL set', ['url' => $action['url']]);
-                } elseif (isset($action['name']) && $action['name'] === 'deeplink-redirect' && isset($action['url'])) {
-                    $payment->deep_link_url = $action['url'];
-                    Log::info('Deep link URL set', ['url' => $action['url']]);
-                } elseif (isset($action['name']) && $action['name'] === 'get-status' && isset($action['url'])) {
-                    $payment->status_url = $action['url'];
-                } elseif (isset($action['name']) && $action['name'] === 'cancel' && isset($action['url'])) {
-                    $payment->cancel_url = $action['url'];
                 }
             }
         }
@@ -989,60 +923,6 @@ class MidtransService
             }
         }
         // Instruksi pembayaran untuk E-Wallet
-        else if ($paymentType == 'e_wallet') {
-            switch ($paymentMethod) {
-                case 'gopay':
-                    return [
-                        'title' => 'GoPay',
-                        'qr_code_steps' => [
-                            'Buka aplikasi Gojek di ponsel Anda',
-                            'Tap ikon "Scan QR"',
-                            'Arahkan kamera ke QR Code yang ditampilkan',
-                            'Verifikasi jumlah pembayaran',
-                            'Tap tombol "Bayar"',
-                            'Masukkan PIN GoPay',
-                            'Transaksi selesai'
-                        ],
-                        'deeplink_steps' => [
-                            'Tap "Bayar dengan GoPay"',
-                            'Anda akan diarahkan ke aplikasi Gojek',
-                            'Verifikasi jumlah pembayaran',
-                            'Tap tombol "Bayar"',
-                            'Masukkan PIN GoPay',
-                            'Transaksi selesai'
-                        ]
-                    ];
-                case 'shopeepay':
-                    return [
-                        'title' => 'ShopeePay',
-                        'steps' => [
-                            'Buka aplikasi Shopee',
-                            'Tap ikon "Saya"',
-                            'Tap "ShopeePay"',
-                            'Tap "Scan"',
-                            'Scan QR Code yang ditampilkan di halaman pembayaran',
-                            'Pastikan nominal pembayaran sudah sesuai',
-                            'Tap tombol "Bayar"',
-                            'Masukkan PIN ShopeePay',
-                            'Transaksi selesai'
-                        ]
-                    ];
-                default:
-                    return [
-                        'title' => 'E-Wallet Payment',
-                        'steps' => [
-                            'Buka aplikasi e-wallet',
-                            'Gunakan fitur scan QR',
-                            'Scan QR code yang ditampilkan',
-                            'Verifikasi jumlah pembayaran',
-                            'Konfirmasi pembayaran',
-                            'Masukkan PIN atau verifikasi lainnya',
-                            'Transaksi selesai'
-                        ]
-                    ];
-            }
-        }
-        // QRIS
         else if ($paymentType == 'qris') {
             return [
                 'title' => 'QRIS Payment',

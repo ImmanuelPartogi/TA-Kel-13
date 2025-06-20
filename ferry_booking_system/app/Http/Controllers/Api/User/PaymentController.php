@@ -28,6 +28,7 @@ class PaymentController extends Controller
         $validator = Validator::make($request->all(), [
             'payment_method' => 'required|string',
             'payment_type' => 'required|string',
+            'platform' => 'nullable|string|in:android,ios,web',
         ]);
 
         if ($validator->fails()) {
@@ -98,7 +99,8 @@ class PaymentController extends Controller
             // Gabungkan opsi dasar dengan opsi tambahan
             $options = array_merge([
                 'payment_method' => $request->payment_method,
-                'payment_type' => $request->payment_type
+                'payment_type' => $request->payment_type,
+                'platform' => $request->platform ?? $request->header('X-Platform', 'web')
             ], $additionalOptions);
 
             // Buat transaksi di Midtrans
@@ -160,12 +162,6 @@ class PaymentController extends Controller
             // Dapatkan instruksi pembayaran
             $instructions = $this->midtransService->getPaymentInstructions($request->payment_method, $request->payment_type);
 
-            // Tambahkan info device-specific untuk e-wallet
-            $redirectInfo = null;
-            if ($request->payment_type == 'e_wallet' || $request->payment_type == 'qris') {
-                $redirectInfo = $this->midtransService->getEWalletRedirectUrl($payment, $request->header('User-Agent'));
-            }
-
             // Buat respons
             $responseData = [
                 'payment_id' => $payment->id,
@@ -177,7 +173,6 @@ class PaymentController extends Controller
                 'qr_code_url' => $payment->qr_code_url,
                 'deep_link_url' => $payment->deep_link_url,
                 'expiry_date' => $payment->expiry_date->format('Y-m-d H:i:s'),
-                'redirect_info' => $redirectInfo,
                 'instructions' => $instructions,
                 'simulator_url' => $simulatorUrl
             ];
@@ -335,8 +330,8 @@ class PaymentController extends Controller
 
         // Tambahkan redirect info untuk e-wallet jika perlu
         $redirectInfo = null;
-        if (in_array($payment->payment_method, ['E_WALLET', 'QRIS'])) {
-            $redirectInfo = $this->midtransService->getEWalletRedirectUrl($payment, $request->header('User-Agent'));
+        if ($payment->payment_method == 'E_WALLET' && $payment->payment_channel == 'qris') {
+            $redirectInfo = $this->midtransService->getQrisRedirectUrl($payment);
         }
 
         return response()->json([
@@ -372,8 +367,7 @@ class PaymentController extends Controller
             'mandiri' => 'VIRTUAL_ACCOUNT',
             'permata' => 'VIRTUAL_ACCOUNT',
             'cimb' => 'VIRTUAL_ACCOUNT',
-            'gopay' => 'E_WALLET',
-            'shopeepay' => 'E_WALLET',
+            'qris' => 'E_WALLET',
         ];
 
         if ($type == 'qris') {
@@ -390,7 +384,7 @@ class PaymentController extends Controller
     {
         $typeMap = [
             'VIRTUAL_ACCOUNT' => 'virtual_account',
-            'E_WALLET' => 'e_wallet',
+            'E_WALLET' => 'qris',
         ];
 
         return $typeMap[$method] ?? 'virtual_account';

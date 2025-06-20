@@ -2,7 +2,8 @@
 class AppConfig {
   // API Configuration
   // static const String apiBaseUrl = 'http://127.0.0.1:8000/api'; // Local development
-  static const String apiBaseUrl = 'http://172.27.65.163:8000/api';
+  // static const String apiBaseUrl = 'http://172.27.65.163:8000/api';
+  static const String apiBaseUrl = 'http://192.168.40.145:8000/api';
 
   // Untuk akses dari perangkat lain atau Midtrans callback
   // static const String publicBaseUrl =
@@ -16,7 +17,6 @@ class AppConfig {
   // static const String midtransCallbackUrl =
   //     'https://cebd-114-5-144-192.ngrok-free.app';
 
-  // Lainnya
   static const String appName = 'Ferry Booking';
   static const String appVersion = '1.0.0';
 

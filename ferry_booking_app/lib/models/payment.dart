@@ -6,7 +6,7 @@ class Payment {
   final int bookingId;
   final String? paymentCode;
   final double amount;
-  String status; // Hapus keyword 'final' di sini
+  String status;
   String paymentMethod;
   String paymentType;
   String? virtualAccountNumber;
@@ -45,26 +45,27 @@ class Payment {
       if (json['expiry_date'] == null) return null;
 
       try {
-        // PERBAIKAN: Handle berbagai format waktu dari Midtrans
-        String expiryString = json['expiry_date'].toString();
+        // Coba parse sebagai string ISO 8601
+        DateTime parsedDate = DateTime.parse(json['expiry_date'].toString());
 
-        // Format dari Midtrans biasanya: "2025-06-19 12:17:54"
-        if (expiryString.contains(' ') && !expiryString.contains('T')) {
-          // Format: "YYYY-MM-DD HH:mm:ss"
-          DateTime parsedDate = DateTime.parse(
-            expiryString.replaceAll(' ', 'T'),
-          );
-          return parsedDate.toLocal();
-        }
-
-        // Format ISO standard
-        DateTime parsedDate = DateTime.parse(expiryString);
+        // Penting: Pastikan tanggal dalam format lokal
         return parsedDate.toLocal();
       } catch (e) {
-        print('Error parsing expiry_date: ${json['expiry_date']}');
+        // Fallback untuk format lain jika parsing gagal
+        try {
+          final dateFormat = DateFormat('yyyy-MM-dd HH:mm:ss');
+          DateTime parsedDate = dateFormat.parse(
+            json['expiry_date'].toString(),
+          );
 
-        // PERBAIKAN: Fallback yang lebih masuk akal (30 menit)
-        return DateTime.now().add(const Duration(minutes: 30));
+          // Penting: Pastikan tanggal dalam format lokal
+          return parsedDate.toLocal();
+        } catch (_) {
+          print('Error parsing expiry_date: ${json['expiry_date']}');
+
+          // Tambahan: Fallback ke 5 menit dari sekarang jika parsing gagal
+          return DateTime.now().add(const Duration(minutes: 5));
+        }
       }
     }
 
@@ -164,33 +165,8 @@ class Payment {
     if (method.contains('virtual_account') ||
         type.contains('virtual_account')) {
       // Cek bank spesifik dari virtual account
-      if (type.contains('bca') ||
-          virtualAccountNumber?.toLowerCase().contains('bca') == true) {
-        return 'assets/images/payment_methods/bca.png';
-      } else if (type.contains('bni') ||
-          virtualAccountNumber?.toLowerCase().contains('bni') == true) {
-        return 'assets/images/payment_methods/bni.png';
-      } else if (type.contains('bri') ||
-          virtualAccountNumber?.toLowerCase().contains('bri') == true) {
-        return 'assets/images/payment_methods/bri.png';
-      } else if (type.contains('mandiri') ||
-          virtualAccountNumber?.toLowerCase().contains('mandiri') == true) {
-        return 'assets/images/payment_methods/mandiri.png';
-      } else if (type.contains('permata') ||
-          virtualAccountNumber?.toLowerCase().contains('permata') == true) {
-        return 'assets/images/payment_methods/permata.png';
-      } else if (type.contains('cimb') ||
-          virtualAccountNumber?.toLowerCase().contains('cimb') == true) {
-        return 'assets/images/payment_methods/cimb.png';
-      }
+      // ... VA code ...
       return 'assets/images/payment_methods/bank.png';
-    } else if (method.contains('e_wallet') || type.contains('e_wallet')) {
-      if (type.contains('gopay')) {
-        return 'assets/images/payment_methods/gopay.png';
-      } else if (type.contains('shopeepay')) {
-        return 'assets/images/payment_methods/shopeepay.png';
-      }
-      return 'assets/images/payment_methods/ewallet.png';
     } else if (type.contains('qris')) {
       return 'assets/images/payment_methods/qris.png';
     }
@@ -276,6 +252,35 @@ class Payment {
       }
     } catch (e) {
       print('Error extracting QR code URL: $e');
+    }
+
+    return null;
+  }
+
+  String? get qrStringData {
+    // Coba mendapatkan dari rawData jika tersedia
+    if (rawData != null) {
+      // Coba langsung dari rawData
+      if (rawData!.containsKey('qr_string')) {
+        return rawData!['qr_string'];
+      }
+
+      // Coba dari payload jika ada
+      if (rawData!.containsKey('payload')) {
+        try {
+          var payload = rawData!['payload'];
+          if (payload is String) {
+            // Coba parse jika payload adalah string JSON
+            final Map<String, dynamic> data = json.decode(payload);
+            return data['qr_string'];
+          } else if (payload is Map) {
+            // Jika payload sudah berupa Map
+            return payload['qr_string'];
+          }
+        } catch (e) {
+          print('Error parsing payload: $e');
+        }
+      }
     }
 
     return null;

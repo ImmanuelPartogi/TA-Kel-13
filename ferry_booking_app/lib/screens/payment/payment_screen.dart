@@ -11,6 +11,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../providers/booking_provider.dart';
 import '../../widgets/custom_appbar.dart';
+import 'package:ferry_booking_app/utils/dialog_helper.dart';
+import 'package:ferry_booking_app/utils/navigation_service.dart';
 
 class PaymentScreen extends StatefulWidget {
   final String? bookingCode;
@@ -50,6 +52,8 @@ class _PaymentScreenState extends State<PaymentScreen>
   // Simpan referensi ke provider untuk menghindari error lifecycle
   BookingProvider? _bookingProvider;
   String? _currentBookingCode;
+
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   final Map<String, Color> _bankColors = {
     'bca': const Color(0xFF005BAA),
@@ -114,12 +118,12 @@ class _PaymentScreenState extends State<PaymentScreen>
     final booking = _bookingProvider?.currentBooking;
     if (booking != null &&
         (booking.status == 'CONFIRMED' || booking.status == 'PAID')) {
-      // PERBAIKAN: Hentikan timer countdown jika pembayaran sukses
+      // Hentikan timer countdown jika pembayaran sukses
       _countdownTimer?.cancel();
       _statusRefreshTimer?.cancel();
 
-      // Jika pembayaran sukses, tampilkan dialog sukses
-      _showPaymentSuccessDialog();
+      // Gunakan helper untuk menampilkan dialog
+      DialogHelper.showPaymentSuccessDialog();
     }
   }
 
@@ -214,6 +218,11 @@ class _PaymentScreenState extends State<PaymentScreen>
 
     // Mulai timer baru yang memperbarui UI setiap detik
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
       if (_remainingSeconds > 0) {
         setState(() {
           _remainingSeconds--;
@@ -227,7 +236,7 @@ class _PaymentScreenState extends State<PaymentScreen>
             listen: false,
           );
           bookingProvider.refreshPaymentStatus(_bookingCode!).then((success) {
-            if (!mounted) return;
+            if (!mounted) return; // Periksa lagi setelah operasi asinkron
 
             final booking = bookingProvider.currentBooking;
             if (booking != null &&
@@ -250,113 +259,18 @@ class _PaymentScreenState extends State<PaymentScreen>
       context,
       listen: false,
     );
+
     bookingProvider.refreshPaymentStatus(_bookingCode!).then((success) {
+      // Cek apakah widget masih mounted setelah operasi asinkron
       if (!mounted) return;
 
       final booking = bookingProvider.currentBooking;
-      // Hanya tampilkan dialog expired jika status bukan CONFIRMED/PAID
       if (booking != null &&
           !(booking.status == 'CONFIRMED' || booking.status == 'PAID')) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (BuildContext context) {
-            return WillPopScope(
-              onWillPop: () async => false,
-              child: AlertDialog(
-                // Sama seperti kode dialog original
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                title: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.timer_off_rounded,
-                        size: 48,
-                        color: Colors.red.shade700,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Pembayaran Kadaluarsa',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Waktu pembayaran Anda telah habis. Pembayaran tidak dapat diproses lagi.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: Colors.grey.shade800,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Silakan kembali ke beranda untuk melakukan pemesanan ulang.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: Colors.grey.shade800,
-                        fontWeight: FontWeight.w500,
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
-                ),
-                actions: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(
-                            context,
-                          ).pushNamedAndRemoveUntil('/home', (route) => false);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red.shade700,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Kembali ke Beranda',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
+        DialogHelper.showPaymentExpiredDialog();
       } else if (booking != null &&
           (booking.status == 'CONFIRMED' || booking.status == 'PAID')) {
-        // Jika status adalah CONFIRMED/PAID, tampilkan dialog sukses sebagai gantinya
-        _showPaymentSuccessDialog();
+        DialogHelper.showPaymentSuccessDialog();
       }
     });
   }
@@ -375,10 +289,8 @@ class _PaymentScreenState extends State<PaymentScreen>
 
   @override
   void dispose() {
-    // Hentikan countdown timer
+    // Pastikan semua timer dihentikan
     _countdownTimer?.cancel();
-
-    // TAMBAHAN: Hentikan timer refresh status
     _statusRefreshTimer?.cancel();
 
     // Hentikan polling saat screen di-dispose
@@ -386,6 +298,7 @@ class _PaymentScreenState extends State<PaymentScreen>
     if (bookingCode != null && _bookingProvider != null) {
       _bookingProvider!.stopPaymentPolling(bookingCode);
     }
+
     _animationController.dispose();
     super.dispose();
   }
@@ -2478,97 +2391,6 @@ class _PaymentScreenState extends State<PaymentScreen>
   }
 
   void _showPaymentSuccessDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return WillPopScope(
-          onWillPop: () async => false,
-          child: AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            title: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.check_circle_rounded,
-                    size: 48,
-                    color: Colors.green.shade700,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Pembayaran Berhasil',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Pembayaran Anda telah berhasil dikonfirmasi.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Colors.grey.shade800,
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'E-tiket Anda sudah dapat diakses di menu pemesanan.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Colors.grey.shade800,
-                    fontWeight: FontWeight.w500,
-                    height: 1.5,
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(
-                        context,
-                      ).pushNamedAndRemoveUntil('/home', (route) => false);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green.shade700,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Kembali ke Beranda',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+    DialogHelper.showPaymentSuccessDialog();
   }
 }

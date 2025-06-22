@@ -30,6 +30,13 @@ class BookingProvider extends ChangeNotifier {
   Map<String, int> _passengerCounts = {'adult': 1, 'child': 0, 'infant': 0};
   Map<String, dynamic>? _pendingBookingData;
   Map<String, dynamic>? get pendingBookingData => _pendingBookingData;
+  Map<String, int> _ferryVehicleCapacity = {
+    'MOTORCYCLE': 0,
+    'CAR': 0,
+    'BUS': 0,
+    'TRUCK': 0,
+  };
+  Map<String, int> get ferryVehicleCapacity => _ferryVehicleCapacity;
 
   // Booking results
   List<Booking>? _bookings;
@@ -116,6 +123,39 @@ class BookingProvider extends ChangeNotifier {
   double get totalCost => passengerCost + vehicleCost;
 
   bool get hasActiveBooking => _currentBooking != null;
+
+  // Tambahkan metode untuk memeriksa apakah jenis kendaraan tersedia
+  bool isVehicleTypeAvailable(String type) {
+    if (_selectedSchedule?.ferry == null) return false;
+
+    switch (type) {
+      case 'MOTORCYCLE':
+        return (_ferryVehicleCapacity['MOTORCYCLE'] ?? 0) > 0;
+      case 'CAR':
+        return (_ferryVehicleCapacity['CAR'] ?? 0) > 0;
+      case 'BUS':
+        return (_ferryVehicleCapacity['BUS'] ?? 0) > 0;
+      case 'TRUCK':
+        return (_ferryVehicleCapacity['TRUCK'] ?? 0) > 0;
+      case 'PICKUP': // PICKUP dihitung sebagai TRUCK
+        return (_ferryVehicleCapacity['TRUCK'] ?? 0) > 0;
+      case 'TRONTON': // TRONTON dihitung sebagai TRUCK
+        return (_ferryVehicleCapacity['TRUCK'] ?? 0) > 0;
+      default:
+        return false;
+    }
+  }
+
+  // Metode untuk mendapatkan kategori kendaraan yang tersedia
+  List<VehicleCategory> getAvailableVehicleCategories() {
+    if (_vehicleCategories.isEmpty || _selectedSchedule?.ferry == null) {
+      return _vehicleCategories;
+    }
+
+    return _vehicleCategories.where((category) {
+      return isVehicleTypeAvailable(category.vehicleType);
+    }).toList();
+  }
 
   // Metode untuk mengambil data kategori kendaraan dari API
   Future<void> fetchVehicleCategories() async {
@@ -247,6 +287,18 @@ class BookingProvider extends ChangeNotifier {
   // Set selected schedule
   void setSelectedSchedule(Schedule schedule) {
     _selectedSchedule = schedule;
+
+    // Update kapasitas kendaraan ferry saat jadwal dipilih
+    if (schedule.ferry != null) {
+      _ferryVehicleCapacity = {
+        'MOTORCYCLE': schedule.ferry!.capacityVehicleMotorcycle,
+        'CAR': schedule.ferry!.capacityVehicleCar,
+        'BUS': schedule.ferry!.capacityVehicleBus,
+        'TRUCK': schedule.ferry!.capacityVehicleTruck,
+      };
+      developer.log('Ferry vehicle capacity updated: $_ferryVehicleCapacity');
+    }
+
     notifyListeners();
   }
 
@@ -328,6 +380,16 @@ class BookingProvider extends ChangeNotifier {
     // Tipe default MOTORCYCLE
     final String type = vehicleData['type'] ?? 'MOTORCYCLE';
 
+    // Validasi ketersediaan tipe kendaraan pada ferry
+    if (!isVehicleTypeAvailable(type)) {
+      developer.log('Vehicle type $type not available on selected ferry');
+      // Tidak menambahkan kendaraan dan memberikan notifikasi error
+      _errorMessage =
+          'Kendaraan jenis ${_getVehicleTypeName(type)} tidak tersedia untuk kapal ini';
+      notifyListeners();
+      return;
+    }
+
     // Cari kategori yang sesuai berdasarkan tipe
     final VehicleCategory? category = _getCategoryByType(type);
 
@@ -365,6 +427,26 @@ class BookingProvider extends ChangeNotifier {
 
     _vehicles.add(vehicle);
     notifyListeners();
+  }
+
+  // Helper method to get human-readable vehicle type name
+  String _getVehicleTypeName(String type) {
+    switch (type) {
+      case 'MOTORCYCLE':
+        return 'Motor';
+      case 'CAR':
+        return 'Mobil';
+      case 'BUS':
+        return 'Bus';
+      case 'TRUCK':
+        return 'Truk';
+      case 'PICKUP':
+        return 'Pickup';
+      case 'TRONTON':
+        return 'Tronton';
+      default:
+        return type;
+    }
   }
 
   // Update vehicle

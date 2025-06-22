@@ -70,7 +70,24 @@ class BookingService
                 $vehicleCounts[$vehicle['type']]++;
             }
 
-            // Check availability for each vehicle type
+            // Validasi apakah jenis kendaraan tersedia pada ferry (kapasitas > 0)
+            if ($vehicleCounts['MOTORCYCLE'] > 0 && $schedule->ferry->capacity_vehicle_motorcycle <= 0) {
+                throw new \Exception('Maaf, kendaraan motor tidak tersedia untuk kapal ini');
+            }
+
+            if ($vehicleCounts['CAR'] > 0 && $schedule->ferry->capacity_vehicle_car <= 0) {
+                throw new \Exception('Maaf, kendaraan mobil tidak tersedia untuk kapal ini');
+            }
+
+            if ($vehicleCounts['BUS'] > 0 && $schedule->ferry->capacity_vehicle_bus <= 0) {
+                throw new \Exception('Maaf, kendaraan bus tidak tersedia untuk kapal ini');
+            }
+
+            if ($vehicleCounts['TRUCK'] > 0 && $schedule->ferry->capacity_vehicle_truck <= 0) {
+                throw new \Exception('Maaf, kendaraan truk tidak tersedia untuk kapal ini');
+            }
+
+            // Check availability for each vehicle type (kode yang sudah ada)
             if ($scheduleDate->motorcycle_count + $vehicleCounts['MOTORCYCLE'] > $schedule->ferry->capacity_vehicle_motorcycle) {
                 throw new \Exception('Maaf, kapasitas motor tidak mencukupi');
             }

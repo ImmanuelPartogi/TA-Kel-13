@@ -1148,14 +1148,34 @@ class __VehicleDialogState extends State<_VehicleDialog> {
   }
 
   void _selectVehicleCategory(int categoryId) {
+    final bookingProvider = Provider.of<BookingProvider>(
+      context,
+      listen: false,
+    );
+
+    // Dapatkan kategori yang dipilih
+    final selectedCategory = widget.vehicleCategories.firstWhere(
+      (cat) => cat.id == categoryId,
+      orElse: () => widget.vehicleCategories.first,
+    );
+
+    // Periksa apakah jenis kendaraan tersedia
+    if (!bookingProvider.isVehicleTypeAvailable(selectedCategory.vehicleType)) {
+      // Tampilkan pesan error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Jenis kendaraan ${_getVehicleTypeName(selectedCategory.vehicleType)} tidak tersedia untuk kapal ini',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _vehicleCategoryId = categoryId;
-
       // Juga update tipe kendaraan
-      final selectedCategory = widget.vehicleCategories.firstWhere(
-        (cat) => cat.id == categoryId,
-        orElse: () => widget.vehicleCategories.first,
-      );
       _type = selectedCategory.vehicleType;
     });
   }
@@ -1245,48 +1265,92 @@ class __VehicleDialogState extends State<_VehicleDialog> {
                 ...categoriesByType.entries.map((entry) {
                   final vehicleType = entry.key;
                   final categories = entry.value;
+                  final bookingProvider = Provider.of<BookingProvider>(
+                    context,
+                    listen: false,
+                  );
+
+                  // Periksa apakah jenis kendaraan tersedia pada ferry yang dipilih
+                  final bool isAvailable = bookingProvider
+                      .isVehicleTypeAvailable(vehicleType);
 
                   return ExpansionTile(
-                    initiallyExpanded: true,
+                    initiallyExpanded:
+                        isAvailable, // Hanya expand yang tersedia secara default
                     leading: Icon(
                       _getVehicleTypeIcon(vehicleType),
-                      color: theme.primaryColor,
+                      color:
+                          isAvailable
+                              ? theme.primaryColor
+                              : Colors.grey.shade400,
                     ),
-                    title: Text(
-                      _getVehicleTypeName(vehicleType),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
+                    title: Row(
+                      children: [
+                        Text(
+                          _getVehicleTypeName(vehicleType),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color:
+                                isAvailable
+                                    ? Colors.black87
+                                    : Colors.grey.shade400,
+                          ),
+                        ),
+                        if (!isAvailable) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Tidak tersedia',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     subtitle: Text(
-                      '${categories.length} golongan tersedia',
+                      isAvailable
+                          ? '${categories.length} golongan tersedia'
+                          : 'Kapasitas tidak tersedia pada kapal ini',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey.shade600,
                       ),
                     ),
-                    children: [
-                      const SizedBox(height: 8),
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              childAspectRatio:
-                                  2.0, // Meningkatkan nilai ratio secara signifikan
-                              crossAxisSpacing: 10,
-                              mainAxisSpacing: 10,
-                            ),
-                        itemCount: categories.length,
-                        itemBuilder: (context, index) {
-                          final category = categories[index];
-                          return _buildCategoryCard(category);
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                    ],
+                    children:
+                        isAvailable
+                            ? [
+                              const SizedBox(height: 8),
+                              GridView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                gridDelegate:
+                                    const SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: 2,
+                                      childAspectRatio: 2.0,
+                                      crossAxisSpacing: 10,
+                                      mainAxisSpacing: 10,
+                                    ),
+                                itemCount: categories.length,
+                                itemBuilder: (context, index) {
+                                  final category = categories[index];
+                                  return _buildCategoryCard(category);
+                                },
+                              ),
+                              const SizedBox(height: 8),
+                            ]
+                            : [], // Tidak tampilkan children jika tidak tersedia
                   );
                 }).toList(),
 
@@ -1437,6 +1501,15 @@ class __VehicleDialogState extends State<_VehicleDialog> {
     final isSelected = _vehicleCategoryId == category.id;
     final theme = Theme.of(context);
     final categoryColor = _getCategoryColor(category.code);
+    final bookingProvider = Provider.of<BookingProvider>(
+      context,
+      listen: false,
+    );
+
+    // Periksa apakah jenis kendaraan tersedia pada ferry yang dipilih
+    final bool isAvailable = bookingProvider.isVehicleTypeAvailable(
+      category.vehicleType,
+    );
 
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
@@ -1444,39 +1517,58 @@ class __VehicleDialogState extends State<_VehicleDialog> {
       decimalDigits: 0,
     );
 
-    // Menggunakan Row daripada Column untuk menghindari overflow vertikal
     return InkWell(
-      onTap: () => _selectVehicleCategory(category.id),
+      onTap:
+          isAvailable
+              ? () => _selectVehicleCategory(category.id)
+              : null, // Disable tap jika tidak tersedia
       borderRadius: BorderRadius.circular(10),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isSelected ? categoryColor : Colors.grey.shade300,
+            color:
+                isSelected
+                    ? categoryColor
+                    : isAvailable
+                    ? Colors.grey.shade300
+                    : Colors.grey.shade200,
             width: isSelected ? 2 : 1,
           ),
-          color: isSelected ? categoryColor.withOpacity(0.1) : Colors.white,
+          color:
+              !isAvailable
+                  ? Colors.grey.shade100
+                  : isSelected
+                  ? categoryColor.withOpacity(0.1)
+                  : Colors.white,
         ),
-        // Menggunakan Row daripada Column
         child: Row(
           children: [
-            // Badge kode golongan dengan icon status
+            // Badge dengan icon status
             Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: categoryColor.withOpacity(0.1),
+                color:
+                    isAvailable
+                        ? categoryColor.withOpacity(0.1)
+                        : Colors.grey.shade200,
                 shape: BoxShape.circle,
               ),
               child:
                   isSelected
                       ? Icon(Icons.check_circle, color: categoryColor, size: 14)
+                      : !isAvailable
+                      ? Icon(Icons.block, color: Colors.grey.shade400, size: 14)
                       : Text(
                         category.code.substring(0, 3),
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          color: categoryColor,
+                          color:
+                              isAvailable
+                                  ? categoryColor
+                                  : Colors.grey.shade400,
                         ),
                       ),
             ),
@@ -1493,17 +1585,22 @@ class __VehicleDialogState extends State<_VehicleDialog> {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: categoryColor,
+                      color: isAvailable ? categoryColor : Colors.grey.shade400,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    currencyFormat.format(category.basePrice),
+                    isAvailable
+                        ? currencyFormat.format(category.basePrice)
+                        : 'Tidak Tersedia',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
-                      color: theme.primaryColor,
+                      color:
+                          isAvailable
+                              ? theme.primaryColor
+                              : Colors.grey.shade400,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

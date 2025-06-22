@@ -281,7 +281,52 @@ class BookingController extends Controller
 
             Log::info('Vehicle counts', $vehicleCounts);
 
-            // Cek ketersediaan tiap jenis kendaraan
+            // Validasi apakah jenis kendaraan tersedia pada ferry (kapasitas > 0)
+            if ($vehicleCounts['MOTORCYCLE'] > 0 && $schedule->ferry->capacity_vehicle_motorcycle <= 0) {
+                Log::warning('Motorcycle not available on this ferry', [
+                    'capacity' => $schedule->ferry->capacity_vehicle_motorcycle
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Maaf, kendaraan motor tidak tersedia untuk kapal ini'
+                ], 400);
+            }
+
+            if ($vehicleCounts['CAR'] > 0 && $schedule->ferry->capacity_vehicle_car <= 0) {
+                Log::warning('Car not available on this ferry', [
+                    'capacity' => $schedule->ferry->capacity_vehicle_car
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Maaf, kendaraan mobil tidak tersedia untuk kapal ini'
+                ], 400);
+            }
+
+            if ($vehicleCounts['BUS'] > 0 && $schedule->ferry->capacity_vehicle_bus <= 0) {
+                Log::warning('Bus not available on this ferry', [
+                    'capacity' => $schedule->ferry->capacity_vehicle_bus
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Maaf, kendaraan bus tidak tersedia untuk kapal ini'
+                ], 400);
+            }
+
+            if ($vehicleCounts['TRUCK'] > 0 && $schedule->ferry->capacity_vehicle_truck <= 0) {
+                Log::warning('Truck not available on this ferry', [
+                    'capacity' => $schedule->ferry->capacity_vehicle_truck
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Maaf, kendaraan truk tidak tersedia untuk kapal ini'
+                ], 400);
+            }
+
+            // Cek ketersediaan tiap jenis kendaraan (kode yang sudah ada)
             if ($scheduleDate->motorcycle_count + $vehicleCounts['MOTORCYCLE'] > $schedule->ferry->capacity_vehicle_motorcycle) {
                 Log::warning('Insufficient motorcycle capacity', [
                     'current' => $scheduleDate->motorcycle_count,

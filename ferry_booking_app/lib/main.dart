@@ -37,7 +37,6 @@ import 'package:ferry_booking_app/screens/auth/forgot_password_screen.dart';
 import 'package:ferry_booking_app/screens/auth/reset_password_screen.dart';
 import 'package:ferry_booking_app/services/local_notification_service.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:ferry_booking_app/utils/navigation_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -98,10 +97,9 @@ class MyApp extends StatelessWidget {
         ), // Provider untuk Refund
       ],
       child: MaterialApp(
-        navigatorKey:
-            NavigationService.navigatorKey, // Gunakan navigatorKey global
         title: 'Ferry Booking',
         theme: AppTheme.lightTheme,
+        debugShowCheckedModeBanner: false,
 
         // Tambahkan konfigurasi lokalisasi
         localizationsDelegates: const [

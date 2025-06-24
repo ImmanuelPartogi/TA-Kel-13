@@ -292,7 +292,39 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen>
   }
 
   void _continueToSummary() {
-    Navigator.pushNamed(context, '/booking/summary');
+    final bookingProvider = Provider.of<BookingProvider>(
+      context,
+      listen: false,
+    );
+
+    // TAMBAHKAN: Konfirmasi jika tidak ada kendaraan
+    if (bookingProvider.vehicles.isEmpty) {
+      showDialog(
+        context: context,
+        builder:
+            (context) => AlertDialog(
+              title: Text('Konfirmasi'),
+              content: Text(
+                'Anda belum menambahkan kendaraan. Apakah Anda ingin melanjutkan tanpa kendaraan?',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Batal'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/booking/summary');
+                  },
+                  child: Text('Lanjutkan'),
+                ),
+              ],
+            ),
+      );
+    } else {
+      Navigator.pushNamed(context, '/booking/summary');
+    }
   }
 
   @override
@@ -1078,6 +1110,22 @@ class __VehicleDialogState extends State<_VehicleDialog> {
   final _formKey = GlobalKey<FormState>();
   int _vehicleCategoryId = 0;
   String _type = 'MOTORCYCLE';
+
+  String _getValidVehicleType(String originalType) {
+    final validTypes = {
+      'MOTORCYCLE': 'MOTORCYCLE',
+      'CAR': 'CAR',
+      'BUS': 'BUS',
+      'TRUCK': 'TRUCK',
+      // Ubah PICKUP menjadi TRUCK karena server tidak menerima PICKUP
+      'PICKUP': 'TRUCK',
+      'TRONTON': 'TRUCK', // Ubah ini juga menjadi TRUCK
+    };
+    return validTypes[originalType] ??
+        'CAR'; // Default ke CAR jika tidak ditemukan
+  }
+  
+
   late TextEditingController _licensePlateController;
   late TextEditingController _brandController;
   late TextEditingController _modelController;
@@ -1097,14 +1145,14 @@ class __VehicleDialogState extends State<_VehicleDialog> {
       text: widget.vehicle?.weight?.toString() ?? '',
     );
 
-    // Set kategori kendaraan default
+    // UBAH: Set kategori kendaraan default hanya jika vehicle sudah ada
     if (widget.vehicle != null) {
       _vehicleCategoryId = widget.vehicle!.vehicle_category_id;
       _type = widget.vehicle!.type;
-    } else if (widget.vehicleCategories.isNotEmpty) {
-      final defaultCategory = widget.vehicleCategories.first;
-      _vehicleCategoryId = defaultCategory.id;
-      _type = defaultCategory.vehicleType;
+    } else {
+      // Set nilai default ke 0/empty untuk memaksa pengguna memilih
+      _vehicleCategoryId = 0;
+      _type = '';
     }
   }
 
@@ -1119,17 +1167,127 @@ class __VehicleDialogState extends State<_VehicleDialog> {
 
   void _saveVehicle() {
     if (_formKey.currentState!.validate()) {
+      // Validasi pemilihan kategori kendaraan
+      if (_vehicleCategoryId <= 0) {
+        // Tampilkan dialog informasi yang lebih profesional
+        showDialog(
+          context: context,
+          builder:
+              (context) => AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                title: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                    const SizedBox(width: 10),
+                    const Text('Informasi Diperlukan'),
+                  ],
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Kategori kendaraan belum dipilih',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Silakan pilih kategori kendaraan yang sesuai dengan jenis kendaraan Anda untuk melanjutkan.',
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.lightbulb_outline,
+                            color: Colors.blue.shade700,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Kategori menentukan tarif kendaraan yang akan dikenakan.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.blue.shade700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Mengerti'),
+                  ),
+                ],
+              ),
+        );
+
+        // Tambahkan highlight visual pada section kategori
+        // dengan scrolling otomatis ke kategori section
+        // (Ini perlu implementasi ScrollController yang mengarah ke section kategori)
+        return;
+      }
+
       // Dapatkan kategori kendaraan berdasarkan ID yang dipilih
-      final selectedCategory = widget.vehicleCategories.firstWhere(
-        (cat) => cat.id == _vehicleCategoryId,
-        orElse: () => widget.vehicleCategories.first,
-      );
+      VehicleCategory? selectedCategory;
+      try {
+        selectedCategory = widget.vehicleCategories.firstWhere(
+          (cat) => cat.id == _vehicleCategoryId,
+        );
+      } catch (e) {
+        showDialog(
+          context: context,
+          builder:
+              (context) => AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                title: Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                    const SizedBox(width: 10),
+                    const Text('Kategori Tidak Valid'),
+                  ],
+                ),
+                content: const Text(
+                  'Kategori kendaraan yang dipilih tidak valid. Silakan pilih kategori yang tersedia.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Tutup'),
+                  ),
+                ],
+              ),
+        );
+        return;
+      }
 
       final vehicle = Vehicle(
         id: widget.vehicle?.id ?? -1,
         bookingId: widget.vehicle?.bookingId ?? -1,
         userId: widget.vehicle?.userId ?? -1,
-        type: selectedCategory.vehicleType,
+        type: _getValidVehicleType(
+          selectedCategory.vehicleType,
+        ), // Pastikan tipe valid
         vehicle_category_id: _vehicleCategoryId,
         licensePlate: _licensePlateController.text.trim().toUpperCase(),
         brand: _brandController.text.trim(),
@@ -1180,6 +1338,7 @@ class __VehicleDialogState extends State<_VehicleDialog> {
     });
   }
 
+  @override
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -1260,6 +1419,40 @@ class __VehicleDialogState extends State<_VehicleDialog> {
                   style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                 ),
                 const SizedBox(height: 16),
+
+                // TAMBAHKAN KODE INDIKATOR DI SINI
+                if (_vehicleCategoryId <= 0)
+                  Container(
+                    margin: const EdgeInsets.only(top: 8, bottom: 8),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          size: 16,
+                          color: Colors.orange.shade800,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Harap pilih kategori kendaraan untuk melanjutkan',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.orange.shade800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
                 // Kategori kendaraan dengan expandable sections
                 ...categoriesByType.entries.map((entry) {

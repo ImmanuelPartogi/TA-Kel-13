@@ -96,6 +96,8 @@ class BookingProvider extends ChangeNotifier {
     for (var vehicle in _vehicles) {
       // Cara 1: Gunakan vehicle_category_id untuk mendapatkan harga dari kategori
       final category = _vehicleCategories.firstWhere(
+
+        
         (cat) => cat.id == vehicle.vehicle_category_id,
         orElse:
             () =>
@@ -231,11 +233,10 @@ class BookingProvider extends ChangeNotifier {
       'CAR': 'CAR',
       'BUS': 'BUS',
       'TRUCK': 'TRUCK',
-      // Ubah PICKUP menjadi TRUCK karena server tidak menerima PICKUP
       'PICKUP': 'TRUCK',
-      'TRONTON': 'TRONTON',
+      'TRONTON': 'TRUCK',
     };
-    return validTypes[originalType] ?? 'MOTORCYCLE';
+    return validTypes[originalType] ?? 'CAR';
   }
 
   void createTemporaryBooking() {
@@ -268,6 +269,9 @@ class BookingProvider extends ChangeNotifier {
   // Set selected route
   void setSelectedRoute(FerryRoute route) {
     _selectedRoute = route;
+
+    // TAMBAHKAN: Reset daftar kendaraan saat rute dipilih
+    _vehicles = [];
 
     // Load vehicle categories dari rute jika tersedia
     if (route.vehicleCategories != null &&
@@ -598,20 +602,53 @@ class BookingProvider extends ChangeNotifier {
     try {
       // Konversi vehicles ke Map
       final List<Map<String, dynamic>> vehiclesMap =
-          _vehicles
-              .map(
-                (vehicle) => {
-                  'type': vehicle.type,
-                  'vehicle_category_id':
-                      vehicle
-                          .vehicle_category_id, // Tambahkan vehicle_category_id
-                  'license_plate': vehicle.licensePlate,
-                  'brand': vehicle.brand,
-                  'model': vehicle.model,
-                  'weight': vehicle.weight,
-                },
-              )
-              .toList();
+          _vehicles.map((vehicle) {
+            // Dapatkan kategori kendaraan untuk mendapatkan tipe yang valid
+            final category = _vehicleCategories.firstWhere(
+              (cat) => cat.id == vehicle.vehicle_category_id,
+              orElse:
+                  () =>
+                      _vehicleCategories.isNotEmpty
+                          ? _vehicleCategories.first
+                          : VehicleCategory(
+                            id: 0,
+                            code: '',
+                            name: '',
+                            vehicleType: '',
+                            basePrice: 0,
+                            isActive: false,
+                          ),
+            );
+
+            // Pastikan tipe kendaraan valid untuk server
+            String validType = 'MOTORCYCLE'; // default
+            if (category != null) {
+              switch (category.vehicleType) {
+                case 'MOTORCYCLE':
+                case 'CAR':
+                case 'BUS':
+                case 'TRUCK':
+                  validType = category.vehicleType;
+                  break;
+                case 'PICKUP':
+                case 'TRONTON':
+                  validType =
+                      'TRUCK'; // Map ke TRUCK karena server menerima ini
+                  break;
+                default:
+                  validType = 'CAR'; // Fallback ke CAR jika tidak dikenal
+              }
+            }
+
+            return {
+              'type': validType, // Gunakan tipe yang sudah divalidasi
+              'vehicle_category_id': vehicle.vehicle_category_id,
+              'license_plate': vehicle.licensePlate,
+              'brand': vehicle.brand,
+              'model': vehicle.model,
+              'weight': vehicle.weight,
+            };
+          }).toList();
 
       // Buat data booking
       final Map<String, dynamic> bookingData = {
@@ -650,6 +687,16 @@ class BookingProvider extends ChangeNotifier {
 
   // TAMBAHAN: Metode untuk menyiapkan data booking tanpa mengirim ke API
   Future<bool> prepareBooking() async {
+    // Validasi kendaraan
+    for (var vehicle in _vehicles) {
+      if (!isVehicleTypeAvailable(vehicle.type)) {
+        _errorMessage =
+            'Kendaraan jenis ${_getVehicleTypeName(vehicle.type)} tidak tersedia untuk kapal ini';
+        notifyListeners();
+        return false;
+      }
+    }
+
     if (_selectedSchedule == null ||
         _selectedDate == null ||
         totalPassengers == 0) {

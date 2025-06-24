@@ -26,23 +26,44 @@ class Vehicle {
   });
 
   factory Vehicle.fromJson(Map<String, dynamic> json) {
+    String validateVehicleType(String type) {
+      final validTypes = ['MOTORCYCLE', 'CAR', 'BUS', 'TRUCK'];
+      if (validTypes.contains(type)) return type;
+
+      // Map tipe yang tidak valid
+      if (type == 'PICKUP' || type == 'TRONTON') return 'TRUCK';
+
+      // Default fallback
+      return 'CAR';
+    }
+
     return Vehicle(
       id: json['id'],
       bookingId: json['booking_id'],
       userId: json['user_id'],
-      type: json['type'],
+      type: validateVehicleType(json['type']),
       vehicle_category_id: json['vehicle_category_id'], // Parse dari JSON
       licensePlate: json['license_plate'],
       brand: json['brand'],
       model: json['model'],
-      weight: json['weight'] != null 
-          ? double.parse(json['weight'].toString()) 
-          : null,
+      weight:
+          json['weight'] != null
+              ? double.parse(json['weight'].toString())
+              : null,
       createdAt: json['created_at'],
       updatedAt: json['updated_at'],
     );
   }
-  
+
+  // Fungsi untuk memastikan tipe yang dikirim valid
+  String get validServerType {
+    final validTypes = ['MOTORCYCLE', 'CAR', 'BUS', 'TRUCK'];
+    if (validTypes.contains(type)) return type;
+
+    if (type == 'PICKUP' || type == 'TRONTON') return 'TRUCK';
+    return 'CAR';
+  }
+
   // Opsional: Tambahkan toJson() untuk memudahkan ketika mengirim data ke API
   Map<String, dynamic> toJson() {
     return {

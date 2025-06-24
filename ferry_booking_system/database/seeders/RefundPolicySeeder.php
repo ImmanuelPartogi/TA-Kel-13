@@ -59,26 +59,6 @@ class RefundPolicySeeder extends Seeder
                 'description' => 'Refund 50% untuk pembatalan 2 hari sebelum keberangkatan',
                 'is_active' => true
             ],
-
-            // Kebijakan untuk 1 hari sebelum keberangkatan
-            [
-                'days_before_departure' => 1,
-                'refund_percentage' => 30,
-                'min_fee' => 30000,
-                'max_fee' => 300000,
-                'description' => 'Refund 30% untuk pembatalan 1 hari sebelum keberangkatan',
-                'is_active' => true
-            ],
-
-            // Kebijakan untuk hari keberangkatan
-            [
-                'days_before_departure' => 0,
-                'refund_percentage' => 0,
-                'min_fee' => null,
-                'max_fee' => null,
-                'description' => 'Tidak ada refund untuk pembatalan pada hari keberangkatan',
-                'is_active' => true
-            ],
         ];
 
         foreach ($policies as $policy) {

@@ -359,7 +359,7 @@ Route::prefix('operator-panel')->middleware(['auth:sanctum'])->group(function ()
 
         // Check-in routes
         Route::prefix('check-in')->group(function () {
-            Route::post('/validate', [CheckInController::class, 'validate']);
+            Route::post('/validate', [CheckInController::class, 'validateTicket']);
             Route::post('/process', [CheckInController::class, 'process']);
         });
     });

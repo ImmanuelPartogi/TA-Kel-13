@@ -377,12 +377,10 @@ const ScheduleCreate = () => {
 
       // Tambahkan penanganan khusus untuk error konflik jadwal
       if (error.response?.data?.conflicting_schedule) {
-        const conflict = error.response.data.conflicting_schedule;
         setErrors({
           ...error.response?.data?.errors,
           general: [
             'Terjadi konflik jadwal untuk kapal yang dipilih.',
-            `Jadwal yang bertabrakan: Hari ${adminScheduleService.formatDays(conflict.days)}`,
             '1. Pilih kapal lain yang tersedia',
             '2. Pilih hari operasional yang berbeda (hindari hari yang sama)',
             '3. Hubungi admin untuk menyesuaikan jadwal yang sudah ada'
@@ -521,7 +519,7 @@ const ScheduleCreate = () => {
             </div>
 
             {/* Tambahkan di bawah Progress Steps, sekitar baris 200 */}
-            {errors.general && (
+            {(errors.general || errors.route_id || errors.ferry_id || errors.departure_time || errors.arrival_time) && (
               <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 shadow-md rounded-md animate-fadeIn">
                 <div className="flex items-start">
                   <div className="flex-shrink-0">
@@ -532,15 +530,31 @@ const ScheduleCreate = () => {
                   <div className="ml-3">
                     <h3 className="text-sm font-medium text-red-800">Perhatian: Konflik Jadwal</h3>
                     <div className="mt-2 text-sm text-red-700">
-                      {Array.isArray(errors.general) ? (
-                        <ul className="list-disc pl-5 space-y-1">
-                          {errors.general.map((err, index) => (
-                            <p key={index}>{err}</p>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p>{errors.general}</p>
-                      )}
+                      <ul className="pl-5 space-y-1">
+                        {/* Tampilkan error general */}
+                        {Array.isArray(errors.general) ?
+                          errors.general.map((err, index) => (<li key={`general-${index}`}>{err}</li>)) :
+                          errors.general && <p>{errors.general}</p>}
+
+                        {/* Tampilkan error route_id */}
+                        {Array.isArray(errors.route_id) ?
+                          errors.route_id.map((err, index) => (<li key={`route-${index}`}>{err}</li>)) :
+                          errors.route_id && <p>{errors.route_id}</p>}
+
+                        {/* Tampilkan error ferry_id */}
+                        {Array.isArray(errors.ferry_id) ?
+                          errors.ferry_id.map((err, index) => (<li key={`ferry-${index}`}>{err}</li>)) :
+                          errors.ferry_id && <p>{errors.ferry_id}</p>}
+
+                        {/* Tampilkan error waktu */}
+                        {Array.isArray(errors.departure_time) ?
+                          errors.departure_time.map((err, index) => (<li key={`departure-${index}`}>{err}</li>)) :
+                          errors.departure_time && <p>{errors.departure_time}</p>}
+
+                        {Array.isArray(errors.arrival_time) ?
+                          errors.arrival_time.map((err, index) => (<li key={`arrival-${index}`}>{err}</li>)) :
+                          errors.arrival_time && <p>{errors.arrival_time}</p>}
+                      </ul>
                     </div>
                   </div>
                 </div>

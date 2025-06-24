@@ -174,12 +174,18 @@ class ScheduleService
             ->where('date', $date->format('Y-m-d'))
             ->first();
 
-        // PERBAIKAN: Buat ScheduleDate jika belum ada untuk konsistensi dengan ScheduleController
+        // Buat ScheduleDate jika belum ada untuk konsistensi dengan ScheduleController
         if (!$scheduleDate) {
             Log::info('Creating new ScheduleDate for consistency', [
                 'schedule_id' => $schedule->id,
                 'date' => $date->format('Y-m-d')
             ]);
+
+            // Periksa jika jadwal ini dalam status tidak aktif
+            $status = 'AVAILABLE';
+            if ($schedule->status === 'INACTIVE') {
+                $status = 'INACTIVE';
+            }
 
             $scheduleDate = ScheduleDate::create([
                 'schedule_id' => $schedule->id,
@@ -189,7 +195,8 @@ class ScheduleService
                 'car_count' => 0,
                 'bus_count' => 0,
                 'truck_count' => 0,
-                'status' => 'AVAILABLE',
+                'status' => $status,
+                'modified_by_schedule' => ($schedule->status === 'INACTIVE'),
             ]);
         }
 

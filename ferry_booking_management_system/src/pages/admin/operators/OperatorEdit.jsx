@@ -204,11 +204,15 @@ const OperatorEdit = () => {
     ? [errors.general]
     : Object.values(errors).filter(error => error !== undefined);
 
-  // Filter routes based on searchTerm
-  const filteredRoutes = routes.filter(route =>
-    `${route.origin} - ${route.destination}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (route.description && route.description.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredRoutes = routes.filter(route => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      route.origin?.toLowerCase().includes(searchLower) ||
+      route.destination?.toLowerCase().includes(searchLower) ||
+      (route.route_code && route.route_code.toLowerCase().includes(searchLower)) ||
+      (route.description && route.description.toLowerCase().includes(searchLower))
+    );
+  });
 
   if (!operator) {
     return (
@@ -649,6 +653,11 @@ const OperatorEdit = () => {
                               <i className="fas fa-route text-blue-500 mr-2"></i>
                               <span className="font-semibold">
                                 {route.origin} - {route.destination}
+                                {route.route_code && (
+                                  <span className="ml-1 text-blue-600 bg-blue-50 px-2 py-0.5 text-xs rounded-full">
+                                    {route.route_code}
+                                  </span>
+                                )}
                               </span>
                             </div>
                             {route.description && (

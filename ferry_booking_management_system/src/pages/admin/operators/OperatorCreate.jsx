@@ -172,6 +172,7 @@ const OperatorCreate = () => {
     return (
       route.origin?.toLowerCase().includes(searchLower) ||
       route.destination?.toLowerCase().includes(searchLower) ||
+      (route.route_code && route.route_code.toLowerCase().includes(searchLower)) ||
       (route.description && route.description.toLowerCase().includes(searchLower))
     );
   });
@@ -587,6 +588,11 @@ const OperatorCreate = () => {
                               <i className="fas fa-route text-blue-500 mr-2"></i>
                               <span className="font-semibold">
                                 {route.origin} - {route.destination}
+                                {route.route_code && (
+                                  <span className="ml-1 text-blue-600 bg-blue-50 px-2 py-0.5 text-xs rounded-full">
+                                    {route.route_code}
+                                  </span>
+                                )}
                               </span>
                             </div>
                             {route.description && (

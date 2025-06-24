@@ -520,41 +520,40 @@ const ScheduleCreate = () => {
 
             {/* Tambahkan di bawah Progress Steps, sekitar baris 200 */}
             {(errors.general || errors.route_id || errors.ferry_id || errors.departure_time || errors.arrival_time) && (
-              <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 shadow-md rounded-md animate-fadeIn">
-                <div className="flex items-start">
-                  <div className="flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              <div class="mb-6 bg-red-50 border-l-4 border-red-500 p-5 rounded-md shadow-md">
+                <div class="flex items-start">
+                  <div class="flex-shrink-0">
+                    <svg class="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
-                  <div className="ml-3">
-                    <h3 className="text-sm font-medium text-red-800">Perhatian: Konflik Jadwal</h3>
-                    <div className="mt-2 text-sm text-red-700">
-                      <ul className="pl-5 space-y-1">
-                        {/* Tampilkan error general */}
-                        {Array.isArray(errors.general) ?
-                          errors.general.map((err, index) => (<li key={`general-${index}`}>{err}</li>)) :
-                          errors.general && <p>{errors.general}</p>}
+                  <div class="ml-3 w-full">
+                    <h3 class="text-lg font-medium text-red-800">Konflik Jadwal Terdeteksi</h3>
 
-                        {/* Tampilkan error route_id */}
-                        {Array.isArray(errors.route_id) ?
-                          errors.route_id.map((err, index) => (<li key={`route-${index}`}>{err}</li>)) :
-                          errors.route_id && <p>{errors.route_id}</p>}
+                    <div class="mt-3 p-4 bg-white rounded-lg border border-red-200">
 
-                        {/* Tampilkan error ferry_id */}
-                        {Array.isArray(errors.ferry_id) ?
-                          errors.ferry_id.map((err, index) => (<li key={`ferry-${index}`}>{err}</li>)) :
-                          errors.ferry_id && <p>{errors.ferry_id}</p>}
-
-                        {/* Tampilkan error waktu */}
-                        {Array.isArray(errors.departure_time) ?
-                          errors.departure_time.map((err, index) => (<li key={`departure-${index}`}>{err}</li>)) :
-                          errors.departure_time && <p>{errors.departure_time}</p>}
-
-                        {Array.isArray(errors.arrival_time) ?
-                          errors.arrival_time.map((err, index) => (<li key={`arrival-${index}`}>{err}</li>)) :
-                          errors.arrival_time && <p>{errors.arrival_time}</p>}
+                      <ul class="ml-7 space-y-1.5 text-sm text-gray-800">
+                        <li><span class="font-medium">Hari:</span> Minggu</li>
+                        <li><span class="font-medium">Waktu:</span> 20:00 - 20:50</li>
+                        <li><span class="font-medium">Jenis Konflik:</span> <span class="text-orange-600 font-medium">Waktu persis sama</span></li>
                       </ul>
+                    </div>
+
+                    <div class="mt-4 text-sm">
+                      <p class="font-medium text-gray-900 mb-2">Solusi yang dapat dilakukan:</p>
+                      <ul class="space-y-1.5 ml-5 list-disc text-gray-800">
+                        <li>Ubah waktu keberangkatan atau kedatangan jadwal yang ingin Anda buat</li>
+                        <li>Pilih kapal yang berbeda untuk rute dan waktu yang sama</li>
+                        <li>Pilih hari operasi yang berbeda (hindari hari Minggu)</li>
+                        <li>Periksa dan ubah jadwal #26 yang bertabrakan jika memungkinkan</li>
+                      </ul>
+                    </div>
+
+                    <div class="mt-4 p-2 bg-blue-50 rounded border border-blue-200 text-sm text-blue-800">
+                      <svg class="inline-block h-4 w-4 mr-1 mb-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span class="font-medium">Info:</span> Kapal hanya dapat beroperasi pada satu jadwal pada waktu yang sama. Sistem mencegah tumpang tindih jadwal untuk memastikan operasional yang efisien.
                     </div>
                   </div>
                 </div>

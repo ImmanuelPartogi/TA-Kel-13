@@ -106,6 +106,7 @@ class ScheduleController extends Controller
 
     public function store(Request $request)
     {
+        // Validasi input dasar
         $validated = $request->validate([
             'route_id' => 'required|exists:routes,id',
             'ferry_id' => 'required|exists:ferries,id',
@@ -120,6 +121,7 @@ class ScheduleController extends Controller
         // 1. Validasi: Satu rute hanya boleh dilayani oleh satu kapal
         $existingRouteSchedule = Schedule::where('route_id', $request->route_id)
             ->where('ferry_id', '!=', $request->ferry_id)
+            ->where('status', 'ACTIVE')
             ->first();
 
         if ($existingRouteSchedule) {
@@ -138,89 +140,45 @@ class ScheduleController extends Controller
             ], 422);
         }
 
-        // 2. Validasi: Jadwal tidak boleh tumpang tindih waktu pada hari yang sama
-        $requestDays = $request->days;
-        $departureTime = $request->departure_time;
-        $arrivalTime = $request->arrival_time;
+        // 2. Validasi konflik jadwal: jadwal tidak boleh tumpang tindih pada waktu dan hari yang sama
+        $conflicts = $this->checkScheduleConflicts(
+            $request->ferry_id,
+            $request->days,
+            $request->departure_time,
+            $request->arrival_time
+        );
 
-        // Jadwal kapal yang sama pada hari yang diminta
-        $existingSchedules = Schedule::where('ferry_id', $request->ferry_id)
-            ->where('id', '!=', $id ?? 0)
-            ->get();
+        // Jika ditemukan konflik, kembalikan respons error
+        if (!empty($conflicts)) {
+            // Kumpulkan detail konflik untuk pesan error
+            $conflictDetails = [];
+            $conflictDays = [];
 
-        $conflictingSchedule = null;
-        foreach ($existingSchedules as $schedule) {
-            $scheduleDays = explode(',', $schedule->days);
+            foreach ($conflicts as $conflict) {
+                $conflictDetails[] = 'ID ' . $conflict['schedule_id'] . ': ' .
+                    'Hari ' . implode(', ', $conflict['overlapping_day_names']) . ' ' .
+                    '(' . $conflict['conflict_description'] . ' - ' .
+                    $conflict['departure_time'] . ' - ' . $conflict['arrival_time'] . ')';
 
-            // Periksa tumpang tindih hari
-            $overlappingDays = array_intersect($requestDays, $scheduleDays);
-
-            if (!empty($overlappingDays)) {
-                // Periksa tumpang tindih waktu
-                // Konversi waktu ke menit untuk mempermudah perbandingan
-                $depTimeMinutes = $this->timeToMinutes($departureTime);
-                $arrTimeMinutes = $this->timeToMinutes($arrivalTime);
-                $scheduleDepTimeMinutes = $this->timeToMinutes($schedule->departure_time);
-                $scheduleArrTimeMinutes = $this->timeToMinutes($schedule->arrival_time);
-
-                // Kondisi konflik waktu (4 kemungkinan):
-                // 1. Waktu keberangkatan berada di antara waktu keberangkatan dan kedatangan jadwal yang ada
-                // 2. Waktu kedatangan berada di antara waktu keberangkatan dan kedatangan jadwal yang ada
-                // 3. Jadwal baru mencakup jadwal yang ada (keberangkatan lebih awal, kedatangan lebih lambat)
-                // 4. Jadwal baru tercakup oleh jadwal yang ada (keberangkatan lebih lambat, kedatangan lebih awal)
-                if (($depTimeMinutes >= $scheduleDepTimeMinutes && $depTimeMinutes <= $scheduleArrTimeMinutes) ||
-                    ($arrTimeMinutes >= $scheduleDepTimeMinutes && $arrTimeMinutes <= $scheduleArrTimeMinutes) ||
-                    ($depTimeMinutes <= $scheduleDepTimeMinutes && $arrTimeMinutes >= $scheduleArrTimeMinutes) ||
-                    ($depTimeMinutes >= $scheduleDepTimeMinutes && $arrTimeMinutes <= $scheduleArrTimeMinutes)
-                ) {
-
-                    $conflictingSchedule = $schedule;
-                    break;
-                }
+                $conflictDays = array_merge($conflictDays, $conflict['overlapping_day_names']);
             }
-        }
 
-        if ($conflictingSchedule) {
-            $dayNames = [1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu'];
-            $conflictDays = array_map(function ($day) use ($dayNames) {
-                return $dayNames[$day] ?? $day;
-            }, array_intersect($requestDays, explode(',', $conflictingSchedule->days)));
+            // Hapus duplikat hari konflik
+            $conflictDays = array_unique($conflictDays);
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Jadwal bertabrakan dengan jadwal yang sudah ada untuk kapal yang sama',
+                'message' => 'Jadwal bertabrakan dengan jadwal yang sudah ada',
                 'errors' => [
-                    'departure_time' => ['Terjadi konflik waktu pada hari: ' . implode(', ', $conflictDays)],
-                    'arrival_time' => ['Jadwal bertabrakan dengan jadwal lain pada rentang waktu: '
-                        . $conflictingSchedule->departure_time . ' - ' . $conflictingSchedule->arrival_time]
+                    'days' => ['Terjadi konflik pada hari: ' . implode(', ', $conflictDays)],
+                    'departure_time' => ['Jadwal bertabrakan pada hari dan waktu yang sama dengan jadwal lain'],
+                    'general' => array_merge(['Jadwal bertabrakan dengan jadwal yang sudah ada:'], $conflictDetails)
                 ],
-                'conflicting_schedule' => [
-                    'id' => $conflictingSchedule->id,
-                    'days' => $conflictingSchedule->days,
-                    'departure_time' => $conflictingSchedule->departure_time,
-                    'arrival_time' => $conflictingSchedule->arrival_time
-                ]
+                'conflicting_schedules' => $conflicts
             ], 422);
         }
 
-        // Validasi duplikasi jadwal dengan rute dan waktu yang sama persis (tetap dipertahankan)
-        $existingExactSchedule = Schedule::where('route_id', $request->route_id)
-            ->where('departure_time', $request->departure_time)
-            ->where('arrival_time', $request->arrival_time)
-            ->where('days', implode(',', $request->days))
-            ->first();
-
-        if ($existingExactSchedule) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Jadwal dengan rute dan waktu yang sama sudah ada',
-                'errors' => [
-                    'general' => ['Jadwal dengan rute, waktu keberangkatan, waktu kedatangan dan hari yang sama sudah ada']
-                ]
-            ], 422);
-        }
-
-        // Lanjutkan dengan pembuatan jadwal seperti kode lama
+        // Jika tidak ada konflik, lanjutkan menyimpan jadwal
         $schedule = new Schedule([
             'route_id' => $request->route_id,
             'ferry_id' => $request->ferry_id,
@@ -229,6 +187,16 @@ class ScheduleController extends Controller
             'days' => implode(',', $request->days),
             'status' => $request->status,
             'status_reason' => $request->status_reason,
+        ]);
+
+        // Log input data untuk debugging
+        Log::info('Data input jadwal baru:', [
+            'route_id' => $request->route_id,
+            'ferry_id' => $request->ferry_id,
+            'departure_time' => $request->departure_time,
+            'arrival_time' => $request->arrival_time,
+            'days' => $request->days,
+            'status' => $request->status
         ]);
 
         $schedule->created_by = Auth::id();
@@ -250,24 +218,12 @@ class ScheduleController extends Controller
         ], 201);
     }
 
-    /**
-     * Mengkonversi string waktu format "HH:MM" ke jumlah menit
-     *
-     * @param string $time Format waktu "HH:MM"
-     * @return int Jumlah menit
-     */
-    private function timeToMinutes($time)
-    {
-        if (!$time) return 0;
-
-        list($hours, $minutes) = explode(':', $time);
-        return (int)$hours * 60 + (int)$minutes;
-    }
-
     public function update(Request $request, $id)
     {
+        // Cari jadwal yang akan diupdate
         $schedule = Schedule::findOrFail($id);
 
+        // Validasi input dasar
         $validated = $request->validate([
             'route_id' => 'required|exists:routes,id',
             'ferry_id' => 'required|exists:ferries,id',
@@ -280,11 +236,11 @@ class ScheduleController extends Controller
         ]);
 
         // 1. Validasi: Satu rute hanya boleh dilayani oleh satu kapal
-        // Jika user mengubah rute atau kapal, periksa aturan ini
         if ($schedule->route_id != $request->route_id || $schedule->ferry_id != $request->ferry_id) {
             $existingRouteSchedule = Schedule::where('route_id', $request->route_id)
                 ->where('ferry_id', '!=', $request->ferry_id)
                 ->where('id', '!=', $id)
+                ->where('status', 'ACTIVE')
                 ->first();
 
             if ($existingRouteSchedule) {
@@ -304,89 +260,49 @@ class ScheduleController extends Controller
             }
         }
 
-        // 2. Validasi: Jadwal tidak boleh tumpang tindih waktu pada hari yang sama
-        $requestDays = $request->days;
-        $departureTime = $request->departure_time;
-        $arrivalTime = $request->arrival_time;
+        // 2. Validasi konflik jadwal: jadwal tidak boleh tumpang tindih pada waktu dan hari yang sama
+        $conflicts = $this->checkScheduleConflicts(
+            $request->ferry_id,
+            $request->days,
+            $request->departure_time,
+            $request->arrival_time,
+            $id // Kecualikan jadwal yang sedang diupdate
+        );
 
-        // Jadwal kapal yang sama pada hari yang diminta
-        $existingSchedules = Schedule::where('ferry_id', $request->ferry_id)
-            ->where('id', '!=', $id)
-            ->get();
+        // Jika ditemukan konflik, kembalikan respons error
+        if (!empty($conflicts)) {
+            // Kumpulkan detail konflik untuk pesan error
+            $conflictDetails = [];
+            $conflictDays = [];
 
-        $conflictingSchedule = null;
-        foreach ($existingSchedules as $existingSchedule) {
-            $scheduleDays = explode(',', $existingSchedule->days);
+            foreach ($conflicts as $conflict) {
+                $conflictDetails[] = 'ID ' . $conflict['schedule_id'] . ': ' .
+                    'Hari ' . implode(', ', $conflict['overlapping_day_names']) . ' ' .
+                    '(' . $conflict['conflict_description'] . ' - ' .
+                    $conflict['departure_time'] . ' - ' . $conflict['arrival_time'] . ')';
 
-            // Periksa tumpang tindih hari
-            $overlappingDays = array_intersect($requestDays, $scheduleDays);
-
-            if (!empty($overlappingDays)) {
-                // Periksa tumpang tindih waktu
-                // Konversi waktu ke menit untuk mempermudah perbandingan
-                $depTimeMinutes = $this->timeToMinutes($departureTime);
-                $arrTimeMinutes = $this->timeToMinutes($arrivalTime);
-                $scheduleDepTimeMinutes = $this->timeToMinutes($existingSchedule->departure_time);
-                $scheduleArrTimeMinutes = $this->timeToMinutes($existingSchedule->arrival_time);
-
-                // Cek konflik waktu seperti pada metode store
-                if (($depTimeMinutes >= $scheduleDepTimeMinutes && $depTimeMinutes <= $scheduleArrTimeMinutes) ||
-                    ($arrTimeMinutes >= $scheduleDepTimeMinutes && $arrTimeMinutes <= $scheduleArrTimeMinutes) ||
-                    ($depTimeMinutes <= $scheduleDepTimeMinutes && $arrTimeMinutes >= $scheduleArrTimeMinutes) ||
-                    ($depTimeMinutes >= $scheduleDepTimeMinutes && $arrTimeMinutes <= $scheduleArrTimeMinutes)
-                ) {
-
-                    $conflictingSchedule = $existingSchedule;
-                    break;
-                }
+                $conflictDays = array_merge($conflictDays, $conflict['overlapping_day_names']);
             }
-        }
 
-        if ($conflictingSchedule) {
-            $dayNames = [1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu'];
-            $conflictDays = array_map(function ($day) use ($dayNames) {
-                return $dayNames[$day] ?? $day;
-            }, array_intersect($requestDays, explode(',', $conflictingSchedule->days)));
+            // Hapus duplikat hari konflik
+            $conflictDays = array_unique($conflictDays);
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Jadwal bertabrakan dengan jadwal yang sudah ada untuk kapal yang sama',
+                'message' => 'Jadwal bertabrakan dengan jadwal yang sudah ada',
                 'errors' => [
-                    'departure_time' => ['Terjadi konflik waktu pada hari: ' . implode(', ', $conflictDays)],
-                    'arrival_time' => ['Jadwal bertabrakan dengan jadwal lain pada rentang waktu: '
-                        . $conflictingSchedule->departure_time . ' - ' . $conflictingSchedule->arrival_time]
+                    'days' => ['Terjadi konflik pada hari: ' . implode(', ', $conflictDays)],
+                    'departure_time' => ['Jadwal bertabrakan pada hari dan waktu yang sama dengan jadwal lain'],
+                    'general' => array_merge(['Jadwal bertabrakan dengan jadwal yang sudah ada:'], $conflictDetails)
                 ],
-                'conflicting_schedule' => [
-                    'id' => $conflictingSchedule->id,
-                    'days' => $conflictingSchedule->days,
-                    'departure_time' => $conflictingSchedule->departure_time,
-                    'arrival_time' => $conflictingSchedule->arrival_time
-                ]
+                'conflicting_schedules' => $conflicts
             ], 422);
         }
 
-        // Validasi duplikasi jadwal dengan rute dan waktu yang sama persis (tetap dipertahankan)
-        $existingExactSchedule = Schedule::where('route_id', $request->route_id)
-            ->where('departure_time', $request->departure_time)
-            ->where('arrival_time', $request->arrival_time)
-            ->where('days', implode(',', $request->days))
-            ->where('id', '!=', $id)
-            ->first();
-
-        if ($existingExactSchedule) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Jadwal dengan rute dan waktu yang sama sudah ada',
-                'errors' => [
-                    'general' => ['Jadwal dengan rute, waktu keberangkatan, waktu kedatangan dan hari yang sama sudah ada']
-                ]
-            ], 422);
-        }
-
-        // Lanjutkan dengan pembaruan jadwal seperti kode lama
-        // Check if status changed
+        // Deteksi perubahan status
         $statusChanged = $schedule->status !== $request->status;
 
+        // Update data jadwal
         $schedule->route_id = $request->route_id;
         $schedule->ferry_id = $request->ferry_id;
         $schedule->departure_time = $request->departure_time;
@@ -395,19 +311,18 @@ class ScheduleController extends Controller
         $schedule->status = $request->status;
         $schedule->status_reason = $request->status_reason;
 
+        // Update waktu dan tanggal kedaluwarsa jika status berubah
         if ($statusChanged || $request->has('status_expiry_date')) {
             $schedule->status_updated_at = Carbon::now();
 
-            // Update expiry date
             if ($request->status === 'INACTIVE' && $request->has('status_expiry_date') && $request->status_expiry_date) {
                 $schedule->status_expiry_date = Carbon::parse($request->status_expiry_date);
             } else {
                 $schedule->status_expiry_date = null;
             }
 
-            // Update schedule dates status based on new schedule status
+            // Update status tanggal jadwal berdasarkan perubahan status jadwal
             if ($request->status === 'INACTIVE') {
-                // Jika jadwal menjadi tidak aktif, semua tanggal jadwal yang tidak memiliki status khusus juga menjadi tidak aktif
                 ScheduleDate::where('schedule_id', $schedule->id)
                     ->where('date', '>=', Carbon::today())
                     ->whereNotIn('status', ['FULL', 'CANCELLED', 'DEPARTED', 'WEATHER_ISSUE'])
@@ -417,7 +332,6 @@ class ScheduleController extends Controller
                         'modified_by_schedule' => true,
                     ]);
             } else {
-                // Jika jadwal menjadi aktif, semua tanggal jadwal yang sebelumnya diubah oleh jadwal menjadi aktif
                 ScheduleDate::where('schedule_id', $schedule->id)
                     ->where('date', '>=', Carbon::today())
                     ->where('status', 'INACTIVE')
@@ -437,6 +351,176 @@ class ScheduleController extends Controller
             'message' => 'Jadwal berhasil diperbarui',
             'data' => $schedule
         ]);
+    }
+
+    /**
+     * Cek konflik jadwal untuk kapal tertentu
+     *
+     * @param int $ferryId ID kapal
+     * @param array $days Array hari (1-7)
+     * @param string $departureTime Waktu keberangkatan (format H:i)
+     * @param string $arrivalTime Waktu kedatangan (format H:i)
+     * @param int|null $excludeScheduleId ID jadwal yang dikecualikan (untuk kasus update)
+     * @return array Array jadwal yang konflik
+     */
+    private function checkScheduleConflicts($ferryId, $days, $departureTime, $arrivalTime, $excludeScheduleId = null)
+    {
+        // Pastikan days selalu berupa array integer
+        $days = array_map('intval', is_array($days) ? $days : explode(',', $days));
+
+        // Konversi waktu ke menit untuk memudahkan perbandingan
+        $depTimeMinutes = $this->timeToMinutes($departureTime);
+        $arrTimeMinutes = $this->timeToMinutes($arrivalTime);
+
+        // Log untuk debugging
+        Log::info('Memeriksa konflik jadwal', [
+            'ferry_id' => $ferryId,
+            'days' => $days,
+            'departure_time' => $departureTime . ' (' . $depTimeMinutes . ' menit)',
+            'arrival_time' => $arrivalTime . ' (' . $arrTimeMinutes . ' menit)',
+            'exclude_id' => $excludeScheduleId
+        ]);
+
+        // Ambil semua jadwal aktif untuk kapal yang sama
+        $query = Schedule::where('ferry_id', $ferryId)
+            ->where('status', 'ACTIVE');
+
+        // Kecualikan jadwal yang sedang diupdate
+        if ($excludeScheduleId) {
+            $query->where('id', '!=', $excludeScheduleId);
+        }
+
+        $existingSchedules = $query->get();
+        $dayNames = [1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu'];
+        $conflicts = [];
+
+        foreach ($existingSchedules as $schedule) {
+            // Konversi string days ke array integer
+            $scheduleDays = array_map('intval', explode(',', $schedule->days));
+
+            // Cari hari yang tumpang tindih
+            $overlappingDays = array_intersect($days, $scheduleDays);
+
+            // Jika tidak ada hari yang sama, lanjut ke jadwal berikutnya
+            if (empty($overlappingDays)) {
+                continue;
+            }
+
+            Log::info('Pengecekan jadwal dengan hari sama', [
+                'schedule_id' => $schedule->id,
+                'days' => $schedule->days,
+                'parsed_days' => $scheduleDays,
+                'overlapping_days' => $overlappingDays
+            ]);
+
+            // Konversi waktu jadwal yang sudah ada ke menit
+            $scheduleDepMinutes = $this->timeToMinutes($schedule->departure_time);
+            $scheduleArrMinutes = $this->timeToMinutes($schedule->arrival_time);
+
+            Log::info('Waktu jadwal yang sudah ada', [
+                'schedule_id' => $schedule->id,
+                'departure_time' => $schedule->departure_time . ' (' . $scheduleDepMinutes . ' menit)',
+                'arrival_time' => $schedule->arrival_time . ' (' . $scheduleArrMinutes . ' menit)'
+            ]);
+
+            // Cek berbagai jenis tumpang tindih waktu
+            $exactTimeMatch = ($depTimeMinutes == $scheduleDepMinutes && $arrTimeMinutes == $scheduleArrMinutes);
+            $departureDuringExisting = ($depTimeMinutes >= $scheduleDepMinutes && $depTimeMinutes < $scheduleArrMinutes);
+            $arrivalDuringExisting = ($arrTimeMinutes > $scheduleDepMinutes && $arrTimeMinutes <= $scheduleArrMinutes);
+            $encompassingExisting = ($depTimeMinutes <= $scheduleDepMinutes && $arrTimeMinutes >= $scheduleArrMinutes);
+            $containedInExisting = ($depTimeMinutes > $scheduleDepMinutes && $arrTimeMinutes < $scheduleArrMinutes);
+
+            // Jika ada tumpang tindih waktu pada hari yang sama
+            if ($exactTimeMatch || $departureDuringExisting || $arrivalDuringExisting || $encompassingExisting || $containedInExisting) {
+                // Format nama hari untuk pesan error
+                $overlappingDayNames = array_map(function ($day) use ($dayNames) {
+                    return $dayNames[$day] ?? $day;
+                }, $overlappingDays);
+
+                $conflicts[] = [
+                    'schedule_id' => $schedule->id,
+                    'route_id' => $schedule->route_id,
+                    'route_name' => $schedule->route ? $schedule->route->name : 'Rute #' . $schedule->route_id,
+                    'departure_time' => $schedule->departure_time,
+                    'arrival_time' => $schedule->arrival_time,
+                    'days' => $schedule->days,
+                    'overlapping_days' => $overlappingDays,
+                    'overlapping_day_names' => $overlappingDayNames,
+                    'conflict_type' => $exactTimeMatch ? 'exact' : 'overlap',
+                    'conflict_description' => $exactTimeMatch
+                        ? 'Waktu persis sama'
+                        : ($departureDuringExisting
+                            ? 'Waktu keberangkatan tumpang tindih'
+                            : ($arrivalDuringExisting
+                                ? 'Waktu kedatangan tumpang tindih'
+                                : ($encompassingExisting
+                                    ? 'Jadwal mencakup jadwal yang sudah ada'
+                                    : 'Jadwal berada dalam jadwal yang sudah ada'
+                                )
+                            )
+                        )
+                ];
+
+                Log::warning('Konflik jadwal terdeteksi', [
+                    'schedule_id' => $schedule->id,
+                    'overlapping_days' => $overlappingDays,
+                    'conflict_type' => $exactTimeMatch ? 'exact' : 'overlap',
+                    'new_departure' => $depTimeMinutes,
+                    'new_arrival' => $arrTimeMinutes,
+                    'existing_departure' => $scheduleDepMinutes,
+                    'existing_arrival' => $scheduleArrMinutes
+                ]);
+            }
+        }
+
+        return $conflicts;
+    }
+
+    /**
+     * Konversi waktu ke menit, mendukung berbagai format waktu
+     *
+     * @param string $time Waktu dalam berbagai format
+     * @return int Total menit
+     */
+    private function timeToMinutes($time)
+    {
+        if (empty($time)) {
+            return 0;
+        }
+
+        // Strip any seconds
+        if (strlen($time) > 5 && strpos($time, ':') !== false) {
+            // Handle full datetime format (2025-06-24 20:00:00)
+            if (strpos($time, '-') !== false || strpos($time, '/') !== false) {
+                // Try to extract time part from datetime
+                try {
+                    $dateTime = new \DateTime($time);
+                    $hours = (int)$dateTime->format('H');
+                    $minutes = (int)$dateTime->format('i');
+                    return $hours * 60 + $minutes;
+                } catch (\Exception $e) {
+                    Log::warning('Format datetime tidak valid: ' . $time);
+                    return 0;
+                }
+            }
+
+            // Handle time format with seconds (20:00:00)
+            if (preg_match('/^(\d{1,2}):(\d{1,2}):(\d{1,2})$/', $time, $matches)) {
+                $hours = (int)$matches[1];
+                $minutes = (int)$matches[2];
+                return $hours * 60 + $minutes;
+            }
+        }
+
+        // Handle simple time format (20:00)
+        if (preg_match('/^(\d{1,2}):(\d{1,2})$/', $time, $matches)) {
+            $hours = (int)$matches[1];
+            $minutes = (int)$matches[2];
+            return $hours * 60 + $minutes;
+        }
+
+        Log::warning('Format waktu tidak dapat diproses: ' . $time);
+        return 0;
     }
 
     public function destroy($id)
@@ -462,6 +546,93 @@ class ScheduleController extends Controller
             'status' => 'success',
             'message' => 'Jadwal berhasil dihapus'
         ]);
+    }
+
+    /**
+     * Validasi jadwal untuk mencegah konflik waktu pada hari yang sama
+     *
+     * @param int $ferryId ID kapal
+     * @param array $days Array hari operasional
+     * @param string $departureTime Waktu keberangkatan
+     * @param string $arrivalTime Waktu kedatangan
+     * @param int|null $scheduleId ID jadwal yang sedang diedit (null untuk jadwal baru)
+     * @return array Array jadwal yang konflik atau array kosong jika tidak ada konflik
+     */
+    private function validateScheduleConflict($ferryId, $days, $departureTime, $arrivalTime, $scheduleId = null)
+    {
+        // Log data input untuk debugging
+        Log::info('Validasi konflik jadwal:', [
+            'ferry_id' => $ferryId,
+            'days' => $days,
+            'departure_time' => $departureTime,
+            'arrival_time' => $arrivalTime,
+            'schedule_id' => $scheduleId
+        ]);
+
+        // Konversi waktu ke menit untuk perbandingan yang lebih mudah
+        $depTimeMinutes = $this->timeToMinutes($departureTime);
+        $arrTimeMinutes = $this->timeToMinutes($arrivalTime);
+
+        // Pastikan semua nilai hari dalam format integer
+        $daysInt = array_map('intval', is_array($days) ? $days : [$days]);
+
+        // Ambil semua jadwal aktif untuk kapal yang sama (kecuali jadwal yang sedang diedit)
+        $query = Schedule::where('ferry_id', $ferryId)
+            ->where('status', 'ACTIVE');
+
+        if ($scheduleId) {
+            $query->where('id', '!=', $scheduleId);
+        }
+
+        $existingSchedules = $query->get();
+
+        $conflicts = [];
+        $dayNames = [1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu'];
+
+        foreach ($existingSchedules as $schedule) {
+            // Konversi days dari string menjadi array integer
+            $scheduleDays = array_map('intval', explode(',', $schedule->days));
+
+            // Cari hari-hari yang tumpang tindih
+            $overlappingDays = array_intersect($daysInt, $scheduleDays);
+
+            if (empty($overlappingDays)) {
+                continue; // Tidak ada hari yang sama, lanjut ke jadwal berikutnya
+            }
+
+            // Konversi waktu jadwal ke menit
+            $scheduleDepMinutes = $this->timeToMinutes($schedule->departure_time);
+            $scheduleArrMinutes = $this->timeToMinutes($schedule->arrival_time);
+
+            // Periksa apakah waktu tumpang tindih
+            $isExactTime = ($depTimeMinutes == $scheduleDepMinutes && $arrTimeMinutes == $scheduleArrMinutes);
+            $isDepartureInRange = ($depTimeMinutes >= $scheduleDepMinutes && $depTimeMinutes < $scheduleArrMinutes);
+            $isArrivalInRange = ($arrTimeMinutes > $scheduleDepMinutes && $arrTimeMinutes <= $scheduleArrMinutes);
+            $isScheduleInRange = ($depTimeMinutes <= $scheduleDepMinutes && $arrTimeMinutes >= $scheduleArrMinutes);
+
+            // Jika ada tumpang tindih waktu pada hari yang sama
+            if ($isExactTime || $isDepartureInRange || $isArrivalInRange || $isScheduleInRange) {
+                // Format nama hari yang tumpang tindih
+                $overlappingDaysNames = array_map(function ($day) use ($dayNames) {
+                    return $dayNames[$day] ?? $day;
+                }, $overlappingDays);
+
+                $conflicts[] = [
+                    'schedule' => $schedule,
+                    'overlapping_days' => $overlappingDays,
+                    'overlapping_days_names' => $overlappingDaysNames,
+                    'conflict_type' => $isExactTime ? 'exact_time' : 'overlapping_time'
+                ];
+
+                Log::warning('Konflik jadwal terdeteksi:', [
+                    'existing_schedule_id' => $schedule->id,
+                    'overlapping_days' => $overlappingDays,
+                    'conflict_type' => $isExactTime ? 'exact_time' : 'overlapping_time'
+                ]);
+            }
+        }
+
+        return $conflicts;
     }
 
     public function dates(Request $request, $id)

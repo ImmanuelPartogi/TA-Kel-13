@@ -25,6 +25,7 @@ class TicketDetailScreen extends StatefulWidget {
 class _TicketDetailScreenState extends State<TicketDetailScreen>
     with SingleTickerProviderStateMixin {
   bool _isLoading = false;
+  bool _initialLoadDone = false;
   int _selectedTicketIndex = 0;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -35,7 +36,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
   @override
   void initState() {
     super.initState();
-    _loadTicketDetails();
+    // Tidak memanggil _loadTicketDetails() di sini untuk menghindari duplicate build
     _startPaymentStatusTimer();
 
     _animationController = AnimationController(
@@ -55,6 +56,16 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
         _animationController.forward();
       }
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Load data hanya sekali setelah widget dibangun dengan benar
+    if (!_isLoading && !_initialLoadDone) {
+      _loadTicketDetails();
+      _initialLoadDone = true;
+    }
   }
 
   @override
@@ -152,7 +163,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                 ),
                 actions: [
                   TextButton(
-                    onPressed: () => Navigator.pop(context, false),
+                    onPressed: () => Navigator.of(context).pop(false),
                     child: const Text('Tidak'),
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.grey[600],
@@ -166,7 +177,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                     ),
                   ),
                   TextButton(
-                    onPressed: () => Navigator.pop(context, true),
+                    onPressed: () => Navigator.of(context).pop(true),
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.white,
                       backgroundColor: Colors.red,
@@ -261,11 +272,11 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                 ),
                 actions: [
                   TextButton(
-                    onPressed: () => Navigator.pop(context, false),
+                    onPressed: () => Navigator.of(context).pop(false),
                     child: const Text('Tidak'),
                   ),
                   TextButton(
-                    onPressed: () => Navigator.pop(context, true),
+                    onPressed: () => Navigator.of(context).pop(true),
                     style: TextButton.styleFrom(foregroundColor: Colors.red),
                     child: const Text('Ya, Batalkan'),
                   ),
@@ -352,7 +363,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
               ),
               child: const Icon(Icons.arrow_back, color: Colors.black87),
             ),
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(context).pop(),
           ),
         ),
         body: Center(
@@ -511,7 +522,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                 ),
                 child: const Icon(Icons.arrow_back, color: Colors.white),
               ),
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.of(context).pop(),
             ),
           ),
 
@@ -707,6 +718,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
 
                         const SizedBox(height: 16),
 
+                        // Baris penumpang dan jumlah kendaraan
                         Row(
                           children: [
                             Expanded(
@@ -737,6 +749,151 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                             ],
                           ],
                         ),
+
+                        // Pindahkan detail kendaraan ke LUAR Row sebagai komponen terpisah
+                        if (booking.vehicleCount > 0 &&
+                            booking.vehicles != null &&
+                            booking.vehicles!.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          const Divider(height: 30),
+
+                          // Render daftar kendaraan
+                          ...booking.vehicles!.map((vehicle) {
+                            final vehicleTypeText =
+                                {
+                                  'MOTORCYCLE': 'Sepeda Motor',
+                                  'CAR': 'Mobil',
+                                  'BUS': 'Bus',
+                                  'TRUCK': 'Truk',
+                                }[vehicle.type] ??
+                                vehicle.type;
+
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 16),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[50],
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey[300]!),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        {
+                                              'MOTORCYCLE': Icons.motorcycle,
+                                              'CAR': Icons.directions_car,
+                                              'BUS': Icons.directions_bus,
+                                              'TRUCK': Icons.local_shipping,
+                                            }[vehicle.type] ??
+                                            Icons.directions_car,
+                                        color: theme.primaryColor,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        vehicleTypeText,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Plat Nomor',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              vehicle.licensePlate,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      if (vehicle.brand != null ||
+                                          vehicle.model != null)
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Merk/Model',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey[600],
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                [
+                                                      if (vehicle.brand != null)
+                                                        vehicle.brand,
+                                                      if (vehicle.model != null)
+                                                        vehicle.model,
+                                                    ]
+                                                    .where((e) => e != null)
+                                                    .join(' '),
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  if (vehicle.weight != null) ...[
+                                    const SizedBox(height: 10),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Berat',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey[600],
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                '${vehicle.weight} kg',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ],
                       ],
                     ),
                   ),
@@ -763,6 +920,74 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                           value: _formatCurrency(booking.totalAmount),
                           valueColor: theme.primaryColor,
                         ),
+
+                        // Tambahkan informasi refund jika statusnya COMPLETED
+                        if (booking.status == 'REFUNDED' &&
+                            refundProvider.currentRefund != null &&
+                            refundProvider.currentRefund!.status.toUpperCase() == 'COMPLETED') ...[
+                          const Divider(height: 24),
+
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Colors.green.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.monetization_on_rounded,
+                                      color: Colors.green,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    const Text(
+                                      'Detail Refund',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.green,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                _buildInfoRow(
+                                  label: 'Jumlah Refund',
+                                  value: refundProvider.currentRefund!.formattedAmount,
+                                  valueColor: Colors.green,
+                                ),
+                                const SizedBox(height: 8),
+                                _buildInfoRow(
+                                  label: 'Biaya Refund',
+                                  value: refundProvider.currentRefund!.formattedRefundFee,
+                                ),
+                                const SizedBox(height: 8),
+                                _buildInfoRow(
+                                  label: 'Persentase Refund',
+                                  value: '${refundProvider.currentRefund!.refundPercentage.toStringAsFixed(0)}%',
+                                ),
+                                const SizedBox(height: 8),
+                                _buildInfoRow(
+                                  label: 'Tanggal Refund',
+                                  value: refundProvider.currentRefund!.formattedCreatedDate,
+                                ),
+                                if (refundProvider.currentRefund!.transactionId != null) ...[
+                                  const SizedBox(height: 8),
+                                  _buildInfoRow(
+                                    label: 'ID Transaksi',
+                                    value: refundProvider.currentRefund!.transactionId!,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
 
                         if (isPending && payment != null) ...[
                           const Divider(height: 24),
@@ -1365,8 +1590,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                                 ElevatedButton.icon(
                                   onPressed: () {
                                     // Navigasi ke halaman RefundRequestScreen
-                                    Navigator.pushNamed(
-                                      context,
+                                    Navigator.of(context).pushNamed(
                                       '/refund/request',
                                       arguments: booking,
                                     ).then((result) {
@@ -1390,43 +1614,6 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(8),
                                     ),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[100],
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: Colors.grey[300]!,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.info_outline,
-                                        color: Colors.grey[600],
-                                        size: 16,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          'Persentase refund menurun seiring mendekati waktu keberangkatan:\n'
-                                          '• 10-40 hari: 100% refund\n'
-                                          '• 8-9 hari: 90% refund\n'
-                                          '• 6-7 hari: 70% refund\n'
-                                          '• 4-5 hari: 60% refund\n'
-                                          '• 2-3 hari: 40% refund\n'
-                                          '• <2 hari: Tidak dapat refund',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey[600],
-                                          ),
-                                        ),
-                                      ),
-                                    ],
                                   ),
                                 ),
                               ],
@@ -1774,7 +1961,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
 
                           const SizedBox(height: 20),
                           ElevatedButton(
-                            onPressed: () => Navigator.pop(context),
+                            onPressed: () => Navigator.of(context).pop(),
                             child: const Text('Tutup'),
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 12),

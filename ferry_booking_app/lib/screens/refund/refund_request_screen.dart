@@ -80,7 +80,12 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
               content: Text(
                 'Refund hanya dapat dilakukan minimal 2 hari sebelum keberangkatan',
               ),
-              backgroundColor: Colors.red,
+              backgroundColor: Colors.red.shade700,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              margin: const EdgeInsets.all(12),
               duration: const Duration(seconds: 5),
             ),
           );
@@ -94,7 +99,12 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Gagal memeriksa kelayakan refund: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            margin: const EdgeInsets.all(12),
           ),
         );
       }
@@ -108,10 +118,172 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
 
     if (!mounted) return;
 
+    // Extract data untuk dialog konfirmasi
+    final refundPolicy = _eligibilityData?['refund_policy'] ?? {};
+
+    // Pastikan daysBeforeDeparture adalah integer, bukan floating point
+    final daysBeforeDepRaw = _eligibilityData?['days_before_departure'] ?? 0;
+    final daysBeforeDeparture =
+        daysBeforeDepRaw is int
+            ? daysBeforeDepRaw
+            : (daysBeforeDepRaw is num ? daysBeforeDepRaw.toInt() : 0);
+
+    // Menentukan minimum price berdasarkan hari sebelum keberangkatan
+    String minPrice = "5.000";
+    if (daysBeforeDeparture >= 14) {
+      minPrice = "5.000";
+    } else if (daysBeforeDeparture >= 7) {
+      minPrice = "10.000";
+    } else if (daysBeforeDeparture >= 5) {
+      minPrice = "15.000";
+    } else if (daysBeforeDeparture >= 3) {
+      minPrice = "20.000";
+    } else if (daysBeforeDeparture >= 2) {
+      minPrice = "25.000";
+    }
+
+    // Format jumlah refund untuk dialog
+    final currencyFormat = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: '',
+      decimalDigits: 0,
+    );
+
+    final originalAmount =
+        refundPolicy['original_amount'] != null
+            ? (refundPolicy['original_amount'] is num)
+                ? (refundPolicy['original_amount'] as num).toDouble()
+                : double.tryParse(refundPolicy['original_amount'].toString()) ??
+                    widget.booking.totalAmount
+            : widget.booking.totalAmount;
+
+    final refundPercentage =
+        refundPolicy['percentage'] != null
+            ? (refundPolicy['percentage'] is num)
+                ? (refundPolicy['percentage'] as num).toDouble()
+                : double.tryParse(refundPolicy['percentage'].toString()) ??
+                    100.0
+            : 100.0;
+
+    final refundAmount =
+        refundPolicy['refund_amount'] != null
+            ? (refundPolicy['refund_amount'] is num)
+                ? (refundPolicy['refund_amount'] as num).toDouble()
+                : double.tryParse(refundPolicy['refund_amount'].toString()) ??
+                    (originalAmount * refundPercentage / 100)
+            : (originalAmount * refundPercentage / 100);
+
+    final formattedRefundAmount = currencyFormat.format(refundAmount);
+
+    // Tampilkan dialog konfirmasi
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+          title: Column(
+            children: [
+              Icon(
+                Icons.info_outline,
+                color: const Color(0xFF1A73E8),
+                size: 28,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Konfirmasi Refund',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Apakah Anda yakin ingin membatalkan tiket? Anda akan menerima refund sebesar Rp$formattedRefundAmount untuk pembatalan $daysBeforeDeparture hari sebelum keberangkatan. Perhitungan dilakukan dari harga minimal Rp$minPrice.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[800],
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.amber.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.amber.shade800,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Proses refund tidak dapat dibatalkan setelah diajukan',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.amber.shade900,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              style: TextButton.styleFrom(foregroundColor: Colors.grey[700]),
+              child: const Text('Batal', style: TextStyle(fontSize: 14)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1A73E8),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+              ),
+              child: const Text(
+                'Ya, Ajukan Refund',
+                style: TextStyle(fontSize: 14),
+              ),
+            ),
+          ],
+          actionsPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
+        );
+      },
+    );
+
+    // Jika pengguna membatalkan, keluar dari fungsi
+    if (confirmed != true) return;
+
     setState(() {
       _isSubmitting = true;
     });
 
+    // Lanjutkan dengan proses refund seperti biasa...
     final refundProvider = Provider.of<RefundProvider>(context, listen: false);
 
     try {
@@ -132,7 +304,12 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(message),
-            backgroundColor: Colors.green,
+            backgroundColor: Colors.green.shade700,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            margin: const EdgeInsets.all(12),
             duration: const Duration(seconds: 3),
           ),
         );
@@ -142,7 +319,12 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(refundProvider.errorMessage ?? 'Gagal submit refund'),
-            backgroundColor: Colors.red,
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            margin: const EdgeInsets.all(12),
           ),
         );
       }
@@ -151,7 +333,12 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Terjadi kesalahan: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            margin: const EdgeInsets.all(12),
           ),
         );
       }
@@ -165,7 +352,6 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
   }
 
   @override
-  @override
   Widget build(BuildContext context) {
     // Validasi hari sebelum keberangkatan untuk memastikan konsistensi dengan backend
     final departureDate = DateTime.parse(widget.booking.departureDate);
@@ -177,15 +363,21 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
       Future.microtask(() {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
+          SnackBar(
+            content: const Text(
               'Refund hanya dapat dilakukan minimal 2 hari sebelum keberangkatan',
             ),
-            backgroundColor: Colors.red,
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            margin: const EdgeInsets.all(12),
           ),
         );
       });
     }
+
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp ',
@@ -198,7 +390,21 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
           title: 'Permintaan Refund',
           showBackButton: true,
         ),
-        body: const Center(child: CircularProgressIndicator()),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1A73E8)),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Memuat informasi refund...',
+                style: TextStyle(color: Colors.grey[700], fontSize: 16),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
@@ -209,41 +415,91 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
           title: 'Permintaan Refund',
           showBackButton: true,
         ),
-        body: Padding(
-          padding: const EdgeInsets.all(16.0),
+        body: Container(
+          padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.info_outline, size: 64, color: Colors.orange),
-              const SizedBox(height: 16),
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.info_outline,
+                  size: 40,
+                  color: Colors.orange.shade800,
+                ),
+              ),
+              const SizedBox(height: 24),
               Text(
                 'Tidak Dapat Melakukan Refund',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
                 ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
-              Text(
-                _eligibilityData!['message'] ??
-                    'Booking ini tidak memenuhi syarat untuk refund',
-                style: const TextStyle(fontSize: 16),
-                textAlign: TextAlign.center,
-              ),
-              if (_eligibilityData!['days_before_departure'] != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'Sisa waktu hingga keberangkatan: ${_eligibilityData!['days_before_departure']} hari',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                  textAlign: TextAlign.center,
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
                 ),
-              ],
-              const SizedBox(height: 24),
+                child: Column(
+                  children: [
+                    Text(
+                      _eligibilityData!['message'] ??
+                          'Booking ini tidak memenuhi syarat untuk refund',
+                      style: TextStyle(fontSize: 16, color: Colors.grey[800]),
+                      textAlign: TextAlign.center,
+                    ),
+                    if (_eligibilityData!['days_before_departure'] != null) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 8,
+                          horizontal: 16,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          'Sisa waktu: ${_eligibilityData!['days_before_departure']} hari sebelum keberangkatan',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.orange.shade800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
+                height: 50,
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Kembali'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1A73E8),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Kembali',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
                 ),
               ),
             ],
@@ -255,7 +511,6 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
     // Extract refund policy data
     final refundPolicy = _eligibilityData?['refund_policy'] ?? {};
 
-    // Konversi nilai string ke double dengan aman
     // Konversi nilai string ke double dengan aman
     final originalAmount =
         refundPolicy['original_amount'] != null
@@ -283,11 +538,8 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                     (originalAmount * refundPercentage / 100)
             : (originalAmount * refundPercentage / 100);
 
-    final String policyDescription =
-        refundPolicy['description'] ??
-        "Potongan biaya kepada penumpang yang melakukan refund sebesar ${(100 - refundPercentage).toStringAsFixed(0)}%";
-
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: const CustomAppBar(
         title: 'Permintaan Refund',
         showBackButton: true,
@@ -300,35 +552,101 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Status Bar
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1A73E8).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: const Color(0xFF1A73E8).withOpacity(0.2),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        size: 20,
+                        color: const Color(0xFF1A73E8),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Permintaan refund akan diproses dalam ${_eligibilityData?['sla_period'] ?? '3-14 hari kerja'} setelah disetujui',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: const Color(0xFF1A73E8),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
                 // Booking Info Card
                 Card(
-                  elevation: 2,
+                  elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.grey.shade200),
                   ),
+                  color: Colors.white,
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.all(20.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Informasi Booking',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.bold),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.confirmation_number_outlined,
+                              size: 20,
+                              color: Colors.grey[700],
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Informasi Booking',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey[800],
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 16),
                         _buildInfoRow(
                           'Kode Booking',
                           widget.booking.bookingCode,
+                          boldValue: true,
                         ),
-                        const Divider(),
+                        const Divider(height: 24),
                         _buildInfoRow(
                           'Total Pembayaran',
                           currencyFormat.format(originalAmount),
+                          boldValue: true,
                         ),
-                        const Divider(),
+                        const Divider(height: 24),
+                        // Tambahkan Tanggal Pembelian dari eligibilityData
+                        if (_eligibilityData != null &&
+                            _eligibilityData!['payment_date'] != null) ...[
+                          _buildInfoRow(
+                            'Tanggal Pembelian',
+                            DateFormat('dd MMMM yyyy', 'id_ID').format(
+                              DateTime.parse(
+                                _eligibilityData!['payment_date'].toString(),
+                              ),
+                            ),
+                          ),
+                          const Divider(height: 24),
+                        ],
                         _buildInfoRow(
-                          'Tanggal Booking',
+                          'Tanggal Keberangkatan',
                           DateFormat('dd MMMM yyyy', 'id_ID').format(
                             DateTime.parse(widget.booking.departureDate),
                           ),
@@ -338,186 +656,287 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
 
                 // Refund Calculation Card
                 Card(
-                  color: Colors.amber[50],
+                  elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.blue.shade100),
                   ),
+                  color: Colors.blue.shade50,
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.all(20.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.calculate, color: Colors.amber),
+                            Icon(
+                              Icons.calculate,
+                              color: const Color(0xFF1A73E8),
+                            ),
                             const SizedBox(width: 8),
                             Text(
                               'Perhitungan Refund',
-                              style: Theme.of(
-                                context,
-                              ).textTheme.titleMedium?.copyWith(
+                              style: TextStyle(
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.amber[800],
+                                color: const Color(0xFF1A73E8),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 20),
 
-                        _buildCalculationRow(
-                          'Total Pembayaran',
-                          currencyFormat.format(originalAmount),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildCalculationRow(
-                          'Persentase Refund',
-                          '${refundPercentage.toStringAsFixed(0)}%',
-                          isPercentage: true,
-                        ),
-                        // Hapus baris biaya administrasi
-                        const Divider(thickness: 2, height: 24),
-                        _buildCalculationRow(
-                          'Jumlah Refund',
-                          currencyFormat.format(refundAmount),
-                          isBold: true,
-                          isLarge: true,
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            children: [
+                              _buildCalculationRow(
+                                'Total Pembayaran',
+                                currencyFormat.format(originalAmount),
+                              ),
+                              const SizedBox(height: 12),
+                              _buildCalculationRow(
+                                'Persentase Refund',
+                                '${refundPercentage.toStringAsFixed(0)}%',
+                                valueColor: const Color(0xFF1A73E8),
+                              ),
+                              const Divider(thickness: 1, height: 24),
+                              _buildCalculationRow(
+                                'Jumlah Refund',
+                                currencyFormat.format(refundAmount),
+                                isBold: true,
+                                isLarge: true,
+                                valueColor: const Color(0xFF1A73E8),
+                              ),
+                            ],
+                          ),
                         ),
 
                         // Tambahkan penjelasan refund yang lebih jelas
-                        const SizedBox(height: 12),
-                        if (refundPolicy['description'] != null) ...[
-                          Text(
-                            refundPolicy['description'],
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.amber[700],
-                              fontStyle: FontStyle.italic,
-                            ),
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade100.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.blue.shade100),
                           ),
-                        ] else ...[
-                          Text(
-                            "Pengembalian dana sebesar ${refundPercentage.toStringAsFixed(0)}% dari total pembayaran sesuai kebijakan untuk ${_eligibilityData?['days_before_departure']} hari sebelum keberangkatan",
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.amber[700],
-                              fontStyle: FontStyle.italic,
-                            ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.info_outline,
+                                size: 16,
+                                color: Colors.blue.shade700,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  refundPolicy['description'] ??
+                                      "Pengembalian dana sebesar ${refundPercentage.toStringAsFixed(0)}% dari total pembayaran sesuai kebijakan untuk ${_eligibilityData?['days_before_departure']} hari sebelum keberangkatan",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.blue.shade700,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ],
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
 
                 // Refund Policy & Method Info
                 Card(
-                  color: Colors.blue[50],
+                  elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.grey.shade200),
                   ),
+                  color: Colors.white,
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.all(20.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.info_outline, color: Colors.blue),
+                            Icon(
+                              Icons.policy_outlined,
+                              color: Colors.grey[800],
+                            ),
                             const SizedBox(width: 8),
                             Text(
                               'Informasi Refund',
-                              style: Theme.of(
-                                context,
-                              ).textTheme.titleMedium?.copyWith(
+                              style: TextStyle(
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.blue[800],
+                                color: Colors.grey[800],
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 16),
 
                         if (_eligibilityData != null) ...[
-                          if (_eligibilityData!['can_auto_refund'] == true) ...[
-                            const Text(
-                              '✓ Metode pembayaran Anda mendukung refund otomatis',
-                              style: TextStyle(
-                                color: Colors.green,
-                                fontWeight: FontWeight.bold,
-                                height: 1.4,
-                              ),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color:
+                                  _eligibilityData!['can_auto_refund'] == true
+                                      ? Colors.green.shade50
+                                      : Colors.orange.shade50,
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            Text(
-                              '• Estimasi pengembalian dana: ${_eligibilityData!['sla_period'] ?? '3-14 hari kerja'}',
-                              style: const TextStyle(height: 1.4),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  _eligibilityData!['can_auto_refund'] == true
+                                      ? Icons.check_circle_outline
+                                      : Icons.warning_amber_outlined,
+                                  color:
+                                      _eligibilityData!['can_auto_refund'] ==
+                                              true
+                                          ? Colors.green.shade700
+                                          : Colors.orange.shade700,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _eligibilityData!['can_auto_refund'] ==
+                                                true
+                                            ? 'Metode pembayaran Anda mendukung refund otomatis'
+                                            : 'Metode pembayaran Anda memerlukan proses refund manual',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color:
+                                              _eligibilityData!['can_auto_refund'] ==
+                                                      true
+                                                  ? Colors.green.shade700
+                                                  : Colors.orange.shade700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      // if (!(_eligibilityData!['can_auto_refund'] ?? false))
+                                      //   Text(
+                                      //     'Metode pembayaran: ${_eligibilityData!['payment_method'] ?? 'Unknown'}',
+                                      //     style: TextStyle(color: Colors.grey[700]),
+                                      //   ),
+                                      // const SizedBox(height: 4),
+                                      Text(
+                                        'Estimasi pengembalian dana: ${_eligibilityData!['sla_period'] ?? '3-14 hari kerja'}',
+                                        style: TextStyle(
+                                          color: Colors.grey[700],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
-                          ] else ...[
-                            const Text(
-                              '⚠ Metode pembayaran Anda memerlukan proses refund manual',
-                              style: TextStyle(
-                                color: Colors.orange,
-                                fontWeight: FontWeight.bold,
-                                height: 1.4,
-                              ),
-                            ),
-                            Text(
-                              '• Metode pembayaran: ${_eligibilityData!['payment_method'] ?? 'Unknown'}',
-                              style: const TextStyle(height: 1.4),
-                            ),
-                            Text(
-                              '• Estimasi pengembalian dana: ${_eligibilityData!['sla_period'] ?? '3-14 hari kerja'}',
-                              style: const TextStyle(height: 1.4),
-                            ),
-                          ],
-                          const SizedBox(height: 8),
+                          ),
+                          const SizedBox(height: 16),
                         ],
 
-                        const Text(
-                          '• Dana akan dikembalikan ke rekening bank yang Anda masukkan di bawah',
-                          style: TextStyle(height: 1.4),
-                        ),
-                        const Text(
-                          '• Pastikan data rekening bank sudah benar untuk menghindari keterlambatan proses',
-                          style: TextStyle(height: 1.4),
+                        // Informasi tambahan dalam format yang lebih menarik
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildInfoItem(
+                              'Dana akan dikembalikan ke rekening bank yang Anda masukkan',
+                            ),
+                            _buildInfoItem(
+                              'Pastikan data rekening bank sudah benar untuk menghindari keterlambatan',
+                            ),
+                            _buildInfoItem(
+                              'Pengembalian dana dilakukan sesuai kebijakan refund',
+                            ),
+                            _buildInfoItem(
+                              'Jika dana yang ingin dikembalikan tidak sesuai dengan ketentuan kebijakan maka refund akan dilakukan dengan persentase 0%',
+                            ),
+                            _buildInfoItem(
+                              'Kesalahan dalam pengisian data rekening bank diluar tanggung jawab kami',
+                            ),
+                          ],
                         ),
 
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Kebijakan Refund:',
+                        const SizedBox(height: 20),
+
+                        Text(
+                          'Kebijakan Refund',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            height: 1.4,
+                            fontSize: 15,
+                            color: Colors.grey[800],
                           ),
                         ),
+                        const SizedBox(height: 8),
                         Container(
                           margin: const EdgeInsets.only(top: 8),
-                          padding: const EdgeInsets.all(10),
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.7),
+                            color: Colors.grey.shade50,
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: Colors.blue.withOpacity(0.3),
-                            ),
+                            border: Border.all(color: Colors.grey.shade300),
                           ),
-                          child: Text(
-                            'Persentase pengembalian dana berdasarkan waktu keberangkatan:\n'
-                            '• 40+ hari: 100% refund\n'
-                            '• 8-9 hari: 90% refund\n'
-                            '• 7 hari: 70% refund\n'
-                            '• 5 hari: 60% refund\n'
-                            '• 3 hari: 40% refund\n'
-                            '• <2 hari: Tidak dapat refund',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.blue[900],
-                              height: 1.5,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Persentase pengembalian dana berdasarkan waktu pembatalan:',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey[800],
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              _buildPolicyItem(
+                                '≥ 14 hari',
+                                '95%',
+                                'min Rp5.000',
+                              ),
+                              _buildPolicyItem(
+                                '7–13 hari',
+                                '85%',
+                                'min Rp10.000',
+                              ),
+                              _buildPolicyItem(
+                                '5–6 hari',
+                                '75%',
+                                'min Rp15.000',
+                              ),
+                              _buildPolicyItem(
+                                '3–4 hari',
+                                '65%',
+                                'min Rp20.000',
+                              ),
+                              _buildPolicyItem('2 hari', '50%', 'min Rp25.000'),
+                              _buildPolicyItem(
+                                '< 2 hari',
+                                '0%',
+                                'Tidak dapat refund',
+                                isHighlighted: true,
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -528,120 +947,317 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                 const SizedBox(height: 24),
 
                 // Refund Form
-                Text(
-                  'Informasi Refund',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-
-                // Reason Field
-                TextFormField(
-                  controller: _reasonController,
-                  decoration: const InputDecoration(
-                    labelText: 'Alasan Refund',
-                    border: OutlineInputBorder(),
-                    hintText: 'Contoh: Perubahan jadwal perjalanan',
+                Card(
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.grey.shade200),
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Alasan refund wajib diisi';
-                    }
-                    if (value.length < 10) {
-                      return 'Alasan refund minimal 10 karakter';
-                    }
-                    return null;
-                  },
-                  maxLines: 3,
-                ),
+                  color: Colors.white,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Detail Permintaan Refund',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey[800],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
 
-                const SizedBox(height: 24),
+                        // Reason Field
+                        Text(
+                          'Alasan Refund',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _reasonController,
+                          decoration: InputDecoration(
+                            hintText: 'Contoh: Perubahan jadwal perjalanan',
+                            hintStyle: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 14,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: const Color(0xFF1A73E8),
+                              ),
+                            ),
+                            errorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: Colors.red.shade300,
+                              ),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Alasan refund wajib diisi';
+                            }
+                            if (value.length < 10) {
+                              return 'Alasan refund minimal 10 karakter';
+                            }
+                            return null;
+                          },
+                          maxLines: 3,
+                          style: const TextStyle(fontSize: 14),
+                        ),
 
-                // Bank Info
-                Text(
-                  'Informasi Rekening',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+                        const SizedBox(height: 24),
+
+                        // Bank Info
+                        Text(
+                          'Informasi Rekening',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey[800],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Masukkan detail rekening bank untuk menerima pengembalian dana',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Bank Name Dropdown
+                        Text(
+                          'Nama Bank',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          value: _selectedBankName,
+                          decoration: InputDecoration(
+                            prefixIcon: Icon(
+                              Icons.account_balance,
+                              color: Colors.grey[600],
+                              size: 20,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: const Color(0xFF1A73E8),
+                              ),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 0,
+                            ),
+                          ),
+                          items:
+                              Refund.bankOptions.entries.map((entry) {
+                                return DropdownMenuItem<String>(
+                                  value: entry.key,
+                                  child: Text(
+                                    entry.value,
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                );
+                              }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedBankName = value!;
+                            });
+                          },
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Nama bank wajib dipilih';
+                            }
+                            return null;
+                          },
+                          icon: Icon(
+                            Icons.keyboard_arrow_down,
+                            color: Colors.grey[600],
+                          ),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.black87,
+                          ),
+                          dropdownColor: Colors.white,
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // Account Number
+                        Text(
+                          'Nomor Rekening',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _accountNumberController,
+                          decoration: InputDecoration(
+                            hintText: 'Masukkan nomor rekening',
+                            hintStyle: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 14,
+                            ),
+                            prefixIcon: Icon(
+                              Icons.credit_card,
+                              color: Colors.grey[600],
+                              size: 20,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: const Color(0xFF1A73E8),
+                              ),
+                            ),
+                            errorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: Colors.red.shade300,
+                              ),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 0,
+                            ),
+                          ),
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Nomor rekening wajib diisi';
+                            }
+                            if (value.length < 8) {
+                              return 'Nomor rekening minimal 8 digit';
+                            }
+                            return null;
+                          },
+                          style: const TextStyle(fontSize: 14),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // Account Name
+                        Text(
+                          'Nama Pemilik Rekening',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _accountNameController,
+                          decoration: InputDecoration(
+                            hintText: 'Masukkan nama pemilik rekening',
+                            hintStyle: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 14,
+                            ),
+                            prefixIcon: Icon(
+                              Icons.person,
+                              color: Colors.grey[600],
+                              size: 20,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: const Color(0xFF1A73E8),
+                              ),
+                            ),
+                            errorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: Colors.red.shade300,
+                              ),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 0,
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Nama pemilik rekening wajib diisi';
+                            }
+                            if (value.length < 3) {
+                              return 'Nama pemilik rekening minimal 3 karakter';
+                            }
+                            return null;
+                          },
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Masukkan detail rekening bank untuk menerima pengembalian dana',
-                ),
-                const SizedBox(height: 16),
-
-                // Bank Name Dropdown
-                DropdownButtonFormField<String>(
-                  value: _selectedBankName,
-                  decoration: const InputDecoration(
-                    labelText: 'Nama Bank',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.account_balance),
-                  ),
-                  items:
-                      Refund.bankOptions.entries.map((entry) {
-                        return DropdownMenuItem<String>(
-                          value: entry.key,
-                          child: Text(entry.value),
-                        );
-                      }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedBankName = value!;
-                    });
-                  },
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Nama bank wajib dipilih';
-                    }
-                    return null;
-                  },
-                ),
-
-                const SizedBox(height: 16),
-
-                // Account Number
-                TextFormField(
-                  controller: _accountNumberController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nomor Rekening',
-                    border: OutlineInputBorder(),
-                    hintText: 'Masukkan nomor rekening',
-                    prefixIcon: Icon(Icons.credit_card),
-                  ),
-                  keyboardType: TextInputType.number,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Nomor rekening wajib diisi';
-                    }
-                    if (value.length < 8) {
-                      return 'Nomor rekening minimal 8 digit';
-                    }
-                    return null;
-                  },
-                ),
-
-                const SizedBox(height: 16),
-
-                // Account Name
-                TextFormField(
-                  controller: _accountNameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nama Pemilik Rekening',
-                    border: OutlineInputBorder(),
-                    hintText: 'Masukkan nama pemilik rekening',
-                    prefixIcon: Icon(Icons.person),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Nama pemilik rekening wajib diisi';
-                    }
-                    if (value.length < 3) {
-                      return 'Nama pemilik rekening minimal 3 karakter';
-                    }
-                    return null;
-                  },
                 ),
 
                 const SizedBox(height: 32),
@@ -649,10 +1265,14 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                 // Submit Button
                 SizedBox(
                   width: double.infinity,
+                  height: 50,
                   child: ElevatedButton(
                     onPressed: _isSubmitting ? null : _submitRefundRequest,
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: const Color(0xFF1A73E8),
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.grey.shade300,
+                      elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -673,7 +1293,7 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                               'Ajukan Refund',
                               style: TextStyle(
                                 fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                   ),
@@ -684,14 +1304,28 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                 // Cancel Button
                 SizedBox(
                   width: double.infinity,
-                  child: TextButton(
+                  height: 50,
+                  child: OutlinedButton(
                     onPressed:
                         _isSubmitting ? null : () => Navigator.pop(context),
-                    child: const Text('Batal'),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: const Color(0xFF1A73E8)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      foregroundColor: const Color(0xFF1A73E8),
+                    ),
+                    child: const Text(
+                      'Batal',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                 ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 32),
               ],
             ),
           ),
@@ -700,19 +1334,23 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(String label, String value, {bool boldValue = false}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 14)),
+          Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
           const SizedBox(width: 16),
           Flexible(
             child: Text(
               value,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              style: TextStyle(
+                fontWeight: boldValue ? FontWeight.bold : FontWeight.w500,
+                fontSize: 14,
+                color: Colors.grey[800],
+              ),
               textAlign: TextAlign.right,
             ),
           ),
@@ -724,8 +1362,7 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
   Widget _buildCalculationRow(
     String label,
     String value, {
-    bool isPercentage = false,
-    bool isNegative = false,
+    Color? valueColor,
     bool isBold = false,
     bool isLarge = false,
   }) {
@@ -745,13 +1382,87 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
           style: TextStyle(
             fontSize: isLarge ? 18 : 14,
             fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
-            color:
-                isNegative
-                    ? Colors.red
-                    : (isPercentage ? Colors.blue : Colors.black),
+            color: valueColor ?? Colors.grey[800],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildInfoItem(String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.check_circle, size: 16, color: Colors.grey[600]),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[700],
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPolicyItem(
+    String days,
+    String percentage,
+    String fees, {
+    bool isHighlighted = false,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+      decoration: BoxDecoration(
+        color: isHighlighted ? Colors.red.shade50 : Colors.transparent,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 80,
+            child: Text(
+              days,
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+                color: isHighlighted ? Colors.red.shade700 : Colors.grey[800],
+              ),
+            ),
+          ),
+          Container(
+            width: 60,
+            child: Text(
+              percentage,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color:
+                    isHighlighted
+                        ? Colors.red.shade700
+                        : const Color(0xFF1A73E8),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              fees,
+              style: TextStyle(
+                fontSize: 13,
+                color: isHighlighted ? Colors.red.shade700 : Colors.grey[700],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -15,7 +15,7 @@ class RefundPolicySeeder extends Seeder
                 'days_before_departure' => 14,
                 'refund_percentage' => 95,
                 'min_fee' => 5000,
-                'max_fee' => 50000,
+                'max_fee' => '',
                 'description' => 'Refund 95% untuk pembatalan 14 hari atau lebih sebelum keberangkatan',
                 'is_active' => true
             ],
@@ -25,7 +25,7 @@ class RefundPolicySeeder extends Seeder
                 'days_before_departure' => 7,
                 'refund_percentage' => 85,
                 'min_fee' => 10000,
-                'max_fee' => 100000,
+                'max_fee' => '',
                 'description' => 'Refund 85% untuk pembatalan 7-13 hari sebelum keberangkatan',
                 'is_active' => true
             ],
@@ -35,7 +35,7 @@ class RefundPolicySeeder extends Seeder
                 'days_before_departure' => 5,
                 'refund_percentage' => 75,
                 'min_fee' => 15000,
-                'max_fee' => 150000,
+                'max_fee' => '',
                 'description' => 'Refund 75% untuk pembatalan 5-6 hari sebelum keberangkatan',
                 'is_active' => true
             ],
@@ -45,7 +45,7 @@ class RefundPolicySeeder extends Seeder
                 'days_before_departure' => 3,
                 'refund_percentage' => 65,
                 'min_fee' => 20000,
-                'max_fee' => 200000,
+                'max_fee' => '',
                 'description' => 'Refund 65% untuk pembatalan 3-4 hari sebelum keberangkatan',
                 'is_active' => true
             ],
@@ -55,7 +55,7 @@ class RefundPolicySeeder extends Seeder
                 'days_before_departure' => 2,
                 'refund_percentage' => 50,
                 'min_fee' => 25000,
-                'max_fee' => 250000,
+                'max_fee' => '',
                 'description' => 'Refund 50% untuk pembatalan 2 hari sebelum keberangkatan',
                 'is_active' => true
             ],

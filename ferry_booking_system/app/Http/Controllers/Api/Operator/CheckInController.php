@@ -242,7 +242,7 @@ class CheckInController extends Controller
                         'ferry' => $ticket->booking->schedule->ferry->name,
                         'departure_date' => $ticket->booking->departure_date,
                         'boarding_time' => $ticket->boarding_time,
-                        'check_in_data' => json_decode($ticket->check_in_data),
+                        'check_in_data' => json_decode($ticket->watermark_data), // Gunakan watermark_data
                     ];
                 });
 
@@ -457,7 +457,7 @@ class CheckInController extends Controller
             'ip_address' => $request->ip()
         ];
 
-        $ticket->check_in_data = json_encode($checkInData);
+        $ticket->watermark_data = json_encode($checkInData); // Gunakan kolom watermark_data yang sudah ada
         $ticket->timestamps = false; // Hindari update timestamps
         $ticket->save();
 

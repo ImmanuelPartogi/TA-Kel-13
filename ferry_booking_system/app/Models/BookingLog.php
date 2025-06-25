@@ -39,6 +39,8 @@ class BookingLog extends Model
             return Admin::find($this->changed_by_id);
         } elseif ($this->changed_by_type === 'USER') {
             return User::find($this->changed_by_id);
+        } elseif ($this->changed_by_type === 'OPERATOR') {
+            return User::find($this->changed_by_id);
         }
         return null;
     }

@@ -1,9 +1,9 @@
 // lib/config/app_config.dart
 class AppConfig {
   // API Configuration
-  // static const String apiBaseUrl = 'http://127.0.0.1:8000/api'; // Local development
-  static const String apiBaseUrl = 'http://172.27.65.105:8000/api';
-  // static const String apiBaseUrl = 'http://192.168.40.145:8000/api';
+  static const String apiBaseUrl = 'http://127.0.0.1:8000/api'; // Local development
+  // static const String apiBaseUrl = 'http://172.27.65.105:8000/api'; // Mahasiswa Wifi
+  // static const String apiBaseUrl = 'http://192.168.40.145:8000/api'; //SS-Wifi
 
   // Untuk akses dari perangkat lain atau Midtrans callback
   // static const String publicBaseUrl =

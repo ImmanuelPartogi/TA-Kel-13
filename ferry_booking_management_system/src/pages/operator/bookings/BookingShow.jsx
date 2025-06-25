@@ -414,7 +414,6 @@ const BookingShow = () => {
                     </div>
                     <div className="ml-4">
                       <h4 className="text-xl font-bold text-gray-900">{booking.user.name}</h4>
-                      <p className="text-sm text-gray-500">ID: {booking.user.id}</p>
                     </div>
                   </div>
 
@@ -665,7 +664,7 @@ const BookingShow = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700">
-                        {vehicle.owner_name}
+                        {booking.user.name}
                       </td>
                     </tr>
                   ))}

@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('booking_id')->constrained()->onDelete('cascade');
             $table->string('previous_status', 50)->nullable();
             $table->string('new_status', 50);
-            $table->enum('changed_by_type', ['USER', 'ADMIN', 'SYSTEM'])->default('SYSTEM');
+            $table->enum('changed_by_type', ['USER', 'ADMIN', 'SYSTEM', 'OPERATOR'])->default('SYSTEM');
             $table->unsignedBigInteger('changed_by_id')->nullable();
             $table->text('notes')->nullable();
             $table->string('ip_address', 45)->nullable();

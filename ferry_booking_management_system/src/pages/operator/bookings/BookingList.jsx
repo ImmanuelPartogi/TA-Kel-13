@@ -494,7 +494,7 @@ const BookingList = () => {
                           Rute
                         </th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Tanggal
+                          Tanggal Keberangkatan
                         </th>
                         <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Penumpang
@@ -564,7 +564,7 @@ const BookingList = () => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm text-gray-900">
-                                {booking?.schedule?.departure_time ? new Date(booking.schedule.departure_time).toLocaleString('id-ID', {
+                                {booking?.schedule?.departure_time ? new Date(booking.departure_date).toLocaleString('id-ID', {
                                   day: 'numeric',
                                   month: 'short',
                                   year: 'numeric',

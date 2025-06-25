@@ -361,6 +361,8 @@ Route::prefix('operator-panel')->middleware(['auth:sanctum'])->group(function ()
         Route::prefix('check-in')->group(function () {
             Route::post('/validate', [CheckInController::class, 'validateTicket']);
             Route::post('/process', [CheckInController::class, 'process']);
+            Route::get('/recent', [CheckInController::class, 'getRecentCheckIns']); // Tambahkan route ini
+            Route::get('/stats', [CheckInController::class, 'getCheckInStats']); // Tambahkan route ini
         });
     });
 

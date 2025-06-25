@@ -340,7 +340,7 @@ export const operatorBookingsService = {
 
       const now = new Date();
       const depDate = new Date(departureDate);
-      
+
       // Ambil jam dan menit dari string waktu
       const [hours, minutes] = departureTime.split(':');
       depDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0);

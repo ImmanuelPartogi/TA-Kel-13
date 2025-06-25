@@ -176,24 +176,109 @@ class ApiService {
   Future<Map<String, dynamic>> _processResponse(http.Response response) async {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       try {
+        // Validasi bahwa response.body tidak kosong
+        if (response.body.isEmpty) {
+          throw Exception('Response body kosong dari server');
+        }
+
         final Map<String, dynamic> jsonResponse = jsonDecode(response.body);
 
-        // Pastikan token selalu string jika ada
-        if (jsonResponse.containsKey('data') && jsonResponse['data'] is Map) {
-          var data = jsonResponse['data'];
-          if (data.containsKey('token')) {
-            // Pastikan token selalu string
-            data['token'] = data['token'].toString();
-          }
-        }
+        // Normalisasi struktur respons
+        _normalizeResponseStructure(jsonResponse);
 
         return jsonResponse;
       } catch (e) {
         print('Error processing response: $e');
-        throw e;
+
+        // Coba parse dan kembalikan pesan error yang lebih informatif
+        if (response.body.isNotEmpty) {
+          try {
+            final errorData = jsonDecode(response.body);
+            final errorMessage = errorData['message'] ?? 'Unknown error';
+            throw Exception('API error: $errorMessage');
+          } catch (_) {
+            // Jika gagal parse error JSON, lempar error asli
+            throw Exception(
+              'Error memproses response: $e. Status: ${response.statusCode}',
+            );
+          }
+        } else {
+          throw Exception(
+            'Error memproses response: $e. Status: ${response.statusCode}',
+          );
+        }
       }
+    } else if (response.statusCode == 401) {
+      // Khusus untuk unauthorized, kita clear token
+      await clearToken();
+      throw Exception('Sesi telah berakhir. Silakan login kembali.');
     } else {
-      throw Exception('API request failed with status: ${response.statusCode}');
+      try {
+        final errorData = jsonDecode(response.body);
+        final errorMessage = errorData['message'] ?? 'Unknown error';
+        throw Exception('API error (${response.statusCode}): $errorMessage');
+      } catch (_) {
+        throw Exception(
+          'API request failed with status: ${response.statusCode}',
+        );
+      }
+    }
+  }
+
+  // Fungsi helper baru untuk normalisasi struktur respons
+  void _normalizeResponseStructure(Map<String, dynamic> jsonResponse) {
+    // Pastikan token selalu string jika ada
+    if (jsonResponse.containsKey('data')) {
+      if (jsonResponse['data'] is Map) {
+        var data = jsonResponse['data'];
+        if (data.containsKey('token')) {
+          // Pastikan token selalu string
+          data['token'] = data['token'].toString();
+        }
+
+        // Normalisasi format tanggal jika ada
+        _normalizeTimeFormats(data);
+      } else if (jsonResponse['data'] is List) {
+        // Untuk array data, normalisasi setiap item
+        for (var item in jsonResponse['data']) {
+          if (item is Map) {
+            _normalizeTimeFormats(item);
+          }
+        }
+      }
+    }
+  }
+
+  // Fungsi helper baru untuk normalisasi format waktu
+  void _normalizeTimeFormats(Map<dynamic, dynamic> data) {
+    // Normalisasi waktu keberangkatan dan tanggal jika ada
+    if (data.containsKey('departure_time') && data['departure_time'] != null) {
+      // Pastikan format waktu konsisten (HH:MM:SS)
+      final timeStr = data['departure_time'].toString();
+      if (timeStr.length <= 5 && !timeStr.contains(':')) {
+        // Format time yang salah, coba perbaiki
+        data['departure_time'] = _formatTimeString(timeStr);
+      }
+    }
+
+    // Lakukan hal yang sama untuk field waktu lainnya jika diperlukan
+  }
+
+  // Fungsi helper untuk format waktu
+  String _formatTimeString(String timeStr) {
+    // Coba format string waktu ke format HH:MM:SS
+    try {
+      if (timeStr.length == 4) {
+        // HHMM format
+        return '${timeStr.substring(0, 2)}:${timeStr.substring(2)}:00';
+      } else if (timeStr.length <= 2) {
+        // HH format
+        return '$timeStr:00:00';
+      }
+      return '$timeStr:00'; // Tambahkan detik jika tidak ada
+    } catch (e) {
+      print('Error formatting time string: $e');
+      return timeStr; // Return original jika gagal
     }
   }
 }

@@ -1,8 +1,12 @@
+import 'package:ferry_booking_app/models/booking.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ferry_booking_app/providers/auth_provider.dart';
 import 'package:ferry_booking_app/providers/booking_provider.dart';
+import 'package:ferry_booking_app/providers/ticket_status_provider.dart'; // Tambahkan provider baru
 import 'package:ferry_booking_app/widgets/booking_card.dart';
+import 'package:ferry_booking_app/utils/date_time_helper.dart'; // Tambahkan helper untuk tanggal
+import 'dart:async'; // Untuk timer
 
 class HomeTab extends StatefulWidget {
   const HomeTab({Key? key}) : super(key: key);
@@ -15,6 +19,12 @@ class _HomeTabState extends State<HomeTab> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+  
+  // Timer untuk sinkronisasi background
+  Timer? _syncTimer;
+  Timer? _statusUpdateTimer;
+  bool _isSyncing = false;
+  bool _isInitialLoading = true; // Flag untuk loading awal
 
   @override
   void initState() {
@@ -42,22 +52,168 @@ class _HomeTabState extends State<HomeTab> with SingleTickerProviderStateMixin {
     Future.delayed(const Duration(milliseconds: 100), () {
       _animationController.forward();
     });
+    
+    // Gunakan post-frame callback untuk menghindari setState selama build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadBookingsInitial();
+      _setupStatusSynchronization();
+    });
   }
 
   @override
   void dispose() {
     _animationController.dispose();
+    _syncTimer?.cancel();
+    _statusUpdateTimer?.cancel();
     super.dispose();
+  }
+  
+  /// Load booking awal dengan loading indicator
+  Future<void> _loadBookingsInitial() async {
+    final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
+    
+    try {
+      await bookingProvider.getBookings();
+    } catch (e) {
+      debugPrint('Error loading bookings: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isInitialLoading = false;
+        });
+      }
+    }
+  }
+  
+  /// Setup timer untuk sinkronisasi status tiket di background
+  void _setupStatusSynchronization() async {
+    // Sinkronisasi pertama kali
+    await _synchronizeStatuses();
+
+    // Atur timer berdasarkan waktu keberangkatan terdekat
+    _updateSyncTimer();
+
+    // Setup timer untuk secara periodik memeriksa apakah perlu mengubah interval sinkronisasi
+    _statusUpdateTimer = Timer.periodic(const Duration(minutes: 10), (_) {
+      if (mounted) {
+        _updateSyncTimer();
+      }
+    });
+  }
+
+  /// Update timer sinkronisasi berdasarkan keberangkatan terdekat
+  void _updateSyncTimer() {
+    // Cancel timer yang ada
+    _syncTimer?.cancel();
+
+    final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
+    final ticketStatusProvider = Provider.of<TicketStatusProvider>(context, listen: false);
+
+    if (bookingProvider.bookings == null) return;
+
+    // Kategorikan tiket
+    final categorized = ticketStatusProvider.categorizeTickets(bookingProvider.bookings!);
+    final upcomingTickets = categorized['upcoming'] ?? [];
+
+    // Dapatkan waktu keberangkatan terdekat
+    final closestDeparture = ticketStatusProvider.getClosestDepartureTime(upcomingTickets);
+
+    // Atur interval sinkronisasi berdasarkan kedekatan waktu keberangkatan
+    if (closestDeparture != null) {
+      final difference = closestDeparture.difference(DateTime.now());
+
+      if (difference.inHours < 2) {
+        // Jika kurang dari 2 jam, sync setiap 1 menit
+        _syncTimer = Timer.periodic(const Duration(minutes: 1), (_) => _synchronizeStatuses());
+      } else if (difference.inHours < 6) {
+        // Jika kurang dari 6 jam, sync setiap 3 menit
+        _syncTimer = Timer.periodic(const Duration(minutes: 3), (_) => _synchronizeStatuses());
+      } else {
+        // Jika lebih dari 6 jam, sync setiap 5 menit
+        _syncTimer = Timer.periodic(const Duration(minutes: 5), (_) => _synchronizeStatuses());
+      }
+    } else {
+      // Jika tidak ada tiket upcoming, sync setiap 10 menit
+      _syncTimer = Timer.periodic(const Duration(minutes: 10), (_) => _synchronizeStatuses());
+    }
+  }
+
+  /// Sinkronisasi status tiket dengan server tanpa mengganggu UI
+  Future<void> _synchronizeStatuses() async {
+    if (_isSyncing) return;
+
+    setState(() {
+      _isSyncing = true;
+    });
+
+    try {
+      final ticketStatusProvider = Provider.of<TicketStatusProvider>(context, listen: false);
+      await ticketStatusProvider.synchronizeTicketStatuses();
+      
+      // Refresh data booking tanpa loading indicator
+      final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
+      await bookingProvider.getBookings();
+    } catch (e) {
+      debugPrint('Error synchronizing statuses: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSyncing = false;
+        });
+      }
+    }
+  }
+  
+  /// Fungsi untuk mengurutkan tiket berdasarkan tanggal keberangkatan
+  List<Booking> _sortUpcomingTickets(List<Booking> tickets) {
+    return List<Booking>.from(tickets)..sort((a, b) {
+      // Mendapatkan tanggal dan waktu keberangkatan untuk tiket a
+      final aDepartureDateTime = DateTimeHelper.combineDateAndTime(
+        a.departureDate,
+        a.schedule?.departureTime ?? "00:00",
+      );
+      
+      // Mendapatkan tanggal dan waktu keberangkatan untuk tiket b
+      final bDepartureDateTime = DateTimeHelper.combineDateAndTime(
+        b.departureDate,
+        b.schedule?.departureTime ?? "00:00",
+      );
+      
+      // Jika salah satu atau kedua tanggal tidak valid, tangani kasus ini
+      if (aDepartureDateTime == null && bDepartureDateTime == null) {
+        return 0; // Keduanya tidak memiliki tanggal valid, anggap sama
+      } else if (aDepartureDateTime == null) {
+        return 1; // a tidak memiliki tanggal valid, tempatkan di akhir
+      } else if (bDepartureDateTime == null) {
+        return -1; // b tidak memiliki tanggal valid, tempatkan di akhir
+      }
+      
+      // Bandingkan tanggal keberangkatan
+      return aDepartureDateTime.compareTo(bDepartureDateTime);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final bookingProvider = Provider.of<BookingProvider>(context);
+    final ticketStatusProvider = Provider.of<TicketStatusProvider>(context);
     final user = authProvider.user;
     final bookings = bookingProvider.bookings;
     final size = MediaQuery.of(context).size;
     final theme = Theme.of(context);
+    
+    // Kategorikan dan urutkan tiket
+    List<Booking> upcomingTickets = [];
+    if (bookings != null) {
+      final categorized = ticketStatusProvider.categorizeTickets(bookings);
+      upcomingTickets = _sortUpcomingTickets(categorized['upcoming'] ?? []);
+      
+      // Batasi hanya 3 tiket terdekat
+      if (upcomingTickets.length > 3) {
+        upcomingTickets = upcomingTickets.sublist(0, 3);
+      }
+    }
 
     return Scaffold(
       body: Container(
@@ -325,7 +481,7 @@ class _HomeTabState extends State<HomeTab> with SingleTickerProviderStateMixin {
                         ),
                       ),
                       
-                      // Active Bookings Section
+                      // Active Bookings Section with View All
                       SliverToBoxAdapter(
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(24, 10, 24, 15),
@@ -340,45 +496,118 @@ class _HomeTabState extends State<HomeTab> with SingleTickerProviderStateMixin {
                                   color: Colors.black87,
                                 ),
                               ),
-                              _buildAnimatedTextButton(
-                                text: 'Lihat Semua',
-                                onTap: () => Navigator.pushNamed(context, '/tickets'),
-                              ),
                             ],
                           ),
                         ),
                       ),
                       
-                      // Active Bookings List
+                      // Active Bookings List - Gunakan loading flag agar tidak mengganggu UI
                       SliverToBoxAdapter(
-                        child: bookingProvider.isLoading
+                        child: _isInitialLoading
                             ? const Center(
                                 child: Padding(
                                   padding: EdgeInsets.all(24.0),
                                   child: CircularProgressIndicator(),
                                 ),
                               )
-                            : (bookings == null || bookings.isEmpty)
+                            : (upcomingTickets.isEmpty)
                                 ? _buildEmptyBookings(context, theme)
                                 : Padding(
                                     padding: const EdgeInsets.symmetric(horizontal: 24),
                                     child: Column(
-                                      children: bookings
-                                          .where(
-                                            (booking) =>
-                                                booking.status == 'CONFIRMED' ||
-                                                booking.status == 'PENDING',
-                                          )
-                                          .take(2)
-                                          .map((booking) => Padding(
-                                                padding: const EdgeInsets.only(bottom: 16),
-                                                child: Container(
-                                                  child: ClipRRect(
-                                                    // borderRadius: BorderRadius.circular(24),
-                                                    child: BookingCard(booking: booking),
-                                                  ),
+                                      children: upcomingTickets
+                                          .map((booking) {
+                                            // Hitung waktu keberangkatan untuk setiap tiket
+                                            final now = DateTime.now();
+                                            final departureDateTime = DateTimeHelper.combineDateAndTime(
+                                              booking.departureDate,
+                                              booking.schedule?.departureTime ?? "00:00",
+                                            );
+                                            
+                                            final timeDifference = departureDateTime != null
+                                                ? departureDateTime.difference(now)
+                                                : null;
+                                            
+                                            return Padding(
+                                              padding: const EdgeInsets.only(bottom: 16),
+                                              child: Container(
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white,
+                                                  borderRadius: BorderRadius.circular(20),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Colors.grey.withOpacity(0.1),
+                                                      blurRadius: 15,
+                                                      offset: const Offset(0, 5),
+                                                      spreadRadius: -5,
+                                                    ),
+                                                  ],
                                                 ),
-                                              ))
+                                                child: Column(
+                                                  children: [
+                                                    // Timer keberangkatan (jika < 24 jam)
+                                                    if (timeDifference != null && 
+                                                        !timeDifference.isNegative &&
+                                                        timeDifference.inHours < 24)
+                                                      Container(
+                                                        width: double.infinity,
+                                                        padding: const EdgeInsets.symmetric(
+                                                          vertical: 8,
+                                                          horizontal: 16,
+                                                        ),
+                                                        decoration: BoxDecoration(
+                                                          color: booking.status == 'PENDING'
+                                                              ? Colors.white
+                                                              : theme.primaryColor.withOpacity(0.1),
+                                                          borderRadius: booking.status == 'PENDING'
+                                                              ? BorderRadius.zero
+                                                              : const BorderRadius.only(
+                                                                  topLeft: Radius.circular(20),
+                                                                  topRight: Radius.circular(20),
+                                                                ),
+                                                        ),
+                                                        child: Row(
+                                                          children: [
+                                                            Icon(
+                                                              Icons.access_time,
+                                                              size: 16,
+                                                              color: theme.primaryColor,
+                                                            ),
+                                                            const SizedBox(width: 8),
+                                                            Text(
+                                                              'Berangkat dalam ${_formatTimeRemaining(timeDifference)}',
+                                                              style: TextStyle(
+                                                                color: theme.primaryColor,
+                                                                fontWeight: FontWeight.bold,
+                                                                fontSize: 12,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    
+                                                    // Ticket Card
+                                                    ClipRRect(
+                                                      borderRadius: _getTicketCardBorderRadius(
+                                                        booking,
+                                                        timeDifference,
+                                                      ),
+                                                      child: BookingCard(
+                                                        booking: booking,
+                                                        onTap: () {
+                                                          Navigator.pushNamed(
+                                                            context,
+                                                            '/tickets/detail',
+                                                            arguments: booking.id,
+                                                          );
+                                                        },
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            );
+                                          })
                                           .toList(),
                                     ),
                                   ),
@@ -391,6 +620,49 @@ class _HomeTabState extends State<HomeTab> with SingleTickerProviderStateMixin {
                 ),
               ),
             ),
+            
+            // Indikator sinkronisasi yang tidak mengganggu UI
+            if (_isSyncing && !_isInitialLoading)
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 10,
+                right: 24,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.9),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(theme.primaryColor),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Memperbarui...',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: theme.primaryColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -466,9 +738,9 @@ class _HomeTabState extends State<HomeTab> with SingleTickerProviderStateMixin {
                     child: Container(
                       alignment: Alignment.center,
                       constraints: const BoxConstraints(minHeight: 50),
-                      child: Text(
+                      child: const Text(
                         'PESAN TIKET SEKARANG',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1,
@@ -485,44 +757,50 @@ class _HomeTabState extends State<HomeTab> with SingleTickerProviderStateMixin {
       ),
     );
   }
+  
+  /// Mendapatkan border radius untuk card tiket
+  BorderRadius _getTicketCardBorderRadius(
+    Booking booking,
+    Duration? timeDifference,
+  ) {
+    final showTimeInfo =
+        timeDifference != null &&
+        timeDifference.inHours < 24 &&
+        !timeDifference.isNegative;
 
-  Widget _buildAnimatedTextButton({
-    required String text,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
-      splashColor: Colors.transparent,
-      highlightColor: Colors.transparent,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              text,
-              style: TextStyle(
-                color: Theme.of(context).primaryColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              height: 2,
-              width: text.length * 6.5,
-              margin: const EdgeInsets.only(top: 3),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor,
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return BorderRadius.only(
+      topLeft:
+          (booking.status != 'PENDING' && !showTimeInfo)
+              ? const Radius.circular(20)
+              : Radius.zero,
+      topRight:
+          (booking.status != 'PENDING' && !showTimeInfo)
+              ? const Radius.circular(20)
+              : Radius.zero,
+      bottomLeft: const Radius.circular(20),
+      bottomRight: const Radius.circular(20),
     );
   }
+  
+  /// Fungsi untuk memformat sisa waktu
+  String _formatTimeRemaining(Duration duration) {
+    // Perhitungan yang lebih akurat untuk selisih hari dan jam
+    final days = duration.inDays;
+    final hours = duration.inHours % 24;
+    final minutes = duration.inMinutes % 60;
 
+    if (days > 0) {
+      if (hours > 0) {
+        return '$days hari $hours jam';
+      }
+      return '$days hari';
+    } else if (hours > 0) {
+      if (minutes > 0) {
+        return '$hours jam $minutes menit';
+      }
+      return '$hours jam';
+    } else {
+      return '$minutes menit';
+    }
+  }
 }

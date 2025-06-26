@@ -12,6 +12,7 @@ const BookingReschedule = () => {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState([]);
   const [searchingSchedules, setSearchingSchedules] = useState(false);
+  const [showErrorRetryButton, setShowErrorRetryButton] = useState(false);
   
   const [formData, setFormData] = useState({
     route_id: '',
@@ -75,8 +76,13 @@ const BookingReschedule = () => {
 
     setSearchingSchedules(true);
     setShowNearestResults(false);
+    setErrors([]);
 
     try {
+      // Validasi hari terlebih dahulu
+      const selectedDate = new Date(formData.departure_date);
+      const dayName = selectedDate.toLocaleDateString('id-ID', { weekday: 'long' });
+
       const response = await api.post('/admin-panel/bookings/get-available-schedules', {
         route_id: formData.route_id,
         date: formData.departure_date,
@@ -87,13 +93,30 @@ const BookingReschedule = () => {
 
       if (response.data.success) {
         const schedules = response.data.data || [];
-        setScheduleResults(schedules);
+
+        // Tambahkan informasi hari saat ini untuk tampilan
+        const enhancedSchedules = schedules.map(schedule => ({
+          ...schedule,
+          currentDay: dayName
+        }));
+
+        setScheduleResults(enhancedSchedules);
         setShowScheduleResults(true);
-        setNoSchedulesFound(schedules.length === 0 || schedules.every(s => !s.is_available));
+
+        const hasAvailableSchedules = schedules.some(s => s.is_available);
+        setNoSchedulesFound(!hasAvailableSchedules);
+
+        if (!hasAvailableSchedules) {
+          setErrors([`Tidak ada jadwal tersedia untuk hari ${dayName}, ${formatDate(formData.departure_date)}. Silakan pilih tanggal lain atau gunakan fitur "Cari Jadwal Terdekat".`]);
+        }
       }
     } catch (error) {
       console.error('Error checking schedules:', error);
-      alert('Terjadi kesalahan saat mencari jadwal');
+      if (error.response?.data?.message) {
+        setErrors([error.response.data.message]);
+      } else {
+        setErrors(['Terjadi kesalahan saat mencari jadwal']);
+      }
     } finally {
       setSearchingSchedules(false);
     }
@@ -135,7 +158,7 @@ const BookingReschedule = () => {
 
   const getVehicleCounts = () => {
     if (!booking || !booking.vehicles) return {};
-    
+
     const counts = {
       MOTORCYCLE: 0,
       CAR: 0,
@@ -155,13 +178,13 @@ const BookingReschedule = () => {
 
   const selectSchedule = (schedule) => {
     setFormData({ ...formData, schedule_id: schedule.id });
-    
+
     // Update visual selection
     const scheduleElements = document.querySelectorAll('[data-schedule-id]');
     scheduleElements.forEach(el => {
       el.classList.remove('ring-2', 'ring-blue-500', 'bg-blue-50', 'border-blue-500');
     });
-    
+
     const selectedElement = document.querySelector(`[data-schedule-id="${schedule.id}"]`);
     if (selectedElement) {
       selectedElement.classList.add('ring-2', 'ring-blue-500', 'bg-blue-50', 'border-blue-500');
@@ -181,11 +204,27 @@ const BookingReschedule = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.schedule_id) {
       alert('Silakan pilih jadwal terlebih dahulu');
       return;
     }
+
+    // Tambahan validasi: cek apakah jadwal yang dipilih masih tersedia
+    const selectedSchedule = scheduleResults.find(s => s.id === formData.schedule_id);
+    if (!selectedSchedule) {
+      setErrors(['Jadwal yang dipilih tidak ditemukan, silakan pilih jadwal lagi']);
+      return;
+    }
+
+    if (!selectedSchedule.is_available) {
+      setErrors(['Jadwal yang dipilih tidak tersedia, silakan pilih jadwal lain yang tersedia']);
+      return;
+    }
+
+    // Validasi hari
+    const selectedDate = new Date(formData.departure_date);
+    const dayOfWeek = selectedDate.getDay() === 0 ? 7 : selectedDate.getDay(); // Ubah format 0-6 menjadi 1-7 (Senin-Minggu)
 
     setSubmitting(true);
     setErrors([]);
@@ -196,7 +235,7 @@ const BookingReschedule = () => {
         departure_date: formData.departure_date,
         notes: formData.notes
       });
-      
+
       if (response.data.success) {
         // Navigate to new booking detail
         const newBookingId = response.data.data.new_booking?.id || id;
@@ -205,13 +244,31 @@ const BookingReschedule = () => {
         });
       }
     } catch (error) {
-      if (error.response?.data?.errors) {
-        setErrors(Object.values(error.response.data.errors).flat());
+      console.error('Error saat reschedule:', error.response?.data);
+
+      // Tangani error khusus untuk vehicle_category_id
+      if (error.response?.data?.message && error.response?.data?.message.includes("vehicle_category_id")) {
+        setErrors(["Terjadi kesalahan pada data kendaraan. Harap hubungi administrator sistem."]);
+      } else if (error.response?.data?.errors) {
+        const errorMessages = [];
+        Object.values(error.response.data.errors).forEach(errorArray => {
+          errorMessages.push(...errorArray);
+        });
+        setErrors(errorMessages);
+      } else if (error.response?.data?.message) {
+        // Singkatkan error message yang terlalu panjang
+        let errorMsg = error.response.data.message;
+        if (errorMsg.length > 150) {
+          errorMsg = errorMsg.substring(0, 150) + '...';
+        }
+        setErrors([errorMsg]);
       } else {
         setErrors(['Terjadi kesalahan saat reschedule booking']);
       }
-    } finally {
-      setSubmitting(false);
+
+      if (typeof setShowErrorRetryButton === 'function') {
+        setShowErrorRetryButton(true);
+      }
     }
   };
 
@@ -267,7 +324,7 @@ const BookingReschedule = () => {
         <div className="bg-white rounded-xl border border-gray-100 shadow-md p-8 text-center">
           <div className="inline-block relative">
             <div className="h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-500 animate-spin"></div>
-            <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-200 animate-spin" style={{animationDirection: 'reverse', animationDuration: '1.5s'}}></div>
+            <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-200 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
           </div>
           <p className="mt-4 text-gray-600">Memuat data booking...</p>
         </div>
@@ -301,13 +358,13 @@ const BookingReschedule = () => {
       <div className="bg-gradient-to-br from-blue-800 via-blue-600 to-blue-500 p-8 text-white relative">
         <div className="absolute inset-0 opacity-20">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" className="w-full h-full">
-            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                  fill="#fff" opacity="0.2" />
-            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                  fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
+            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+              fill="#fff" opacity="0.2" />
+            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+              fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
           </svg>
         </div>
-        
+
         <div className="relative z-10">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div className="flex items-start">
@@ -319,7 +376,7 @@ const BookingReschedule = () => {
                 <p className="mt-1 text-blue-100">Kode: <span className="font-medium">{booking.booking_code}</span></p>
               </div>
             </div>
-            
+
             <div>
               <button
                 onClick={() => navigate(`/admin/bookings/${id}`)}
@@ -329,7 +386,7 @@ const BookingReschedule = () => {
               </button>
             </div>
           </div>
-          
+
           {/* Quick Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-8">
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
@@ -341,7 +398,7 @@ const BookingReschedule = () => {
                 </span>
               </div>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Tanggal Keberangkatan</p>
               <div className="flex items-center mt-1">
@@ -351,7 +408,7 @@ const BookingReschedule = () => {
                 </span>
               </div>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Jumlah Penumpang</p>
               <div className="flex items-center mt-1">
@@ -361,7 +418,7 @@ const BookingReschedule = () => {
                 </span>
               </div>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Jumlah Kendaraan</p>
               <div className="flex items-center mt-1">
@@ -541,11 +598,10 @@ const BookingReschedule = () => {
                           <div
                             key={schedule.id}
                             data-schedule-id={schedule.id}
-                            className={`border-2 rounded-xl p-5 transition-all ${
-                              schedule.is_available 
-                                ? 'bg-white hover:shadow-md cursor-pointer border-gray-200 hover:border-blue-300' 
-                                : 'bg-gray-50 opacity-60 border-gray-200 cursor-not-allowed'
-                            }`}
+                            className={`border-2 rounded-xl p-5 transition-all ${schedule.is_available
+                              ? 'bg-white hover:shadow-md cursor-pointer border-gray-200 hover:border-blue-300'
+                              : 'bg-gray-50 opacity-60 border-gray-200 cursor-not-allowed'
+                              }`}
                             onClick={() => schedule.is_available && selectSchedule(schedule)}
                           >
                             <div className="flex items-start justify-between">
@@ -581,10 +637,16 @@ const BookingReschedule = () => {
                                     </p>
                                   </div>
                                 </div>
-                                {!schedule.is_available && schedule.reason && (
+                                {!schedule.is_available && (
                                   <p className="mt-3 text-sm text-red-600 font-medium flex items-center">
                                     <i className="fas fa-info-circle mr-1"></i>
-                                    {schedule.reason}
+                                    {schedule.reason || 'Jadwal tidak tersedia untuk tanggal ini'}
+                                  </p>
+                                )}
+                                {schedule.is_available && (
+                                  <p className="mt-3 text-xs text-green-600 font-medium flex items-center">
+                                    <i className="fas fa-check-circle mr-1"></i>
+                                    Jadwal tersedia untuk hari {schedule.currentDay}
                                   </p>
                                 )}
                               </div>

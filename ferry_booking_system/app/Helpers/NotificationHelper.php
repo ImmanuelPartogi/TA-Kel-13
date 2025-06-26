@@ -22,25 +22,53 @@ class NotificationHelper
         $notificationService = app(NotificationService::class);
         $tomorrow = Carbon::tomorrow()->format('Y-m-d');
 
-        // Ambil semua booking yang akan berangkat besok
-        $bookings = \App\Models\Booking::with(['user', 'schedule.route'])
-            ->where('departure_date', $tomorrow)
-            ->where('status', 'CONFIRMED')
-            ->get();
+        try {
+            // Ambil semua booking yang akan berangkat besok
+            $bookings = \App\Models\Booking::with(['user', 'schedule.route'])
+                ->where('departure_date', $tomorrow)
+                ->where('status', 'CONFIRMED')
+                ->get();
 
-        foreach ($bookings as $booking) {
-            // Kirim notifikasi ke pengguna
-            $notificationService->sendCheckinReminderNotification(
-                $booking->user,
-                $booking->booking_code,
-                $booking->schedule->route->name,
-                $tomorrow
-            );
+            foreach ($bookings as $booking) {
+                try {
+                    // Skip jika tidak ada schedule atau route
+                    if (!$booking->schedule || !$booking->schedule->route) {
+                        Log::warning("Booking {$booking->booking_code} tidak memiliki schedule atau route yang valid");
+                        continue;
+                    }
 
-            $count++;
+                    // Tentukan nama rute dengan fallback jika name tidak tersedia
+                    $routeName = $booking->schedule->route->name ??
+                        "{$booking->schedule->route->origin} - {$booking->schedule->route->destination}";
+
+                    // Pastikan routeName tidak null
+                    if (empty($routeName)) {
+                        $routeName = "Rute Ferry"; // Default fallback
+                    }
+
+                    // Kirim notifikasi ke pengguna
+                    $notificationService->sendCheckinReminderNotification(
+                        $booking->user,
+                        $booking->booking_code,
+                        $routeName,
+                        $tomorrow
+                    );
+
+                    $count++;
+
+                    // Log untuk debugging
+                    Log::info("Notifikasi check-in dikirim untuk booking {$booking->booking_code}, rute: {$routeName}");
+                } catch (\Exception $e) {
+                    Log::error("Gagal mengirim notifikasi check-in untuk booking {$booking->booking_code}: " . $e->getMessage());
+                    // Lanjutkan ke booking berikutnya
+                }
+            }
+
+            return $count;
+        } catch (\Exception $e) {
+            Log::error("Error dalam sendCheckinReminders: " . $e->getMessage());
+            return 0; // Return 0 jika terjadi error keseluruhan
         }
-
-        return $count;
     }
 
     /**

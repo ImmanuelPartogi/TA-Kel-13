@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Chart from 'chart.js/auto';
-import { 
-  Calendar, Clock, Layers, Navigation, Users, CreditCard, 
-  BarChart2, Activity, CheckCircle, List, Ship, FileText 
+import {
+  Calendar, Clock, Layers, Navigation, Users, CreditCard,
+  BarChart2, Activity, CheckCircle, List, Ship, FileText
 } from 'lucide-react';
 import operatorDashboardService from '../../services/operatorDashboard.service';
 import { formatCurrency } from '../../utils/formatters';
@@ -106,16 +106,16 @@ const OperatorDashboard = () => {
 
     // Periksa apakah ada data booking
     const hasData = dashboardData.summary.bookingChartData && dashboardData.summary.bookingChartData.length > 0;
-    
+
     // Siapkan data default jika tidak ada data
-    const labels = hasData 
+    const labels = hasData
       ? dashboardData.summary.bookingChartData.map(item => item.date)
       : ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
-    
+
     const data = hasData
       ? dashboardData.summary.bookingChartData.map(item => item.total)
       : [0, 0, 0, 0, 0, 0, 0];
-    
+
     const maxValue = Math.max(...(hasData ? data : [5]));
     const yMax = Math.max(5, Math.ceil(maxValue * 1.2));
 
@@ -274,16 +274,33 @@ const OperatorDashboard = () => {
 
   const { stats, summary } = dashboardData;
 
-  const currentDate = new Date().toLocaleDateString('id-ID', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
+  const currentDate = new Date().toLocaleDateString('id-ID', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
   });
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Warning Alert - hanya muncul jika pengguna tidak memiliki rute yang ditugaskan */}
+        {(stats.noRoutesAssigned || summary.noRoutesAssigned) && (
+          <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border-l-4 border-yellow-500 p-5 mb-6 rounded-xl shadow-lg animate-fade-in">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-6 w-6 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-semibold text-yellow-800">Perhatian</h3>
+                <p className="mt-1 text-sm text-yellow-700">Anda belum memiliki rute yang ditugaskan. Silakan hubungi administrator untuk mengatur rute yang dapat Anda akses.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header & Greeting */}
         <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
           <div>
@@ -307,7 +324,7 @@ const OperatorDashboard = () => {
                 <p className="text-sm font-medium text-slate-500">Total Jadwal</p>
                 <h3 className="mt-1 text-2xl font-bold text-slate-900">{stats.totalSchedules}</h3>
                 <div className="mt-2">
-                  <Link to="/operator/schedules" 
+                  <Link to="/operator/schedules"
                     className="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-800 group-hover:underline">
                     Lihat Detail
                     <svg className="ml-1 h-3 w-3 transform group-hover:translate-x-0.5 transition-transform duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -330,7 +347,7 @@ const OperatorDashboard = () => {
                 <p className="text-sm font-medium text-slate-500">Total Booking</p>
                 <h3 className="mt-1 text-2xl font-bold text-slate-900">{stats.totalBookings}</h3>
                 <div className="mt-2">
-                  <Link to="/operator/bookings" 
+                  <Link to="/operator/bookings"
                     className="inline-flex items-center text-xs font-medium text-emerald-600 hover:text-emerald-800 group-hover:underline">
                     Lihat Detail
                     <svg className="ml-1 h-3 w-3 transform group-hover:translate-x-0.5 transition-transform duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -353,7 +370,7 @@ const OperatorDashboard = () => {
                 <p className="text-sm font-medium text-slate-500">Booking Bulan Ini</p>
                 <h3 className="mt-1 text-2xl font-bold text-slate-900">{stats.bookingsThisMonth}</h3>
                 <div className="mt-2">
-                  <Link to="/operator/bookings" 
+                  <Link to="/operator/bookings"
                     className="inline-flex items-center text-xs font-medium text-amber-600 hover:text-amber-800 group-hover:underline">
                     Lihat Detail
                     <svg className="ml-1 h-3 w-3 transform group-hover:translate-x-0.5 transition-transform duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -376,7 +393,7 @@ const OperatorDashboard = () => {
                 <p className="text-sm font-medium text-slate-500">Pendapatan Bulan Ini</p>
                 <h3 className="mt-1 text-2xl font-bold text-slate-900">Rp {formatCurrency(stats.revenueThisMonth)}</h3>
                 <div className="mt-2">
-                  <Link 
+                  <Link
                     to={`/operator/reports/monthly?month=${new Date().toISOString().slice(0, 7)}`}
                     className="inline-flex items-center text-xs font-medium text-indigo-600 hover:text-indigo-800 group-hover:underline"
                   >
@@ -450,7 +467,7 @@ const OperatorDashboard = () => {
                                 <Ship className="h-5 w-5 text-sky-700" />
                               </div>
                             </div>
-                            
+
                             <div className="ml-4 flex-1">
                               <div className="flex items-center justify-between mb-1.5">
                                 <h4 className="text-sm font-bold text-slate-900">
@@ -460,7 +477,7 @@ const OperatorDashboard = () => {
                                   Kapal Ferry
                                 </span>
                               </div>
-                              
+
                               <div className="flex items-center text-xs text-slate-600 mb-3.5">
                                 <span className="font-medium">{schedule.route.origin}</span>
                                 <svg className="h-3.5 w-3.5 mx-1.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -468,7 +485,7 @@ const OperatorDashboard = () => {
                                 </svg>
                                 <span className="font-medium">{schedule.route.destination}</span>
                               </div>
-                              
+
                               <div className="grid grid-cols-2 gap-6">
                                 <div className="flex items-center">
                                   <div className="bg-emerald-100 p-2 rounded-lg shadow-sm">
@@ -485,7 +502,7 @@ const OperatorDashboard = () => {
                                     </span>
                                   </div>
                                 </div>
-                                
+
                                 <div className="flex items-center">
                                   <div className="bg-sky-100 p-2 rounded-lg shadow-sm">
                                     <Layers className="h-4 w-4 text-sky-700" />

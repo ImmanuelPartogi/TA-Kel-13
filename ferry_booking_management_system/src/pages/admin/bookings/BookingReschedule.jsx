@@ -12,7 +12,7 @@ const BookingReschedule = () => {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState([]);
   const [searchingSchedules, setSearchingSchedules] = useState(false);
-  const [showErrorRetryButton, setShowErrorRetryButton] = useState(false);
+  const [setShowErrorRetryButton] = useState(false);
   
   const [formData, setFormData] = useState({
     route_id: '',
@@ -223,8 +223,6 @@ const BookingReschedule = () => {
     }
 
     // Validasi hari
-    const selectedDate = new Date(formData.departure_date);
-    const dayOfWeek = selectedDate.getDay() === 0 ? 7 : selectedDate.getDay(); // Ubah format 0-6 menjadi 1-7 (Senin-Minggu)
 
     setSubmitting(true);
     setErrors([]);

@@ -865,14 +865,6 @@ const ReportIndex = () => {
                             <i className="fas fa-eye"></i>
                             <span>Lihat Laporan</span>
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => handleSubmit('booking', 'csv')}
-                            className="flex-1 inline-flex justify-center items-center px-6 py-3.5 bg-gradient-to-r from-emerald-700 to-emerald-600 hover:from-emerald-800 hover:to-emerald-700 text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-300 gap-2.5"
-                          >
-                            <i className="fas fa-file-csv"></i>
-                            <span>Export CSV</span>
-                          </button>
                         </div>
                       </form>
                     )}
@@ -942,14 +934,6 @@ const ReportIndex = () => {
                             <i className="fas fa-eye"></i>
                             <span>Lihat Laporan</span>
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => handleSubmit('revenue', 'csv')}
-                            className="flex-1 inline-flex justify-center items-center px-6 py-3.5 bg-gradient-to-r from-emerald-800 to-emerald-700 hover:from-emerald-900 hover:to-emerald-800 text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-300 gap-2.5"
-                          >
-                            <i className="fas fa-file-csv"></i>
-                            <span>Export CSV</span>
-                          </button>
                         </div>
                       </form>
                     )}
@@ -1002,14 +986,6 @@ const ReportIndex = () => {
                           >
                             <i className="fas fa-eye"></i>
                             <span>Lihat Laporan</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleSubmit('schedule', 'csv')}
-                            className="flex-1 inline-flex justify-center items-center px-6 py-3.5 bg-gradient-to-r from-purple-800 to-purple-700 hover:from-purple-900 hover:to-purple-800 text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-300 gap-2.5"
-                          >
-                            <i className="fas fa-file-csv"></i>
-                            <span>Export CSV</span>
                           </button>
                         </div>
                       </form>

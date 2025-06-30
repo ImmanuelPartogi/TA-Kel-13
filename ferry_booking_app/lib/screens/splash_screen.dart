@@ -410,156 +410,48 @@ class _SplashScreenState extends State<SplashScreen>
 
                             const SizedBox(height: 12),
 
-                            AnimatedTextKit(
-                              animatedTexts: [
-                                FadeAnimatedText(
-                                  'Perjalanan Laut Jadi Lebih Mudah',
-                                  textStyle: TextStyle(
-                                    color: Colors.grey.shade700,
-                                    fontSize: 15,
-                                    height: 1.5,
+                            // Menggunakan SizedBox dengan tinggi tetap untuk area AnimatedTextKit
+                            SizedBox(
+                              height: 30, // Tinggi tetap untuk menghindari perubahan layout
+                              child: AnimatedTextKit(
+                                animatedTexts: [
+                                  FadeAnimatedText(
+                                    'Perjalanan Jadi Lebih Mudah',
+                                    textStyle: TextStyle(
+                                      color: Colors.grey.shade700,
+                                      fontSize: 15,
+                                      height: 1.5,
+                                    ),
+                                    duration: const Duration(milliseconds: 2000),
+                                    fadeOutBegin: 0.8,
+                                    fadeInEnd: 0.2,
                                   ),
-                                  duration: const Duration(milliseconds: 2000),
-                                  fadeOutBegin: 0.8,
-                                  fadeInEnd: 0.2,
-                                ),
-                                FadeAnimatedText(
-                                  'Pesan Tiket Kapanpun, Dimanapun',
-                                  textStyle: TextStyle(
-                                    color: Colors.grey.shade700,
-                                    fontSize: 15,
-                                    height: 1.5,
+                                  FadeAnimatedText(
+                                    'Pesan Tiket Kapanpun, Dimanapun',
+                                    textStyle: TextStyle(
+                                      color: Colors.grey.shade700,
+                                      fontSize: 15,
+                                      height: 1.5,
+                                    ),
+                                    duration: const Duration(milliseconds: 2000),
+                                    fadeOutBegin: 0.8,
+                                    fadeInEnd: 0.2,
                                   ),
-                                  duration: const Duration(milliseconds: 2000),
-                                  fadeOutBegin: 0.8,
-                                  fadeInEnd: 0.2,
-                                ),
-                                FadeAnimatedText(
-                                  'Solusi Terbaik Perjalanan Laut Anda',
-                                  textStyle: TextStyle(
-                                    color: Colors.grey.shade700,
-                                    fontSize: 15,
-                                    height: 1.5,
-                                  ),
-                                  duration: const Duration(milliseconds: 2000),
-                                  fadeOutBegin: 0.8,
-                                  fadeInEnd: 0.2,
-                                ),
-                              ],
-                              repeatForever: true,
-                            ),
-
-                            const SizedBox(height: 50),
-
-                            // Loading indicator dengan efek gelombang
-                            Container(
-                              width: 65,
-                              height: 65,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(22),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: theme.primaryColor.withOpacity(0.3),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 8),
-                                    spreadRadius: -5,
+                                  FadeAnimatedText(
+                                    'Solusi Terbaik Perjalanan Anda',
+                                    textStyle: TextStyle(
+                                      color: Colors.grey.shade700,
+                                      fontSize: 15,
+                                      height: 1.5,
+                                    ),
+                                    duration: const Duration(milliseconds: 2000),
+                                    fadeOutBegin: 0.8,
+                                    fadeInEnd: 0.2,
                                   ),
                                 ],
-                              ),
-                              child: Material(
-                                color: Colors.transparent,
-                                borderRadius: BorderRadius.circular(22),
-                                child: Ink(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        theme.primaryColor.withBlue(255),
-                                        theme.primaryColor,
-                                      ],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                    borderRadius: BorderRadius.circular(22),
-                                  ),
-                                  child: Stack(
-                                    alignment: Alignment.center,
-                                    children: [
-                                      // Wave animation overlay
-                                      Positioned.fill(
-                                        child: LayoutBuilder(
-                                          builder: (context, constraints) {
-                                            return AnimatedBuilder(
-                                              animation: _animationController,
-                                              builder: (context, _) {
-                                                return ClipRRect(
-                                                  borderRadius:
-                                                      BorderRadius.circular(22),
-                                                  child: CustomPaint(
-                                                    size: Size(
-                                                      constraints.maxWidth,
-                                                      constraints.maxHeight,
-                                                    ),
-                                                    painter: WavePainter(
-                                                      animationValue:
-                                                          _animationController
-                                                              .value,
-                                                      color: Colors.white
-                                                          .withOpacity(0.15),
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                      // Spinner
-                                      Container(
-                                        alignment: Alignment.center,
-                                        constraints: const BoxConstraints(
-                                          minHeight: 65,
-                                        ),
-                                        child: const SizedBox(
-                                          height: 28,
-                                          width: 28,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2.5,
-                                            valueColor:
-                                                AlwaysStoppedAnimation<Color>(
-                                                  Colors.white,
-                                                ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            // Version information dengan style yang lebih profesional
-                            Container(
-                              margin: const EdgeInsets.only(top: 20),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(30),
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.1),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Text(
-                                "v1.0.0",
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.grey.shade700,
-                                  letterSpacing: 1,
-                                ),
+                                repeatForever: true,
+                                displayFullTextOnTap: false, // Mencegah perubahan ukuran saat tap
+                                stopPauseOnTap: false, // Mencegah perubahan perilaku saat tap
                               ),
                             ),
                           ],

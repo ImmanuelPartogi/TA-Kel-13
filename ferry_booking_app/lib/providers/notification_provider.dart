@@ -13,19 +13,25 @@ class NotificationProvider extends ChangeNotifier {
   List<UserNotification> _notifications = [];
   Timer? _refreshTimer;
 
+  // Tambahkan flag untuk menandai provider sudah di-dispose
+  bool _disposed = false;
+
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   List<UserNotification> get notifications => _notifications;
 
-  // Konstruktor
-  NotificationProvider() {
-    // Polling setiap 5 menit saat aplikasi berjalan
-    startAutoRefresh();
+  // Override notifyListeners untuk memeriksa flag _disposed
+  @override
+  void notifyListeners() {
+    if (!_disposed) {
+      super.notifyListeners();
+    }
   }
 
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _disposed = true; // Set flag sebelum memanggil super.dispose()
     super.dispose();
   }
 

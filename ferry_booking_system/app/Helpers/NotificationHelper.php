@@ -46,13 +46,40 @@ class NotificationHelper
                         $routeName = "Rute Ferry"; // Default fallback
                     }
 
+                    // Periksa apakah sudah mengirim notifikasi check-in untuk booking ini
+                    $notificationCount = NotificationLog::where('booking_id', $booking->id)
+                        ->where('type', 'CHECKIN')
+                        ->where('is_sent', true)
+                        ->count();
+
+                    // Batasi maksimal 1 notifikasi check-in per booking
+                    if ($notificationCount >= 1) {
+                        Log::info("Sudah mengirim notifikasi check-in untuk booking {$booking->booking_code}, tidak mengirim lagi");
+                        continue;
+                    }
+
                     // Kirim notifikasi ke pengguna
-                    $notificationService->sendCheckinReminderNotification(
+                    $notification = $notificationService->sendCheckinReminderNotification(
                         $booking->user,
                         $booking->booking_code,
                         $routeName,
                         $tomorrow
                     );
+
+                    // Catat notifikasi ini di log
+                    try {
+                        NotificationLog::create([
+                            'booking_id' => $booking->id,
+                            'notification_id' => $notification->id,
+                            'type' => 'CHECKIN',
+                            'scheduled_at' => now(),
+                            'sent_at' => now(),
+                            'is_sent' => true,
+                            'status' => 'SENT'
+                        ]);
+                    } catch (\Exception $e) {
+                        Log::warning("Gagal mencatat log notifikasi check-in: " . $e->getMessage());
+                    }
 
                     $count++;
 
@@ -139,8 +166,8 @@ class NotificationHelper
 
                         Log::info("Booking {$booking->booking_code}: Keberangkatan (parsed): {$departureDateTime->format('Y-m-d H:i:s')}, Sekarang: {$now->format('Y-m-d H:i:s')}, Selisih: {$hoursDiff} jam");
 
-                        // Kirim notifikasi jika keberangkatan dalam X jam
-                        if ($hoursDiff <= $hours && $hoursDiff > 0) {
+                        // Kirim notifikasi hanya pada waktu strategis: 1 jam dan 30 menit sebelum keberangkatan
+                        if (($hoursDiff >= 0.9 && $hoursDiff <= 1.1) || ($hoursDiff >= 0.4 && $hoursDiff <= 0.6)) {
                             Log::info("Mengirim notifikasi boarding untuk booking {$booking->booking_code}, {$hoursDiff} jam tersisa");
 
                             // Pastikan user tersedia
@@ -158,10 +185,22 @@ class NotificationHelper
                             $routeName = $booking->schedule->route->name ??
                                 "{$booking->schedule->route->origin} - {$booking->schedule->route->destination}";
 
-                            // Pastikan tidak ada notifikasi yang sama sudah dikirim
+                            // Hitung jumlah notifikasi boarding yang sudah dikirim untuk booking ini
+                            $notificationCount = NotificationLog::where('booking_id', $booking->id)
+                                ->where('type', 'BOARDING')
+                                ->where('is_sent', true)
+                                ->count();
+
+                            // Batasi maksimal 2 notifikasi
+                            if ($notificationCount >= 2) {
+                                Log::info("Sudah mencapai batas 2 notifikasi untuk booking {$booking->booking_code}, tidak mengirim lagi");
+                                continue;
+                            }
+
+                            // Pastikan tidak ada notifikasi yang sama sudah dikirim dalam jangka waktu dekat
                             $existingNotification = Notification::where('user_id', $booking->user->id)
                                 ->where('type', 'BOARDING')
-                                ->where('created_at', '>=', now()->subHours(2))
+                                ->where('created_at', '>=', now()->subMinutes(15))
                                 ->whereRaw("JSON_CONTAINS(data, '{\"booking_code\":\"{$booking->booking_code}\"}', '$')")
                                 ->first();
 
@@ -244,13 +283,40 @@ class NotificationHelper
             // Jika waktu kadaluarsa dalam X jam
             $hoursDiff = $now->diffInHours($expiryDate, false);
             if ($hoursDiff <= $hoursBeforeExpiry && $hoursDiff > 0) {
+                // Periksa jumlah notifikasi pembayaran yang sudah dikirim
+                $notificationCount = NotificationLog::where('booking_id', $payment->booking->id)
+                    ->where('type', 'PAYMENT')
+                    ->where('is_sent', true)
+                    ->count();
+
+                // Batasi maksimal 2 notifikasi pengingat pembayaran
+                if ($notificationCount >= 2) {
+                    Log::info("Sudah mengirim 2 notifikasi pembayaran untuk booking {$payment->booking->booking_code}, tidak mengirim lagi");
+                    continue;
+                }
+
                 // Kirim notifikasi ke pengguna
-                $notificationService->sendPaymentReminderNotification(
+                $notification = $notificationService->sendPaymentReminderNotification(
                     $payment->booking->user,
                     $payment->booking->booking_code,
                     number_format($payment->amount, 0, ',', '.'),
                     $expiryDate->format('d M Y H:i')
                 );
+
+                // Catat notifikasi di log
+                try {
+                    NotificationLog::create([
+                        'booking_id' => $payment->booking->id,
+                        'notification_id' => $notification->id,
+                        'type' => 'PAYMENT',
+                        'scheduled_at' => now(),
+                        'sent_at' => now(),
+                        'is_sent' => true,
+                        'status' => 'SENT'
+                    ]);
+                } catch (\Exception $e) {
+                    Log::warning("Gagal mencatat log notifikasi pembayaran: " . $e->getMessage());
+                }
 
                 $count++;
             }

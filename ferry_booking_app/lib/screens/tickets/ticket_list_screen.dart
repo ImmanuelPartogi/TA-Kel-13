@@ -88,27 +88,31 @@ class _TicketListScreenState extends State<TicketListScreen>
 
   @override
   void dispose() {
-    // PERBAIKAN: Pastikan semua resource dibersihkan dengan baik
-    _tabController.dispose();
-    _animationController.dispose();
-
-    // Batalkan semua timer untuk mencegah memory leak
+    // Batalkan semua timer
     _statusUpdateTimer?.cancel();
     _syncTimer?.cancel();
 
-    // Batalkan semua subscription ke providers jika ada
+    // Dispose controller
+    _tabController.dispose();
+    _animationController.dispose();
+
     super.dispose();
   }
 
   /// Setup timer untuk sinkronisasi status tiket
   void _setupStatusSynchronization() async {
-    // Sinkronisasi pertama kali
+    if (!mounted) return;
+
+    // Sinkronisasi pertama kali dengan pemeriksaan mounted
     await _synchronizeStatuses();
 
-    // Atur timer berdasarkan waktu keberangkatan terdekat
+    // Periksa mounted lagi setelah operasi asinkron
+    if (!mounted) return;
+
+    // Atur timer dengan pemeriksaan mounted
     _updateSyncTimer();
 
-    // Setup timer untuk secara periodik memeriksa apakah perlu mengubah interval sinkronisasi
+    // Setup timer untuk periodik
     _statusUpdateTimer = Timer.periodic(const Duration(minutes: 10), (_) {
       if (mounted) {
         _updateSyncTimer();
@@ -118,6 +122,8 @@ class _TicketListScreenState extends State<TicketListScreen>
 
   /// Update timer sinkronisasi berdasarkan keberangkatan terdekat
   void _updateSyncTimer() {
+    if (!mounted) return;
+
     // Cancel timer yang ada
     _syncTimer?.cancel();
 
@@ -200,20 +206,26 @@ class _TicketListScreenState extends State<TicketListScreen>
 
   /// Sinkronisasi status tiket dengan server
   Future<void> _synchronizeStatuses() async {
-    if (_isSyncing) return;
+    if (!mounted || _isSyncing) return;
 
     // Set flag syncing
-    setState(() {
-      _isSyncing = true;
-    });
+    if (mounted) {
+      setState(() {
+        _isSyncing = true;
+      });
+    }
 
     try {
-      final ticketStatusProvider = Provider.of<TicketStatusProvider>(
-        context,
-        listen: false,
-      );
+      // Dapatkan provider sebelum operasi asinkron
+      final ticketStatusProvider =
+          mounted
+              ? Provider.of<TicketStatusProvider>(context, listen: false)
+              : null;
 
-      // PERBAIKAN: Tambahkan timeout untuk menghindari permintaan yang terlalu lama
+      // Jika provider null, keluar dari fungsi
+      if (ticketStatusProvider == null) return;
+
+      // Sinkronisasi dengan timeout
       await ticketStatusProvider.synchronizeTicketStatuses().timeout(
         const Duration(seconds: 15),
         onTimeout: () {
@@ -221,21 +233,15 @@ class _TicketListScreenState extends State<TicketListScreen>
         },
       );
 
-      // PERBAIKAN: Tambahkan delay kecil sebelum memuat ulang booking
-      await Future.delayed(const Duration(milliseconds: 500));
-      await _loadBookings();
+      // Periksa mounted sebelum memuat ulang booking
+      if (mounted) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        await _loadBookings();
+      }
     } catch (e) {
       debugPrint('Error synchronizing statuses: $e');
-
-      // PERBAIKAN: Tambahkan penanganan error yang lebih informatif
-      if (mounted) {
-        // Opsional: Tampilkan toast atau notifikasi error
-        // ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        //   content: Text('Gagal memperbarui status tiket: ${e.toString().split(":").first}'),
-        //   duration: const Duration(seconds: 3),
-        // ));
-      }
     } finally {
+      // Reset flag syncing hanya jika masih mounted
       if (mounted) {
         setState(() {
           _isSyncing = false;
@@ -245,20 +251,17 @@ class _TicketListScreenState extends State<TicketListScreen>
   }
 
   Future<void> _loadBookings() async {
+    if (!mounted) return;
+
     final bookingProvider = Provider.of<BookingProvider>(
       context,
       listen: false,
     );
     await bookingProvider.getBookings();
 
-    // Log jumlah tiket yang dimuat
-    if (bookingProvider.bookings != null) {
+    // Log hanya jika masih mounted
+    if (mounted && bookingProvider.bookings != null) {
       debugPrint('Loaded ${bookingProvider.bookings!.length} bookings');
-
-      // Lihat status tiket
-      for (var booking in bookingProvider.bookings!) {
-        debugPrint('Booking ${booking.id}: ${booking.status}');
-      }
     }
   }
 
@@ -267,51 +270,50 @@ class _TicketListScreenState extends State<TicketListScreen>
   }
 
   Future<void> _loadInitialData() async {
+    if (!mounted) return;
+
     try {
-      // PERBAIKAN: Tambahkan timeout untuk menghindari loading yang terlalu lama
+      // Dapatkan provider saat widget masih mounted
       final bookingProvider = Provider.of<BookingProvider>(
         context,
         listen: false,
       );
 
-      // Tambahkan try-catch di dalam Future untuk menangani error dengan lebih baik
-      bookingProvider
-          .getBookings()
-          .timeout(
-            const Duration(seconds: 10),
-            onTimeout: () {
-              throw Exception('Timeout saat memuat data tiket');
-            },
-          )
-          .then((_) {
-            // Update UI setelah data dimuat
-            if (mounted) {
-              setState(() {
-                _isInitialDataLoaded = true;
-              });
-            }
-          })
-          .catchError((error) {
-            debugPrint('Error loading bookings: $error');
-            if (mounted) {
-              setState(() {
-                _isInitialDataLoaded =
-                    true; // Tetap update state meskipun error
-              });
-            }
-          });
+      // Panggil getBookings dengan try-catch dan pemeriksaan mounted
+      try {
+        await bookingProvider.getBookings().timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            throw Exception('Timeout saat memuat data tiket');
+          },
+        );
 
-      // Setup sinkronisasi tetap dijalankan segera
-      _setupStatusSynchronization();
+        // Periksa mounted sebelum update state
+        if (mounted) {
+          setState(() {
+            _isInitialDataLoaded = true;
+          });
+        }
+      } catch (error) {
+        debugPrint('Error loading bookings: $error');
+        if (mounted) {
+          setState(() {
+            _isInitialDataLoaded = true;
+          });
+        }
+      }
+
+      // Periksa mounted sebelum setup sinkronisasi
+      if (mounted) {
+        _setupStatusSynchronization();
+      }
     } catch (e) {
       debugPrint('Error loading initial data: $e');
       if (mounted) {
         setState(() {
-          _isInitialDataLoaded = true; // Tetap update state meskipun error
+          _isInitialDataLoaded = true;
         });
       }
-      // Tetap setup sinkronisasi meskipun ada error
-      _setupStatusSynchronization();
     }
   }
 

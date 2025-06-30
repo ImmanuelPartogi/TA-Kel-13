@@ -36,7 +36,6 @@ class _PaymentScreenState extends State<PaymentScreen>
   String? _paymentMethod;
   String? _paymentType;
   String? _bookingCode;
-  Timer? _statusTimer;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
@@ -46,6 +45,9 @@ class _PaymentScreenState extends State<PaymentScreen>
   DateTime? _expiryTime;
   bool _isTimerInitialized = false;
   Timer? _statusRefreshTimer;
+
+  // Flag untuk mencegah dialog muncul lebih dari sekali
+  bool _isPaymentSuccessDialogShown = false;
 
   // Simpan referensi ke provider untuk menghindari error lifecycle
   BookingProvider? _bookingProvider;
@@ -86,11 +88,17 @@ class _PaymentScreenState extends State<PaymentScreen>
     // Gunakan addPostFrameCallback untuk operasi yang mempengaruhi state
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initPaymentData();
-      _startPolling(); // Mulai polling saat halaman dibuka
 
-      // TAMBAHAN: Refresh status payment lebih sering (setiap 3 detik)
-      _statusRefreshTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
-        if (mounted && _bookingCode != null) {
+      // Mulai polling dengan delay untuk mencegah panggilan simultan
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          _startPolling();
+        }
+      });
+
+      // PERBAIKAN: Refresh status dengan interval yang lebih lambat (5 detik) untuk mengurangi beban
+      _statusRefreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+        if (mounted && _bookingCode != null && !_isRefreshing) {
           _refreshPaymentStatus();
         }
       });
@@ -112,9 +120,12 @@ class _PaymentScreenState extends State<PaymentScreen>
   void _checkPaymentStatus() {
     // Cek jika booking sudah ada dan pembayaran sudah sukses
     final booking = _bookingProvider?.currentBooking;
+
+    // PERBAIKAN: Tambahkan cek untuk memastikan dialog belum ditampilkan
     if (booking != null &&
-        (booking.status == 'CONFIRMED' || booking.status == 'PAID')) {
-      // PERBAIKAN: Hentikan timer countdown jika pembayaran sukses
+        (booking.status == 'CONFIRMED' || booking.status == 'PAID') &&
+        !_isPaymentSuccessDialogShown) {
+      // Hentikan semua timer untuk mencegah race condition
       _countdownTimer?.cancel();
       _statusRefreshTimer?.cancel();
 
@@ -187,10 +198,12 @@ class _PaymentScreenState extends State<PaymentScreen>
         // Update current booking code jika berhasil
         final currentBooking = bookingProvider.currentBooking;
         if (currentBooking != null) {
-          setState(() {
-            _bookingCode = currentBooking.bookingCode;
-            _currentBookingCode = _bookingCode;
-          });
+          if (mounted) {
+            setState(() {
+              _bookingCode = currentBooking.bookingCode;
+              _currentBookingCode = _bookingCode;
+            });
+          }
 
           _initializeTimer(currentBooking.latestPayment);
         }
@@ -204,30 +217,35 @@ class _PaymentScreenState extends State<PaymentScreen>
     // Hentikan timer yang berjalan jika ada
     _countdownTimer?.cancel();
 
-    // TAMBAHAN: Cek status pembayaran terlebih dahulu
+    // PERBAIKAN: Cek status pembayaran terlebih dahulu dan apakah dialog sudah ditampilkan
     if (_bookingProvider?.currentBooking?.status == 'CONFIRMED' ||
         _bookingProvider?.currentBooking?.status == 'PAID' ||
         (_bookingProvider?.currentBooking?.latestPayment?.status ==
-            'SUCCESS')) {
+            'SUCCESS') ||
+        _isPaymentSuccessDialogShown) {
       return;
     }
 
     // Mulai timer baru yang memperbarui UI setiap detik
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_remainingSeconds > 0) {
-        setState(() {
-          _remainingSeconds--;
-        });
+        if (mounted) {
+          setState(() {
+            _remainingSeconds--;
+          });
+        }
       } else {
         timer.cancel();
-        // PENTING: Periksa status pembayaran terbaru sebelum menampilkan dialog expired
-        if (mounted) {
+
+        // PERBAIKAN: Periksa status pembayaran terbaru sebelum menampilkan dialog expired
+        // dan pastikan dialog sukses belum ditampilkan
+        if (mounted && !_isPaymentSuccessDialogShown) {
           final bookingProvider = Provider.of<BookingProvider>(
             context,
             listen: false,
           );
           bookingProvider.refreshPaymentStatus(_bookingCode!).then((success) {
-            if (!mounted) return;
+            if (!mounted || _isPaymentSuccessDialogShown) return;
 
             final booking = bookingProvider.currentBooking;
             if (booking != null &&
@@ -245,13 +263,16 @@ class _PaymentScreenState extends State<PaymentScreen>
   }
 
   void _showPaymentExpiredDialog() {
+    // PERBAIKAN: Periksa flag untuk memastikan dialog lain belum muncul
+    if (_isPaymentSuccessDialogShown) return;
+
     // Double-check status pembayaran terbaru dari server
     final bookingProvider = Provider.of<BookingProvider>(
       context,
       listen: false,
     );
     bookingProvider.refreshPaymentStatus(_bookingCode!).then((success) {
-      if (!mounted) return;
+      if (!mounted || _isPaymentSuccessDialogShown) return;
 
       final booking = bookingProvider.currentBooking;
       // Hanya tampilkan dialog expired jika status bukan CONFIRMED/PAID
@@ -354,8 +375,9 @@ class _PaymentScreenState extends State<PaymentScreen>
           },
         );
       } else if (booking != null &&
-          (booking.status == 'CONFIRMED' || booking.status == 'PAID')) {
-        // Jika status adalah CONFIRMED/PAID, tampilkan dialog sukses sebagai gantinya
+          (booking.status == 'CONFIRMED' || booking.status == 'PAID') &&
+          !_isPaymentSuccessDialogShown) {
+        // PERBAIKAN: Jika status adalah CONFIRMED/PAID, dan dialog belum muncul, tampilkan dialog sukses
         _showPaymentSuccessDialog();
       }
     });
@@ -369,7 +391,11 @@ class _PaymentScreenState extends State<PaymentScreen>
         _bookingCode ?? bookingProvider.currentBooking?.bookingCode;
 
     if (bookingCode != null) {
-      bookingProvider.startPaymentPolling(bookingCode);
+      // PERBAIKAN: Mulai polling hanya jika belum dibayar
+      final currentStatus = bookingProvider.currentBooking?.status;
+      if (currentStatus != 'CONFIRMED' && currentStatus != 'PAID') {
+        bookingProvider.startPaymentPolling(bookingCode);
+      }
     }
   }
 
@@ -378,7 +404,7 @@ class _PaymentScreenState extends State<PaymentScreen>
     // Hentikan countdown timer
     _countdownTimer?.cancel();
 
-    // TAMBAHAN: Hentikan timer refresh status
+    // PERBAIKAN: Hentikan timer refresh status
     _statusRefreshTimer?.cancel();
 
     // Hentikan polling saat screen di-dispose
@@ -386,18 +412,23 @@ class _PaymentScreenState extends State<PaymentScreen>
     if (bookingCode != null && _bookingProvider != null) {
       _bookingProvider!.stopPaymentPolling(bookingCode);
     }
+
     _animationController.dispose();
     super.dispose();
   }
 
   Future<void> _loadPaymentInstructions() async {
+    if (!mounted) return;
+
     final bookingProvider =
         _bookingProvider ??
         Provider.of<BookingProvider>(context, listen: false);
 
-    setState(() {
-      _isLoading = true;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
 
     try {
       // Pastikan data tidak null
@@ -410,16 +441,18 @@ class _PaymentScreenState extends State<PaymentScreen>
         paymentType,
       );
 
-      setState(() {
-        _paymentInstructions = instructions;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-
       if (mounted) {
+        setState(() {
+          _paymentInstructions = instructions;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Gagal memuat instruksi pembayaran: ${e.toString()}'),
@@ -440,7 +473,7 @@ class _PaymentScreenState extends State<PaymentScreen>
   }
 
   Future<void> _refreshPaymentStatus() async {
-    if (_isRefreshing) return; // Hindari multiple refresh bersamaan
+    if (_isRefreshing || !mounted) return; // Hindari multiple refresh bersamaan
 
     setState(() {
       _isRefreshing = true;
@@ -455,8 +488,8 @@ class _PaymentScreenState extends State<PaymentScreen>
     if (bookingCode != null) {
       final success = await bookingProvider.refreshPaymentStatus(bookingCode);
 
-      // TAMBAHAN: Cek status setelah refresh
-      if (success) {
+      // PERBAIKAN: Cek status setelah refresh dan pastikan dialog belum ditampilkan
+      if (success && !_isPaymentSuccessDialogShown) {
         final booking = bookingProvider.currentBooking;
         if (booking != null &&
             (booking.status == 'CONFIRMED' ||
@@ -481,9 +514,11 @@ class _PaymentScreenState extends State<PaymentScreen>
         _initializeTimer(bookingProvider.currentBooking?.latestPayment);
       }
     } else {
-      setState(() {
-        _isRefreshing = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isRefreshing = false;
+        });
+      }
     }
   }
 
@@ -509,7 +544,6 @@ class _PaymentScreenState extends State<PaymentScreen>
       'bca': 'assets/images/payment_methods/bca.png',
       'bni': 'assets/images/payment_methods/bni.png',
       'bri': 'assets/images/payment_methods/bri.png',
-      // 'mandiri': 'assets/images/payment_methods/mandiri.png',
       'permata': 'assets/images/payment_methods/permata.png',
       'cimb': 'assets/images/payment_methods/cimb.png',
       'gopay': 'assets/images/payment_methods/gopay.png',
@@ -1562,29 +1596,63 @@ class _PaymentScreenState extends State<PaymentScreen>
                           Clipboard.setData(
                             ClipboardData(text: payment.virtualAccountNumber!),
                           );
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: const Text(
-                                'Nomor VA disalin ke clipboard',
-                              ),
-                              backgroundColor: Colors.green.shade700,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              margin: EdgeInsets.only(
-                                bottom:
-                                    MediaQuery.of(context).size.height - 150,
-                                left: 20,
-                                right: 20,
-                              ),
-                              duration: const Duration(seconds: 2),
-                              action: SnackBarAction(
-                                label: 'OK',
-                                textColor: Colors.white,
-                                onPressed: () {},
-                              ),
-                            ),
+
+                          // Tampilkan dialog sederhana sebagai pengganti snackbar
+                          showDialog(
+                            context: context,
+                            barrierDismissible: true,
+                            builder: (BuildContext dialogContext) {
+                              // Buat dialog yang hilang otomatis setelah 1.5 detik
+                              Future.delayed(
+                                const Duration(milliseconds: 1500),
+                                () {
+                                  if (Navigator.canPop(dialogContext)) {
+                                    Navigator.of(dialogContext).pop();
+                                  }
+                                },
+                              );
+
+                              return Dialog(
+                                elevation: 0,
+                                backgroundColor: Colors.transparent,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.shade700,
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.2),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 5),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.check_circle_outline,
+                                        color: Colors.white,
+                                        size: 24,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      const Text(
+                                        'Nomor VA disalin ke clipboard',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
                           );
                         },
                         borderRadius: BorderRadius.circular(30),
@@ -1701,10 +1769,125 @@ class _PaymentScreenState extends State<PaymentScreen>
     );
   }
 
-  // TAMBAHAN: Widget khusus untuk handle QR Code
   Widget _buildQRCodeWidget(dynamic payment, Color bankColor) {
     final qrUrl = payment.qrCodeUrl!;
-    return _buildNormalQRCode(qrUrl, bankColor, payment);
+
+    // Tambahkan timeout untuk request gambar QR
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 20,
+            spreadRadius: 2,
+            offset: const Offset(0, 5),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.shade200, width: 1),
+      ),
+      child: Column(
+        children: [
+          // Gunakan FutureBuilder untuk menampilkan fallback jika gagal
+          FutureBuilder(
+            future: _checkImageUrl(qrUrl), // Buat metode untuk cek URL
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return _buildLoadingQRCode(bankColor);
+              } else if (snapshot.hasError || !(snapshot.data ?? false)) {
+                return _buildFallbackQRCode(bankColor);
+              } else {
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    qrUrl,
+                    width: 200,
+                    height: 200,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return _buildLoadingQRCode(bankColor);
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return _buildFallbackQRCode(bankColor);
+                    },
+                  ),
+                );
+              }
+            },
+          ),
+          const SizedBox(height: 16),
+          // Instruksi scan QR
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: bankColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              'Scan QR Code ini dengan aplikasi QRIS',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: bankColor,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Metode tambahan untuk cek URL dengan timeout
+  Future<bool> _checkImageUrl(String url) async {
+    try {
+      final client = HttpClient();
+      client.connectionTimeout = const Duration(seconds: 5);
+      final request = await client.getUrl(Uri.parse(url));
+      final response = await request.close().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          client.close();
+          throw TimeoutException('Connection timeout');
+        },
+      );
+      client.close();
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('Error checking image URL: $e');
+      return false;
+    }
+  }
+
+  // Widget untuk tampilan loading
+  Widget _buildLoadingQRCode(Color bankColor) {
+    return Container(
+      width: 200,
+      height: 200,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(bankColor),
+              strokeWidth: 3,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Memuat QR Code...',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildProductionQRCode(String qrUrl, Color bankColor) {
@@ -1798,9 +1981,9 @@ class _PaymentScreenState extends State<PaymentScreen>
     );
   }
 
-  // PERBAIKAN: Enhanced timer initialization dengan validasi yang lebih baik
+  // PERBAIKAN: Metode untuk inisialisasi timer dengan penanganan yang lebih baik
   void _initializeTimer(dynamic payment) {
-    if (payment == null || _isTimerInitialized) return;
+    if (payment == null || _isTimerInitialized || !mounted) return;
 
     // PERBAIKAN: Cek status pembayaran terlebih dahulu
     if (_bookingProvider?.currentBooking?.status == 'CONFIRMED' ||
@@ -1808,6 +1991,14 @@ class _PaymentScreenState extends State<PaymentScreen>
         payment.status == 'SUCCESS') {
       _isTimerInitialized = true;
       _remainingSeconds = 0;
+
+      // Jika pembayaran sudah berhasil, tampilkan dialog sukses
+      if (!_isPaymentSuccessDialogShown) {
+        // Gunakan future.delayed untuk mencegah error setState during build
+        Future.delayed(Duration.zero, () {
+          _showPaymentSuccessDialog();
+        });
+      }
       return;
     }
 
@@ -1816,23 +2007,28 @@ class _PaymentScreenState extends State<PaymentScreen>
     // PERBAIKAN: Enhanced expiry time validation dengan parsing yang benar
     if (payment.expiryTime != null) {
       final now = DateTime.now();
-      final expiryTime = payment.expiryTime;
-      final difference = expiryTime.difference(now);
+      try {
+        final expiryTime = payment.expiryTime;
+        final difference = expiryTime.difference(now);
 
-      // PERBAIKAN: Validasi range waktu yang masuk akal (1 menit - 10 menit)
-      if (difference.inMinutes < 1 || difference.inMinutes > 10) {
-        print('WARNING: Invalid expiry time detected');
-        print('  Current time: $now');
-        print('  Expiry time: $expiryTime');
-        print('  Difference: ${difference.inMinutes} minutes');
-        print('  Using 5 minutes default');
+        // PERBAIKAN: Validasi range waktu yang masuk akal (1 menit - 10 menit)
+        if (difference.inMinutes < 1 || difference.inMinutes > 10) {
+          debugPrint('WARNING: Invalid expiry time detected');
+          debugPrint('  Current time: $now');
+          debugPrint('  Expiry time: $expiryTime');
+          debugPrint('  Difference: ${difference.inMinutes} minutes');
+          debugPrint('  Using 5 minutes default');
 
+          _expiryTime = now.add(const Duration(minutes: 5));
+        } else {
+          _expiryTime = expiryTime;
+        }
+      } catch (e) {
+        debugPrint('Error parsing expiry time: $e');
         _expiryTime = now.add(const Duration(minutes: 5));
-      } else {
-        _expiryTime = expiryTime;
       }
     } else {
-      print('No expiry time provided, using 5 minutes default');
+      debugPrint('No expiry time provided, using 5 minutes default');
       _expiryTime = DateTime.now().add(const Duration(minutes: 5));
     }
 
@@ -1851,7 +2047,7 @@ class _PaymentScreenState extends State<PaymentScreen>
       });
     }
 
-    print('Timer initialized: ${_remainingSeconds}s remaining');
+    debugPrint('Timer initialized: ${_remainingSeconds}s remaining');
   }
 
   // Widget untuk QR Code normal (GoPay dan lainnya)
@@ -2478,6 +2674,18 @@ class _PaymentScreenState extends State<PaymentScreen>
   }
 
   void _showPaymentSuccessDialog() {
+    // Jika dialog sudah ditampilkan sebelumnya, jangan tampilkan lagi
+    if (_isPaymentSuccessDialogShown) return;
+
+    // Set flag untuk menandai dialog sudah ditampilkan
+    _isPaymentSuccessDialogShown = true;
+
+    // Batalkan semua timer untuk mencegah pemanggilan berulang
+    _countdownTimer?.cancel();
+    _statusRefreshTimer?.cancel();
+
+    if (!mounted) return;
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -2570,5 +2778,11 @@ class _PaymentScreenState extends State<PaymentScreen>
         );
       },
     );
+  }
+
+  void _safeSetState(Function setState) {
+    if (mounted) {
+      setState();
+    }
   }
 }

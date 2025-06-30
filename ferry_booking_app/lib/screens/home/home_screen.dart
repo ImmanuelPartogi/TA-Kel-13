@@ -23,6 +23,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late TabController _tabController;
   bool _isLoading = true;
 
+  // Tambahkan variabel untuk menyimpan referensi provider
+  late NotificationProvider _notificationProvider;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Simpan referensi provider saat widget masih aktif
+    _notificationProvider = Provider.of<NotificationProvider>(
+      context,
+      listen: false,
+    );
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+
+    // Gunakan referensi yang sudah disimpan sebelumnya
+    _notificationProvider.stopAutoRefresh();
+
+    super.dispose();
+  }
+
   // Tambahkan GlobalKey untuk GlobalFAB
   final GlobalKey<GlobalFABState> _fabKey = GlobalKey<GlobalFABState>();
 
@@ -396,16 +419,5 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ],
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    final notificationProvider = Provider.of<NotificationProvider>(
-      context,
-      listen: false,
-    );
-    notificationProvider.stopAutoRefresh();
-    super.dispose();
   }
 }

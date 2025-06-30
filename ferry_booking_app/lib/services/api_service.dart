@@ -8,10 +8,17 @@ class ApiService {
   final String baseUrl = AppConfig.apiBaseUrl;
   final TokenStorageService _tokenStorage = TokenStorageService();
 
+  // Fungsi untuk mencatat log dengan tingkat debug yang sesuai
+  void _logDebug(String message) {
+    if (AppConfig.debugMode) {
+      print('[ApiService] $message');
+    }
+  }
+
   Future<Map<String, String>> _getHeaders() async {
     String? token = await _tokenStorage.getToken();
 
-    print('Current token in ApiService._getHeaders: $token');
+    _logDebug('Current token: ${token?.isNotEmpty == true ? "Available" : "Not available"}');
 
     Map<String, String> headers = {
       'Content-Type': 'application/json',
@@ -20,160 +27,153 @@ class ApiService {
 
     if (token != null && token.isNotEmpty) {
       headers['Authorization'] = 'Bearer $token';
-      print('Added token to headers: Bearer $token');
-    } else {
-      print('No token available for request');
+      _logDebug('Added token to headers');
     }
 
     return headers;
   }
 
-  // GET request
+  // Fungsi untuk memformat URL dengan benar
+  String _formatUrl(String endpoint) {
+    // Hapus slash di awal endpoint jika ada
+    String cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+    
+    // Hapus slash di akhir baseUrl jika ada
+    String cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+    
+    return '$cleanBaseUrl/$cleanEndpoint';
+  }
+
+  // GET request dengan penanganan error yang lebih baik
   Future<dynamic> get(String endpoint) async {
     try {
       final headers = await _getHeaders();
+      final url = _formatUrl(endpoint);
 
-      // Perbaikan format URL: menghapus / berlebih
-      String url;
-      if (endpoint.startsWith('/')) {
-        url = '$baseUrl${endpoint}'; // Jika endpoint sudah memiliki / di awal
-      } else {
-        url = '$baseUrl/$endpoint'; // Jika endpoint tidak memiliki / di awal
-      }
-
-      print('GET Request to: $url');
-      print('Headers: $headers');
+      _logDebug('GET Request to: $url');
 
       final response = await http.get(Uri.parse(url), headers: headers);
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      _logDebug('Response status: ${response.statusCode}');
 
-      try {
-        return _processResponse(response);
-      } catch (e) {
-        print('Error processing response: $e');
-        // Tangani error token dengan lebih spesifik
-        if (e.toString().contains("token") &&
-            e.toString().contains("String is not a subtype of type 'int'")) {
-          // Parse response manual dan hilangkan token
-          final Map<String, dynamic> jsonResponse = jsonDecode(response.body);
-          if (jsonResponse.containsKey('data') &&
-              jsonResponse['data'] is List &&
-              endpoint == 'routes') {
-            return {
-              'success': true,
-              'message': 'Data berhasil diambil',
-              'data': jsonResponse['data'],
-            };
-          }
-        }
-        throw Exception('Failed to load data: $e');
-      }
+      return _processResponse(response, endpoint);
     } catch (e) {
-      print('GET exception: $e');
-      throw Exception('Failed to load data: $e');
+      _logDebug('GET exception: $e');
+      
+      // Jika error berisi pesan 404, berikan pesan yang lebih jelas
+      if (e.toString().contains('404')) {
+        throw Exception('Endpoint tidak ditemukan: $endpoint. Periksa URL atau koneksi Anda.');
+      }
+      
+      throw Exception('Gagal memuat data: $e');
     }
   }
 
-  // POST request
+  // POST request dengan penanganan error yang lebih baik
   Future<dynamic> post(String endpoint, dynamic data) async {
     try {
       final headers = await _getHeaders();
       final encodedData = json.encode(data);
+      final url = _formatUrl(endpoint);
 
-      // Debug log untuk request
-      print('POST Request to: $baseUrl/$endpoint');
-      print('Headers: $headers');
-      print('Body: $encodedData');
+      _logDebug('POST Request to: $url');
 
       final response = await http.post(
-        Uri.parse('$baseUrl/$endpoint'),
+        Uri.parse(url),
         headers: headers,
         body: encodedData,
       );
 
-      // Debug log untuk response
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      _logDebug('Response status: ${response.statusCode}');
 
-      return _processResponse(response);
+      return _processResponse(response, endpoint);
     } catch (e) {
-      print('POST exception: $e');
-      throw Exception('Failed to post data: $e');
+      _logDebug('POST exception: $e');
+      
+      // Jika error berisi pesan 404, berikan pesan yang lebih jelas
+      if (e.toString().contains('404')) {
+        throw Exception('Endpoint tidak ditemukan: $endpoint. Periksa URL atau koneksi Anda.');
+      }
+      
+      throw Exception('Gagal mengirim data: $e');
     }
   }
 
-  // PUT request
+  // PUT request dengan penanganan error yang lebih baik
   Future<dynamic> put(String endpoint, dynamic data) async {
     try {
       final headers = await _getHeaders();
       final encodedData = json.encode(data);
+      final url = _formatUrl(endpoint);
 
-      // Debug log untuk request
-      print('PUT Request to: $baseUrl/$endpoint');
-      print('Headers: $headers');
-      print('Body: $encodedData');
+      _logDebug('PUT Request to: $url');
 
       final response = await http.put(
-        Uri.parse('$baseUrl/$endpoint'),
+        Uri.parse(url),
         headers: headers,
         body: encodedData,
       );
 
-      // Debug log untuk response
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      _logDebug('Response status: ${response.statusCode}');
 
-      return _processResponse(response);
+      return _processResponse(response, endpoint);
     } catch (e) {
-      print('PUT exception: $e');
-      throw Exception('Failed to update data: $e');
+      _logDebug('PUT exception: $e');
+      
+      // Jika error berisi pesan 404, berikan pesan yang lebih jelas
+      if (e.toString().contains('404')) {
+        throw Exception('Endpoint tidak ditemukan: $endpoint. Periksa URL atau koneksi Anda.');
+      }
+      
+      throw Exception('Gagal memperbarui data: $e');
     }
   }
 
-  // DELETE request
+  // DELETE request dengan penanganan error yang lebih baik
   Future<dynamic> delete(String endpoint) async {
     try {
       final headers = await _getHeaders();
+      final url = _formatUrl(endpoint);
 
-      // Debug log untuk request
-      print('DELETE Request to: $baseUrl/$endpoint');
-      print('Headers: $headers');
+      _logDebug('DELETE Request to: $url');
 
       final response = await http.delete(
-        Uri.parse('$baseUrl/$endpoint'),
+        Uri.parse(url),
         headers: headers,
       );
 
-      // Debug log untuk response
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      _logDebug('Response status: ${response.statusCode}');
 
-      return _processResponse(response);
+      return _processResponse(response, endpoint);
     } catch (e) {
-      print('DELETE exception: $e');
-      throw Exception('Failed to delete data: $e');
+      _logDebug('DELETE exception: $e');
+      
+      // Jika error berisi pesan 404, berikan pesan yang lebih jelas
+      if (e.toString().contains('404')) {
+        throw Exception('Endpoint tidak ditemukan: $endpoint. Periksa URL atau koneksi Anda.');
+      }
+      
+      throw Exception('Gagal menghapus data: $e');
     }
   }
 
-  // Simpan token (sudah benar)
+  // Simpan token
   Future<void> saveToken(String token) async {
     await _tokenStorage.saveToken(token);
   }
 
-  // Ambil token (sudah benar)
+  // Ambil token
   Future<String?> getToken() async {
     return await _tokenStorage.getToken();
   }
 
-  // Hapus token (sudah benar)
+  // Hapus token
   Future<void> clearToken() async {
     await _tokenStorage.clearToken();
   }
 
-  // Perbaiki metode ini jika ada masalah di sini
-  Future<Map<String, dynamic>> _processResponse(http.Response response) async {
+  // Metode untuk memproses response dengan penanganan error yang lebih baik
+  Future<Map<String, dynamic>> _processResponse(http.Response response, String endpoint) async {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       try {
         // Validasi bahwa response.body tidak kosong
@@ -188,7 +188,7 @@ class ApiService {
 
         return jsonResponse;
       } catch (e) {
-        print('Error processing response: $e');
+        _logDebug('Error processing response: $e');
 
         // Coba parse dan kembalikan pesan error yang lebih informatif
         if (response.body.isNotEmpty) {
@@ -209,9 +209,40 @@ class ApiService {
         }
       }
     } else if (response.statusCode == 401) {
-      // Khusus untuk unauthorized, kita clear token
-      await clearToken();
-      throw Exception('Sesi telah berakhir. Silakan login kembali.');
+      try {
+        final errorData = jsonDecode(response.body);
+
+        // Cek apakah ini kesalahan validasi password saat update email
+        if (errorData['message'] == 'Password yang dimasukkan salah') {
+          throw Exception(
+            errorData['message'],
+          ); // Lempar error biasa tanpa clear token
+        } else {
+          // Ini adalah error autentikasi sesungguhnya
+          await clearToken();
+          throw Exception('Sesi telah berakhir. Silakan login kembali.');
+        }
+      } catch (e) {
+        if (e is Exception &&
+            e.toString().contains('Password yang dimasukkan salah')) {
+          throw e; // Lempar error validasi tanpa clear token
+        }
+        // Untuk kasus lain, hapus token
+        await clearToken();
+        throw Exception('Sesi telah berakhir. Silakan login kembali.');
+      }
+    } else if (response.statusCode == 404) {
+      // Penanganan khusus untuk error 404
+      try {
+        final errorData = jsonDecode(response.body);
+        final errorMessage = errorData['message'] ?? 'Resource tidak ditemukan';
+        throw Exception('API error (404): $errorMessage untuk endpoint "$endpoint"');
+      } catch (_) {
+        // Jika parsing gagal, berikan pesan error yang lebih spesifik
+        throw Exception(
+          'Endpoint "$endpoint" tidak ditemukan. Periksa URL atau koneksi Anda.',
+        );
+      }
     } else {
       try {
         final errorData = jsonDecode(response.body);
@@ -219,13 +250,13 @@ class ApiService {
         throw Exception('API error (${response.statusCode}): $errorMessage');
       } catch (_) {
         throw Exception(
-          'API request failed with status: ${response.statusCode}',
+          'API request failed with status: ${response.statusCode}. Endpoint: $endpoint',
         );
       }
     }
   }
 
-  // Fungsi helper baru untuk normalisasi struktur respons
+  // Fungsi helper untuk normalisasi struktur respons
   void _normalizeResponseStructure(Map<String, dynamic> jsonResponse) {
     // Pastikan token selalu string jika ada
     if (jsonResponse.containsKey('data')) {
@@ -249,7 +280,7 @@ class ApiService {
     }
   }
 
-  // Fungsi helper baru untuk normalisasi format waktu
+  // Fungsi helper untuk normalisasi format waktu
   void _normalizeTimeFormats(Map<dynamic, dynamic> data) {
     // Normalisasi waktu keberangkatan dan tanggal jika ada
     if (data.containsKey('departure_time') && data['departure_time'] != null) {
@@ -277,7 +308,7 @@ class ApiService {
       }
       return '$timeStr:00'; // Tambahkan detik jika tidak ada
     } catch (e) {
-      print('Error formatting time string: $e');
+      _logDebug('Error formatting time string: $e');
       return timeStr; // Return original jika gagal
     }
   }

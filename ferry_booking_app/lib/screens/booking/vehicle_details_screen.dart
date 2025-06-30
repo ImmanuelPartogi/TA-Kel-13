@@ -110,25 +110,20 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen>
     );
 
     if (bookingProvider.vehicles.length >= AppConfig.maxVehiclesPerBooking) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.warning_amber_rounded, color: Colors.white),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Maksimal ${AppConfig.maxVehiclesPerBooking} kendaraan per pemesanan',
-                ),
-              ),
-            ],
+      // Tampilkan dialog sebagai pengganti snackbar
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Batas Maksimum'),
+          content: Text(
+            'Maksimal ${AppConfig.maxVehiclesPerBooking} kendaraan per pemesanan',
           ),
-          backgroundColor: Colors.orange.shade700,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          margin: const EdgeInsets.all(10),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Mengerti'),
+            ),
+          ],
         ),
       );
       return;
@@ -142,28 +137,8 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen>
             onSave: (vehicle) {
               bookingProvider.addVehicle(vehicle);
               Navigator.pop(context);
-
-              // Tampilkan notifikasi sukses
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Row(
-                    children: [
-                      const Icon(Icons.check_circle, color: Colors.white),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Text('Kendaraan berhasil ditambahkan'),
-                      ),
-                    ],
-                  ),
-                  backgroundColor: Colors.green.shade600,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  margin: const EdgeInsets.all(10),
-                  duration: const Duration(seconds: 2),
-                ),
-              );
+              
+              // Hapus snackbar yang mengganggu dialog
             },
           ),
     );
@@ -185,28 +160,8 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen>
             onSave: (updatedVehicle) {
               bookingProvider.updateVehicle(index, updatedVehicle);
               Navigator.pop(context);
-
-              // Tampilkan notifikasi sukses
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Row(
-                    children: [
-                      const Icon(Icons.check_circle, color: Colors.white),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Text('Kendaraan berhasil diperbarui'),
-                      ),
-                    ],
-                  ),
-                  backgroundColor: Colors.green.shade600,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  margin: const EdgeInsets.all(10),
-                  duration: const Duration(seconds: 2),
-                ),
-              );
+              
+              // Hapus snackbar yang mengganggu dialog
             },
           ),
     );
@@ -254,28 +209,8 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen>
                 onPressed: () {
                   bookingProvider.removeVehicle(index);
                   Navigator.of(context).pop();
-
-                  // Tampilkan notifikasi sukses
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Row(
-                        children: [
-                          const Icon(Icons.check_circle, color: Colors.white),
-                          const SizedBox(width: 10),
-                          const Expanded(
-                            child: Text('Kendaraan berhasil dihapus'),
-                          ),
-                        ],
-                      ),
-                      backgroundColor: Colors.green.shade600,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      margin: const EdgeInsets.all(10),
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
+                  
+                  // Hapus snackbar yang mengganggu dialog
                 },
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -438,7 +373,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen>
                               ),
 
                           // Space at the bottom
-                          const SizedBox(height: 100),
+                          const SizedBox(height: 140),
                         ],
                       ),
                     ),
@@ -1319,13 +1254,20 @@ class __VehicleDialogState extends State<_VehicleDialog> {
 
     // Periksa apakah jenis kendaraan tersedia
     if (!bookingProvider.isVehicleTypeAvailable(selectedCategory.vehicleType)) {
-      // Tampilkan pesan error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      // Tampilkan dialog alih-alih snackbar
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Tidak Tersedia'),
           content: Text(
             'Jenis kendaraan ${_getVehicleTypeName(selectedCategory.vehicleType)} tidak tersedia untuk kapal ini',
           ),
-          backgroundColor: Colors.red,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Mengerti'),
+            ),
+          ],
         ),
       );
       return;

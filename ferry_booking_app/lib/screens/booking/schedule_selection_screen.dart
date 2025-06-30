@@ -39,19 +39,6 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
     });
   }
 
-  void _showNoSchedulesMessage() {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Tidak ada jadwal tersedia untuk tanggal ini. Silakan pilih tanggal lain.',
-          ),
-          duration: Duration(seconds: 3),
-        ),
-      );
-    }
-  }
-
   String _formatDateForApi(DateTime date) {
     return DateFormat('yyyy-MM-dd').format(date);
   }
@@ -132,9 +119,6 @@ class _ScheduleSelectionScreenState extends State<ScheduleSelectionScreen> {
         'DEBUG: Loaded ${scheduleProvider.schedules?.length ?? 0} schedules',
       );
 
-      if (scheduleProvider.schedules?.isEmpty ?? true) {
-        _showNoSchedulesMessage();
-      }
     } catch (e) {
       print('ERROR: Failed to load schedules: $e');
       if (mounted) {

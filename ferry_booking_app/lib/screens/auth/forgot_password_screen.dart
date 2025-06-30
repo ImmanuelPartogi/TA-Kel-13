@@ -12,27 +12,28 @@ class ForgotPasswordScreen extends StatefulWidget {
   _ForgotPasswordScreenState createState() => _ForgotPasswordScreenState();
 }
 
-class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with SingleTickerProviderStateMixin {
+class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   bool _emailSent = false;
   bool _validEmail = false;
   bool _isHoveringSubmit = false;
-  
+
   // Recovery method state
   String _recoveryMethod = 'email'; // 'email' or 'phone'
   final _phoneController = TextEditingController();
-  
+
   // Animation controllers
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _rotateAnimation;
-  
+
   // Focus node
   final FocusNode _emailFocus = FocusNode();
   final FocusNode _phoneFocus = FocusNode();
-  
+
   // Scroll controllers for parallax effect
   final ScrollController _scrollController = ScrollController();
   double _scrollOffset = 0;
@@ -40,51 +41,54 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
   @override
   void initState() {
     super.initState();
-    
+
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     );
-    
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
         curve: const Interval(0.0, 0.7, curve: Curves.easeOut),
       ),
     );
-    
-    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero).animate(
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.15),
+      end: Offset.zero,
+    ).animate(
       CurvedAnimation(
         parent: _animationController,
         curve: const Interval(0.0, 0.8, curve: Curves.easeOutCubic),
       ),
     );
-    
+
     _rotateAnimation = Tween<double>(begin: 0, end: 2 * math.pi).animate(
       CurvedAnimation(
         parent: _animationController,
         curve: const Interval(0.0, 0.5, curve: Curves.easeOutCubic),
       ),
     );
-    
+
     // Add email validation listener
     _emailController.addListener(_validateEmail);
-    
+
     // Add scroll listener for parallax effect
     _scrollController.addListener(_updateScrollOffset);
-    
+
     // Delay start of animation slightly for better UX
     Future.delayed(const Duration(milliseconds: 100), () {
       _animationController.forward();
     });
   }
-  
+
   void _updateScrollOffset() {
     setState(() {
       _scrollOffset = _scrollController.offset;
     });
   }
-  
+
   void _validateEmail() {
     final email = _emailController.text.trim();
     final regex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
@@ -120,21 +124,21 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
       }
     }
   }
-  
+
   // For phone verification (simulated)
   Future<void> _sendSmsCode() async {
     if (_formKey.currentState!.validate()) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      
+
       // Show loading
       authProvider.setLoading(true);
-      
+
       // Simulate API call
       await Future.delayed(const Duration(seconds: 2));
-      
+
       // Success simulation
       authProvider.setLoading(false);
-      
+
       if (mounted) {
         _animationController.reset();
         setState(() {
@@ -150,7 +154,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
     final authProvider = Provider.of<AuthProvider>(context);
     final theme = Theme.of(context);
     final size = MediaQuery.of(context).size;
-    
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: PreferredSize(
@@ -216,7 +220,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                 },
               ),
             ),
-            
+
             // Animated envelope icons in the background
             AnimatedBuilder(
               animation: _animationController,
@@ -227,7 +231,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                       top: size.height * 0.15 - (_scrollOffset * 0.4),
                       left: size.width * 0.1,
                       child: Opacity(
-                        opacity: _animationController.value,
+                        opacity: _animationController.value.clamp(0.0, 1.0),
                         child: Transform.rotate(
                           angle: math.sin(_animationController.value * 3) * 0.1,
                           child: Icon(
@@ -244,11 +248,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                       child: Opacity(
                         opacity: _animationController.value,
                         child: Transform.rotate(
-                          angle: math.sin((_animationController.value + 0.2) * 3) * 0.1,
+                          angle:
+                              math.sin((_animationController.value + 0.4) * 3) *
+                              0.1,
                           child: Icon(
-                            Icons.alternate_email,
+                            Icons.email_outlined,
                             size: 22,
-                            color: theme.primaryColor.withOpacity(0.15),
+                            color: theme.primaryColor.withOpacity(0.1),
                           ),
                         ),
                       ),
@@ -259,7 +265,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                       child: Opacity(
                         opacity: _animationController.value,
                         child: Transform.rotate(
-                          angle: math.sin((_animationController.value + 0.4) * 3) * 0.1,
+                          angle:
+                              math.sin((_animationController.value + 0.4) * 3) *
+                              0.1,
                           child: Icon(
                             Icons.email_outlined,
                             size: 22,
@@ -272,7 +280,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                 );
               },
             ),
-            
+
             // Main content
             SafeArea(
               child: NotificationListener<OverscrollIndicatorNotification>(
@@ -292,23 +300,23 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                         child: Column(
                           children: [
                             const SizedBox(height: 20),
-                            
+
                             // Header with back button and mail icon
                             Row(
                               children: [
                                 // Back button with animation
                                 _buildAnimatedBackButton(theme),
                                 const Spacer(),
-                                
+
                                 // Icon with animation
-                                _emailSent 
-                                  ? _buildCheckIconWithPulse(theme)
-                                  : _buildMailIconWithAnimation(theme),
+                                _emailSent
+                                    ? _buildCheckIconWithPulse(theme)
+                                    : _buildMailIconWithAnimation(theme),
                               ],
                             ),
-                            
+
                             const SizedBox(height: 40),
-                            
+
                             // Title Text with 3D effect
                             Stack(
                               children: [
@@ -317,14 +325,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                                   left: 2,
                                   top: 2,
                                   child: Text(
-                                    _emailSent 
-                                      ? 'Email Terkirim!' 
-                                      : 'Lupa Password?',
-                                    style: theme.textTheme.headlineSmall?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black12,
-                                      fontSize: 28,
-                                    ),
+                                    _emailSent
+                                        ? 'Email Terkirim!'
+                                        : 'Lupa Password?',
+                                    style: theme.textTheme.headlineSmall
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black12,
+                                          fontSize: 28,
+                                        ),
                                     textAlign: TextAlign.center,
                                   ),
                                 ),
@@ -341,32 +350,35 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                                     ).createShader(bounds);
                                   },
                                   child: Text(
-                                    _emailSent 
-                                      ? 'Email Terkirim!' 
-                                      : 'Lupa Password?',
-                                    style: theme.textTheme.headlineSmall?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                      fontSize: 28,
-                                    ),
+                                    _emailSent
+                                        ? 'Email Terkirim!'
+                                        : 'Lupa Password?',
+                                    style: theme.textTheme.headlineSmall
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                          fontSize: 28,
+                                        ),
                                     textAlign: TextAlign.center,
                                   ),
                                 ),
                               ],
                             ),
-                            
+
                             const SizedBox(height: 15),
-                            
+
                             // Subtitle
                             AnimatedSwitcher(
                               duration: const Duration(milliseconds: 500),
                               child: Padding(
                                 key: ValueKey<bool>(_emailSent),
-                                padding: const EdgeInsets.symmetric(horizontal: 20),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                ),
                                 child: Text(
                                   _emailSent
-                                    ? 'Instruksi reset password telah dikirim. Silakan cek inbox atau folder spam Anda.'
-                                    : 'Jangan khawatir! Kami akan membantu Anda untuk memulihkan akses akun Anda.',
+                                      ? 'Instruksi reset password telah dikirim. Silakan cek inbox atau folder spam Anda.'
+                                      : 'Jangan khawatir! Kami akan membantu Anda untuk memulihkan akses akun Anda.',
                                   style: TextStyle(
                                     color: Colors.grey.shade700,
                                     fontSize: 15,
@@ -376,26 +388,24 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                                 ),
                               ),
                             ),
-                            
+
                             const SizedBox(height: 30),
-                            
+
                             // Onboarding step indicator (only shown before email sent)
-                            if (!_emailSent)
-                              _buildStepIndicator(),
-                              
+                            if (!_emailSent) _buildStepIndicator(),
+
                             const SizedBox(height: 20),
-                            
+
                             // Content (Form or Success)
-                            _emailSent 
-                              ? _buildSuccessView(theme)
-                              : _buildRequestForm(authProvider, theme),
-                              
+                            _emailSent
+                                ? _buildSuccessView(theme)
+                                : _buildRequestForm(authProvider, theme),
+
                             const SizedBox(height: 30),
-                            
+
                             // Help section (only when not success)
-                            if (!_emailSent)
-                              _buildHelpSection(theme),
-                            
+                            if (!_emailSent) _buildHelpSection(theme),
+
                             const SizedBox(height: 50),
                           ],
                         ),
@@ -410,7 +420,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
       ),
     );
   }
-  
+
   Widget _buildAnimatedBackButton(ThemeData theme) {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -450,7 +460,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
       ),
     );
   }
-  
+
   Widget _buildMailIconWithAnimation(ThemeData theme) {
     return AnimatedBuilder(
       animation: _rotateAnimation,
@@ -461,10 +471,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
             padding: const EdgeInsets.all(15),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  theme.primaryColor.withBlue(255),
-                  theme.primaryColor,
-                ],
+                colors: [theme.primaryColor.withBlue(255), theme.primaryColor],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -497,7 +504,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
       },
     );
   }
-  
+
   Widget _buildCheckIconWithPulse(ThemeData theme) {
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0.8, end: 1.2),
@@ -510,10 +517,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
             padding: const EdgeInsets.all(15),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  Colors.green.shade400,
-                  Colors.green.shade600,
-                ],
+                colors: [Colors.green.shade400, Colors.green.shade600],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -536,7 +540,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
       },
     );
   }
-  
+
   Widget _buildStepIndicator() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -556,15 +560,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
         // Step text
         Text(
           'Langkah 1: Verifikasi Identitas Anda',
-          style: TextStyle(
-            fontSize: 13,
-            color: Colors.grey.shade700,
-          ),
+          style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
         ),
       ],
     );
   }
-  
+
   Widget _buildStepDot(int step, bool active, String label) {
     return Tooltip(
       message: label,
@@ -575,16 +576,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
           color: active ? Theme.of(context).primaryColor : Colors.white,
           shape: BoxShape.circle,
           border: Border.all(
-            color: active ? Theme.of(context).primaryColor : Colors.grey.shade300,
+            color:
+                active ? Theme.of(context).primaryColor : Colors.grey.shade300,
             width: 2,
           ),
-          boxShadow: active ? [
-            BoxShadow(
-              color: Theme.of(context).primaryColor.withOpacity(0.3),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            ),
-          ] : null,
+          boxShadow:
+              active
+                  ? [
+                    BoxShadow(
+                      color: Theme.of(context).primaryColor.withOpacity(0.3),
+                      blurRadius: 5,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                  : null,
         ),
         child: Center(
           child: Text(
@@ -599,7 +604,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
       ),
     );
   }
-  
+
   Widget _buildStepConnector(bool active) {
     return Container(
       width: 40,
@@ -634,9 +639,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
             children: [
               // Recovery method tabs
               _buildRecoveryMethodTabs(theme),
-              
+
               const SizedBox(height: 25),
-              
+
               // Form fields based on recovery method
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 400),
@@ -652,33 +657,49 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                     ),
                   );
                 },
-                child: _recoveryMethod == 'email'
-                  ? _buildEmailForm()
-                  : _buildPhoneForm(),
+                child:
+                    _recoveryMethod == 'email'
+                        ? _buildEmailForm()
+                        : _buildPhoneForm(),
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // Real-time validation indicator
-              if (_recoveryMethod == 'email' && _emailController.text.isNotEmpty)
+              if (_recoveryMethod == 'email' &&
+                  _emailController.text.isNotEmpty)
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
                   margin: const EdgeInsets.only(bottom: 20),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    color: _validEmail ? Colors.green.shade50 : Colors.amber.shade50,
+                    color:
+                        _validEmail
+                            ? Colors.green.shade50
+                            : Colors.amber.shade50,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: _validEmail ? Colors.green.shade200 : Colors.amber.shade200,
+                      color:
+                          _validEmail
+                              ? Colors.green.shade200
+                              : Colors.amber.shade200,
                       width: 1,
                     ),
                   ),
                   child: Row(
                     children: [
                       Icon(
-                        _validEmail ? Icons.check_circle_outline : Icons.info_outline,
+                        _validEmail
+                            ? Icons.check_circle_outline
+                            : Icons.info_outline,
                         size: 18,
-                        color: _validEmail ? Colors.green.shade700 : Colors.amber.shade700,
+                        color:
+                            _validEmail
+                                ? Colors.green.shade700
+                                : Colors.amber.shade700,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
@@ -688,14 +709,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                               : 'Email tidak valid. Periksa format email Anda.',
                           style: TextStyle(
                             fontSize: 12,
-                            color: _validEmail ? Colors.green.shade700 : Colors.amber.shade700,
+                            color:
+                                _validEmail
+                                    ? Colors.green.shade700
+                                    : Colors.amber.shade700,
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              
+
               // Submit Button
               MouseRegion(
                 onEnter: (_) => setState(() => _isHoveringSubmit = true),
@@ -707,7 +731,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: theme.primaryColor.withOpacity(_isHoveringSubmit ? 0.5 : 0.4),
+                        color: theme.primaryColor.withOpacity(
+                          _isHoveringSubmit ? 0.5 : 0.4,
+                        ),
                         blurRadius: _isHoveringSubmit ? 20 : 15,
                         offset: const Offset(0, 8),
                         spreadRadius: -5,
@@ -718,11 +744,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                     color: Colors.transparent,
                     borderRadius: BorderRadius.circular(20),
                     child: InkWell(
-                      onTap: authProvider.isLoading 
-                        ? null 
-                        : _recoveryMethod == 'email' 
-                            ? _forgotPassword 
-                            : _sendSmsCode,
+                      onTap:
+                          authProvider.isLoading
+                              ? null
+                              : _recoveryMethod == 'email'
+                              ? _forgotPassword
+                              : _sendSmsCode,
                       borderRadius: BorderRadius.circular(20),
                       child: Ink(
                         decoration: BoxDecoration(
@@ -739,63 +766,66 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                         child: Container(
                           alignment: Alignment.center,
                           constraints: const BoxConstraints(minHeight: 55),
-                          child: authProvider.isLoading
-                            ? const SizedBox(
-                                height: 24,
-                                width: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    _recoveryMethod == 'email'
-                                      ? 'KIRIM'
-                                      : 'KIRIM KODE SMS',
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 1,
+                          child:
+                              authProvider.isLoading
+                                  ? const SizedBox(
+                                    height: 24,
+                                    width: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
                                       color: Colors.white,
                                     ),
+                                  )
+                                  : Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        _recoveryMethod == 'email'
+                                            ? 'KIRIM'
+                                            : 'KIRIM KODE SMS',
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 1,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      AnimatedContainer(
+                                        duration: const Duration(
+                                          milliseconds: 200,
+                                        ),
+                                        transform: Matrix4.translationValues(
+                                          _isHoveringSubmit ? 5.0 : 0.0,
+                                          0,
+                                          0,
+                                        ),
+                                        child: Icon(
+                                          _recoveryMethod == 'email'
+                                              ? Icons.send_rounded
+                                              : Icons.sms_rounded,
+                                          color: Colors.white,
+                                          size: 18,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(width: 10),
-                                  AnimatedContainer(
-                                    duration: const Duration(milliseconds: 200),
-                                    transform: Matrix4.translationValues(
-                                      _isHoveringSubmit ? 5.0 : 0.0, 0, 0),
-                                    child: Icon(
-                                      _recoveryMethod == 'email'
-                                        ? Icons.send_rounded
-                                        : Icons.sms_rounded,
-                                      color: Colors.white,
-                                      size: 18,
-                                    ),
-                                  ),
-                                ],
-                              ),
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 25),
-              
+
               // Back to login with animation
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     'Ingat password Anda?',
-                    style: TextStyle(
-                      color: Colors.grey.shade700,
-                      fontSize: 15,
-                    ),
+                    style: TextStyle(color: Colors.grey.shade700, fontSize: 15),
                   ),
                   const SizedBox(width: 4),
                   _buildAnimatedTextButton(
@@ -806,13 +836,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                   ),
                 ],
               ),
-              
+
               // Error Message
               if (authProvider.errorMessage != null)
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
                   margin: const EdgeInsets.only(top: 25),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 15,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(15),
@@ -876,7 +909,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
       ),
     );
   }
-  
+
   Widget _buildRecoveryMethodTabs(ThemeData theme) {
     return Container(
       height: 50,
@@ -896,15 +929,21 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
               },
               child: Container(
                 decoration: BoxDecoration(
-                  color: _recoveryMethod == 'email' ? theme.primaryColor : Colors.transparent,
+                  color:
+                      _recoveryMethod == 'email'
+                          ? theme.primaryColor
+                          : Colors.transparent,
                   borderRadius: BorderRadius.circular(15),
-                  boxShadow: _recoveryMethod == 'email' ? [
-                    BoxShadow(
-                      color: theme.primaryColor.withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ] : null,
+                  boxShadow:
+                      _recoveryMethod == 'email'
+                          ? [
+                            BoxShadow(
+                              color: theme.primaryColor.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ]
+                          : null,
                 ),
                 child: Center(
                   child: Row(
@@ -913,14 +952,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                       Icon(
                         Icons.email_outlined,
                         size: 18,
-                        color: _recoveryMethod == 'email' ? Colors.white : Colors.grey.shade700,
+                        color:
+                            _recoveryMethod == 'email'
+                                ? Colors.white
+                                : Colors.grey.shade700,
                       ),
                       const SizedBox(width: 8),
                       Text(
                         'Email',
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
-                          color: _recoveryMethod == 'email' ? Colors.white : Colors.grey.shade700,
+                          color:
+                              _recoveryMethod == 'email'
+                                  ? Colors.white
+                                  : Colors.grey.shade700,
                         ),
                       ),
                     ],
@@ -929,7 +974,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
               ),
             ),
           ),
-          
+
           // Phone tab
           // Expanded(
           //   child: GestureDetector(
@@ -977,7 +1022,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
       ),
     );
   }
-  
+
   Widget _buildEmailForm() {
     return Column(
       key: const ValueKey('email-form'),
@@ -996,10 +1041,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
           decoration: BoxDecoration(
             color: Colors.grey.shade50,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.grey.shade200,
-              width: 1,
-            ),
+            border: Border.all(color: Colors.grey.shade200, width: 1),
           ),
           child: TextFormField(
             controller: _emailController,
@@ -1012,10 +1054,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                 _forgotPassword();
               }
             },
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-            ),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
             decoration: InputDecoration(
               hintText: 'Masukkan email akun Anda',
               hintStyle: TextStyle(
@@ -1087,7 +1126,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
       ],
     );
   }
-  
+
   Widget _buildPhoneForm() {
     return Column(
       key: const ValueKey('phone-form'),
@@ -1106,10 +1145,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
           decoration: BoxDecoration(
             color: Colors.grey.shade50,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.grey.shade200,
-              width: 1,
-            ),
+            border: Border.all(color: Colors.grey.shade200, width: 1),
           ),
           child: TextFormField(
             controller: _phoneController,
@@ -1122,10 +1158,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                 _sendSmsCode();
               }
             },
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-            ),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
             decoration: InputDecoration(
               hintText: 'Masukkan nomor telepon',
               hintStyle: TextStyle(
@@ -1214,10 +1247,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
             offset: const Offset(0, 10),
           ),
         ],
-        border: Border.all(
-          color: Colors.green.shade100,
-          width: 1,
-        ),
+        border: Border.all(color: Colors.green.shade100, width: 1),
       ),
       child: Column(
         children: [
@@ -1249,7 +1279,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                 duration: const Duration(milliseconds: 1500),
                 builder: (context, value, child) {
                   return Opacity(
-                    opacity: value * 0.7,
+                    opacity: (value * 0.7).clamp(0.0, 1.0),
                     child: Container(
                       width: 100,
                       height: 100,
@@ -1296,9 +1326,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                       ),
                       child: Center(
                         child: Icon(
-                          _recoveryMethod == 'email' 
-                            ? Icons.email_outlined
-                            : Icons.sms_outlined,
+                          _recoveryMethod == 'email'
+                              ? Icons.email_outlined
+                              : Icons.sms_outlined,
                           size: 40,
                           color: Colors.green.shade600,
                         ),
@@ -1324,10 +1354,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                         decoration: BoxDecoration(
                           color: Colors.green.shade500,
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white,
-                            width: 3,
-                          ),
+                          border: Border.all(color: Colors.white, width: 3),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.green.shade200,
@@ -1350,9 +1377,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
               ),
             ],
           ),
-          
+
           const SizedBox(height: 25),
-          
+
           // Email display with floating design
           Container(
             margin: const EdgeInsets.symmetric(vertical: 5),
@@ -1367,10 +1394,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                   offset: const Offset(0, 5),
                 ),
               ],
-              border: Border.all(
-                color: Colors.green.shade200,
-                width: 1,
-              ),
+              border: Border.all(color: Colors.green.shade200, width: 1),
             ),
             child: Row(
               children: [
@@ -1382,8 +1406,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                   ),
                   child: Icon(
                     _recoveryMethod == 'email'
-                      ? Icons.alternate_email_rounded
-                      : Icons.smartphone_rounded,
+                        ? Icons.alternate_email_rounded
+                        : Icons.smartphone_rounded,
                     color: Colors.green.shade800,
                     size: 22,
                   ),
@@ -1394,18 +1418,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _recoveryMethod == 'email' ? 'Dikirim ke Email' : 'Dikirim ke Nomor',
+                        _recoveryMethod == 'email'
+                            ? 'Dikirim ke Email'
+                            : 'Dikirim ke Nomor',
                         style: TextStyle(
                           color: Colors.grey.shade700,
                           fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w300,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        _recoveryMethod == 'email' 
-                          ? _emailController.text.trim()
-                          : '+62 ${_phoneController.text.trim()}',
+                        _recoveryMethod == 'email'
+                            ? _emailController.text.trim()
+                            : '+62 ${_phoneController.text.trim()}',
                         style: TextStyle(
                           color: Colors.green.shade800,
                           fontWeight: FontWeight.w600,
@@ -1418,31 +1444,39 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
               ],
             ),
           ),
-          
+
           const SizedBox(height: 20),
-          
+
           // Animated instruction cards
           if (_recoveryMethod == 'email')
             _buildInstructionCard(
               icon: Icons.inbox_rounded,
               title: 'Periksa Inbox Anda',
-              description: 'Kami telah mengirimkan email dengan instruksi untuk reset password.',
+              description:
+                  'Kami telah mengirimkan email dengan instruksi untuk reset password.',
               delay: 300,
             ),
-          
+
           const SizedBox(height: 15),
-          
+
           _buildInstructionCard(
-            icon: _recoveryMethod == 'email' ? Icons.mark_email_unread_rounded : Icons.sms_failed_rounded,
-            title: _recoveryMethod == 'email' ? 'Cek Folder Spam' : 'Belum Menerima SMS?',
-            description: _recoveryMethod == 'email' 
-              ? 'Jika tidak menemukan email di inbox, periksa folder spam atau promosi.'
-              : 'Tunggu beberapa saat atau coba kirim ulang kode OTP jika diperlukan.',
+            icon:
+                _recoveryMethod == 'email'
+                    ? Icons.mark_email_unread_rounded
+                    : Icons.sms_failed_rounded,
+            title:
+                _recoveryMethod == 'email'
+                    ? 'Cek Folder Spam'
+                    : 'Belum Menerima SMS?',
+            description:
+                _recoveryMethod == 'email'
+                    ? 'Jika tidak menemukan email di inbox, periksa folder spam atau promosi.'
+                    : 'Tunggu beberapa saat atau coba kirim ulang kode OTP jika diperlukan.',
             delay: 600,
           ),
-          
+
           const SizedBox(height: 30),
-          
+
           // Continue to reset button
           TweenAnimationBuilder<double>(
             tween: Tween<double>(begin: 0, end: 1),
@@ -1473,9 +1507,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                           context,
                           '/reset-password',
                           arguments: {
-                            'email': _recoveryMethod == 'email' 
-                              ? _emailController.text.trim() 
-                              : "",
+                            'email':
+                                _recoveryMethod == 'email'
+                                    ? _emailController.text.trim()
+                                    : "",
                             'token': '',
                           },
                         );
@@ -1503,7 +1538,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                               const Text(
                                 'LANJUT KE RESET PASSWORD',
                                 style: TextStyle(
-                                  fontSize: 15,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 1,
                                   color: Colors.white,
@@ -1525,9 +1560,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
               );
             },
           ),
-          
+
           const SizedBox(height: 20),
-          
+
           // Back to login button with floating effect
           TweenAnimationBuilder<double>(
             tween: Tween<double>(begin: 0, end: 1),
@@ -1544,20 +1579,23 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                     },
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.grey.shade700,
-                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 10,
+                        horizontal: 20,
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(
-                          Icons.arrow_back_rounded,
-                          size: 16,
-                        ),
+                        const Icon(Icons.arrow_back_rounded, size: 16),
                         const SizedBox(width: 8),
                         const Text(
                           'KEMBALI KE LOGIN',
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),
@@ -1570,7 +1608,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
       ),
     );
   }
-  
+
   Widget _buildInstructionCard({
     required IconData icon,
     required String title,
@@ -1583,7 +1621,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
       curve: Curves.easeOutCubic,
       builder: (context, value, child) {
         return Opacity(
-          opacity: value,
+          opacity: value.clamp(0.0, 1.0),
           child: Transform.translate(
             offset: Offset(40 * (1 - value), 0),
             child: Container(
@@ -1591,10 +1629,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(15),
-                border: Border.all(
-                  color: Colors.grey.shade200,
-                  width: 1,
-                ),
+                border: Border.all(color: Colors.grey.shade200, width: 1),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.grey.shade100,
@@ -1612,11 +1647,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                       color: Colors.blue.shade50,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(
-                      icon,
-                      size: 20,
-                      color: Colors.blue.shade700,
-                    ),
+                    child: Icon(icon, size: 20, color: Colors.blue.shade700),
                   ),
                   const SizedBox(width: 15),
                   Expanded(
@@ -1651,17 +1682,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
       },
     );
   }
-  
+
   Widget _buildHelpSection(ThemeData theme) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.grey.shade200,
-          width: 1,
-        ),
+        border: Border.all(color: Colors.grey.shade200, width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.shade100,
@@ -1711,7 +1739,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
       ),
     );
   }
-  
+
   Widget _buildHelpItem(String title, String description, IconData icon) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -1725,11 +1753,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
               color: Colors.blue.shade50,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(
-              icon,
-              size: 15,
-              color: Colors.blue.shade700,
-            ),
+            child: Icon(icon, size: 15, color: Colors.blue.shade700),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1747,10 +1771,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Single
                 const SizedBox(height: 3),
                 Text(
                   description,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey.shade700,
-                  ),
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
                 ),
               ],
             ),

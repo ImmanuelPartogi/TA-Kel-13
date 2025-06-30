@@ -43,7 +43,7 @@ class UserController extends Controller
 
         // Active users (has at least one booking in the last 3 months)
         $threeMonthsAgo = Carbon::now()->subMonths(3);
-        $activeUsers = User::whereHas('bookings', function($query) use ($threeMonthsAgo) {
+        $activeUsers = User::whereHas('bookings', function ($query) use ($threeMonthsAgo) {
             $query->where('created_at', '>=', $threeMonthsAgo);
         })->count();
 
@@ -67,7 +67,7 @@ class UserController extends Controller
 
     public function show($id)
     {
-        $user = User::with(['bookings' => function($query) {
+        $user = User::with(['bookings' => function ($query) {
             $query->with(['schedule.route', 'schedule.ferry'])
                 ->orderBy('created_at', 'desc');
         }, 'vehicles'])->findOrFail($id);
@@ -77,6 +77,7 @@ class UserController extends Controller
             'data' => $user
         ]);
     }
+
 
     public function update(Request $request, $id)
     {
@@ -98,6 +99,9 @@ class UserController extends Controller
             'date_of_birthday' => 'nullable|date',
             'gender' => 'nullable|in:MALE,FEMALE',
             'password' => 'nullable|string|min:8|confirmed',
+            'bank_account_name' => 'required|string|max:191',
+            'bank_name' => 'required|string|max:100',
+            'bank_account_number' => 'required|string|max:50',
         ]);
 
         $user->name = $request->name;
@@ -108,6 +112,9 @@ class UserController extends Controller
         $user->id_type = $request->id_type;
         $user->date_of_birthday = $request->date_of_birthday;
         $user->gender = $request->gender;
+        $user->bank_account_name = $request->bank_account_name;
+        $user->bank_name = $request->bank_name;
+        $user->bank_account_number = $request->bank_account_number;
 
         if ($request->filled('password')) {
             $user->password = Hash::make($request->password);

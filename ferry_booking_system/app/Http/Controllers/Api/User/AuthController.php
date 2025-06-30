@@ -24,6 +24,9 @@ class AuthController extends Controller
             'email' => 'required|string|email|max:191|unique:users',
             'phone' => 'required|string|max:20|unique:users',
             'password' => 'required|string|min:6',
+            'bank_account_name' => 'required|string|max:191',
+            'bank_name' => 'required|string|max:100',
+            'bank_account_number' => 'required|string|max:50',
         ]);
 
         if ($validator->fails()) {
@@ -39,6 +42,9 @@ class AuthController extends Controller
             'email' => $request->email,
             'phone' => $request->phone,
             'password' => Hash::make($request->password),
+            'bank_account_name' => $request->bank_account_name,
+            'bank_name' => $request->bank_name,
+            'bank_account_number' => $request->bank_account_number,
             'total_bookings' => 0,
             'loyalty_points' => 0,
         ]);
@@ -125,6 +131,9 @@ class AuthController extends Controller
             'id_number' => 'sometimes|nullable|string|max:30',
             'date_of_birthday' => 'sometimes|nullable|date',
             'gender' => 'sometimes|nullable|string|in:MALE,FEMALE',
+            'bank_account_name' => 'sometimes|required|string|max:191',
+            'bank_name' => 'sometimes|required|string|max:100',
+            'bank_account_number' => 'sometimes|required|string|max:50',
         ]);
 
         if ($validator->fails()) {
@@ -152,7 +161,7 @@ class AuthController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Password yang dimasukkan salah'
-                ], 401);
+                ], 422); // Ubah ke status 422 (Unprocessable Entity) untuk kesalahan validasi
             }
         }
 

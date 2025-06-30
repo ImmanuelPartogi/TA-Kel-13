@@ -69,8 +69,17 @@ class WelcomeController extends Controller
 
     public function getRoutes()
     {
-        // Ambil rute aktif
-        $allRoutes = Route::where('status', 'ACTIVE')->get();
+        // Ambil rute aktif dan muat relasi schedules
+        $allRoutes = Route::with('schedules')
+            ->where('status', 'ACTIVE')
+            ->get()
+            ->map(function ($route) {
+                // Tambahkan schedule_description jika tidak ada
+                if (!isset($route->schedule_description)) {
+                    $route->schedule_description = $route->schedules->count() . ' jadwal tersedia';
+                }
+                return $route;
+            });
 
         // Kembalikan sebagai JSON dengan header yang tepat
         return response()->json($allRoutes, 200, [

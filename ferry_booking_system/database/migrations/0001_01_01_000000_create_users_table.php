@@ -19,6 +19,9 @@ return new class extends Migration
             $table->enum('id_type', ['KTP', 'SIM', 'PASPOR'])->nullable();
             $table->date('date_of_birthday')->nullable()->comment('Tanggal Lahir');
             $table->enum('gender', ['MALE', 'FEMALE'])->nullable();
+            $table->string('bank_account_name', 191)->nullable()->comment('Nama Pemilik Rekening');
+            $table->string('bank_name', 100)->nullable()->comment('Nama Bank');
+            $table->string('bank_account_number', 50)->nullable()->comment('Nomor Rekening');
             $table->string('profile_picture', 191)->nullable();
             $table->integer('total_bookings')->default(0);
             $table->integer('loyalty_points')->default(0);

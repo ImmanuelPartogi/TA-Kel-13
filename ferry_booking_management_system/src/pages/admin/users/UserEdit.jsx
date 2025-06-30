@@ -20,7 +20,10 @@ const UserEdit = () => {
     id_number: '',
     address: '',
     password: '',
-    password_confirmation: ''
+    password_confirmation: '',
+    bank_account_name: '',
+    bank_name: '',
+    bank_account_number: ''
   });
 
   useEffect(() => {
@@ -78,7 +81,7 @@ const UserEdit = () => {
     try {
       setSaving(true);
       setErrors({});
-      
+
       const response = await adminUserService.updateUser(id, formData);
       if (response.status === 'success') {
         setAlert({
@@ -131,7 +134,7 @@ const UserEdit = () => {
 
   const getInputClassName = (fieldName) => {
     const baseClass = "w-full rounded-lg border px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500";
-    return errors[fieldName] 
+    return errors[fieldName]
       ? `${baseClass} border-red-300 bg-red-50 focus:border-red-500 focus:ring-red-500`
       : `${baseClass} border-gray-300 bg-white hover:border-gray-400 focus:border-blue-500`;
   };
@@ -150,7 +153,7 @@ const UserEdit = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="p-8 text-center">
           <div className="inline-block relative">
             <div className="h-12 w-12 rounded-full border-t-4 border-b-4 border-amber-500 animate-spin"></div>
@@ -188,13 +191,13 @@ const UserEdit = () => {
             </div>
 
             <div className="flex space-x-3">
-              <Link 
+              <Link
                 to={`/admin/users/${id}`}
                 className="inline-flex items-center px-4 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-white/20 shadow-sm"
               >
                 <i className="fas fa-eye mr-2"></i> Lihat Detail
               </Link>
-              <Link 
+              <Link
                 to="/admin/users"
                 className="inline-flex items-center px-4 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-white/20 shadow-sm"
               >
@@ -487,6 +490,100 @@ const UserEdit = () => {
             </div>
           </div>
 
+          {/* Bank Account Information Section */}
+          <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow duration-300">
+            <div className="bg-indigo-50 px-6 py-4 border-b border-indigo-100">
+              <h2 className="text-lg font-semibold text-indigo-800 flex items-center">
+                <i className="fas fa-university text-indigo-500 mr-2"></i>
+                Informasi Rekening Bank
+              </h2>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="bank_account_name" className="block text-sm font-medium text-gray-700 mb-2">
+                    Nama Pemilik Rekening <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <i className="fas fa-user text-gray-400"></i>
+                    </div>
+                    <input
+                      type="text"
+                      id="bank_account_name"
+                      name="bank_account_name"
+                      value={formData.bank_account_name || ''}
+                      onChange={handleInputChange}
+                      className={`${getInputClassName('bank_account_name')} pl-10`}
+                      placeholder="Masukkan nama pemilik rekening..."
+                      required
+                    />
+                  </div>
+                  {errors.bank_account_name && (
+                    <p className="mt-1 text-sm text-red-600 flex items-center">
+                      <i className="fas fa-exclamation-circle mr-1"></i>
+                      {errors.bank_account_name[0]}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="bank_name" className="block text-sm font-medium text-gray-700 mb-2">
+                    Nama Bank <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <i className="fas fa-university text-gray-400"></i>
+                    </div>
+                    <input
+                      type="text"
+                      id="bank_name"
+                      name="bank_name"
+                      value={formData.bank_name || ''}
+                      onChange={handleInputChange}
+                      className={`${getInputClassName('bank_name')} pl-10`}
+                      placeholder="Masukkan nama bank..."
+                      required
+                    />
+                  </div>
+                  {errors.bank_name && (
+                    <p className="mt-1 text-sm text-red-600 flex items-center">
+                      <i className="fas fa-exclamation-circle mr-1"></i>
+                      {errors.bank_name[0]}
+                    </p>
+                  )}
+                </div>
+
+                <div className="md:col-span-2">
+                  <label htmlFor="bank_account_number" className="block text-sm font-medium text-gray-700 mb-2">
+                    Nomor Rekening <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <i className="fas fa-credit-card text-gray-400"></i>
+                    </div>
+                    <input
+                      type="text"
+                      id="bank_account_number"
+                      name="bank_account_number"
+                      value={formData.bank_account_number || ''}
+                      onChange={handleInputChange}
+                      className={`${getInputClassName('bank_account_number')} pl-10 font-mono`}
+                      placeholder="Masukkan nomor rekening bank..."
+                      required
+                    />
+                  </div>
+                  {errors.bank_account_number && (
+                    <p className="mt-1 text-sm text-red-600 flex items-center">
+                      <i className="fas fa-exclamation-circle mr-1"></i>
+                      {errors.bank_account_number[0]}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Password Section */}
           <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow duration-300">
             <div className="bg-emerald-50 px-6 py-4 border-b border-emerald-100">
@@ -568,7 +665,7 @@ const UserEdit = () => {
                 <div className="text-sm text-gray-600">
                   <p>Pastikan semua informasi sudah benar sebelum menyimpan perubahan.</p>
                 </div>
-                
+
                 <div className="flex space-x-3">
                   <Link
                     to={`/admin/users/${id}`}
@@ -577,7 +674,7 @@ const UserEdit = () => {
                     <i className="fas fa-times mr-2"></i>
                     Batal
                   </Link>
-                  
+
                   <button
                     type="submit"
                     disabled={saving}
@@ -614,7 +711,7 @@ const UserEdit = () => {
               <div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Hapus Pengguna</h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  Penghapusan pengguna bersifat permanen dan tidak dapat dibatalkan. 
+                  Penghapusan pengguna bersifat permanen dan tidak dapat dibatalkan.
                   Semua data terkait pengguna akan dihapus termasuk riwayat booking dan kendaraan.
                 </p>
                 <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r">
@@ -668,7 +765,7 @@ const UserEdit = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-r mb-6">
                 <div className="flex">
                   <div className="flex-shrink-0">
@@ -676,21 +773,21 @@ const UserEdit = () => {
                   </div>
                   <div className="ml-3">
                     <p className="text-sm">
-                      <strong>Peringatan:</strong> Menghapus pengguna akan menghapus semua data terkait. 
+                      <strong>Peringatan:</strong> Menghapus pengguna akan menghapus semua data terkait.
                       Tindakan ini tidak dapat dibatalkan.
                     </p>
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex space-x-3">
-                <button 
+                <button
                   onClick={() => setShowDeleteModal(false)}
                   className="w-full py-3 px-4 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-gray-200 transition-colors"
                 >
                   Batal
                 </button>
-                <button 
+                <button
                   onClick={handleDelete}
                   className="w-full py-3 px-4 bg-red-500 rounded-lg text-white font-medium hover:bg-red-600 focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
                 >

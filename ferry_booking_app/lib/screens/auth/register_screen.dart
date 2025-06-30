@@ -16,16 +16,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _bankAccountNameController = TextEditingController();
+  final _bankNameController = TextEditingController();
+  final _bankAccountNumberController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
-  
+
   // Fokus nodes untuk navigasi antar field
   final FocusNode _nameFocus = FocusNode();
   final FocusNode _emailFocus = FocusNode();
   final FocusNode _phoneFocus = FocusNode();
   final FocusNode _passwordFocus = FocusNode();
   final FocusNode _confirmPasswordFocus = FocusNode();
-  
+  final FocusNode _bankAccountNameFocus = FocusNode();
+  final FocusNode _bankNameFocus = FocusNode();
+  final FocusNode _bankAccountNumberFocus = FocusNode();
+
   // Password strength
   double _passwordStrength = 0.0;
   String _passwordStrengthText = "Belum ada password";
@@ -42,7 +48,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     String password = _passwordController.text;
     double strength = 0;
     String description = "";
-    
+
     if (password.isEmpty) {
       strength = 0;
       description = "Belum ada password";
@@ -57,7 +63,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (RegExp(r'[a-z]').hasMatch(password)) strength += 0.2;
       if (RegExp(r'[0-9]').hasMatch(password)) strength += 0.2;
       if (RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(password)) strength += 0.2;
-      
+
       if (strength <= 0.4) {
         description = "Lemah";
         _passwordStrengthColor = Colors.red;
@@ -69,7 +75,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _passwordStrengthColor = Colors.green;
       }
     }
-    
+
     setState(() {
       _passwordStrength = strength;
       _passwordStrengthText = description;
@@ -83,14 +89,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _phoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
-    
+    _bankAccountNameController.dispose();
+    _bankNameController.dispose();
+    _bankAccountNumberController.dispose();
+    _bankAccountNameFocus.dispose();
+    _bankNameFocus.dispose();
+    _bankAccountNumberFocus.dispose();
+
     // Dispose focus nodes
     _nameFocus.dispose();
     _emailFocus.dispose();
     _phoneFocus.dispose();
     _passwordFocus.dispose();
     _confirmPasswordFocus.dispose();
-    
+
     super.dispose();
   }
 
@@ -100,9 +112,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final email = _emailController.text.trim();
       final phone = _phoneController.text.trim();
       final password = _passwordController.text.trim();
+      final bankAccountName = _bankAccountNameController.text.trim();
+      final bankName = _bankNameController.text.trim();
+      final bankAccountNumber = _bankAccountNumberController.text.trim();
 
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final success = await authProvider.register(name, email, phone, password);
+      final success = await authProvider.register(
+        name,
+        email,
+        phone,
+        password,
+        bankAccountName,
+        bankName,
+        bankAccountNumber,
+      );
 
       if (success && mounted) {
         _showSimpleSuccessMessage();
@@ -110,7 +133,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
     }
   }
-  
+
   void _showSimpleSuccessMessage() {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -134,7 +157,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final authProvider = Provider.of<AuthProvider>(context);
     final theme = Theme.of(context);
     final size = MediaQuery.of(context).size;
-    
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -175,7 +198,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
             ),
-            
+
             // Konten utama
             SafeArea(
               child: SingleChildScrollView(
@@ -194,7 +217,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             // Tombol kembali (disederhanakan)
                             InkWell(
                               onTap: () {
-                                Navigator.pushReplacementNamed(context, '/login');
+                                Navigator.pushReplacementNamed(
+                                  context,
+                                  '/login',
+                                );
                               },
                               child: Container(
                                 padding: const EdgeInsets.all(12),
@@ -217,7 +243,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                             ),
                             const Spacer(),
-                            
+
                             // Logo app (disederhanakan)
                             Container(
                               width: 50,
@@ -241,9 +267,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                           ],
                         ),
-                        
+
                         const SizedBox(height: 40),
-                        
+
                         // Teks Welcome (disederhanakan)
                         Text(
                           'Buat Akun Baru',
@@ -254,7 +280,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                         ),
                         const SizedBox(height: 10),
-                        
+
                         Text(
                           'Bergabunglah dengan kami dan nikmati perjalanan kapal yang menyenangkan',
                           style: TextStyle(
@@ -263,7 +289,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             height: 1.5,
                           ),
                         ),
-                        
+
                         const SizedBox(height: 40),
 
                         // Form dengan border card (disederhanakan)
@@ -292,7 +318,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ),
                               ),
                               const SizedBox(height: 20),
-                              
+
                               // Nama Field
                               _buildTextField(
                                 controller: _nameController,
@@ -303,7 +329,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 nextFocus: _emailFocus,
                               ),
                               const SizedBox(height: 20),
-                              
+
                               // Email Field
                               _buildTextField(
                                 controller: _emailController,
@@ -315,7 +341,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 nextFocus: _phoneFocus,
                               ),
                               const SizedBox(height: 20),
-                              
+
                               // Phone Field
                               _buildTextField(
                                 controller: _phoneController,
@@ -326,9 +352,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 isPhone: true,
                                 nextFocus: _passwordFocus,
                               ),
-                              
+
                               const SizedBox(height: 30),
-                              
+
                               Text(
                                 'Keamanan Akun',
                                 style: TextStyle(
@@ -338,7 +364,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ),
                               ),
                               const SizedBox(height: 20),
-                              
+
                               // Password Field
                               _buildTextField(
                                 controller: _passwordController,
@@ -349,16 +375,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 isPassword: true,
                                 nextFocus: _confirmPasswordFocus,
                               ),
-                              
+
                               // Password strength indicator
                               if (_passwordController.text.isNotEmpty)
                                 Container(
-                                  margin: const EdgeInsets.only(top: 8, left: 12, right: 12),
+                                  margin: const EdgeInsets.only(
+                                    top: 8,
+                                    left: 12,
+                                    right: 12,
+                                  ),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(
                                             'Kekuatan Password: $_passwordStrengthText',
@@ -381,7 +413,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       LinearProgressIndicator(
                                         value: _passwordStrength,
                                         backgroundColor: Colors.grey.shade200,
-                                        valueColor: AlwaysStoppedAnimation<Color>(_passwordStrengthColor),
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              _passwordStrengthColor,
+                                            ),
                                         borderRadius: BorderRadius.circular(10),
                                         minHeight: 4,
                                       ),
@@ -398,9 +433,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     ],
                                   ),
                                 ),
-                                
+
                               const SizedBox(height: 20),
-                              
+
                               // Confirm Password Field
                               _buildTextField(
                                 controller: _confirmPasswordController,
@@ -414,7 +449,79 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ],
                           ),
                         ),
-                        
+
+                        const SizedBox(height: 30),
+
+                        Text(
+                          'Informasi Rekening Bank',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+
+                        Text(
+                          'Data yang diisi harus benar dan jika ada kesalahan pada data itu di luar tanggung jawab Ferry Pass.',
+                          style: TextStyle(
+                            color: Colors.red.shade700,
+                            fontSize: 12,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Bank Account Name Field
+                        _buildTextField(
+                          controller: _bankAccountNameController,
+                          focusNode: _bankAccountNameFocus,
+                          icon: Icons.person_outline_rounded,
+                          label: 'Nama Pemilik Rekening',
+                          hintText: 'Masukkan nama pemilik rekening',
+                          nextFocus: _bankNameFocus,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Silakan masukkan nama pemilik rekening';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Bank Name Field
+                        _buildTextField(
+                          controller: _bankNameController,
+                          focusNode: _bankNameFocus,
+                          icon: Icons.account_balance_rounded,
+                          label: 'Nama Bank',
+                          hintText: 'Masukkan nama bank',
+                          nextFocus: _bankAccountNumberFocus,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Silakan masukkan nama bank';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Bank Account Number Field
+                        _buildTextField(
+                          controller: _bankAccountNumberController,
+                          focusNode: _bankAccountNumberFocus,
+                          icon: Icons.credit_card_rounded,
+                          label: 'Nomor Rekening',
+                          hintText: 'Masukkan nomor rekening',
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Silakan masukkan nomor rekening';
+                            }
+                            return null;
+                          },
+                        ),
+
                         const SizedBox(height: 40),
 
                         // Register Button (disederhanakan)
@@ -429,23 +536,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                             elevation: 3,
                           ),
-                          child: authProvider.isLoading
-                            ? const SizedBox(
-                                height: 24,
-                                width: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : Text(
-                                'DAFTAR SEKARANG',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1.2,
-                                ),
-                              ),
+                          child:
+                              authProvider.isLoading
+                                  ? const SizedBox(
+                                    height: 24,
+                                    width: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                  : Text(
+                                    'DAFTAR SEKARANG',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.2,
+                                    ),
+                                  ),
                         ),
 
                         const SizedBox(height: 30),
@@ -465,7 +573,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               const SizedBox(width: 8),
                               GestureDetector(
                                 onTap: () {
-                                  Navigator.pushReplacementNamed(context, '/login');
+                                  Navigator.pushReplacementNamed(
+                                    context,
+                                    '/login',
+                                  );
                                 },
                                 child: Text(
                                   'Masuk',
@@ -485,7 +596,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         if (authProvider.errorMessage != null)
                           Container(
                             margin: const EdgeInsets.only(bottom: 24),
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 15,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(15),
@@ -500,7 +614,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 Container(
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: theme.colorScheme.error.withOpacity(0.1),
+                                    color: theme.colorScheme.error.withOpacity(
+                                      0.1,
+                                    ),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Icon(
@@ -512,7 +628,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 const SizedBox(width: 15),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'Pendaftaran Gagal',
@@ -536,7 +653,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ],
                             ),
                           ),
-                              
+
                         const SizedBox(height: 30),
                       ],
                     ),
@@ -549,7 +666,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
   }
-  
+
   Widget _buildTextField({
     required TextEditingController controller,
     required FocusNode focusNode,
@@ -561,6 +678,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     bool isPhone = false,
     bool isConfirmPassword = false,
     FocusNode? nextFocus,
+    String? Function(String?)? validator, // Tambahkan parameter validator
+    TextInputType? keyboardType, // Tambahkan parameter keyboardType
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -578,26 +697,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
           decoration: BoxDecoration(
             color: Colors.grey.shade50,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.grey.shade200,
-              width: 1,
-            ),
+            border: Border.all(color: Colors.grey.shade200, width: 1),
           ),
           child: TextFormField(
             controller: controller,
             focusNode: focusNode,
-            obscureText: isPassword 
-                ? (isConfirmPassword ? _obscureConfirmPassword : _obscurePassword) 
-                : false,
-            keyboardType: isEmail 
-                ? TextInputType.emailAddress 
-                : isPhone 
-                    ? TextInputType.phone 
-                    : TextInputType.text,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-            ),
+            obscureText:
+                isPassword
+                    ? (isConfirmPassword
+                        ? _obscureConfirmPassword
+                        : _obscurePassword)
+                    : false,
+            keyboardType:
+                keyboardType ?? // Gunakan parameter keyboardType jika tersedia
+                (isEmail
+                    ? TextInputType.emailAddress
+                    : isPhone
+                    ? TextInputType.phone
+                    : TextInputType.text),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
             onEditingComplete: () {
               if (nextFocus != null) {
                 FocusScope.of(context).requestFocus(nextFocus);
@@ -605,7 +723,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 FocusScope.of(context).unfocus();
               }
             },
-            textInputAction: nextFocus != null ? TextInputAction.next : TextInputAction.done,
+            textInputAction:
+                nextFocus != null ? TextInputAction.next : TextInputAction.done,
             decoration: InputDecoration(
               hintText: hintText,
               hintStyle: TextStyle(
@@ -613,62 +732,69 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 fontSize: 14,
                 fontWeight: FontWeight.normal,
               ),
-              prefixIcon: Icon(
-                icon,
-                color: Colors.grey.shade600,
-                size: 22,
-              ),
-              suffixIcon: isPassword
-                  ? IconButton(
-                      icon: Icon(
-                        isConfirmPassword
-                            ? (_obscureConfirmPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined)
-                            : (_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                        color: Colors.grey.shade600,
-                        size: 22,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          if (isConfirmPassword) {
-                            _obscureConfirmPassword = !_obscureConfirmPassword;
-                          } else {
-                            _obscurePassword = !_obscurePassword;
-                          }
-                        });
-                      },
-                    )
-                  : null,
+              prefixIcon: Icon(icon, color: Colors.grey.shade600, size: 22),
+              suffixIcon:
+                  isPassword
+                      ? IconButton(
+                        icon: Icon(
+                          isConfirmPassword
+                              ? (_obscureConfirmPassword
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined)
+                              : (_obscurePassword
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined),
+                          color: Colors.grey.shade600,
+                          size: 22,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            if (isConfirmPassword) {
+                              _obscureConfirmPassword =
+                                  !_obscureConfirmPassword;
+                            } else {
+                              _obscurePassword = !_obscurePassword;
+                            }
+                          });
+                        },
+                      )
+                      : null,
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(
                 vertical: 16,
                 horizontal: 20,
               ),
             ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Silakan masukkan ${label.toLowerCase()}';
-              }
-              
-              if (isEmail && !RegExp(
-                r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-              ).hasMatch(value)) {
-                return 'Silakan masukkan email yang valid';
-              }
-              
-              if (isPhone && !RegExp(r'^(0|\+62)[0-9]{8,13}$').hasMatch(value)) {
-                return 'Nomor telepon tidak valid';
-              }
-              
-              if (isPassword && !isConfirmPassword && value.length < 6) {
-                return 'Password minimal 6 karakter';
-              }
-              
-              if (isConfirmPassword && value != _passwordController.text) {
-                return 'Password tidak sama';
-              }
-              
-              return null;
-            },
+            validator:
+                validator ??
+                (value) {
+                  // Gunakan parameter validator jika tersedia
+                  if (value == null || value.isEmpty) {
+                    return 'Silakan masukkan ${label.toLowerCase()}';
+                  }
+
+                  if (isEmail &&
+                      !RegExp(
+                        r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                      ).hasMatch(value)) {
+                    return 'Silakan masukkan email yang valid';
+                  }
+
+                  if (isPhone &&
+                      !RegExp(r'^(0|\+62)[0-9]{8,13}$').hasMatch(value)) {
+                    return 'Nomor telepon tidak valid';
+                  }
+
+                  if (isPassword && !isConfirmPassword && value.length < 6) {
+                    return 'Password minimal 6 karakter';
+                  }
+
+                  if (isConfirmPassword && value != _passwordController.text) {
+                    return 'Password tidak sama';
+                  }
+
+                  return null;
+                },
           ),
         ),
       ],

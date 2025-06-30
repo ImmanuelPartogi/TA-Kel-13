@@ -144,6 +144,9 @@ class AuthProvider extends ChangeNotifier {
     String email,
     String phone,
     String password,
+    String bankAccountName,
+    String bankName,
+    String bankAccountNumber,
   ) async {
     _isLoading = true;
     _errorMessage = null;
@@ -161,6 +164,9 @@ class AuthProvider extends ChangeNotifier {
           'email': email,
           'phone': phone,
           'password': password,
+          'bank_account_name': bankAccountName,
+          'bank_name': bankName,
+          'bank_account_number': bankAccountNumber,
         }),
       );
 

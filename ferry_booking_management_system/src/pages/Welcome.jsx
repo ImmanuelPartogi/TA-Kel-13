@@ -642,7 +642,10 @@ const RouteCard = ({ route, onBookClick }) => {
         <div className="flex items-center mb-4">
           <i className="fas fa-ship text-gray-500 mr-2 flex-shrink-0"></i>
           <span className="text-gray-600 text-sm sm:text-base">
-            {route.schedule_description || `${route.schedules?.length || 0} jadwal tersedia`}
+            {route.schedule_description ||
+              (route.schedules && route.schedules.length > 0
+                ? `${route.schedules.length} jadwal tersedia`
+                : "Belum ada jadwal tersedia")}
           </span>
         </div>
         <div className="flex justify-between items-center mt-auto pt-4">

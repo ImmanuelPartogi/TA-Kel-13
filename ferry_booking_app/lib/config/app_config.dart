@@ -2,8 +2,10 @@
 class AppConfig {
   // API Configuration
   // static const String apiBaseUrl = 'http://127.0.0.1:8000/api'; // Local development
-  static const String apiBaseUrl = 'http://172.27.65.105:8000/api'; // Mahasiswa Wifi
-  // static const String apiBaseUrl = 'http://192.168.40.145:8000/api'; //SS-Wifi
+  static const String apiBaseUrl =
+      'http://172.27.65.105:8000/api'; // Mahasiswa Connection
+  // static const String apiBaseUrl = 'http://192.168.40.145:8000/api'; //SS Connection
+  // static const String apiBaseUrl = 'http://192.168.1.8:8000/api'; //Nazi Connection
 
   // Untuk akses dari perangkat lain atau Midtrans callback
   // static const String publicBaseUrl =
@@ -26,4 +28,6 @@ class AppConfig {
 
   // User Session Configuration
   static const int sessionTimeout = 30; // in days
+
+  static const bool debugMode = true; // Set to false in production
 }

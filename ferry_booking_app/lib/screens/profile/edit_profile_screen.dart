@@ -10,7 +10,8 @@ class EditProfileScreen extends StatefulWidget {
   _EditProfileScreenState createState() => _EditProfileScreenState();
 }
 
-class _EditProfileScreenState extends State<EditProfileScreen> with SingleTickerProviderStateMixin {
+class _EditProfileScreenState extends State<EditProfileScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _emailController;
@@ -18,13 +19,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
   late TextEditingController _addressController;
   late TextEditingController _idNumberController;
   late TextEditingController _passwordController;
+  late TextEditingController _bankAccountNameController;
+  late TextEditingController _bankNameController;
+  late TextEditingController _bankAccountNumberController;
   String? _idType;
   String? _gender;
   DateTime? _dateOfBirth;
   String? _initialEmail;
   bool _isChangingEmail = false;
   bool _obscurePassword = true;
-  
+
   // Animation controllers
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -34,27 +38,30 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
   void initState() {
     super.initState();
     _initUserData();
-    
+
     // Initialize animation controllers
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     );
-    
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
         curve: const Interval(0.0, 0.7, curve: Curves.easeOut),
       ),
     );
-    
-    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.1),
+      end: Offset.zero,
+    ).animate(
       CurvedAnimation(
         parent: _animationController,
         curve: const Interval(0.0, 0.8, curve: Curves.easeOutCubic),
       ),
     );
-    
+
     // Delay start of animation slightly for better UX
     Future.delayed(const Duration(milliseconds: 100), () {
       _animationController.forward();
@@ -72,6 +79,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
       _addressController = TextEditingController(text: user.address ?? '');
       _idNumberController = TextEditingController(text: user.idNumber ?? '');
       _passwordController = TextEditingController();
+      _bankAccountNameController = TextEditingController(
+        text: user.bankAccountName ?? '',
+      );
+      _bankNameController = TextEditingController(text: user.bankName ?? '');
+      _bankAccountNumberController = TextEditingController(
+        text: user.bankAccountNumber ?? '',
+      );
       _idType = user.idType;
       _gender = user.gender;
 
@@ -89,6 +103,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
       _addressController = TextEditingController();
       _idNumberController = TextEditingController();
       _passwordController = TextEditingController();
+      _bankAccountNameController = TextEditingController();
+      _bankNameController = TextEditingController();
+      _bankAccountNumberController = TextEditingController();
     }
   }
 
@@ -100,13 +117,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
     _addressController.dispose();
     _idNumberController.dispose();
     _passwordController.dispose();
+    _bankAccountNameController.dispose();
+    _bankNameController.dispose();
+    _bankAccountNumberController.dispose();
     _animationController.dispose();
     super.dispose();
   }
 
   Future<void> _selectDate(BuildContext context) async {
     final theme = Theme.of(context);
-    
+
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _dateOfBirth ?? DateTime(1990),
@@ -121,9 +141,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
               onSurface: Colors.black,
             ),
             textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(
-                foregroundColor: theme.primaryColor,
-              ),
+              style: TextButton.styleFrom(foregroundColor: theme.primaryColor),
             ),
           ),
           child: child!,
@@ -151,8 +169,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
         'id_type': _idType,
         'gender': _gender,
         'date_of_birthday': _dateOfBirth?.toIso8601String().split('T')[0],
+        'bank_account_name': _bankAccountNameController.text.trim(),
+        'bank_name': _bankNameController.text.trim(),
+        'bank_account_number': _bankAccountNumberController.text.trim(),
       };
-      
+
       // Tambahkan password jika email diubah
       if (_isChangingEmail && _passwordController.text.isNotEmpty) {
         profileData['current_password'] = _passwordController.text;
@@ -174,7 +195,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
 
@@ -242,7 +265,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
                 ),
               ),
             ),
-            
+
             // Small boat icons in the background
             Positioned(
               top: size.height * 0.15,
@@ -271,14 +294,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
                 color: theme.primaryColor.withOpacity(0.1),
               ),
             ),
-            
+
             // Main Content
             SafeArea(
               child: Column(
                 children: [
                   // Custom App Bar
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -310,7 +336,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
                             ),
                           ),
                         ),
-                        
+
                         // Title
                         Text(
                           'Edit Profil',
@@ -320,311 +346,469 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
                             color: Colors.black87,
                           ),
                         ),
-                        
+
                         // Empty Space for balance
                         const SizedBox(width: 45),
                       ],
                     ),
                   ),
-                  
+
                   // Form Content
                   Expanded(
-                    child: authProvider.isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : FadeTransition(
-                          opacity: _fadeAnimation,
-                          child: SlideTransition(
-                            position: _slideAnimation,
-                            child: Form(
-                              key: _formKey,
-                              child: SingleChildScrollView(
-                                padding: const EdgeInsets.all(24.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // Section Title
-                                    Text(
-                                      'Informasi Pribadi',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 20),
-                                    
-                                    // Name Field
-                                    _buildAnimatedTextField(
-                                      controller: _nameController,
-                                      icon: Icons.person_rounded,
-                                      label: 'Nama Lengkap',
-                                      hintText: 'Masukkan nama lengkap Anda',
-                                      validator: (value) {
-                                        if (value == null || value.isEmpty) {
-                                          return 'Silakan masukkan nama lengkap';
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                    const SizedBox(height: 18),
-                                    
-                                    // Email Field
-                                    _buildAnimatedTextField(
-                                      controller: _emailController,
-                                      icon: Icons.alternate_email_rounded,
-                                      label: 'Email',
-                                      hintText: 'Masukkan email Anda',
-                                      keyboardType: TextInputType.emailAddress,
-                                      onChanged: _checkEmailChange,
-                                      validator: (value) {
-                                        if (value == null || value.isEmpty) {
-                                          return 'Silakan masukkan email';
-                                        }
-                                        if (!value.contains('@') || !value.contains('.')) {
-                                          return 'Masukkan email yang valid';
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                    const SizedBox(height: 18),
-                                    
-                                    // Password Field (muncul hanya jika email berubah)
-                                    if (_isChangingEmail)
-                                      Column(
-                                        children: [
-                                          _buildAnimatedTextField(
-                                            controller: _passwordController,
-                                            icon: Icons.lock_rounded,
-                                            label: 'Password Anda',
-                                            hintText: 'Masukkan password Anda',
-                                            isPassword: true,
-                                            helperText: 'Diperlukan untuk verifikasi perubahan email',
-                                            validator: (value) {
-                                              if (_isChangingEmail && (value == null || value.isEmpty)) {
-                                                return 'Password diperlukan untuk mengubah email';
-                                              }
-                                              return null;
-                                            },
+                    child:
+                        authProvider.isLoading
+                            ? const Center(child: CircularProgressIndicator())
+                            : FadeTransition(
+                              opacity: _fadeAnimation,
+                              child: SlideTransition(
+                                position: _slideAnimation,
+                                child: Form(
+                                  key: _formKey,
+                                  child: SingleChildScrollView(
+                                    padding: const EdgeInsets.all(24.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        // Section Title
+                                        Text(
+                                          'Informasi Pribadi',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black87,
                                           ),
-                                          const SizedBox(height: 18),
-                                        ],
-                                      ),
-                                    
-                                    // Phone Field
-                                    _buildAnimatedTextField(
-                                      controller: _phoneController,
-                                      icon: Icons.phone_rounded,
-                                      label: 'Nomor Telepon',
-                                      hintText: 'Masukkan nomor telepon Anda',
-                                      keyboardType: TextInputType.phone,
-                                      validator: (value) {
-                                        if (value == null || value.isEmpty) {
-                                          return 'Silakan masukkan nomor telepon';
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                    const SizedBox(height: 18),
-                                    
-                                    // Address Field
-                                    _buildAnimatedTextField(
-                                      controller: _addressController,
-                                      icon: Icons.home_rounded,
-                                      label: 'Alamat',
-                                      hintText: 'Masukkan alamat Anda',
-                                      maxLines: 2,
-                                    ),
-                                    const SizedBox(height: 18),
-                                    
-                                    // Section Title for Additional Info
-                                    Text(
-                                      'Informasi Tambahan',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 20),
-                                    
-                                    // ID Type Dropdown
-                                    _buildDropdownField(
-                                      label: 'Jenis Identitas',
-                                      icon: Icons.badge_rounded,
-                                      value: _idType,
-                                      hint: 'Pilih jenis identitas',
-                                      items: const [
-                                        DropdownMenuItem(value: 'KTP', child: Text('KTP')),
-                                        DropdownMenuItem(value: 'SIM', child: Text('SIM')),
-                                        DropdownMenuItem(value: 'PASPOR', child: Text('Paspor')),
-                                      ],
-                                      onChanged: (value) {
-                                        setState(() {
-                                          _idType = value;
-                                        });
-                                      },
-                                    ),
-                                    const SizedBox(height: 18),
-                                    
-                                    // ID Number Field
-                                    _buildAnimatedTextField(
-                                      controller: _idNumberController,
-                                      icon: Icons.credit_card_rounded,
-                                      label: 'Nomor Identitas',
-                                      hintText: 'Masukkan nomor identitas Anda',
-                                    ),
-                                    const SizedBox(height: 18),
-                                    
-                                    // Date of Birth Field
-                                    _buildDatePickerField(
-                                      label: 'Tanggal Lahir',
-                                      icon: Icons.cake_rounded,
-                                      value: _dateOfBirth,
-                                      hint: 'Pilih tanggal lahir',
-                                      onTap: () => _selectDate(context),
-                                    ),
-                                    const SizedBox(height: 18),
-                                    
-                                    // Gender Radio Buttons
-                                    _buildGenderSelector(
-                                      label: 'Jenis Kelamin',
-                                      value: _gender,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          _gender = value;
-                                        });
-                                      },
-                                    ),
-                                    const SizedBox(height: 32),
-                                    
-                                    // Save Button
-                                    Container(
-                                      height: 55,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(20),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: theme.primaryColor.withOpacity(0.3),
-                                            blurRadius: 15,
-                                            offset: const Offset(0, 8),
-                                            spreadRadius: -5,
+                                        ),
+                                        const SizedBox(height: 20),
+
+                                        // Name Field
+                                        _buildAnimatedTextField(
+                                          controller: _nameController,
+                                          icon: Icons.person_rounded,
+                                          label: 'Nama Lengkap',
+                                          hintText:
+                                              'Masukkan nama lengkap Anda',
+                                          validator: (value) {
+                                            if (value == null ||
+                                                value.isEmpty) {
+                                              return 'Silakan masukkan nama lengkap';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                        const SizedBox(height: 18),
+
+                                        // Email Field
+                                        _buildAnimatedTextField(
+                                          controller: _emailController,
+                                          icon: Icons.alternate_email_rounded,
+                                          label: 'Email',
+                                          hintText: 'Masukkan email Anda',
+                                          keyboardType:
+                                              TextInputType.emailAddress,
+                                          onChanged: _checkEmailChange,
+                                          validator: (value) {
+                                            if (value == null ||
+                                                value.isEmpty) {
+                                              return 'Silakan masukkan email';
+                                            }
+                                            if (!value.contains('@') ||
+                                                !value.contains('.')) {
+                                              return 'Masukkan email yang valid';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                        const SizedBox(height: 18),
+
+                                        // Password Field (muncul hanya jika email berubah)
+                                        if (_isChangingEmail)
+                                          Column(
+                                            children: [
+                                              _buildAnimatedTextField(
+                                                controller: _passwordController,
+                                                icon: Icons.lock_rounded,
+                                                label: 'Password Anda',
+                                                hintText:
+                                                    'Masukkan password Anda',
+                                                isPassword: true,
+                                                helperText:
+                                                    'Diperlukan untuk verifikasi perubahan email',
+                                                validator: (value) {
+                                                  if (_isChangingEmail &&
+                                                      (value == null ||
+                                                          value.isEmpty)) {
+                                                    return 'Password diperlukan untuk mengubah email';
+                                                  }
+                                                  return null;
+                                                },
+                                              ),
+                                              const SizedBox(height: 18),
+                                            ],
                                           ),
-                                        ],
-                                      ),
-                                      child: Material(
-                                        color: Colors.transparent,
-                                        borderRadius: BorderRadius.circular(20),
-                                        child: InkWell(
-                                          onTap: authProvider.isLoading ? null : _saveProfile,
-                                          borderRadius: BorderRadius.circular(20),
-                                          child: Ink(
+
+                                        // Phone Field
+                                        _buildAnimatedTextField(
+                                          controller: _phoneController,
+                                          icon: Icons.phone_rounded,
+                                          label: 'Nomor Telepon',
+                                          hintText:
+                                              'Masukkan nomor telepon Anda',
+                                          keyboardType: TextInputType.phone,
+                                          validator: (value) {
+                                            if (value == null ||
+                                                value.isEmpty) {
+                                              return 'Silakan masukkan nomor telepon';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                        const SizedBox(height: 18),
+
+                                        // Address Field
+                                        _buildAnimatedTextField(
+                                          controller: _addressController,
+                                          icon: Icons.home_rounded,
+                                          label: 'Alamat',
+                                          hintText: 'Masukkan alamat Anda',
+                                          maxLines: 2,
+                                        ),
+                                        const SizedBox(height: 18),
+
+                                        // Section Title for Additional Info
+                                        Text(
+                                          'Informasi Tambahan',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 20),
+
+                                        // ID Type Dropdown
+                                        _buildDropdownField(
+                                          label: 'Jenis Identitas',
+                                          icon: Icons.badge_rounded,
+                                          value: _idType,
+                                          hint: 'Pilih jenis identitas',
+                                          items: const [
+                                            DropdownMenuItem(
+                                              value: 'KTP',
+                                              child: Text('KTP'),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: 'SIM',
+                                              child: Text('SIM'),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: 'PASPOR',
+                                              child: Text('Paspor'),
+                                            ),
+                                          ],
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _idType = value;
+                                            });
+                                          },
+                                        ),
+                                        const SizedBox(height: 18),
+
+                                        // ID Number Field
+                                        _buildAnimatedTextField(
+                                          controller: _idNumberController,
+                                          icon: Icons.credit_card_rounded,
+                                          label: 'Nomor Identitas',
+                                          hintText:
+                                              'Masukkan nomor identitas Anda',
+                                        ),
+                                        const SizedBox(height: 18),
+
+                                        // Date of Birth Field
+                                        _buildDatePickerField(
+                                          label: 'Tanggal Lahir',
+                                          icon: Icons.cake_rounded,
+                                          value: _dateOfBirth,
+                                          hint: 'Pilih tanggal lahir',
+                                          onTap: () => _selectDate(context),
+                                        ),
+                                        const SizedBox(height: 18),
+
+                                        // Gender Radio Buttons
+                                        _buildGenderSelector(
+                                          label: 'Jenis Kelamin',
+                                          value: _gender,
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _gender = value;
+                                            });
+                                          },
+                                        ),
+                                        const SizedBox(height: 32),
+
+                                        // Section Title for Bank Account Info
+                                        Text(
+                                          'Informasi Rekening Bank',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 10),
+
+                                        // Disclaimer
+                                        Container(
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: Colors.red.shade50,
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            border: Border.all(
+                                              color: Colors.red.shade200,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'Data yang diisi harus benar dan jika ada kesalahan pada data itu di luar tanggung jawab Ferry Pass.',
+                                            style: TextStyle(
+                                              color: Colors.red.shade800,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 20),
+
+                                        // Bank Account Name Field
+                                        _buildAnimatedTextField(
+                                          controller:
+                                              _bankAccountNameController,
+                                          icon: Icons.person_rounded,
+                                          label: 'Nama Pemilik Rekening',
+                                          hintText:
+                                              'Masukkan nama pemilik rekening',
+                                          validator: (value) {
+                                            if (value == null ||
+                                                value.isEmpty) {
+                                              return 'Silakan masukkan nama pemilik rekening';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                        const SizedBox(height: 18),
+
+                                        // Bank Name Field
+                                        _buildAnimatedTextField(
+                                          controller: _bankNameController,
+                                          icon: Icons.account_balance_rounded,
+                                          label: 'Nama Bank',
+                                          hintText: 'Masukkan nama bank',
+                                          validator: (value) {
+                                            if (value == null ||
+                                                value.isEmpty) {
+                                              return 'Silakan masukkan nama bank';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                        const SizedBox(height: 18),
+
+                                        // Bank Account Number Field
+                                        _buildAnimatedTextField(
+                                          controller:
+                                              _bankAccountNumberController,
+                                          icon: Icons.credit_card_rounded,
+                                          label: 'Nomor Rekening',
+                                          hintText: 'Masukkan nomor rekening',
+                                          keyboardType: TextInputType.number,
+                                          validator: (value) {
+                                            if (value == null ||
+                                                value.isEmpty) {
+                                              return 'Silakan masukkan nomor rekening';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                        const SizedBox(height: 32),
+
+                                        // Save Button
+                                        Container(
+                                          height: 55,
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(
+                                              20,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: theme.primaryColor
+                                                    .withOpacity(0.3),
+                                                blurRadius: 15,
+                                                offset: const Offset(0, 8),
+                                                spreadRadius: -5,
+                                              ),
+                                            ],
+                                          ),
+                                          child: Material(
+                                            color: Colors.transparent,
+                                            borderRadius: BorderRadius.circular(
+                                              20,
+                                            ),
+                                            child: InkWell(
+                                              onTap:
+                                                  authProvider.isLoading
+                                                      ? null
+                                                      : _saveProfile,
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                              child: Ink(
+                                                decoration: BoxDecoration(
+                                                  gradient: LinearGradient(
+                                                    colors: [
+                                                      theme.primaryColor
+                                                          .withBlue(255),
+                                                      theme.primaryColor,
+                                                    ],
+                                                    begin: Alignment.topLeft,
+                                                    end: Alignment.bottomRight,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(20),
+                                                ),
+                                                child: Container(
+                                                  alignment: Alignment.center,
+                                                  constraints:
+                                                      const BoxConstraints(
+                                                        minHeight: 55,
+                                                      ),
+                                                  child:
+                                                      authProvider.isLoading
+                                                          ? const SizedBox(
+                                                            height: 24,
+                                                            width: 24,
+                                                            child:
+                                                                CircularProgressIndicator(
+                                                                  strokeWidth:
+                                                                      2.5,
+                                                                  color:
+                                                                      Colors
+                                                                          .white,
+                                                                ),
+                                                          )
+                                                          : Text(
+                                                            'SIMPAN PERUBAHAN',
+                                                            style:
+                                                                const TextStyle(
+                                                                  fontSize: 16,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                  letterSpacing:
+                                                                      1,
+                                                                  color:
+                                                                      Colors
+                                                                          .white,
+                                                                ),
+                                                          ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+
+                                        // Error Message
+                                        if (authProvider.errorMessage != null)
+                                          AnimatedContainer(
+                                            duration: const Duration(
+                                              milliseconds: 300,
+                                            ),
+                                            margin: const EdgeInsets.only(
+                                              top: 24,
+                                            ),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 20,
+                                              vertical: 15,
+                                            ),
                                             decoration: BoxDecoration(
-                                              gradient: LinearGradient(
-                                                colors: [
-                                                  theme.primaryColor.withBlue(255),
-                                                  theme.primaryColor,
-                                                ],
-                                                begin: Alignment.topLeft,
-                                                end: Alignment.bottomRight,
-                                              ),
-                                              borderRadius: BorderRadius.circular(20),
-                                            ),
-                                            child: Container(
-                                              alignment: Alignment.center,
-                                              constraints: const BoxConstraints(minHeight: 55),
-                                              child: authProvider.isLoading
-                                                ? const SizedBox(
-                                                    height: 24,
-                                                    width: 24,
-                                                    child: CircularProgressIndicator(
-                                                      strokeWidth: 2.5,
-                                                      color: Colors.white,
-                                                    ),
-                                                  )
-                                                : Text(
-                                                    'SIMPAN PERUBAHAN',
-                                                    style: const TextStyle(
-                                                      fontSize: 16,
-                                                      fontWeight: FontWeight.bold,
-                                                      letterSpacing: 1,
-                                                      color: Colors.white,
-                                                    ),
+                                              color: Colors.white,
+                                              borderRadius:
+                                                  BorderRadius.circular(15),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.red.withOpacity(
+                                                    0.1,
                                                   ),
+                                                  blurRadius: 10,
+                                                  offset: const Offset(0, 4),
+                                                ),
+                                              ],
+                                              border: Border.all(
+                                                color: theme.colorScheme.error
+                                                    .withOpacity(0.5),
+                                                width: 1.5,
+                                              ),
+                                            ),
+                                            child: Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.center,
+                                              children: [
+                                                Container(
+                                                  padding: const EdgeInsets.all(
+                                                    8,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: theme
+                                                        .colorScheme
+                                                        .error
+                                                        .withOpacity(0.1),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          10,
+                                                        ),
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.error_outline_rounded,
+                                                    color:
+                                                        theme.colorScheme.error,
+                                                    size: 22,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 15),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        'Proses Gagal',
+                                                        style: TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          color: Colors.black87,
+                                                          fontSize: 15,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 5),
+                                                      Text(
+                                                        authProvider
+                                                            .errorMessage!,
+                                                        style: TextStyle(
+                                                          color: Colors.black87,
+                                                          fontSize: 13,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
-                                        ),
-                                      ),
+                                      ],
                                     ),
-                                    
-                                    // Error Message
-                                    if (authProvider.errorMessage != null)
-                                      AnimatedContainer(
-                                        duration: const Duration(milliseconds: 300),
-                                        margin: const EdgeInsets.only(top: 24),
-                                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(15),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.red.withOpacity(0.1),
-                                              blurRadius: 10,
-                                              offset: const Offset(0, 4),
-                                            ),
-                                          ],
-                                          border: Border.all(
-                                            color: theme.colorScheme.error.withOpacity(0.5),
-                                            width: 1.5,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          crossAxisAlignment: CrossAxisAlignment.center,
-                                          children: [
-                                            Container(
-                                              padding: const EdgeInsets.all(8),
-                                              decoration: BoxDecoration(
-                                                color: theme.colorScheme.error.withOpacity(0.1),
-                                                borderRadius: BorderRadius.circular(10),
-                                              ),
-                                              child: Icon(
-                                                Icons.error_outline_rounded,
-                                                color: theme.colorScheme.error,
-                                                size: 22,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 15),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    'Proses Gagal',
-                                                    style: TextStyle(
-                                                      fontWeight: FontWeight.bold,
-                                                      color: Colors.black87,
-                                                      fontSize: 15,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 5),
-                                                  Text(
-                                                    authProvider.errorMessage!,
-                                                    style: TextStyle(
-                                                      color: Colors.black87,
-                                                      fontSize: 13,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ),
                   ),
                 ],
               ),
@@ -634,7 +818,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
       ),
     );
   }
-  
+
   Widget _buildAnimatedTextField({
     required TextEditingController controller,
     required IconData icon,
@@ -663,10 +847,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.grey.shade200,
-              width: 1,
-            ),
+            border: Border.all(color: Colors.grey.shade200, width: 1),
             boxShadow: [
               BoxShadow(
                 color: Colors.grey.withOpacity(0.05),
@@ -681,10 +862,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
             maxLines: maxLines,
             keyboardType: keyboardType,
             onChanged: onChanged,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-            ),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
             decoration: InputDecoration(
               hintText: hintText,
               hintStyle: TextStyle(
@@ -695,38 +873,32 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
               prefixIcon: Container(
                 margin: const EdgeInsets.only(right: 12),
                 padding: const EdgeInsets.all(14),
-                child: Icon(
-                  icon,
-                  color: Colors.grey.shade600,
-                  size: 22,
-                ),
+                child: Icon(icon, color: Colors.grey.shade600, size: 22),
               ),
-              suffixIcon: isPassword
-                  ? IconButton(
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
-                        color: Colors.grey.shade600,
-                        size: 22,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _obscurePassword = !_obscurePassword;
-                        });
-                      },
-                    )
-                  : null,
+              suffixIcon:
+                  isPassword
+                      ? IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                          color: Colors.grey.shade600,
+                          size: 22,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
+                      )
+                      : null,
               border: InputBorder.none,
               contentPadding: EdgeInsets.symmetric(
                 vertical: 16,
                 horizontal: maxLines > 1 ? 20 : 0,
               ),
               helperText: helperText,
-              helperStyle: TextStyle(
-                fontSize: 12,
-                color: Colors.grey.shade600,
-              ),
+              helperStyle: TextStyle(fontSize: 12, color: Colors.grey.shade600),
             ),
             validator: validator,
           ),
@@ -734,7 +906,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
       ],
     );
   }
-  
+
   Widget _buildDropdownField({
     required String label,
     required IconData icon,
@@ -759,10 +931,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.grey.shade200,
-              width: 1,
-            ),
+            border: Border.all(color: Colors.grey.shade200, width: 1),
             boxShadow: [
               BoxShadow(
                 color: Colors.grey.withOpacity(0.05),
@@ -783,11 +952,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
               prefixIcon: Container(
                 margin: const EdgeInsets.only(right: 12),
                 padding: const EdgeInsets.all(14),
-                child: Icon(
-                  icon,
-                  color: Colors.grey.shade600,
-                  size: 22,
-                ),
+                child: Icon(icon, color: Colors.grey.shade600, size: 22),
               ),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(
@@ -814,7 +979,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
       ],
     );
   }
-  
+
   Widget _buildDatePickerField({
     required String label,
     required IconData icon,
@@ -841,10 +1006,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: Colors.grey.shade200,
-                width: 1,
-              ),
+              border: Border.all(color: Colors.grey.shade200, width: 1),
               boxShadow: [
                 BoxShadow(
                   color: Colors.grey.withOpacity(0.05),
@@ -859,11 +1021,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
                 Container(
                   margin: const EdgeInsets.only(right: 12, left: 12),
                   padding: const EdgeInsets.all(10),
-                  child: Icon(
-                    icon,
-                    color: Colors.grey.shade600,
-                    size: 22,
-                  ),
+                  child: Icon(icon, color: Colors.grey.shade600, size: 22),
                 ),
                 Text(
                   value != null
@@ -871,8 +1029,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
                       : hint,
                   style: TextStyle(
                     fontSize: 15,
-                    color: value != null ? Colors.black87 : Colors.grey.shade400,
-                    fontWeight: value != null ? FontWeight.w500 : FontWeight.normal,
+                    color:
+                        value != null ? Colors.black87 : Colors.grey.shade400,
+                    fontWeight:
+                        value != null ? FontWeight.w500 : FontWeight.normal,
                   ),
                 ),
                 const Spacer(),
@@ -891,7 +1051,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
       ],
     );
   }
-  
+
   Widget _buildGenderSelector({
     required String label,
     required String? value,
@@ -935,7 +1095,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
       ],
     );
   }
-  
+
   Widget _buildGenderOption({
     required String label,
     required IconData icon,
@@ -945,38 +1105,36 @@ class _EditProfileScreenState extends State<EditProfileScreen> with SingleTicker
   }) {
     final theme = Theme.of(context);
     final isSelected = value == groupValue;
-    
+
     return InkWell(
       onTap: () => onChanged(value),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         decoration: BoxDecoration(
-          color: isSelected 
-              ? theme.primaryColor.withOpacity(0.1)
-              : Colors.white,
+          color:
+              isSelected ? theme.primaryColor.withOpacity(0.1) : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected
-                ? theme.primaryColor
-                : Colors.grey.shade200,
+            color: isSelected ? theme.primaryColor : Colors.grey.shade200,
             width: 1.5,
           ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: theme.primaryColor.withOpacity(0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                    spreadRadius: -4,
-                  ),
-                ]
-              : [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+          boxShadow:
+              isSelected
+                  ? [
+                    BoxShadow(
+                      color: theme.primaryColor.withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                      spreadRadius: -4,
+                    ),
+                  ]
+                  : [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
         ),
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
         child: Row(

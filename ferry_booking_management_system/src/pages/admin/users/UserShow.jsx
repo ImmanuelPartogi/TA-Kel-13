@@ -65,7 +65,7 @@ const UserShow = () => {
 
   const formatDate = (dateString, includeTime = false) => {
     if (!dateString) return 'N/A';
-    
+
     try {
       const options = {
         day: 'numeric',
@@ -102,7 +102,7 @@ const UserShow = () => {
       'REFUNDED': { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Dikembalikan', border: 'border-gray-200', indicator: 'bg-gray-500' }
     };
     const statusInfo = statusMap[status] || { bg: 'bg-gray-100', text: 'text-gray-800', label: status, border: 'border-gray-200', indicator: 'bg-gray-500' };
-    
+
     return (
       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${statusInfo.bg} ${statusInfo.text} border ${statusInfo.border}`}>
         <span className={`w-1.5 h-1.5 ${statusInfo.indicator} rounded-full mr-1.5`}></span>
@@ -119,7 +119,7 @@ const UserShow = () => {
       'TRUCK': { bg: 'bg-red-100', text: 'text-red-800', label: 'Truk', icon: 'fa-truck' }
     };
     const typeInfo = typeMap[type] || { bg: 'bg-gray-100', text: 'text-gray-800', label: type, icon: 'fa-car' };
-    
+
     return (
       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${typeInfo.bg} ${typeInfo.text}`}>
         <i className={`fas ${typeInfo.icon} mr-1`}></i>
@@ -142,7 +142,7 @@ const UserShow = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="p-8 text-center">
           <div className="inline-block relative">
             <div className="h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-500 animate-spin"></div>
@@ -168,14 +168,14 @@ const UserShow = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="p-8 text-center">
           <div className="bg-red-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
             <i className="fas fa-user-times text-red-500 text-4xl"></i>
           </div>
           <h3 className="text-xl font-semibold text-gray-800 mb-2">Data Tidak Ditemukan</h3>
           <p className="text-gray-600 mb-6">Pengguna dengan ID tersebut tidak ditemukan dalam sistem</p>
-          <Link 
+          <Link
             to="/admin/users"
             className="inline-flex items-center px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-sm">
             <i className="fas fa-arrow-left mr-2"></i> Kembali ke Daftar Pengguna
@@ -186,7 +186,7 @@ const UserShow = () => {
   }
 
   // Get unique vehicles (remove duplicates by license_plate)
-  const uniqueVehicles = user.vehicles ? 
+  const uniqueVehicles = user.vehicles ?
     Array.from(new Map(user.vehicles.map(v => [v.license_plate, v])).values()) : [];
 
   return (
@@ -215,13 +215,13 @@ const UserShow = () => {
             </div>
 
             <div className="flex space-x-3">
-              <Link 
+              <Link
                 to={`/admin/users/${user.id}/edit`}
                 className="inline-flex items-center px-4 py-2.5 bg-amber-500/20 hover:bg-amber-500/30 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-amber-400/30 shadow-sm"
               >
                 <i className="fas fa-edit mr-2"></i> Edit Pengguna
               </Link>
-              <Link 
+              <Link
                 to="/admin/users"
                 className="inline-flex items-center px-4 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-white/20 shadow-sm"
               >
@@ -248,7 +248,7 @@ const UserShow = () => {
                   </div>
                 )}
               </div>
-              
+
               <div className="flex-1 text-center md:text-left">
                 <h2 className="text-2xl font-bold text-white mb-2">{user.name}</h2>
                 <p className="text-blue-100 mb-1">{user.email}</p>
@@ -337,8 +337,8 @@ const UserShow = () => {
                   <div className="flex justify-between items-center pb-3 border-b border-gray-100">
                     <span className="text-sm font-medium text-gray-500">Jenis Kelamin</span>
                     <span className="text-sm text-gray-900">
-                      {user.gender === 'MALE' ? 'Laki-laki' : 
-                       user.gender === 'FEMALE' ? 'Perempuan' : 'Tidak ada'}
+                      {user.gender === 'MALE' ? 'Laki-laki' :
+                        user.gender === 'FEMALE' ? 'Perempuan' : 'Tidak ada'}
                     </span>
                   </div>
                   <div className="flex justify-between items-center pb-3 border-b border-gray-100">
@@ -375,6 +375,34 @@ const UserShow = () => {
                     <span className="text-sm font-medium text-gray-500">Nomor Identitas</span>
                     <span className="text-sm text-gray-900 font-mono">
                       {user.id_number || 'Tidak ada'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bank Account Information Card */}
+            <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow duration-300">
+              <div className="bg-indigo-50 px-6 py-4 border-b border-indigo-100">
+                <h2 className="text-lg font-semibold text-indigo-800 flex items-center">
+                  <i className="fas fa-university text-indigo-500 mr-2"></i>
+                  Informasi Rekening Bank
+                </h2>
+              </div>
+              <div className="p-6">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center pb-3 border-b border-gray-100">
+                    <span className="text-sm font-medium text-gray-500">Nama Pemilik Rekening</span>
+                    <span className="text-sm text-gray-900">{user.bank_account_name || 'Tidak ada'}</span>
+                  </div>
+                  <div className="flex justify-between items-center pb-3 border-b border-gray-100">
+                    <span className="text-sm font-medium text-gray-500">Nama Bank</span>
+                    <span className="text-sm text-gray-900">{user.bank_name || 'Tidak ada'}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-500">Nomor Rekening</span>
+                    <span className="text-sm text-gray-900 font-mono">
+                      {user.bank_account_number || 'Tidak ada'}
                     </span>
                   </div>
                 </div>
@@ -533,12 +561,11 @@ const UserShow = () => {
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex items-center">
                             <div className="bg-blue-100 p-2 rounded-lg mr-3">
-                              <i className={`fas ${
-                                vehicle.type === 'MOTORCYCLE' ? 'fa-motorcycle' :
-                                vehicle.type === 'CAR' ? 'fa-car' :
-                                vehicle.type === 'BUS' ? 'fa-bus' :
-                                vehicle.type === 'TRUCK' ? 'fa-truck' : 'fa-car'
-                              } text-blue-600`}></i>
+                              <i className={`fas ${vehicle.type === 'MOTORCYCLE' ? 'fa-motorcycle' :
+                                  vehicle.type === 'CAR' ? 'fa-car' :
+                                    vehicle.type === 'BUS' ? 'fa-bus' :
+                                      vehicle.type === 'TRUCK' ? 'fa-truck' : 'fa-car'
+                                } text-blue-600`}></i>
                             </div>
                             <div>
                               <div className="font-bold text-lg text-gray-900">{vehicle.license_plate}</div>
@@ -551,7 +578,7 @@ const UserShow = () => {
                             {getVehicleTypeBadge(vehicle.type)}
                           </div>
                         </div>
-                        
+
                         <div className="grid grid-cols-2 gap-4 text-sm">
                           <div>
                             <span className="text-gray-500">Merk:</span>
@@ -584,7 +611,7 @@ const UserShow = () => {
               <div className="text-sm text-gray-600">
                 <p>Kelola pengguna dengan berbagai tindakan yang tersedia.</p>
               </div>
-              
+
               <div className="flex space-x-3">
                 <Link
                   to={`/admin/users/${user.id}/edit`}
@@ -593,7 +620,7 @@ const UserShow = () => {
                   <i className="fas fa-edit mr-2"></i>
                   Edit Pengguna
                 </Link>
-                
+
                 <button
                   onClick={() => setShowDeleteModal(true)}
                   className="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-105"
@@ -632,7 +659,7 @@ const UserShow = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-r mb-6">
                 <div className="flex">
                   <div className="flex-shrink-0">
@@ -640,22 +667,22 @@ const UserShow = () => {
                   </div>
                   <div className="ml-3">
                     <p className="text-sm">
-                      <strong>Peringatan:</strong> Menghapus pengguna akan menghapus semua data terkait termasuk 
-                      {user.bookings?.length || 0} booking dan {uniqueVehicles.length} kendaraan. 
+                      <strong>Peringatan:</strong> Menghapus pengguna akan menghapus semua data terkait termasuk
+                      {user.bookings?.length || 0} booking dan {uniqueVehicles.length} kendaraan.
                       Tindakan ini tidak dapat dibatalkan.
                     </p>
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex space-x-3">
-                <button 
+                <button
                   onClick={() => setShowDeleteModal(false)}
                   className="w-full py-3 px-4 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-gray-200 transition-colors"
                 >
                   Batal
                 </button>
-                <button 
+                <button
                   onClick={handleDelete}
                   className="w-full py-3 px-4 bg-red-500 rounded-lg text-white font-medium hover:bg-red-600 focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
                 >

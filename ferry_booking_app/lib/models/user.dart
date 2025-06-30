@@ -9,6 +9,9 @@ class User {
   final String? dateOfBirthday;
   final String? gender;
   final String? profilePicture;
+  final String? bankAccountName;
+  final String? bankName;
+  final String? bankAccountNumber;
   final int totalBookings;
   final int loyaltyPoints;
 
@@ -23,6 +26,9 @@ class User {
     this.dateOfBirthday,
     this.gender,
     this.profilePicture,
+    this.bankAccountName,
+    this.bankName,
+    this.bankAccountNumber,
     this.totalBookings = 0,
     this.loyaltyPoints = 0,
   });
@@ -39,6 +45,9 @@ class User {
       dateOfBirthday: json['date_of_birthday'],
       gender: json['gender'],
       profilePicture: json['profile_picture'],
+      bankAccountName: json['bank_account_name'],
+      bankName: json['bank_name'],
+      bankAccountNumber: json['bank_account_number'],
       totalBookings: json['total_bookings'] ?? 0,
       loyaltyPoints: json['loyalty_points'] ?? 0,
     );
@@ -56,6 +65,9 @@ class User {
       'date_of_birthday': dateOfBirthday,
       'gender': gender,
       'profile_picture': profilePicture,
+      'bank_account_name': bankAccountName, 
+      'bank_name': bankName, 
+      'bank_account_number': bankAccountNumber, 
       'total_bookings': totalBookings,
       'loyalty_points': loyaltyPoints,
     };

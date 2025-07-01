@@ -8,7 +8,8 @@ import '../utils/secure_storage.dart';
 import '../models/payment_status.dart';
 
 class PaymentPollingService {
-  static final PaymentPollingService _instance = PaymentPollingService._internal();
+  static final PaymentPollingService _instance =
+      PaymentPollingService._internal();
   factory PaymentPollingService() => _instance;
   PaymentPollingService._internal();
 
@@ -19,11 +20,16 @@ class PaymentPollingService {
 
   // State management
   final Map<String, PollingSession> _activeSessions = {};
-  final Map<String, StreamController<PaymentStatusUpdate>> _statusControllers = {};
+  final Map<String, StreamController<PaymentStatusUpdate>> _statusControllers =
+      {};
 
   // PERBAIKAN: Konfigurasi polling yang lebih efisien
-  final Duration _initialPollingInterval = const Duration(seconds: 10); // Diperlambat dari 3 detik
-  final Duration _maxPollingInterval = const Duration(seconds: 60);     // Diperlambat dari 30 detik
+  final Duration _initialPollingInterval = const Duration(
+    seconds: 10,
+  ); // Diperlambat dari 3 detik
+  final Duration _maxPollingInterval = const Duration(
+    seconds: 60,
+  ); // Diperlambat dari 30 detik
   final int _maxRetries = 18; // 18 x 10 detik = 3 menit maksimal
 
   /// Mulai polling untuk kode booking tertentu
@@ -41,7 +47,8 @@ class PaymentPollingService {
     }
 
     if (!_statusControllers.containsKey(bookingCode)) {
-      _statusControllers[bookingCode] = StreamController<PaymentStatusUpdate>.broadcast();
+      _statusControllers[bookingCode] =
+          StreamController<PaymentStatusUpdate>.broadcast();
     }
 
     final session = PollingSession(
@@ -68,7 +75,8 @@ class PaymentPollingService {
   /// Dapatkan stream untuk updates status pembayaran
   Stream<PaymentStatusUpdate> getStatusStream(String bookingCode) {
     if (!_statusControllers.containsKey(bookingCode)) {
-      _statusControllers[bookingCode] = StreamController<PaymentStatusUpdate>.broadcast();
+      _statusControllers[bookingCode] =
+          StreamController<PaymentStatusUpdate>.broadcast();
     }
     return _statusControllers[bookingCode]!.stream;
   }
@@ -102,7 +110,9 @@ class PaymentPollingService {
       _checkPaymentStatus(bookingCode);
     });
 
-    debugPrint('Next payment check for $bookingCode in ${session.currentInterval.inSeconds} seconds');
+    debugPrint(
+      'Next payment check for $bookingCode in ${session.currentInterval.inSeconds} seconds',
+    );
   }
 
   /// PERBAIKAN: Pemeriksaan status dengan rate limiting
@@ -112,9 +122,13 @@ class PaymentPollingService {
 
     // PERBAIKAN: Rate limiting - jangan polling terlalu sering
     if (session.lastChecked != null) {
-      final timeSinceLastCheck = DateTime.now().difference(session.lastChecked!);
+      final timeSinceLastCheck = DateTime.now().difference(
+        session.lastChecked!,
+      );
       if (timeSinceLastCheck.inSeconds < 5) {
-        debugPrint('Skipping check for $bookingCode - too soon since last check');
+        debugPrint(
+          'Skipping check for $bookingCode - too soon since last check',
+        );
         _schedulePoll(bookingCode);
         return;
       }
@@ -126,65 +140,63 @@ class PaymentPollingService {
 
       final token = await _secureStorage.getToken();
 
-      // PERBAIKAN: Tambahkan timeout yang wajar
-      final response = await http.get(
-        Uri.parse('$_baseUrl/payments/$bookingCode/refresh-status'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
-      ).timeout(
-        const Duration(seconds: 15), // Timeout 15 detik
-        onTimeout: () {
-          throw TimeoutException('Request timeout', const Duration(seconds: 15));
-        },
-      );
+      // PERBAIKAN: Tambahkan penanganan error DNS lookup
+      http.Response? response;
+      try {
+        response = await http
+            .get(
+              Uri.parse('$_baseUrl/payments/$bookingCode/refresh-status'),
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                if (token != null) 'Authorization': 'Bearer $token',
+              },
+            )
+            .timeout(
+              const Duration(seconds: 15),
+              onTimeout: () {
+                throw TimeoutException(
+                  'Request timeout',
+                  const Duration(seconds: 15),
+                );
+              },
+            );
+      } catch (requestError) {
+        // Tangani error khusus DNS lookup
+        if (requestError.toString().contains('lookup') ||
+            requestError.toString().contains('SocketException')) {
+          debugPrint('DNS lookup error untuk $bookingCode: $requestError');
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+          // Notifikasi UI dengan error yang lebih informatif
+          if (_statusControllers.containsKey(bookingCode)) {
+            _statusControllers[bookingCode]!.add(
+              PaymentStatusUpdate(
+                bookingCode: bookingCode,
+                paymentStatus: 'UNKNOWN',
+                bookingStatus: 'UNKNOWN',
+                message:
+                    'Koneksi internet terputus. Pastikan Anda terhubung ke internet.',
+                timestamp: DateTime.now(),
+                isError: true,
+              ),
+            );
+          }
 
-        if (data['success'] == true) {
-          final responseData = data['data'] ?? {};
-
-          final update = PaymentStatusUpdate(
-            bookingCode: bookingCode,
-            paymentStatus: responseData['payment_status'] ?? 'UNKNOWN',
-            bookingStatus: responseData['booking_status'] ?? 'UNKNOWN',
-            transactionId: responseData['transaction_id'],
-            message: data['message'] ?? 'Status pembayaran berhasil diperbarui',
-            timestamp: DateTime.now(),
-            isError: false,
+          // Sesuaikan interval polling - tunggu lebih lama untuk koneksi internet
+          _adjustPollingInterval(
+            session,
+            success: false,
+            isConnectionError: true,
           );
 
-          if (_statusControllers.containsKey(bookingCode)) {
-            _statusControllers[bookingCode]!.add(update);
+          if (session.isActive) {
+            _schedulePoll(bookingCode);
           }
-
-          final isCompleted = _isPaymentCompleted(update.paymentStatus, update.bookingStatus);
-
-          if (isCompleted) {
-            // PERBAIKAN: Beri delay sebelum stop polling untuk UI update
-            Future.delayed(const Duration(seconds: 2), () {
-              stopPolling(bookingCode);
-              _cleanupResources(bookingCode);
-            });
-            return;
-          }
-
-          // PERBAIKAN: Sesuaikan interval berdasarkan status
-          _adjustPollingInterval(session, success: true, status: update.paymentStatus);
-        } else {
-          _handleErrorResponse(bookingCode, session, data['message'] ?? 'Unknown error');
+          return;
         }
-      } else if (response.statusCode == 429) {
-        // PERBAIKAN: Handle rate limiting dari server
-        debugPrint('Rate limited for $bookingCode, backing off');
-        _adjustPollingInterval(session, success: false, isRateLimit: true);
-      } else {
-        _handleErrorResponse(bookingCode, session, 'HTTP ${response.statusCode}');
-      }
 
+        rethrow;
+      }
       // PERBAIKAN: Check max retries dengan lebih flexible
       if (session.retryCount >= _maxRetries) {
         debugPrint('Max retries reached for $bookingCode, stopping polling');
@@ -197,18 +209,17 @@ class PaymentPollingService {
       if (session.isActive) {
         _schedulePoll(bookingCode);
       }
-
     } on TimeoutException catch (e) {
       debugPrint('Timeout checking payment status for $bookingCode: $e');
       _handleErrorResponse(bookingCode, session, 'Request timeout');
-      
+
       if (session.isActive && session.retryCount < _maxRetries) {
         _schedulePoll(bookingCode);
       }
     } catch (e) {
       debugPrint('Error checking payment status for $bookingCode: $e');
       _handleErrorResponse(bookingCode, session, e.toString());
-      
+
       if (session.isActive && session.retryCount < _maxRetries) {
         _schedulePoll(bookingCode);
       }
@@ -216,7 +227,11 @@ class PaymentPollingService {
   }
 
   /// PERBAIKAN: Handle error response dengan lebih baik
-  void _handleErrorResponse(String bookingCode, PollingSession session, String errorMessage) {
+  void _handleErrorResponse(
+    String bookingCode,
+    PollingSession session,
+    String errorMessage,
+  ) {
     if (_statusControllers.containsKey(bookingCode)) {
       _statusControllers[bookingCode]!.add(
         PaymentStatusUpdate(
@@ -241,7 +256,8 @@ class PaymentPollingService {
           bookingCode: bookingCode,
           paymentStatus: 'UNKNOWN',
           bookingStatus: 'UNKNOWN',
-          message: 'Pemeriksaan status dihentikan. Silakan refresh manual jika diperlukan.',
+          message:
+              'Pemeriksaan status dihentikan. Silakan refresh manual jika diperlukan.',
           timestamp: DateTime.now(),
           isError: true,
         ),
@@ -255,6 +271,7 @@ class PaymentPollingService {
     required bool success,
     String? status,
     bool isRateLimit = false,
+    bool isConnectionError = false, // Parameter baru
   }) {
     if (success) {
       // Jika sukses, sesuaikan interval berdasarkan status
@@ -270,12 +287,13 @@ class PaymentPollingService {
       if (isRateLimit) {
         // Untuk rate limit, tunggu lebih lama
         session.currentInterval = Duration(
-          seconds: (session.currentInterval.inSeconds * 2).clamp(30, 120),
+          seconds: ((session.currentInterval.inSeconds * 1.5).clamp(20, 90)).toInt(),
         );
       } else {
         // Untuk error lain, backoff normal
         final backoffFactor = (1 << (session.retryCount ~/ 3).clamp(0, 4));
-        final nextIntervalSeconds = _initialPollingInterval.inSeconds * backoffFactor;
+        final nextIntervalSeconds =
+            _initialPollingInterval.inSeconds * backoffFactor;
         session.currentInterval = Duration(
           seconds: nextIntervalSeconds.clamp(
             _initialPollingInterval.inSeconds,
@@ -285,17 +303,25 @@ class PaymentPollingService {
       }
     }
 
-    debugPrint('Adjusted polling interval for ${session.currentInterval.inSeconds}s (success: $success, rate_limit: $isRateLimit)');
+    debugPrint(
+      'Adjusted polling interval for ${session.currentInterval.inSeconds}s (success: $success, rate_limit: $isRateLimit)',
+    );
   }
 
   /// Cek apakah pembayaran sudah selesai
   bool _isPaymentCompleted(String paymentStatus, String bookingStatus) {
     // PERBAIKAN: Daftar status yang lebih lengkap
-    const completedPaymentStatuses = ['SUCCESS', 'FAILED', 'EXPIRED', 'REFUNDED', 'CANCELLED'];
+    const completedPaymentStatuses = [
+      'SUCCESS',
+      'FAILED',
+      'EXPIRED',
+      'REFUNDED',
+      'CANCELLED',
+    ];
     const completedBookingStatuses = ['CONFIRMED', 'CANCELLED', 'COMPLETED'];
 
     return completedPaymentStatuses.contains(paymentStatus.toUpperCase()) ||
-           completedBookingStatuses.contains(bookingStatus.toUpperCase());
+        completedBookingStatuses.contains(bookingStatus.toUpperCase());
   }
 
   /// Bersihkan resources untuk booking tertentu
@@ -317,14 +343,16 @@ class PaymentPollingService {
     try {
       final token = await _secureStorage.getToken();
 
-      final response = await http.get(
-        Uri.parse('$_baseUrl/payments/$bookingCode/refresh-status'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(
+            Uri.parse('$_baseUrl/payments/$bookingCode/refresh-status'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              if (token != null) 'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -352,7 +380,6 @@ class PaymentPollingService {
         timestamp: DateTime.now(),
         isError: true,
       );
-
     } catch (e) {
       return PaymentStatusUpdate(
         bookingCode: bookingCode,

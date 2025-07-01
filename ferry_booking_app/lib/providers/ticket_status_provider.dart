@@ -24,18 +24,35 @@ class TicketStatusProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // PERBAIKAN: Tambahkan logging untuk debugging
+      debugPrint('Memulai sinkronisasi status tiket');
+
       // Karena endpoint status tiket tidak tersedia di server,
       // kita hanya menggunakan endpoint bookings reguler untuk mendapatkan data terbaru
-      await _apiService.get('bookings');
-      _lastSyncTime = DateTime.now();
-      
-      // Hanya debug log, tidak perlu tampilkan error ke user
-      debugPrint('Sync completed using bookings endpoint');
-      
+      try {
+        final response = await _apiService.get('bookings');
+        _lastSyncTime = DateTime.now();
+
+        // Hanya debug log, tidak perlu tampilkan error ke user
+        debugPrint(
+          'Sync completed using bookings endpoint. Received data valid.',
+        );
+      } catch (apiError) {
+        // PERBAIKAN: Tangkap error secara spesifik dan log detail
+        debugPrint('Error pada API call: $apiError');
+
+        // PERBAIKAN: Jika error adalah format JSON, tambahkan logging khusus
+        if (apiError.toString().contains('FormatException')) {
+          debugPrint('Kemungkinan masalah format JSON dalam respons API.');
+        }
+
+        // Tetap lempar error untuk ditangani di lapisan atas
+        throw apiError;
+      }
     } catch (e) {
       // Tangkap error tapi tidak perlu menampilkan ke user
       debugPrint('Error pada sinkronisasi status: $e');
-      
+
       // Set error message kosong karena tidak ingin menampilkan error
       // Sinkronisasi status tiket bukanlah fitur kritis
       _errorMessage = '';

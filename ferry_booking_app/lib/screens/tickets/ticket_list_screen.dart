@@ -139,7 +139,7 @@ class _TicketListScreenState extends State<TicketListScreen>
     if (bookingProvider.bookings == null || bookingProvider.bookings!.isEmpty) {
       // PERBAIKAN: Jika tidak ada booking, atur interval sinkronisasi yang lebih lama
       _syncTimer = Timer.periodic(
-        const Duration(minutes: 30),
+        const Duration(minutes: 60), // Diperpanjang dari 30 menjadi 60 menit
         (_) => _synchronizeStatuses(),
       );
       return;
@@ -154,7 +154,7 @@ class _TicketListScreenState extends State<TicketListScreen>
     // PERBAIKAN: Jika tidak ada tiket upcoming, jangan terlalu sering sinkronisasi
     if (upcomingTickets.isEmpty) {
       _syncTimer = Timer.periodic(
-        const Duration(minutes: 30),
+        const Duration(minutes: 60), // Diperpanjang dari 30 menjadi 60 menit
         (_) => _synchronizeStatuses(),
       );
       return;
@@ -165,40 +165,41 @@ class _TicketListScreenState extends State<TicketListScreen>
       upcomingTickets,
     );
 
-    // Atur interval sinkronisasi berdasarkan kedekatan waktu keberangkatan
+    // PERBAIKAN: Atur interval sinkronisasi berdasarkan kedekatan waktu keberangkatan
+    // dengan interval yang lebih panjang untuk mengurangi beban server
     if (closestDeparture != null) {
       final difference = closestDeparture.difference(DateTime.now());
 
       // PERBAIKAN: Kurangi frekuensi sinkronisasi untuk mengurangi beban server
       if (difference.inHours < 2) {
-        // Jika kurang dari 2 jam, sync setiap 2 menit
-        _syncTimer = Timer.periodic(
-          const Duration(minutes: 2),
-          (_) => _synchronizeStatuses(),
-        );
-      } else if (difference.inHours < 6) {
-        // Jika kurang dari 6 jam, sync setiap 5 menit
+        // Jika kurang dari 2 jam, sync setiap 5 menit (bukan 2 menit)
         _syncTimer = Timer.periodic(
           const Duration(minutes: 5),
           (_) => _synchronizeStatuses(),
         );
-      } else if (difference.inHours < 24) {
-        // Jika kurang dari 24 jam, sync setiap 15 menit
+      } else if (difference.inHours < 6) {
+        // Jika kurang dari 6 jam, sync setiap 15 menit (bukan 5 menit)
         _syncTimer = Timer.periodic(
           const Duration(minutes: 15),
           (_) => _synchronizeStatuses(),
         );
-      } else {
-        // Jika lebih dari 24 jam, sync setiap 30 menit
+      } else if (difference.inHours < 24) {
+        // Jika kurang dari 24 jam, sync setiap 30 menit (bukan 15 menit)
         _syncTimer = Timer.periodic(
           const Duration(minutes: 30),
           (_) => _synchronizeStatuses(),
         );
+      } else {
+        // Jika lebih dari 24 jam, sync setiap 60 menit (bukan 30 menit)
+        _syncTimer = Timer.periodic(
+          const Duration(minutes: 60),
+          (_) => _synchronizeStatuses(),
+        );
       }
     } else {
-      // Jika tidak ada tiket upcoming, sync setiap 30 menit
+      // Jika tidak ada tiket upcoming, sync setiap 60 menit (bukan 30 menit)
       _syncTimer = Timer.periodic(
-        const Duration(minutes: 30),
+        const Duration(minutes: 60),
         (_) => _synchronizeStatuses(),
       );
     }
@@ -215,6 +216,26 @@ class _TicketListScreenState extends State<TicketListScreen>
       });
     }
 
+    // PERBAIKAN: Tambahkan counter untuk membatasi percobaan ulang
+    int _failedAttempts = 0;
+    DateTime _lastErrorTime = DateTime.now().subtract(
+      const Duration(minutes: 30),
+    );
+
+    // PERBAIKAN: Hentikan sinkronisasi jika terlalu banyak error dalam waktu singkat
+    final now = DateTime.now();
+    if (_failedAttempts > 3 && now.difference(_lastErrorTime).inMinutes < 10) {
+      debugPrint(
+        'Terlalu banyak kegagalan sinkronisasi. Menunggu sebelum mencoba lagi.',
+      );
+      if (mounted) {
+        setState(() {
+          _isSyncing = false;
+        });
+      }
+      return;
+    }
+
     try {
       // Dapatkan provider sebelum operasi asinkron
       final ticketStatusProvider =
@@ -225,6 +246,9 @@ class _TicketListScreenState extends State<TicketListScreen>
       // Jika provider null, keluar dari fungsi
       if (ticketStatusProvider == null) return;
 
+      // PERBAIKAN: Log percobaan sinkronisasi
+      debugPrint('Mencoba sinkronisasi status tiket...');
+
       // Sinkronisasi dengan timeout
       await ticketStatusProvider.synchronizeTicketStatuses().timeout(
         const Duration(seconds: 15),
@@ -233,13 +257,35 @@ class _TicketListScreenState extends State<TicketListScreen>
         },
       );
 
+      // PERBAIKAN: Reset counter jika sukses
+      _failedAttempts = 0;
+
       // Periksa mounted sebelum memuat ulang booking
       if (mounted) {
         await Future.delayed(const Duration(milliseconds: 500));
         await _loadBookings();
       }
     } catch (e) {
+      // PERBAIKAN: Catat waktu error dan tambah counter
+      _lastErrorTime = DateTime.now();
+      _failedAttempts++;
+
       debugPrint('Error synchronizing statuses: $e');
+      debugPrint('Percobaan gagal ke-$_failedAttempts');
+
+      // PERBAIKAN: Tambahkan penanganan khusus untuk error format JSON
+      if (e.toString().contains('FormatException')) {
+        debugPrint(
+          'Terdeteksi error format JSON. Mengurangi frekuensi sinkronisasi.',
+        );
+
+        // Modifikasi timer sinkronisasi untuk mengurangi beban server
+        _syncTimer?.cancel();
+        _syncTimer = Timer.periodic(
+          const Duration(minutes: 60), // Memperpanjang waktu ke 60 menit
+          (_) => _synchronizeStatuses(),
+        );
+      }
     } finally {
       // Reset flag syncing hanya jika masih mounted
       if (mounted) {

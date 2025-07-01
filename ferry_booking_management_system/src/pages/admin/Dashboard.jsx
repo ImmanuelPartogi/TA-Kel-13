@@ -36,7 +36,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
-    
+
     // Cleanup function
     return () => {
       if (bookingChartRef.current) {
@@ -58,17 +58,17 @@ const AdminDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setError(null);
-      
+
       // Fetch both endpoints with error handling
       let statsResponse, summaryResponse;
-      
+
       try {
         statsResponse = await api.get('/admin-panel/dashboard/stats');
       } catch (statsError) {
         console.error('Stats fetch error:', statsError.response || statsError);
         throw new Error(`Stats endpoint error: ${statsError.response?.status || statsError.message}`);
       }
-      
+
       try {
         summaryResponse = await api.get('/admin-panel/dashboard/summary');
       } catch (summaryError) {
@@ -84,7 +84,7 @@ const AdminDashboard = () => {
 
       // Handle different response formats (wrapped vs unwrapped)
       let statsData, summaryData;
-      
+
       // Check if data is wrapped with success flag
       if (statsResponse.data.success !== undefined) {
         if (!statsResponse.data.success) {
@@ -95,7 +95,7 @@ const AdminDashboard = () => {
         // Data might be directly in response.data
         statsData = statsResponse.data;
       }
-      
+
       // Same for summary data
       if (summaryResponse.data.success !== undefined) {
         summaryData = summaryResponse.data.data || {};
@@ -114,17 +114,17 @@ const AdminDashboard = () => {
         monthly_income: statsData.monthly_income || statsData.stats?.monthly_income || 0,
         bookingGrowth: statsData.bookingGrowth ?? statsData.booking_growth ?? statsData.stats?.booking_growth ?? 0,
         incomeGrowth: statsData.incomeGrowth ?? statsData.income_growth ?? statsData.stats?.income_growth ?? 0,
-        
+
         // Booking status
         pending_payment_count: statsData.pending_payment_count || statsData.booking_status?.pending_payment || 0,
         not_checked_in_count: statsData.not_checked_in_count || statsData.booking_status?.not_checked_in || 0,
         checked_in_count: statsData.checked_in_count || statsData.booking_status?.checked_in || 0,
         cancelled_count: statsData.cancelled_count || statsData.booking_status?.cancelled || 0,
-        
+
         // Charts
         weekly_booking_labels: statsData.weekly_booking_labels || statsData.charts?.weekly?.labels || ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'],
         weekly_booking_data: statsData.weekly_booking_data || statsData.charts?.weekly?.data || [0, 0, 0, 0, 0, 0, 0],
-        
+
         // From summary endpoint
         latest_bookings: summaryData.latest_bookings || [],
         monthly_booking_labels: summaryData.monthly_booking_labels || summaryData.charts?.monthly?.labels || [],
@@ -136,10 +136,10 @@ const AdminDashboard = () => {
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      
+
       // Set more specific error message based on error type
       let errorMessage = 'Gagal memuat data dashboard. ';
-      
+
       if (error.response) {
         // HTTP error response
         errorMessage += `Error ${error.response.status}: ${error.response.statusText}`;
@@ -155,7 +155,7 @@ const AdminDashboard = () => {
         // Other errors
         errorMessage += error.message;
       }
-      
+
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -246,7 +246,7 @@ const AdminDashboard = () => {
           ticks: {
             font: {
               size: 12,
-              family: "'Inter', sans-serif" 
+              family: "'Inter', sans-serif"
             },
             color: 'rgba(107, 114, 128, 0.8)'
           }
@@ -264,16 +264,16 @@ const AdminDashboard = () => {
   const initializeStatusChart = () => {
     const statusCtx = document.getElementById('status-chart');
     if (!statusCtx) return;
-    
+
     if (statusChartRef.current) {
       statusChartRef.current.destroy();
     }
 
-    const total = dashboardData.pending_payment_count + dashboardData.not_checked_in_count + 
-                  dashboardData.checked_in_count + dashboardData.cancelled_count;
-    
+    const total = dashboardData.pending_payment_count + dashboardData.not_checked_in_count +
+      dashboardData.checked_in_count + dashboardData.cancelled_count;
+
     if (total === 0) return;
-    
+
     statusChartRef.current = new Chart(statusCtx, {
       type: 'doughnut',
       data: {
@@ -347,7 +347,7 @@ const AdminDashboard = () => {
     return statusMap[status] || 'bg-slate-50 text-slate-700';
   };
 
-  const filteredBookings = dashboardData.latest_bookings.filter(booking => 
+  const filteredBookings = dashboardData.latest_bookings.filter(booking =>
     booking.booking_code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     booking.user?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -438,7 +438,7 @@ const AdminDashboard = () => {
             </div>
             <div className="px-6 py-3 bg-slate-50 border-t border-slate-100">
               <Link to="/admin/users" className="text-sm font-medium text-sky-600 hover:text-sky-800 flex items-center">
-                Lihat detail 
+                Lihat detail
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -465,7 +465,7 @@ const AdminDashboard = () => {
             </div>
             <div className="px-6 py-3 bg-slate-50 border-t border-slate-100">
               <Link to="/admin/ferries" className="text-sm font-medium text-teal-600 hover:text-teal-800 flex items-center">
-                Lihat detail 
+                Lihat detail
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -492,7 +492,7 @@ const AdminDashboard = () => {
             </div>
             <div className="px-6 py-3 bg-slate-50 border-t border-slate-100">
               <Link to="/admin/routes" className="text-sm font-medium text-purple-600 hover:text-purple-800 flex items-center">
-                Lihat detail 
+                Lihat detail
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -519,7 +519,7 @@ const AdminDashboard = () => {
             </div>
             <div className="px-6 py-3 bg-slate-50 border-t border-slate-100">
               <Link to="/admin/schedules" className="text-sm font-medium text-amber-600 hover:text-amber-800 flex items-center">
-                Lihat detail 
+                Lihat detail
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -537,21 +537,19 @@ const AdminDashboard = () => {
               <div className="flex space-x-2">
                 <button
                   onClick={() => setChartView('weekly')}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                    chartView === 'weekly' 
-                      ? 'bg-sky-600 text-white shadow-sm' 
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${chartView === 'weekly'
+                    ? 'bg-sky-600 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
                 >
                   Mingguan
                 </button>
                 <button
                   onClick={() => setChartView('monthly')}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                    chartView === 'monthly' 
-                      ? 'bg-sky-600 text-white shadow-sm' 
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${chartView === 'monthly'
+                    ? 'bg-sky-600 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
                 >
                   Bulanan
                 </button>
@@ -568,8 +566,8 @@ const AdminDashboard = () => {
                   <div>
                     <span className="block text-sm text-slate-500">Total Booking</span>
                     <span className="block text-lg font-bold text-slate-800 mt-1">
-                      {chartView === 'weekly' 
-                        ? dashboardData.weekly_booking_data.reduce((a, b) => a + b, 0) 
+                      {chartView === 'weekly'
+                        ? dashboardData.weekly_booking_data.reduce((a, b) => a + b, 0)
                         : dashboardData.monthly_booking_data.reduce((a, b) => a + b, 0)}
                     </span>
                   </div>
@@ -577,8 +575,8 @@ const AdminDashboard = () => {
                   <div>
                     <span className="block text-sm text-slate-500">Rata-rata per Hari</span>
                     <span className="block text-lg font-bold text-slate-800 mt-1">
-                      {chartView === 'weekly' 
-                        ? Math.round(dashboardData.weekly_booking_data.reduce((a, b) => a + b, 0) / 7) 
+                      {chartView === 'weekly'
+                        ? Math.round(dashboardData.weekly_booking_data.reduce((a, b) => a + b, 0) / 7)
                         : Math.round(dashboardData.monthly_booking_data.reduce((a, b) => a + b, 0) / dashboardData.monthly_booking_data.length)}
                     </span>
                   </div>
@@ -647,20 +645,40 @@ const AdminDashboard = () => {
                   </span>
                 </div>
                 <div className="mt-2 w-full bg-slate-200 rounded-full h-2.5">
-                  <div 
-                    className="bg-teal-500 h-2.5 rounded-full transition-all duration-1000" 
+                  <div
+                    className="bg-teal-500 h-2.5 rounded-full transition-all duration-1000"
                     style={{ width: `${Math.min(100, Math.round((dashboardData.monthly_income / 100000000) * 100))}%` }}
                   ></div>
                 </div>
               </div>
             </div>
             <div className="bg-slate-50 px-6 py-4 border-t border-slate-100">
-              <Link to="/admin/finance" className="text-sm font-medium text-sky-600 hover:text-sky-800 flex items-center">
-                Lihat laporan keuangan
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
+              {(() => {
+                // Dapatkan tanggal 1 bulan ini
+                const startDate = new Date();
+                startDate.setDate(1);
+                const formattedStartDate = startDate.toISOString().slice(0, 10);
+
+                // Dapatkan tanggal terakhir bulan ini
+                const endDate = new Date();
+                endDate.setMonth(endDate.getMonth() + 1);
+                endDate.setDate(0);
+                const formattedEndDate = endDate.toISOString().slice(0, 10);
+
+                const reportUrl = `/admin/reports/revenue?start_date=${formattedStartDate}&end_date=${formattedEndDate}&group_by=monthly`;
+
+                return (
+                  <Link
+                    to={reportUrl}
+                    className="text-sm font-medium text-sky-600 hover:text-sky-800 flex items-center"
+                  >
+                    Lihat laporan keuangan
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -748,9 +766,9 @@ const AdminDashboard = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                   </span>
-                  <input 
-                    type="text" 
-                    placeholder="Cari booking..." 
+                  <input
+                    type="text"
+                    placeholder="Cari booking..."
                     className="py-2 pl-10 pr-4 border border-slate-200 rounded-lg focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm w-full"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}

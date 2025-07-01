@@ -295,6 +295,19 @@ class NotificationHelper
                     continue;
                 }
 
+                // Cek duplikasi dalam 2 jam terakhir
+                $existingRecentNotification = Notification::where('user_id', $payment->booking->user->id)
+                    ->where('type', 'PAYMENT')
+                    ->where('created_at', '>=', now()->subHours(2))
+                    ->whereRaw("JSON_CONTAINS(data, '{\"booking_code\":\"{$payment->booking->booking_code}\"}', '$')")
+                    ->whereRaw("title LIKE 'Pengingat Pembayaran%'")
+                    ->first();
+
+                if ($existingRecentNotification) {
+                    Log::info("Sudah mengirim notifikasi pengingat pembayaran untuk booking {$payment->booking->booking_code} dalam 2 jam terakhir, tidak mengirim lagi");
+                    continue;
+                }
+
                 // Kirim notifikasi ke pengguna
                 $notification = $notificationService->sendPaymentReminderNotification(
                     $payment->booking->user,

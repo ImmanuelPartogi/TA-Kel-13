@@ -1770,9 +1770,15 @@ class _PaymentScreenState extends State<PaymentScreen>
   }
 
   Widget _buildQRCodeWidget(dynamic payment, Color bankColor) {
-    final qrUrl = payment.qrCodeUrl!;
+    // PERBAIKAN: Validasi parameter terlebih dahulu
+    if (payment == null ||
+        payment.qrCodeUrl == null ||
+        payment.qrCodeUrl.isEmpty) {
+      return _buildFallbackQRCode(bankColor);
+    }
 
-    // Tambahkan timeout untuk request gambar QR
+    final qrUrl = payment.qrCodeUrl;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1790,16 +1796,22 @@ class _PaymentScreenState extends State<PaymentScreen>
       ),
       child: Column(
         children: [
-          // Gunakan FutureBuilder untuk menampilkan fallback jika gagal
-          FutureBuilder(
-            future: _checkImageUrl(qrUrl), // Buat metode untuk cek URL
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return _buildLoadingQRCode(bankColor);
-              } else if (snapshot.hasError || !(snapshot.data ?? false)) {
-                return _buildFallbackQRCode(bankColor);
-              } else {
-                return ClipRRect(
+          // PERBAIKAN: Hapus FutureBuilder untuk menghindari race condition
+          Container(
+            width: 200,
+            height: 200,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade200, width: 1),
+            ),
+            child: Stack(
+              children: [
+                // Layer 1: Placeholder loading
+                Center(child: _buildLoadingQRCode(bankColor)),
+
+                // Layer 2: QR Code dari URL (jika berhasil)
+                ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: Image.network(
                     qrUrl,
@@ -1808,15 +1820,17 @@ class _PaymentScreenState extends State<PaymentScreen>
                     fit: BoxFit.cover,
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;
-                      return _buildLoadingQRCode(bankColor);
+                      return const SizedBox.shrink(); // Tetap tampilkan loading di layer 1
                     },
                     errorBuilder: (context, error, stackTrace) {
-                      return _buildFallbackQRCode(bankColor);
+                      debugPrint('Error loading QR image: $error');
+                      // PERBAIKAN: Coba tampilkan QR dari qrString jika tersedia
+                      return _buildQRFromString(payment, bankColor);
                     },
                   ),
-                );
-              }
-            },
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
           // Instruksi scan QR
@@ -1841,24 +1855,109 @@ class _PaymentScreenState extends State<PaymentScreen>
     );
   }
 
+  // Metode baru untuk membuat QR dari string QR
+  // TAMBAHAN: Metode baru untuk membuat QR dari string
+  Widget _buildQRFromString(dynamic payment, Color bankColor) {
+    // Coba dapatkan QR string dari berbagai sumber
+    String? qrString;
+
+    // Cek dari property qrString di model payment
+    if (payment.qrString != null) {
+      qrString = payment.qrString;
+    }
+    // Cek dari rawData
+    else if (payment.rawData != null) {
+      try {
+        final rawData = payment.rawData;
+
+        // Coba dari qr_string di rawData
+        if (rawData.containsKey('qr_string')) {
+          qrString = rawData['qr_string'];
+        }
+        // Coba dari external_reference
+        else if (rawData.containsKey('external_reference')) {
+          qrString = rawData['external_reference'];
+        }
+        // Coba dari payload
+        else if (rawData.containsKey('payload')) {
+          var payload = rawData['payload'];
+          if (payload is String) {
+            try {
+              final payloadData = json.decode(payload);
+              if (payloadData.containsKey('qr_string')) {
+                qrString = payloadData['qr_string'];
+              }
+            } catch (e) {
+              debugPrint('Error parsing payload string: $e');
+            }
+          } else if (payload is Map) {
+            qrString = payload['qr_string'];
+          }
+        }
+      } catch (e) {
+        debugPrint('Error getting QR string from payment data: $e');
+      }
+    }
+
+    if (qrString != null && qrString.isNotEmpty) {
+      try {
+        return QrImageView(
+          data: qrString,
+          version: QrVersions.auto,
+          size: 200.0,
+          backgroundColor: Colors.white,
+          errorStateBuilder: (context, error) {
+            debugPrint('Error generating QR from string: $error');
+            return _buildFallbackQRCode(bankColor);
+          },
+        );
+      } catch (e) {
+        debugPrint('Exception when creating QR from string: $e');
+      }
+    }
+
+    return _buildFallbackQRCode(bankColor);
+  }
+
   // Metode tambahan untuk cek URL dengan timeout
   Future<bool> _checkImageUrl(String url) async {
+    if (url.isEmpty) return false;
+
+    HttpClient? client;
     try {
-      final client = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 5);
-      final request = await client.getUrl(Uri.parse(url));
+      client = HttpClient();
+      client.connectionTimeout = const Duration(
+        seconds: 15,
+      ); // Waktu timeout ditambah
+
+      // Tambahkan validasi URL
+      final uri = Uri.parse(url);
+      if (!uri.isAbsolute) return false;
+
+      final request = await client.getUrl(uri);
+
+      // PERBAIKAN: Tangani timeout dengan lebih baik
       final response = await request.close().timeout(
-        const Duration(seconds: 5),
+        const Duration(seconds: 15), // Waktu timeout ditambah
         onTimeout: () {
-          client.close();
-          throw TimeoutException('Connection timeout');
+          client?.close();
+          debugPrint('Timeout saat akses URL QR Code: $url');
+          return Stream<List<int>>.empty().cast<HttpClientResponse>().first;
         },
       );
-      client.close();
-      return response.statusCode == 200;
+
+      final isSuccess = response.statusCode >= 200 && response.statusCode < 300;
+      debugPrint(
+        'QR Code URL check: $url => status: ${response.statusCode}, success: $isSuccess',
+      );
+      return isSuccess;
     } catch (e) {
-      debugPrint('Error checking image URL: $e');
+      // PERBAIKAN: Log error lebih detail
+      debugPrint('Error checking QR code URL: $e');
       return false;
+    } finally {
+      // PERBAIKAN: Pastikan client selalu ditutup
+      client?.close();
     }
   }
 
@@ -2143,62 +2242,6 @@ class _PaymentScreenState extends State<PaymentScreen>
 
   // Tambahkan metode baru untuk QR code fallback
   Widget _buildFallbackQRCode(Color bankColor) {
-    // Coba dapatkan QR string dari payment jika ada
-    final booking =
-        Provider.of<BookingProvider>(context, listen: false).currentBooking;
-    final payment = booking?.latestPayment;
-
-    // Coba dapatkan QR string dari rawData jika tersedia
-    String? qrString;
-    if (payment?.rawData != null) {
-      // Coba mendapatkan dari rawData langsung
-      qrString = payment?.rawData?['qr_string'];
-
-      // Jika tidak ada, coba dari payload
-      if (qrString == null && payment?.rawData?['payload'] != null) {
-        try {
-          var payload = payment?.rawData?['payload'];
-          if (payload is String) {
-            final Map<String, dynamic> payloadData = json.decode(payload);
-            qrString = payloadData['qr_string'];
-          } else if (payload is Map) {
-            qrString = payload['qr_string'];
-          }
-        } catch (e) {
-          print('Error parsing payload: $e');
-        }
-      }
-    }
-
-    if (qrString != null && qrString.isNotEmpty) {
-      // Jika qr_string tersedia, buat QR code menggunakan package qr_flutter
-      return Container(
-        width: 200,
-        height: 200,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Center(
-          child: QrImageView(
-            data: qrString,
-            version: QrVersions.auto,
-            size: 180.0,
-            errorStateBuilder: (context, error) {
-              return Center(
-                child: Text(
-                  'Error: ${error.toString()}',
-                  style: TextStyle(color: Colors.red),
-                  textAlign: TextAlign.center,
-                ),
-              );
-            },
-          ),
-        ),
-      );
-    }
-
-    // Jika tidak ada qr_string, tampilkan error QR code
     return Container(
       width: 200,
       height: 200,
@@ -2211,33 +2254,51 @@ class _PaymentScreenState extends State<PaymentScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.broken_image_rounded,
-              size: 50,
-              color: Colors.grey.shade500,
-            ),
+            // PERBAIKAN: Ikon lebih relevan
+            Icon(Icons.qr_code_scanner, size: 50, color: Colors.grey.shade500),
             const SizedBox(height: 12),
             Text(
               'QR Code tidak tersedia',
               style: TextStyle(
-                color: Colors.grey.shade600,
+                color: Colors.grey.shade700,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
-            ElevatedButton.icon(
-              onPressed: _refreshPaymentStatus,
-              icon: const Icon(Icons.refresh, size: 16),
-              label: const Text('Refresh', style: TextStyle(fontSize: 12)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: bankColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
+            // PERBAIKAN: Tambah informasi lanjutan
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Coba refresh atau gunakan metode pembayaran lain',
+                style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 16),
+            // PERBAIKAN: Tombol refresh lebih visible
+            SizedBox(
+              height: 36,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  // PERBAIKAN: Cek apakah refresh sedang berjalan
+                  if (!_isRefreshing) _refreshPaymentStatus();
+                },
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text('Coba Lagi', style: TextStyle(fontSize: 12)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: bankColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  elevation: 0,
                 ),
-                minimumSize: Size.zero,
               ),
             ),
           ],

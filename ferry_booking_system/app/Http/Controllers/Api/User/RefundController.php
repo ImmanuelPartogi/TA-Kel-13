@@ -148,6 +148,7 @@ class RefundController extends Controller
             'bank_account_number' => 'required|string|max:30',
             'bank_account_name' => 'required|string|max:100',
             'bank_name' => 'required|string|in:BCA,BNI,BRI,MANDIRI,CIMB,DANAMON,PERMATA,BTN,OCBC,MAYBANK,PANIN,BUKOPIN,MEGA,SINARMAS,OTHER',
+            'refund_percentage' => 'nullable|numeric|min:0|max:100', // Tambahkan validasi untuk refund_percentage
         ]);
 
         if ($validator->fails()) {
@@ -184,6 +185,7 @@ class RefundController extends Controller
                 ], 400);
             }
 
+            // Ambil data payment yang berhasil
             $payment = $booking->payments()
                 ->where('status', 'SUCCESS')
                 ->latest()
@@ -196,40 +198,71 @@ class RefundController extends Controller
                 ], 400);
             }
 
-            // Calculate days before departure
-            $departureDate = Carbon::parse($booking->departure_date);
-            $daysBeforeDeparture = now()->diffInDays($departureDate, false);
+            // Variabel untuk menyimpan hasil perhitungan refund
+            $refundCalculation = [];
+            $policy = null;
 
-            // Get applicable refund policy
-            // Get applicable refund policy
-            $policy = RefundPolicy::getApplicablePolicy($daysBeforeDeparture);
+            // Jika frontend mengirimkan persentase refund yang sudah divalidasi
+            if ($request->has('use_frontend_percentage') && $request->has('refund_percentage')) {
+                // Gunakan persentase yang dikirim dari frontend
+                $refundPercentage = (float)$request->refund_percentage;
 
-            Log::info('Refund policy details:', [
-                'booking_id' => $booking->id,
-                'days_before_departure' => $daysBeforeDeparture,
-                'policy_found' => $policy ? true : false,
-                'policy_id' => $policy ? $policy->id : null,
-                'policy_days' => $policy ? $policy->days_before_departure : null,
-                'policy_percentage' => $policy ? $policy->refund_percentage : null,
-                'policy_min_fee' => $policy ? $policy->min_fee : null,
-                'policy_max_fee' => $policy ? $policy->max_fee : null
-            ]);
+                // Hitung jumlah refund berdasarkan persentase frontend
+                $refundAmount = $payment->amount * ($refundPercentage / 100);
+                $refundFee = $payment->amount - $refundAmount;
 
-            // PERBAIKAN: Jika refundPercentage 0%, tolak refund
-            if ($policy && $policy->refund_percentage <= 0) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Refund tidak diperbolehkan untuk ' . $daysBeforeDeparture . ' hari sebelum keberangkatan',
-                    'eligible' => false,
-                    'days_before_departure' => $daysBeforeDeparture
-                ], 200);
-            }
+                // Buat hasil perhitungan refund
+                $refundCalculation = [
+                    'original_amount' => $payment->amount,
+                    'refund_percentage' => $refundPercentage,
+                    'refund_fee' => $refundFee,
+                    'refund_amount' => $refundAmount,
+                    'is_frontend_validated' => true
+                ];
 
-            // PERBAIKAN: Jika tidak ada policy yang sesuai, gunakan refund penuh
-            if (!$policy) {
-                $refundCalculation = RefundPolicy::getDefaultFullRefund($payment->amount);
+                // Log informasi penggunaan persentase dari frontend
+                Log::info('Using frontend-provided refund percentage', [
+                    'booking_id' => $booking->id,
+                    'refund_percentage' => $refundPercentage,
+                    'refund_amount' => $refundAmount
+                ]);
             } else {
-                $refundCalculation = $policy->calculateRefundAmount($payment->amount);
+                // Gunakan perhitungan berdasarkan kebijakan refund backend
+
+                // Calculate days before departure
+                $departureDate = Carbon::parse($booking->departure_date);
+                $daysBeforeDeparture = now()->diffInDays($departureDate, false);
+
+                // Get applicable refund policy
+                $policy = RefundPolicy::getApplicablePolicy($daysBeforeDeparture);
+
+                Log::info('Refund policy details:', [
+                    'booking_id' => $booking->id,
+                    'days_before_departure' => $daysBeforeDeparture,
+                    'policy_found' => $policy ? true : false,
+                    'policy_id' => $policy ? $policy->id : null,
+                    'policy_days' => $policy ? $policy->days_before_departure : null,
+                    'policy_percentage' => $policy ? $policy->refund_percentage : null,
+                    'policy_min_fee' => $policy ? $policy->min_fee : null,
+                    'policy_max_fee' => $policy ? $policy->max_fee : null
+                ]);
+
+                // PERBAIKAN: Jika refundPercentage 0%, tolak refund
+                if ($policy && $policy->refund_percentage <= 0) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Refund tidak diperbolehkan untuk ' . $daysBeforeDeparture . ' hari sebelum keberangkatan',
+                        'eligible' => false,
+                        'days_before_departure' => $daysBeforeDeparture
+                    ], 200);
+                }
+
+                // PERBAIKAN: Jika tidak ada policy yang sesuai, gunakan refund penuh
+                if (!$policy) {
+                    $refundCalculation = RefundPolicy::getDefaultFullRefund($payment->amount);
+                } else {
+                    $refundCalculation = $policy->calculateRefundAmount($payment->amount);
+                }
             }
 
             // Cek apakah metode pembayaran dapat di-refund otomatis
@@ -271,7 +304,9 @@ class RefundController extends Controller
 
             // Tambahkan catatan refund untuk kebijakan default
             $policyNotes = '';
-            if (isset($refundCalculation['is_default_policy']) && $refundCalculation['is_default_policy']) {
+            if (isset($refundCalculation['is_frontend_validated']) && $refundCalculation['is_frontend_validated']) {
+                $policyNotes = 'Refund menggunakan persentase yang divalidasi oleh frontend: ' . $refundCalculation['refund_percentage'] . '%';
+            } elseif (isset($refundCalculation['is_default_policy']) && $refundCalculation['is_default_policy']) {
                 $policyNotes = 'Refund menggunakan kebijakan default (tidak ada potongan)';
             } elseif ($policy) {
                 $policyNotes = $policy->description;
@@ -318,7 +353,9 @@ class RefundController extends Controller
                 'message' => $message,
                 'data' => array_merge($refund->toArray(), [
                     'refund_calculation' => $refundCalculation,
-                    'policy_description' => $policy ? $policy->description : 'Refund penuh tanpa potongan'
+                    'policy_description' => isset($policy) && $policy ? $policy->description : (isset($refundCalculation['is_frontend_validated']) ?
+                            'Persentase refund dari frontend: ' . $refundCalculation['refund_percentage'] . '%' :
+                            'Refund penuh tanpa potongan')
                 ]),
                 'sla_period' => $slaPeriod,
                 'requires_manual_process' => $requiresManualProcess,

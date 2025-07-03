@@ -185,12 +185,29 @@ class RefundProvider extends ChangeNotifier {
     if (isMounted()) notifyListeners();
 
     try {
+      // Dapatkan persentase refund dari eligibilityData jika tersedia
+      double? refundPercentage;
+      if (_eligibilityData != null &&
+          _eligibilityData!['refund_policy'] != null &&
+          _eligibilityData!['refund_policy']['percentage'] != null) {
+        refundPercentage =
+            _eligibilityData!['refund_policy']['percentage'] is num
+                ? (_eligibilityData!['refund_policy']['percentage'] as num)
+                    .toDouble()
+                : double.tryParse(
+                  _eligibilityData!['refund_policy']['percentage'].toString(),
+                );
+      }
+
+      // Kirim request refund dengan persentase yang sudah divalidasi
       final response = await _refundApi.requestRefund({
         'booking_id': bookingId,
         'reason': reason,
         'bank_account_number': bankAccountNumber,
         'bank_account_name': bankAccountName,
         'bank_name': bankName,
+        'refund_percentage':
+            refundPercentage, // Kirim persentase refund yang benar
       });
 
       if (response['success'] == true) {

@@ -28,19 +28,35 @@ class Ferry {
   });
 
   factory Ferry.fromJson(Map<String, dynamic> json) {
-    return Ferry(
-      id: json['id'],
-      name: json['name'],
-      registrationNumber: json['registration_number'],
-      capacityPassenger: json['capacity_passenger'],
-      capacityVehicleMotorcycle: json['capacity_vehicle_motorcycle'],
-      capacityVehicleCar: json['capacity_vehicle_car'],
-      capacityVehicleBus: json['capacity_vehicle_bus'],
-      capacityVehicleTruck: json['capacity_vehicle_truck'],
-      status: json['status'],
-      description: json['description'],
-      image: json['image'],
-      yearBuilt: json['year_built'],
-    );
+    try {
+      return Ferry(
+        id: json['id'] ?? 0,
+        name: json['name'] ?? 'UNKNOWN',
+        registrationNumber: json['registration_number'] ?? 'UNKNOWN',
+        capacityPassenger: json['capacity_passenger'] ?? 0,
+        capacityVehicleMotorcycle: json['capacity_vehicle_motorcycle'] ?? 0,
+        capacityVehicleCar: json['capacity_vehicle_car'] ?? 0,
+        capacityVehicleBus: json['capacity_vehicle_bus'] ?? 0,
+        capacityVehicleTruck: json['capacity_vehicle_truck'] ?? 0,
+        status: json['status'] ?? 'UNKNOWN',
+        description: json['description'],
+        image: json['image'],
+        yearBuilt: json['year_built'],
+      );
+    } catch (e) {
+      print('ERROR: Gagal parsing Ferry dari JSON: $e');
+      // Fallback dengan nilai default jika parsing gagal
+      return Ferry(
+        id: 0,
+        name: 'ERROR',
+        registrationNumber: 'ERROR',
+        capacityPassenger: 0,
+        capacityVehicleMotorcycle: 0,
+        capacityVehicleCar: 0,
+        capacityVehicleBus: 0,
+        capacityVehicleTruck: 0,
+        status: 'ERROR',
+      );
+    }
   }
 }

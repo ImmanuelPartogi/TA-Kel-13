@@ -38,84 +38,181 @@ class Payment {
 
   factory Payment.fromJson(Map<String, dynamic> json) {
     // Simpan data mentah untuk debugging
-    final rawData = Map<String, dynamic>.from(json);
+    Map<String, dynamic>? rawData;
+    try {
+      rawData = Map<String, dynamic>.from(json);
 
-    // Perbaikan: Parse expiry_date dengan menangani format ISO dan non-ISO
+      // Khusus tangani field payload yang bermasalah
+      if (json.containsKey('payload')) {
+        try {
+          var payload = json['payload'];
+          if (payload is String) {
+            // Hanya simpan payload sebagai string tanpa berusaha mem-parse
+            rawData['payload'] = payload;
+          }
+        } catch (e) {
+          print('Error handling payload: $e');
+        }
+      }
+    } catch (e) {
+      print('Error creating raw data: $e');
+      rawData = {};
+    }
+
+    // Fungsi helper yang aman untuk mengambil nilai
+    T? safeGet<T>(String key, {T? defaultValue}) {
+      try {
+        if (!json.containsKey(key) || json[key] == null) {
+          return defaultValue;
+        }
+
+        if (json[key] is T) {
+          return json[key] as T;
+        }
+
+        // Konversi tipe jika diperlukan
+        if (T == int && json[key] is String) {
+          try {
+            return int.parse(json[key] as String) as T;
+          } catch (_) {
+            return defaultValue;
+          }
+        }
+
+        if (T == double && json[key] is String) {
+          try {
+            return double.parse(json[key] as String) as T;
+          } catch (_) {
+            return defaultValue;
+          }
+        }
+
+        if (T == String) {
+          return json[key].toString() as T;
+        }
+
+        return defaultValue;
+      } catch (_) {
+        return defaultValue;
+      }
+    }
+
+    // Perbaikan: Parse expiry_date dengan penanganan yang lebih robust
     DateTime? parseExpiryDate() {
-      if (json['expiry_date'] == null) return null;
+      if (!json.containsKey('expiry_date') || json['expiry_date'] == null) {
+        return null;
+      }
 
       try {
-        // Coba parse sebagai string ISO 8601
-        DateTime parsedDate = DateTime.parse(json['expiry_date'].toString());
+        final value = json['expiry_date'].toString();
 
-        // Penting: Pastikan tanggal dalam format lokal
-        return parsedDate.toLocal();
-      } catch (e) {
-        // Fallback untuk format lain jika parsing gagal
+        // Coba parse sebagai ISO format
         try {
-          final dateFormat = DateFormat('yyyy-MM-dd HH:mm:ss');
-          DateTime parsedDate = dateFormat.parse(
-            json['expiry_date'].toString(),
-          );
-
-          // Penting: Pastikan tanggal dalam format lokal
-          return parsedDate.toLocal();
+          return DateTime.parse(value).toLocal();
         } catch (_) {
-          print('Error parsing expiry_date: ${json['expiry_date']}');
-
-          // Tambahan: Fallback ke 5 menit dari sekarang jika parsing gagal
-          return DateTime.now().add(const Duration(minutes: 5));
+          // Coba format lainnya
+          try {
+            final dateFormat = DateFormat('yyyy-MM-dd HH:mm:ss');
+            return dateFormat.parse(value).toLocal();
+          } catch (_) {
+            print('Error parsing expiry_date: $value');
+            return DateTime.now().add(const Duration(minutes: 5));
+          }
         }
+      } catch (e) {
+        print('General error handling expiry_date: $e');
+        return null;
       }
     }
 
-    // Parse payment_date dengan menangani format ISO dan non-ISO
+    // Parse payment_date dengan cara yang sama
     DateTime? parsePaymentDate() {
-      if (json['payment_date'] == null) return null;
+      if (!json.containsKey('payment_date') || json['payment_date'] == null) {
+        return null;
+      }
 
       try {
-        return DateTime.parse(json['payment_date'].toString());
-      } catch (e) {
-        // Fallback untuk format lain jika parsing gagal
+        final value = json['payment_date'].toString();
+
         try {
-          final dateFormat = DateFormat('yyyy-MM-dd HH:mm:ss');
-          return dateFormat.parse(json['payment_date'].toString());
+          return DateTime.parse(value).toLocal();
         } catch (_) {
-          print('Error parsing payment_date: ${json['payment_date']}');
-          return null;
+          try {
+            final dateFormat = DateFormat('yyyy-MM-dd HH:mm:ss');
+            return dateFormat.parse(value).toLocal();
+          } catch (_) {
+            print('Error parsing payment_date: $value');
+            return null;
+          }
         }
+      } catch (e) {
+        print('General error handling payment_date: $e');
+        return null;
       }
     }
 
-    // Debugging: Log waktu expiry
+    // Debugging
     final expiryDate = parseExpiryDate();
     if (expiryDate != null) {
       final now = DateTime.now();
       final diff = expiryDate.difference(now);
-      print(
-        'Parsed expiry_date: $expiryDate (${diff.inMinutes} minutes from now)',
-      );
+      // print(
+      //   'Parsed expiry_date: $expiryDate (${diff.inMinutes} minutes from now)',
+      // );
     }
 
-    return Payment(
-      id: json['id'],
-      bookingId: json['booking_id'],
-      paymentCode: json['payment_code'] ?? json['transaction_id'] ?? '',
-      amount: double.parse(json['amount'].toString()),
-      status: json['status'],
-      paymentMethod: json['payment_method'] ?? 'VIRTUAL_ACCOUNT',
-      paymentType:
-          json['payment_type'] ?? json['payment_channel'] ?? 'virtual_account',
-      virtualAccountNumber:
-          json['virtual_account_number'] ?? json['external_reference'],
-      deepLinkUrl: json['deep_link_url'],
-      qrCodeUrl: json['qr_code_url'],
-      expiryTime: expiryDate,
-      paymentTime: parsePaymentDate(),
-      createdAt: json['created_at'],
-      updatedAt: json['updated_at'],
-      rawData: rawData,
-    );
+    // Buat objek dengan error handling yang lebih baik
+    try {
+      return Payment(
+        id: safeGet<int>('id', defaultValue: -1)!,
+        bookingId: safeGet<int>('booking_id', defaultValue: -1)!,
+        paymentCode:
+            safeGet<String>('payment_code') ??
+            safeGet<String>('transaction_id') ??
+            '',
+        amount: double.parse(
+          safeGet<dynamic>('amount', defaultValue: 0).toString(),
+        ),
+        status: safeGet<String>('status', defaultValue: 'UNKNOWN')!,
+        paymentMethod:
+            safeGet<String>('payment_method', defaultValue: 'VIRTUAL_ACCOUNT')!,
+        paymentType:
+            safeGet<String>('payment_type') ??
+            safeGet<String>('payment_channel') ??
+            'virtual_account',
+        virtualAccountNumber:
+            safeGet<String>('virtual_account_number') ??
+            safeGet<String>('external_reference'),
+        deepLinkUrl: safeGet<String>('deep_link_url'),
+        qrCodeUrl: safeGet<String>('qr_code_url'),
+        expiryTime: expiryDate,
+        paymentTime: parsePaymentDate(),
+        createdAt:
+            safeGet<String>(
+              'created_at',
+              defaultValue: DateTime.now().toIso8601String(),
+            )!,
+        updatedAt:
+            safeGet<String>(
+              'updated_at',
+              defaultValue: DateTime.now().toIso8601String(),
+            )!,
+        rawData: rawData,
+      );
+    } catch (e) {
+      print('Critical error creating Payment object: $e');
+      // Fallback ke objek minimal
+      return Payment(
+        id: -1,
+        bookingId: -1,
+        amount: 0,
+        status: 'ERROR',
+        paymentMethod: 'UNKNOWN',
+        paymentType: 'unknown',
+        createdAt: DateTime.now().toIso8601String(),
+        updatedAt: DateTime.now().toIso8601String(),
+      );
+    }
   }
 
   // Metode untuk menghasilkan representasi debugging

@@ -1770,7 +1770,7 @@ class _PaymentScreenState extends State<PaymentScreen>
   }
 
   Widget _buildQRCodeWidget(dynamic payment, Color bankColor) {
-    // PERBAIKAN: Validasi parameter terlebih dahulu
+    // Validasi parameter terlebih dahulu
     if (payment == null ||
         payment.qrCodeUrl == null ||
         payment.qrCodeUrl.isEmpty) {
@@ -1796,7 +1796,7 @@ class _PaymentScreenState extends State<PaymentScreen>
       ),
       child: Column(
         children: [
-          // PERBAIKAN: Hapus FutureBuilder untuk menghindari race condition
+          // Gunakan stack untuk menampilkan loading placeholder dan QR Code
           Container(
             width: 200,
             height: 200,
@@ -1808,7 +1808,25 @@ class _PaymentScreenState extends State<PaymentScreen>
             child: Stack(
               children: [
                 // Layer 1: Placeholder loading
-                Center(child: _buildLoadingQRCode(bankColor)),
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(bankColor),
+                        strokeWidth: 3,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Memuat QR Code...',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
                 // Layer 2: QR Code dari URL (jika berhasil)
                 ClipRRect(
@@ -1818,14 +1836,22 @@ class _PaymentScreenState extends State<PaymentScreen>
                     width: 200,
                     height: 200,
                     fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return const SizedBox.shrink(); // Tetap tampilkan loading di layer 1
-                    },
                     errorBuilder: (context, error, stackTrace) {
                       debugPrint('Error loading QR image: $error');
-                      // PERBAIKAN: Coba tampilkan QR dari qrString jika tersedia
-                      return _buildQRFromString(payment, bankColor);
+                      // Coba tampilkan QR dari qrStringData sebagai fallback
+                      if (payment.qrStringData != null) {
+                        try {
+                          return QrImageView(
+                            data: payment.qrStringData!,
+                            version: QrVersions.auto,
+                            size: 200.0,
+                            backgroundColor: Colors.white,
+                          );
+                        } catch (e) {
+                          debugPrint('Error generating QR: $e');
+                        }
+                      }
+                      return _buildFallbackQRCode(bankColor);
                     },
                   ),
                 ),
@@ -1855,48 +1881,29 @@ class _PaymentScreenState extends State<PaymentScreen>
     );
   }
 
-  // Metode baru untuk membuat QR dari string QR
-  // TAMBAHAN: Metode baru untuk membuat QR dari string
   Widget _buildQRFromString(dynamic payment, Color bankColor) {
     // Coba dapatkan QR string dari berbagai sumber
     String? qrString;
 
-    // Cek dari property qrString di model payment
-    if (payment.qrString != null) {
-      qrString = payment.qrString;
+    // Cek dari property qrStringData yang sudah tersedia di model Payment
+    if (payment.qrStringData != null) {
+      qrString = payment.qrStringData;
     }
-    // Cek dari rawData
-    else if (payment.rawData != null) {
-      try {
-        final rawData = payment.rawData;
-
-        // Coba dari qr_string di rawData
-        if (rawData.containsKey('qr_string')) {
-          qrString = rawData['qr_string'];
-        }
-        // Coba dari external_reference
-        else if (rawData.containsKey('external_reference')) {
-          qrString = rawData['external_reference'];
-        }
-        // Coba dari payload
-        else if (rawData.containsKey('payload')) {
-          var payload = rawData['payload'];
-          if (payload is String) {
-            try {
-              final payloadData = json.decode(payload);
-              if (payloadData.containsKey('qr_string')) {
-                qrString = payloadData['qr_string'];
-              }
-            } catch (e) {
-              debugPrint('Error parsing payload string: $e');
-            }
-          } else if (payload is Map) {
-            qrString = payload['qr_string'];
-          }
-        }
-      } catch (e) {
-        debugPrint('Error getting QR string from payment data: $e');
-      }
+    // Jika tidak ada, gunakan qrCodeUrl untuk menampilkan QR
+    else if (payment.qrCodeUrl != null && payment.qrCodeUrl.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.network(
+          payment.qrCodeUrl,
+          width: 200,
+          height: 200,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            debugPrint('Error loading QR image: $error');
+            return _buildFallbackQRCode(bankColor);
+          },
+        ),
+      );
     }
 
     if (qrString != null && qrString.isNotEmpty) {

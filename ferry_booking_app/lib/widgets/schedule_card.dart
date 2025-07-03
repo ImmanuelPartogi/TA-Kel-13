@@ -38,7 +38,7 @@ class ScheduleCard extends StatelessWidget {
         isScheduleAvailable = !DateTime.now().isAfter(departureDateTime);
       }
     } catch (e) {
-      debugPrint('Error checking schedule availability: $e');
+      // debugPrint('Error checking schedule availability: $e');
     }
 
     // Get status color

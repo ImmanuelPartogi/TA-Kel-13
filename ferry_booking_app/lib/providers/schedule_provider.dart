@@ -38,7 +38,7 @@ class ScheduleProvider extends ChangeNotifier {
       final result = await _routeApi.getRoutes();
       _routes = result;
     } catch (e) {
-      print('Error fetching routes: $e');
+      // print('Error fetching routes: $e');
       _errorMessage = 'Gagal memuat data rute: ${e.toString()}';
     } finally {
       _isLoading = false;
@@ -65,7 +65,7 @@ class ScheduleProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      print('DEBUG: Fetching schedules - Route ID: $routeId, Date: $formattedDate, Force Refresh: $forceRefresh');
+      // print('DEBUG: Fetching schedules - Route ID: $routeId, Date: $formattedDate, Force Refresh: $forceRefresh');
       
       // Tambahkan cache buster untuk memaksa server memberikan data baru
       final cacheBuster = DateTime.now().millisecondsSinceEpoch.toString();
@@ -78,18 +78,18 @@ class ScheduleProvider extends ChangeNotifier {
         },
       );
 
-      print('DEBUG: Received ${schedules.length} schedules from API');
+      // print('DEBUG: Received ${schedules.length} schedules from API');
       
-      // Log detail jadwal untuk debugging
-      if (schedules.isNotEmpty) {
-        for (var i = 0; i < schedules.length; i++) {
-          final s = schedules[i];
-          print('DEBUG: Schedule[$i] - ID: ${s.id}, Departure: ${s.departureTime}, '
-              'Status: ${s.status}, ScheduleDateStatus: ${s.scheduleDateStatus}');
-        }
-      } else {
-        print('DEBUG: No schedules returned from API');
-      }
+      // // Log detail jadwal untuk debugging
+      // if (schedules.isNotEmpty) {
+      //   for (var i = 0; i < schedules.length; i++) {
+      //     final s = schedules[i];
+      //     print('DEBUG: Schedule[$i] - ID: ${s.id}, Departure: ${s.departureTime}, '
+      //         'Status: ${s.status}, ScheduleDateStatus: ${s.scheduleDateStatus}');
+      //   }
+      // } else {
+      //   // print('DEBUG: No schedules returned from API');
+      // }
 
       // Filter jadwal yang valid - Perbaiki validasi status
       _schedules = schedules.where((schedule) {
@@ -106,14 +106,14 @@ class ScheduleProvider extends ChangeNotifier {
           final timeB = _parseTimeString(b.departureTime);
           return timeA.compareTo(timeB);
         } catch (e) {
-          print('Error sorting schedules: $e');
+          // print('Error sorting schedules: $e');
           return 0;
         }
       });
       
-      print('DEBUG: After filtering and sorting: ${_schedules?.length ?? 0} schedules');
+      // print('DEBUG: After filtering and sorting: ${_schedules?.length ?? 0} schedules');
     } catch (e) {
-      print('ERROR: Fetching schedules failed: $e');
+      // print('ERROR: Fetching schedules failed: $e');
       _errorMessage = 'Gagal memuat jadwal: ${e.toString()}';
       // Jangan set _schedules ke array kosong jika ini bukan forceRefresh
       if (forceRefresh || _schedules == null) {
@@ -143,7 +143,7 @@ class ScheduleProvider extends ChangeNotifier {
       
       return DateTime(2000, 1, 1);
     } catch (e) {
-      print('Error parsing time: $e');
+      // print('Error parsing time: $e');
       return DateTime(2000, 1, 1);
     }
   }
@@ -158,7 +158,7 @@ class ScheduleProvider extends ChangeNotifier {
       final route = await _routeApi.getRouteDetails(routeId);
       return route;
     } catch (e) {
-      print('Error fetching route details: $e');
+      // print('Error fetching route details: $e');
       _errorMessage = 'Gagal memuat detail rute: ${e.toString()}';
       return null;
     } finally {
@@ -177,7 +177,7 @@ class ScheduleProvider extends ChangeNotifier {
       final schedule = await _scheduleApi.getScheduleDetails(scheduleId);
       return schedule;
     } catch (e) {
-      print('Error fetching schedule details: $e');
+      // print('Error fetching schedule details: $e');
       _errorMessage = 'Gagal memuat detail jadwal: ${e.toString()}';
       return null;
     } finally {
@@ -198,7 +198,7 @@ class ScheduleProvider extends ChangeNotifier {
       await _routeApi.getRoutes();
       return true;
     } catch (e) {
-      print('Connection check failed: $e');
+      // print('Connection check failed: $e');
       return false;
     }
   }

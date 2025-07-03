@@ -276,7 +276,7 @@ const SchedulesList = () => {
             </div>
           )}
 
-        {/* Modern Filter Card */}
+        {/* Modern Filter Card
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 mb-8 overflow-hidden hover:shadow-2xl transition-shadow duration-300">
           <div className="bg-gray-50 px-6 py-4 border-b border-gray-100">
             <h2 className="text-lg font-semibold text-gray-800 flex items-center">
@@ -359,7 +359,7 @@ const SchedulesList = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div> */}
 
         {/* Schedules Display */}
         {loading ? (

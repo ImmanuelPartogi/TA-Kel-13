@@ -11,6 +11,7 @@ import 'package:ferry_booking_app/config/theme.dart';
 import 'dart:ui';
 import 'dart:async';
 import 'package:intl/intl.dart';
+import 'package:async/async.dart'; // Tambahkan import ini untuk CancelableOperation
 
 class TicketListScreen extends StatefulWidget {
   const TicketListScreen({Key? key}) : super(key: key);
@@ -21,16 +22,28 @@ class TicketListScreen extends StatefulWidget {
 
 class _TicketListScreenState extends State<TicketListScreen>
     with TickerProviderStateMixin {
+  // Variabel untuk controller dan animasi tetap sama
   late TabController _tabController;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
-  String _historyFilter = 'all'; // Filter untuk riwayat tiket
-  bool _isSyncing = false; // Status sinkronisasi
+  String _historyFilter = 'all';
+  bool _isSyncing = false;
   Timer? _statusUpdateTimer;
   Timer? _syncTimer;
   bool _isInitialDataLoaded = false;
+  CancelableOperation? _dataOperation; // Operation yang dapat dibatalkan
+  bool _isCurrentlyVisible =
+      true; // Flag untuk menandai apakah screen sedang aktif
+
+  // PERBAIKAN: Pindahkan variabel ke level class
+  int _failedAttempts = 0;
+  DateTime _lastErrorTime = DateTime.now().subtract(
+    const Duration(minutes: 30),
+  );
+  static const int MAX_CONSECUTIVE_ERRORS = 3; // Konstanta bisa tetap static
+  static const int ERROR_BACKOFF_MINUTES = 10; // Konstanta bisa tetap static
 
   @override
   void initState() {
@@ -73,7 +86,7 @@ class _TicketListScreenState extends State<TicketListScreen>
     });
 
     _historyFilter = 'all';
-    debugPrint('Filter awal: $_historyFilter');
+    // debugPrint('Filter awal: $_historyFilter');
 
     // Mulai animasi
     Future.delayed(const Duration(milliseconds: 100), () {
@@ -96,7 +109,25 @@ class _TicketListScreenState extends State<TicketListScreen>
     _tabController.dispose();
     _animationController.dispose();
 
+    // Batalkan operasi data yang sedang berjalan
+    _dataOperation?.cancel();
+
     super.dispose();
+  }
+
+  // Method untuk dipanggil dari parent widget (TabController)
+  void setVisibility(bool isVisible) {
+    if (_isCurrentlyVisible != isVisible) {
+      _isCurrentlyVisible = isVisible;
+      if (_isCurrentlyVisible) {
+        // Refresh data saat screen menjadi visible lagi
+        _refreshBookings();
+      } else {
+        // Batalkan operasi saat screen tidak visible
+        _dataOperation?.cancel();
+        _syncTimer?.cancel();
+      }
+    }
   }
 
   /// Setup timer untuk sinkronisasi status tiket
@@ -106,18 +137,13 @@ class _TicketListScreenState extends State<TicketListScreen>
     // Sinkronisasi pertama kali dengan pemeriksaan mounted
     await _synchronizeStatuses();
 
-    // Periksa mounted lagi setelah operasi asinkron
-    if (!mounted) return;
-
-    // Atur timer dengan pemeriksaan mounted
-    _updateSyncTimer();
-
-    // Setup timer untuk periodik
-    _statusUpdateTimer = Timer.periodic(const Duration(minutes: 10), (_) {
-      if (mounted) {
-        _updateSyncTimer();
-      }
-    });
+    // PERUBAHAN: Matikan auto-sync
+    // _updateSyncTimer();
+    // _statusUpdateTimer = Timer.periodic(const Duration(minutes: 10), (_) {
+    //   if (mounted) {
+    //     _updateSyncTimer();
+    //   }
+    // });
   }
 
   /// Update timer sinkronisasi berdasarkan keberangkatan terdekat
@@ -207,7 +233,7 @@ class _TicketListScreenState extends State<TicketListScreen>
 
   /// Sinkronisasi status tiket dengan server
   Future<void> _synchronizeStatuses() async {
-    if (!mounted || _isSyncing) return;
+    if (!mounted || _isSyncing || !_isCurrentlyVisible) return;
 
     // Set flag syncing
     if (mounted) {
@@ -216,18 +242,13 @@ class _TicketListScreenState extends State<TicketListScreen>
       });
     }
 
-    // PERBAIKAN: Tambahkan counter untuk membatasi percobaan ulang
-    int _failedAttempts = 0;
-    DateTime _lastErrorTime = DateTime.now().subtract(
-      const Duration(minutes: 30),
-    );
-
-    // PERBAIKAN: Hentikan sinkronisasi jika terlalu banyak error dalam waktu singkat
+    // Variabel untuk penanganan backoff
     final now = DateTime.now();
-    if (_failedAttempts > 3 && now.difference(_lastErrorTime).inMinutes < 10) {
-      debugPrint(
-        'Terlalu banyak kegagalan sinkronisasi. Menunggu sebelum mencoba lagi.',
-      );
+    if (_failedAttempts > MAX_CONSECUTIVE_ERRORS &&
+        now.difference(_lastErrorTime).inMinutes < ERROR_BACKOFF_MINUTES) {
+      // debugPrint(
+      //   'Terlalu banyak kegagalan sinkronisasi. Menunggu sebelum mencoba lagi.',
+      // );
       if (mounted) {
         setState(() {
           _isSyncing = false;
@@ -237,7 +258,7 @@ class _TicketListScreenState extends State<TicketListScreen>
     }
 
     try {
-      // Dapatkan provider sebelum operasi asinkron
+      // Dapatkan provider
       final ticketStatusProvider =
           mounted
               ? Provider.of<TicketStatusProvider>(context, listen: false)
@@ -246,49 +267,58 @@ class _TicketListScreenState extends State<TicketListScreen>
       // Jika provider null, keluar dari fungsi
       if (ticketStatusProvider == null) return;
 
-      // PERBAIKAN: Log percobaan sinkronisasi
-      debugPrint('Mencoba sinkronisasi status tiket...');
+      // Log percobaan sinkronisasi
+      // debugPrint('Mencoba sinkronisasi status tiket...');
 
-      // Sinkronisasi dengan timeout
-      await ticketStatusProvider.synchronizeTicketStatuses().timeout(
-        const Duration(seconds: 15),
-        onTimeout: () {
-          throw Exception('Sinkronisasi status melebihi batas waktu');
-        },
+      // Buat operasi yang dapat dibatalkan
+      CancelableOperation syncOperation = CancelableOperation.fromFuture(
+        ticketStatusProvider.synchronizeTicketStatuses().timeout(
+          const Duration(seconds: 20),
+          onTimeout: () {
+            throw Exception('Sinkronisasi status melebihi batas waktu');
+          },
+        ),
+        // onCancel: () {
+        //   debugPrint('Synchronize operation cancelled');
+        // },
       );
 
-      // PERBAIKAN: Reset counter jika sukses
+      // Tunggu hasil operasi
+      await syncOperation.value;
+
+      // Reset counter jika sukses
       _failedAttempts = 0;
 
       // Periksa mounted sebelum memuat ulang booking
-      if (mounted) {
+      if (mounted && _isCurrentlyVisible) {
         await Future.delayed(const Duration(milliseconds: 500));
         await _loadBookings();
       }
     } catch (e) {
-      // PERBAIKAN: Catat waktu error dan tambah counter
+      // Catat waktu error dan tambah counter
       _lastErrorTime = DateTime.now();
       _failedAttempts++;
 
-      debugPrint('Error synchronizing statuses: $e');
-      debugPrint('Percobaan gagal ke-$_failedAttempts');
+      // debugPrint('Error synchronizing statuses: $e');
+      // debugPrint('Percobaan gagal ke-$_failedAttempts');
 
-      // PERBAIKAN: Tambahkan penanganan khusus untuk error format JSON
-      if (e.toString().contains('FormatException')) {
-        debugPrint(
-          'Terdeteksi error format JSON. Mengurangi frekuensi sinkronisasi.',
-        );
+      // Penanganan khusus untuk error format JSON
+      if (e.toString().contains('FormatException') ||
+          e.toString().contains('Format data tidak valid')) {
+        // debugPrint(
+        //   'Terdeteksi error format JSON. Mengurangi frekuensi sinkronisasi.',
+        // );
 
         // Modifikasi timer sinkronisasi untuk mengurangi beban server
         _syncTimer?.cancel();
         _syncTimer = Timer.periodic(
-          const Duration(minutes: 60), // Memperpanjang waktu ke 60 menit
+          const Duration(minutes: 60),
           (_) => _synchronizeStatuses(),
         );
       }
     } finally {
       // Reset flag syncing hanya jika masih mounted
-      if (mounted) {
+      if (mounted && _isCurrentlyVisible) {
         setState(() {
           _isSyncing = false;
         });
@@ -297,17 +327,33 @@ class _TicketListScreenState extends State<TicketListScreen>
   }
 
   Future<void> _loadBookings() async {
-    if (!mounted) return;
+    if (!mounted || !_isCurrentlyVisible) return;
+
+    // Batalkan operasi sebelumnya jika ada
+    _dataOperation?.cancel();
 
     final bookingProvider = Provider.of<BookingProvider>(
       context,
       listen: false,
     );
-    await bookingProvider.getBookings();
 
-    // Log hanya jika masih mounted
-    if (mounted && bookingProvider.bookings != null) {
-      debugPrint('Loaded ${bookingProvider.bookings!.length} bookings');
+    // Buat operasi yang dapat dibatalkan
+    _dataOperation = CancelableOperation.fromFuture(
+      bookingProvider.getBookings(),
+      onCancel: () {
+        // debugPrint('Load bookings operation cancelled');
+      },
+    );
+
+    try {
+      await _dataOperation?.value;
+
+      // Log hanya jika masih mounted
+      if (mounted && _isCurrentlyVisible && bookingProvider.bookings != null) {
+        // debugPrint('Loaded ${bookingProvider.bookings!.length} bookings');
+      }
+    } catch (e) {
+      // debugPrint('Error loading bookings: $e');
     }
   }
 
@@ -319,43 +365,29 @@ class _TicketListScreenState extends State<TicketListScreen>
     if (!mounted) return;
 
     try {
-      // Dapatkan provider saat widget masih mounted
+      // PERUBAHAN: Hapus pembatalan operasi dan gunakan pendekatan sequential
       final bookingProvider = Provider.of<BookingProvider>(
         context,
         listen: false,
       );
 
-      // Panggil getBookings dengan try-catch dan pemeriksaan mounted
-      try {
-        await bookingProvider.getBookings().timeout(
-          const Duration(seconds: 10),
-          onTimeout: () {
-            throw Exception('Timeout saat memuat data tiket');
-          },
-        );
+      // PERUBAHAN: Langsung panggil getBookings tanpa CancelableOperation
+      await bookingProvider.getBookings();
 
-        // Periksa mounted sebelum update state
-        if (mounted) {
-          setState(() {
-            _isInitialDataLoaded = true;
-          });
-        }
-      } catch (error) {
-        debugPrint('Error loading bookings: $error');
-        if (mounted) {
-          setState(() {
-            _isInitialDataLoaded = true;
-          });
-        }
-      }
+      // Pastikan widget masih mounted sebelum update state
+      if (mounted && _isCurrentlyVisible) {
+        setState(() {
+          _isInitialDataLoaded = true;
+        });
 
-      // Periksa mounted sebelum setup sinkronisasi
-      if (mounted) {
-        _setupStatusSynchronization();
+        // Delay setup sinkronisasi untuk mencegah tumpang tindih
+        Future.delayed(Duration(seconds: 1), () {
+          if (mounted) _setupStatusSynchronization();
+        });
       }
     } catch (e) {
-      debugPrint('Error loading initial data: $e');
-      if (mounted) {
+      // debugPrint('Error loading initial data: $e');
+      if (mounted && _isCurrentlyVisible) {
         setState(() {
           _isInitialDataLoaded = true;
         });
@@ -667,12 +699,12 @@ class _TicketListScreenState extends State<TicketListScreen>
 
                                           // Perhitungan waktu keberangkatan
                                           final now = DateTime.now().toLocal();
-                                          debugPrint(
-                                            'Format tanggal keberangkatan: ${booking.departureDate}',
-                                          );
-                                          debugPrint(
-                                            'Format waktu keberangkatan: ${booking.schedule?.departureTime}',
-                                          );
+                                          // debugPrint(
+                                          //   'Format tanggal keberangkatan: ${booking.departureDate}',
+                                          // );
+                                          // debugPrint(
+                                          //   'Format waktu keberangkatan: ${booking.schedule?.departureTime}',
+                                          // );
 
                                           final departureDateTime =
                                               DateTimeHelper.combineDateAndTime(
@@ -682,26 +714,26 @@ class _TicketListScreenState extends State<TicketListScreen>
                                                         ?.departureTime ??
                                                     "00:00", // Gunakan waktu default jika null
                                               );
-                                          debugPrint(
-                                            'Tanggal keberangkatan: ${departureDateTime?.toString()}',
-                                          );
+                                          // debugPrint(
+                                          //   'Tanggal keberangkatan: ${departureDateTime?.toString()}',
+                                          // );
 
-                                          if (departureDateTime != null) {
-                                            final difference = departureDateTime
-                                                .difference(now);
-                                            debugPrint(
-                                              'Selisih dalam hari: ${difference.inDays}',
-                                            );
-                                            debugPrint(
-                                              'Selisih dalam jam: ${difference.inHours}',
-                                            );
-                                            debugPrint(
-                                              'Selisih dalam menit: ${difference.inMinutes}',
-                                            );
-                                            debugPrint(
-                                              'Format waktu: ${_formatTimeRemaining(difference)}',
-                                            );
-                                          }
+                                          // if (departureDateTime != null) {
+                                          //   final difference = departureDateTime
+                                          //       .difference(now);
+                                          //   debugPrint(
+                                          //     'Selisih dalam hari: ${difference.inDays}',
+                                          //   );
+                                          //   debugPrint(
+                                          //     'Selisih dalam jam: ${difference.inHours}',
+                                          //   );
+                                          //   debugPrint(
+                                          //     'Selisih dalam menit: ${difference.inMinutes}',
+                                          //   );
+                                          //   debugPrint(
+                                          //     'Format waktu: ${_formatTimeRemaining(difference)}',
+                                          //   );
+                                          // }
 
                                           final timeDifference =
                                               departureDateTime != null
@@ -1162,7 +1194,7 @@ class _TicketListScreenState extends State<TicketListScreen>
           if (selected) {
             setState(() {
               _historyFilter = filterValue;
-              debugPrint('Filter diubah ke: $_historyFilter');
+              // debugPrint('Filter diubah ke: $_historyFilter');
             });
           }
         },

@@ -8,6 +8,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
+ini_set('memory_limit', '256M'); // Tingkatkan batas memori
+ini_set('max_execution_time', 120); // Beri waktu lebih untuk eksekusi
+
 class TicketController extends Controller
 {
     // Helper function untuk mengecek dan mengupdate status tiket
@@ -72,6 +75,9 @@ class TicketController extends Controller
 
     public function index(Request $request)
     {
+        // Disable buffer output untuk menghindari truncation
+        ob_end_clean();
+
         $user = $request->user();
         $tickets = Ticket::whereHas('booking', function ($query) use ($user) {
             $query->where('user_id', $user->id);
@@ -80,16 +86,25 @@ class TicketController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Periksa dan update status tiket yang sudah lewat waktu keberangkatan
-        $updatedTickets = $tickets->map(function ($ticket) {
+        // Gunakan chunk encoding untuk respons besar
+        $chunkedTickets = $tickets->map(function ($ticket) {
             return $this->checkAndUpdateTicketStatus($ticket);
-        });
+        })->chunk(5); // Bagi menjadi chunks kecil
+
+        // Gabungkan chunks untuk respons akhir
+        $finalTickets = collect([]);
+        foreach ($chunkedTickets as $chunk) {
+            $finalTickets = $finalTickets->merge($chunk);
+        }
+
+        // Pastikan limit buffer diset dengan benar
+        if (ob_get_level()) ob_end_clean();
 
         return response()->json([
             'success' => true,
             'message' => 'Daftar tiket berhasil diambil',
-            'data' => $updatedTickets
-        ], 200);
+            'data' => $finalTickets
+        ], 200, ['Content-Type' => 'application/json'], JSON_PRESERVE_ZERO_FRACTION);
     }
 
     public function show($id)

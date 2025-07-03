@@ -43,6 +43,157 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
     });
   }
 
+  // Tambahkan fungsi koreksi persentase refund di class _RefundRequestScreenState
+  void _correctRefundPercentage() {
+    if (_eligibilityData != null &&
+        _eligibilityData!['refund_policy'] != null) {
+      final refundPolicy = _eligibilityData!['refund_policy'];
+      final daysBeforeDep = _eligibilityData!['days_before_departure'];
+
+      // Hitung persentase refund yang benar berdasarkan jumlah hari
+      double correctPercentage = 0.0;
+
+      if (daysBeforeDep != null) {
+        if (daysBeforeDep >= 14) {
+          correctPercentage = 95.0;
+        } else if (daysBeforeDep >= 7) {
+          correctPercentage = 85.0;
+        } else if (daysBeforeDep >= 5) {
+          correctPercentage = 75.0;
+        } else if (daysBeforeDep >= 3) {
+          correctPercentage = 65.0;
+        } else if (daysBeforeDep >= 2) {
+          correctPercentage = 50.0;
+        }
+
+        // Update nilai persentase refund
+        refundPolicy['percentage'] = correctPercentage;
+
+        // Hitung ulang jumlah refund
+        if (refundPolicy['original_amount'] != null) {
+          final originalAmount =
+              refundPolicy['original_amount'] is num
+                  ? (refundPolicy['original_amount'] as num).toDouble()
+                  : double.tryParse(
+                        refundPolicy['original_amount'].toString(),
+                      ) ??
+                      0.0;
+
+          refundPolicy['refund_amount'] =
+              originalAmount * correctPercentage / 100;
+        }
+      }
+    }
+  }
+
+  // Tambahkan metode ini di class RefundRequestScreen
+  String _formatBookingDate(String isoDateString) {
+    try {
+      // Parse tanggal ISO dengan timezone awareness
+      final date = DateTime.parse(isoDateString);
+
+      // Tambahkan 1 hari untuk mengoreksi pergeseran tanggal
+      final correctedDate = date.add(Duration(days: 1));
+
+      // Format tanggal yang sudah dikoreksi
+      return DateFormat('dd MMMM yyyy', 'id_ID').format(correctedDate);
+    } catch (e) {
+      print("Error formatting departure date: $e");
+
+      // Fallback - coba ambil tanggal saja dan tambahkan 1 hari
+      try {
+        final datePart = isoDateString.split('T')[0]; // Ambil YYYY-MM-DD
+        final parts = datePart.split('-');
+        if (parts.length == 3) {
+          // Parse tanggal dan tambah 1 hari
+          final date = DateTime(
+            int.parse(parts[0]),
+            int.parse(parts[1]),
+            int.parse(parts[2]),
+          );
+          final correctedDate = date.add(Duration(days: 1));
+          return DateFormat('dd MMMM yyyy', 'id_ID').format(correctedDate);
+        }
+      } catch (_) {
+        // Abaikan error dalam fallback
+      }
+
+      // Jika semua gagal, kembalikan string asli
+      return isoDateString;
+    }
+  }
+
+  // Metode untuk menghitung hari sebelum keberangkatan dengan benar
+  int _calculateDaysBeforeDeparture(String isoDateString) {
+    try {
+      // Parse ISO string dengan timezone awareness
+      final departureDate = DateTime.parse(isoDateString);
+      final now = DateTime.now();
+
+      // Bandingkan tanggal tanpa komponen waktu untuk akurasi
+      final departureDateOnly = DateTime(
+        departureDate.year,
+        departureDate.month,
+        departureDate.day,
+      );
+      final nowDateOnly = DateTime(now.year, now.month, now.day);
+
+      return departureDateOnly.difference(nowDateOnly).inDays;
+    } catch (e) {
+      print("Error calculating days before departure: $e");
+
+      // Fallback ke data dari API jika ada
+      return _eligibilityData?['days_before_departure'] ?? 0;
+    }
+  }
+
+  // Tambahkan metode ini untuk validasi persentase refund
+  void _validateRefundPercentage() {
+    if (_eligibilityData != null &&
+        _eligibilityData!['refund_policy'] != null) {
+      final refundPolicy = _eligibilityData!['refund_policy'];
+      final daysBeforeDep = _eligibilityData!['days_before_departure'];
+
+      // Pastikan persentase refund sesuai dengan hari keberangkatan
+      if (daysBeforeDep != null) {
+        double expectedPercentage = 0.0;
+        if (daysBeforeDep >= 14) {
+          expectedPercentage = 95.0;
+        } else if (daysBeforeDep >= 7) {
+          expectedPercentage = 85.0;
+        } else if (daysBeforeDep >= 5) {
+          expectedPercentage = 75.0;
+        } else if (daysBeforeDep >= 3) {
+          expectedPercentage = 65.0;
+        } else if (daysBeforeDep >= 2) {
+          expectedPercentage = 50.0;
+        }
+
+        // Perbarui persentase jika tidak sesuai harapan
+        if (refundPolicy['percentage'] != expectedPercentage) {
+          print(
+            'Memperbaiki persentase refund: ${refundPolicy['percentage']}% -> $expectedPercentage%',
+          );
+          refundPolicy['percentage'] = expectedPercentage;
+
+          // Hitung ulang jumlah refund
+          if (refundPolicy['original_amount'] != null) {
+            final originalAmount =
+                refundPolicy['original_amount'] is num
+                    ? (refundPolicy['original_amount'] as num).toDouble()
+                    : double.tryParse(
+                          refundPolicy['original_amount'].toString(),
+                        ) ??
+                        0.0;
+
+            refundPolicy['refund_amount'] =
+                originalAmount * expectedPercentage / 100;
+          }
+        }
+      }
+    }
+  }
+
   @override
   void dispose() {
     _reasonController.dispose();
@@ -67,6 +218,10 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
       if (mounted) {
         setState(() {
           _eligibilityData = eligibility;
+
+          // Panggil validasi persentase refund di sini
+          _validateRefundPercentage();
+
           _isLoadingEligibility = false;
         });
 
@@ -647,9 +802,7 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                         ],
                         _buildInfoRow(
                           'Tanggal Keberangkatan',
-                          DateFormat('dd MMMM yyyy', 'id_ID').format(
-                            DateTime.parse(widget.booking.departureDate),
-                          ),
+                          _formatBookingDate(widget.booking.departureDate),
                         ),
                       ],
                     ),

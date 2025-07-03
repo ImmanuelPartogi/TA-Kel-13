@@ -25,7 +25,7 @@ class TicketStatusProvider extends ChangeNotifier {
 
     try {
       // PERBAIKAN: Tambahkan logging untuk debugging
-      debugPrint('Memulai sinkronisasi status tiket');
+      // debugPrint('Memulai sinkronisasi status tiket');
 
       // Karena endpoint status tiket tidak tersedia di server,
       // kita hanya menggunakan endpoint bookings reguler untuk mendapatkan data terbaru
@@ -33,25 +33,25 @@ class TicketStatusProvider extends ChangeNotifier {
         final response = await _apiService.get('bookings');
         _lastSyncTime = DateTime.now();
 
-        // Hanya debug log, tidak perlu tampilkan error ke user
-        debugPrint(
-          'Sync completed using bookings endpoint. Received data valid.',
-        );
+        // // Hanya debug log, tidak perlu tampilkan error ke user
+        // debugPrint(
+        //   'Sync completed using bookings endpoint. Received data valid.',
+        // );
       } catch (apiError) {
         // PERBAIKAN: Tangkap error secara spesifik dan log detail
-        debugPrint('Error pada API call: $apiError');
+        // debugPrint('Error pada API call: $apiError');
 
         // PERBAIKAN: Jika error adalah format JSON, tambahkan logging khusus
-        if (apiError.toString().contains('FormatException')) {
-          debugPrint('Kemungkinan masalah format JSON dalam respons API.');
-        }
+        // if (apiError.toString().contains('FormatException')) {
+        //   debugPrint('Kemungkinan masalah format JSON dalam respons API.');
+        // }
 
         // Tetap lempar error untuk ditangani di lapisan atas
         throw apiError;
       }
     } catch (e) {
       // Tangkap error tapi tidak perlu menampilkan ke user
-      debugPrint('Error pada sinkronisasi status: $e');
+      // debugPrint('Error pada sinkronisasi status: $e');
 
       // Set error message kosong karena tidak ingin menampilkan error
       // Sinkronisasi status tiket bukanlah fitur kritis
@@ -118,7 +118,7 @@ class TicketStatusProvider extends ChangeNotifier {
       // Tiket masih upcoming jika waktu keberangkatan >= waktu sekarang
       return !departureDateTime.isBefore(now);
     } catch (e) {
-      debugPrint('Error checking if booking is upcoming: $e');
+      // debugPrint('Error checking if booking is upcoming: $e');
       // Default ke false jika terjadi error
       return false;
     }
@@ -134,14 +134,25 @@ class TicketStatusProvider extends ChangeNotifier {
     }
 
     // Tambahkan logging untuk debugging
-    debugPrint('Filtering tickets with filter: $filter');
+    // debugPrint('Filtering tickets with filter: $filter');
 
     return historyTickets.where((booking) {
       final bool result;
 
       switch (filter) {
         case 'completed':
-          result = booking.status == 'COMPLETED';
+          // Tiket dianggap completed jika:
+          // 1. Status USED (menandakan perjalanan selesai)
+          // 2. Status EXPIRED (menandakan jadwal sudah lewat)
+          // 3. Status CONFIRMED + jadwal sudah lewat
+          result =
+              booking.status == 'USED' ||
+              booking.status == 'EXPIRED' ||
+              (booking.status == 'CONFIRMED' &&
+                  DateTimeHelper.isExpired(
+                    booking.departureDate,
+                    booking.schedule?.departureTime ?? '',
+                  ));
           break;
         case 'expired':
           // Periksa status EXPIRED atau status lain yang secara waktu sudah expired
@@ -166,12 +177,12 @@ class TicketStatusProvider extends ChangeNotifier {
           result = true;
       }
 
-      // Log untuk debugging
-      if (filter != 'all') {
-        debugPrint(
-          'Booking ${booking.id} with status ${booking.status} - included: $result',
-        );
-      }
+      // // Log untuk debugging
+      // if (filter != 'all') {
+      //   debugPrint(
+      //     'Booking ${booking.id} with status ${booking.status} - included: $result',
+      //   );
+      // }
 
       return result;
     }).toList();

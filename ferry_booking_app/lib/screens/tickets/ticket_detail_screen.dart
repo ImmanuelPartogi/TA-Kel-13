@@ -421,8 +421,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
     );
 
     final departureDiff = departureDateTime?.difference(DateTime.now());
-    final isWithin2Days =
-        departureDiff != null ? departureDiff.inDays < 2 : false;
+    final isWithin2Days = departureDiff != null ? departureDiff.inDays < 2 : false;
     final canCancel = booking.status == 'PENDING' && !isWithin2Days;
     final canRefund = booking.status == 'CONFIRMED' && !isWithin2Days;
     final tickets = booking.tickets ?? [];

@@ -33,6 +33,7 @@ class ReportController extends Controller
         ]);
     }
 
+
     /**
      * Get daily report data
      */
@@ -54,14 +55,13 @@ class ReportController extends Controller
         $assignedRouteIds = $operator->assigned_routes ?? [];
 
         $date = Carbon::parse($request->date);
-        $dayOfWeek = $date->dayOfWeek + 1; // 1-7 for Monday-Sunday
 
+        // Perubahan utama: Ambil semua jadwal tanpa filter day of week
         $schedules = Schedule::whereIn('route_id', $assignedRouteIds)
-            ->whereRaw("FIND_IN_SET('$dayOfWeek', days)")
             ->with(['route', 'ferry'])
             ->get();
 
-        $scheduleIds = $schedules->pluck('id');
+        $scheduleIds = $schedules->pluck('id')->toArray();
 
         // Get schedule dates
         $scheduleDates = ScheduleDate::whereIn('schedule_id', $scheduleIds)
@@ -69,25 +69,28 @@ class ReportController extends Controller
             ->get()
             ->keyBy('schedule_id');
 
-        // Get bookings
+        // PERUBAHAN: Ambil semua booking berdasarkan tanggal keberangkatan dan rute
+        // tanpa memfilter berdasarkan hari dalam jadwal
         $bookings = Booking::whereIn('schedule_id', $scheduleIds)
             ->where('departure_date', $date->format('Y-m-d'))
-            ->with(['user', 'tickets', 'vehicles'])
+            ->with(['user', 'tickets', 'vehicles', 'schedule.route', 'schedule.ferry'])
             ->orderBy('created_at')
-            ->get()
-            ->groupBy('schedule_id');
+            ->get();
+
+        // Group bookings by schedule_id
+        $bookingsBySchedule = $bookings->groupBy('schedule_id');
 
         // Process data
-        $reportData = $schedules->map(function($schedule) use ($scheduleDates, $bookings) {
+        $reportData = $schedules->map(function ($schedule) use ($scheduleDates, $bookingsBySchedule) {
             $scheduleDate = $scheduleDates->get($schedule->id);
-            $scheduleBookings = $bookings->get($schedule->id, collect());
+            $scheduleBookings = $bookingsBySchedule->get($schedule->id, collect());
 
             $passengerCount = $scheduleDate ? $scheduleDate->passenger_count : 0;
             $vehicleCount = 0;
 
             if ($scheduleDate) {
                 $vehicleCount = $scheduleDate->motorcycle_count + $scheduleDate->car_count +
-                                $scheduleDate->bus_count + $scheduleDate->truck_count;
+                    $scheduleDate->bus_count + $scheduleDate->truck_count;
             }
 
             $confirmedBookings = $scheduleBookings->where('status', 'CONFIRMED')->count();
@@ -119,14 +122,38 @@ class ReportController extends Controller
             ];
         });
 
+        // TAMBAHAN: Jika tidak ada data dari jadwal reguler, tambahkan booking yang tidak
+        // terkait dengan jadwal manapun tapi memiliki tanggal keberangkatan yang sama
+        if ($bookings->count() > 0 && $reportData->isEmpty()) {
+            // Buat satu entri report untuk booking yang tidak terkait jadwal
+            $nonScheduleBookings = [
+                'schedule' => null,
+                'passengers' => $bookings->sum('passenger_count'),
+                'vehicles' => $bookings->sum('vehicle_count'),
+                'motorcycle_count' => 0,
+                'car_count' => 0,
+                'bus_count' => 0,
+                'truck_count' => 0,
+                'total_bookings' => $bookings->count(),
+                'confirmed_bookings' => $bookings->where('status', 'CONFIRMED')->count(),
+                'completed_bookings' => $bookings->where('status', 'COMPLETED')->count(),
+                'cancelled_bookings' => $bookings->where('status', 'CANCELLED')->count(),
+                'checked_in_passengers' => 0,
+                'occupancy_rate' => 0,
+                'bookings' => $bookings,
+            ];
+
+            $reportData->push($nonScheduleBookings);
+        }
+
         if ($request->has('export') && $request->export === 'csv') {
-            // Generate CSV
+            // Generate CSV (kode ekspor tidak diubah)
             $headers = [
                 'Content-Type' => 'text/csv',
                 'Content-Disposition' => 'attachment; filename="daily_report_' . $date->format('Y-m-d') . '.csv"',
             ];
 
-            $callback = function() use ($reportData, $date) {
+            $callback = function () use ($reportData, $date) {
                 $file = fopen('php://output', 'w');
 
                 // Header row
@@ -154,10 +181,20 @@ class ReportController extends Controller
 
                 // Data rows
                 foreach ($reportData as $data) {
+                    if (!$data['schedule']) {
+                        $routeName = 'Tidak ada jadwal tetap';
+                        $ferryName = '-';
+                        $scheduleTime = '-';
+                    } else {
+                        $routeName = $data['schedule']->route->origin . ' - ' . $data['schedule']->route->destination;
+                        $ferryName = $data['schedule']->ferry->name;
+                        $scheduleTime = $data['schedule']->departure_time . ' - ' . $data['schedule']->arrival_time;
+                    }
+
                     fputcsv($file, [
-                        $data['schedule']->route->origin . ' - ' . $data['schedule']->route->destination,
-                        $data['schedule']->ferry->name,
-                        $data['schedule']->departure_time . ' - ' . $data['schedule']->arrival_time,
+                        $routeName,
+                        $ferryName,
+                        $scheduleTime,
                         $data['passengers'],
                         $data['checked_in_passengers'],
                         $data['vehicles'],
@@ -213,9 +250,9 @@ class ReportController extends Controller
         $endDate = $month->copy()->endOfMonth();
 
         // Get bookings for the month
-        $bookings = Booking::whereHas('schedule', function($q) use ($assignedRouteIds) {
-                $q->whereIn('route_id', $assignedRouteIds);
-            })
+        $bookings = Booking::whereHas('schedule', function ($q) use ($assignedRouteIds) {
+            $q->whereIn('route_id', $assignedRouteIds);
+        })
             ->whereBetween('departure_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
             ->with(['schedule.route', 'schedule.ferry'])
             ->get();
@@ -263,7 +300,7 @@ class ReportController extends Controller
                 'Content-Disposition' => 'attachment; filename="monthly_report_' . $month->format('Y-m') . '.csv"',
             ];
 
-            $callback = function() use ($routeData, $month) {
+            $callback = function () use ($routeData, $month) {
                 $file = fopen('php://output', 'w');
 
                 // Header row

@@ -75,12 +75,16 @@ const BookingCheckIn = () => {
         'Terjadi kesalahan saat mencari tiket';
       setError(errorMessage);
 
+      // Gunakan versi non-async dari SweetAlert untuk menghindari masalah timing
       Swal.fire({
         icon: 'error',
         title: 'Pencarian Gagal',
         text: errorMessage,
-        customClass: {
-          popup: 'animate__animated animate__fadeInUp rounded-xl'
+        confirmButtonColor: '#0369a1',
+        confirmButtonText: 'OK',
+        didClose: () => {
+          console.log('Dialog ditutup via didClose');
+          // Tidak perlu melakukan apa-apa di sini, biarkan kode berlanjut
         }
       });
     } finally {

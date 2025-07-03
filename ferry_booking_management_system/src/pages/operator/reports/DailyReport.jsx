@@ -27,6 +27,7 @@ const DailyReport = () => {
     search: searchParams.get('search') || ''
   });
   const [lastRefreshed, setLastRefreshed] = useState(new Date());
+  const [apiResponseLog, setApiResponseLog] = useState(null); // Untuk debugging
 
   // Check if operator has routes
   const hasRoutes = useMemo(() => {
@@ -69,7 +70,7 @@ const DailyReport = () => {
 
   // Calculate summary data
   const calculateSummary = useCallback((data) => {
-    if (!data.length) return {
+    if (!data || !data.length) return {
       totalPassengers: 0,
       totalVehicles: 0,
       totalBookings: 0,
@@ -165,20 +166,39 @@ const DailyReport = () => {
     try {
       const response = await operatorReportsService.getDaily({ date: filter.date });
       console.log('Daily report response:', response);
+      
+      // Simpan response untuk debugging
+      setApiResponseLog(response.data);
 
       if (response.data && response.data.status === 'success') {
-        // Handle berbagai format response
         let bookingsData = [];
-        if (Array.isArray(response.data.data)) {
-          bookingsData = response.data.data;
-        } else if (response.data.data && Array.isArray(response.data.data.bookings)) {
-          bookingsData = response.data.data.bookings;
-        } else if (response.data.data && response.data.data.report) {
-          bookingsData = Array.isArray(response.data.data.report) ? response.data.data.report : [];
-        } else {
-          bookingsData = [];
+
+        // Data dari API berbentuk schedule dengan bookings di dalamnya
+        if (response.data.data && Array.isArray(response.data.data.report)) {
+          // Ekstrak semua booking dari setiap schedule
+          response.data.data.report.forEach(scheduleData => {
+            if (Array.isArray(scheduleData.bookings)) {
+              // Tambahkan info rute ke setiap booking
+              const bookings = scheduleData.bookings.map(booking => ({
+                ...booking,
+                route: scheduleData.schedule ? 
+                  `${scheduleData.schedule.route?.origin} - ${scheduleData.schedule.route?.destination}` : 
+                  'Tidak ada jadwal tetap',
+                route_name: scheduleData.schedule?.route?.name || ''
+              }));
+              bookingsData = [...bookingsData, ...bookings];
+            }
+          });
         }
 
+        console.log('Extracted bookings:', bookingsData);
+        
+        // Jika tidak ada data, tampilkan log
+        if (bookingsData.length === 0) {
+          console.warn('No bookings found for date:', filter.date);
+          console.log('API response structure:', response.data);
+        }
+        
         setReportData(bookingsData);
 
         // Calculate summary
@@ -406,6 +426,8 @@ const DailyReport = () => {
                   <option value="COMPLETED">Selesai</option>
                   <option value="CANCELLED">Dibatalkan</option>
                   <option value="PENDING">Pending</option>
+                  <option value="EXPIRED">Kedaluwarsa</option>
+                  <option value="REFUNDED">Dikembalikan</option>
                 </select>
               </div>
             </div>
@@ -544,7 +566,7 @@ const DailyReport = () => {
                     )}
                     CSV
                   </button>
-                  <button
+                  {/* <button
                     onClick={() => handleExport('pdf')}
                     disabled={exportLoading}
                     className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
@@ -560,7 +582,7 @@ const DailyReport = () => {
                       </svg>
                     )}
                     PDF
-                  </button>
+                  </button> */}
                 </div>
               </div>
             </div>
@@ -668,15 +690,20 @@ const DailyReport = () => {
                           {booking.route || booking.route_name || '-'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${booking.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                          <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            booking.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
                             booking.status === 'CONFIRMED' ? 'bg-blue-100 text-blue-800' :
-                              booking.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
-                                'bg-gray-100 text-gray-800'
-                            }`}>
+                            booking.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                            booking.status === 'EXPIRED' ? 'bg-yellow-100 text-yellow-800' :
+                            booking.status === 'REFUNDED' ? 'bg-purple-100 text-purple-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
                             {booking.status === 'COMPLETED' && 'Selesai'}
                             {booking.status === 'CONFIRMED' && 'Dikonfirmasi'}
                             {booking.status === 'CANCELLED' && 'Dibatalkan'}
-                            {!['COMPLETED', 'CONFIRMED', 'CANCELLED'].includes(booking.status) && booking.status}
+                            {booking.status === 'EXPIRED' && 'Kedaluwarsa'}
+                            {booking.status === 'REFUNDED' && 'Dikembalikan'}
+                            {!['COMPLETED', 'CONFIRMED', 'CANCELLED', 'EXPIRED', 'REFUNDED'].includes(booking.status) && booking.status}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">

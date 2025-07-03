@@ -48,7 +48,12 @@ export const operatorBookingsService = {
   checkIn: {
     // Validate ticket/booking code dengan parameter yang ditingkatkan
     validate: (data) => {
-      return api.post('/operator-panel/bookings/check-in/validate', data);
+      return api.post('/operator-panel/bookings/check-in/validate', data)
+        .catch(error => {
+          console.error('Error validating check-in:', error);
+          // Pastikan error diproses dengan benar sebelum dilempar kembali
+          throw error; // Tetap lempar error agar bisa ditangkap oleh komponen React
+        });
     },
 
     // Process check-in dengan data tambahan

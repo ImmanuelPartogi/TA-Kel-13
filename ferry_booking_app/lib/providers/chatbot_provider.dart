@@ -54,7 +54,7 @@ class ChatbotProvider with ChangeNotifier {
       // Periksa status koneksi saat inisialisasi
       checkConnectivity();
     } catch (e) {
-      debugPrint('Error initializing connectivity: $e');
+      // debugPrint('Error initializing connectivity: $e');
       // Asumsikan online jika ada error
       _isOffline = false;
     }
@@ -75,7 +75,7 @@ class ChatbotProvider with ChangeNotifier {
         _handleConnectivityChange(result);
       }
     } catch (e) {
-      debugPrint('Error handling connectivity change: $e');
+      // debugPrint('Error handling connectivity change: $e');
       // Asumsikan online jika ada error
       _isOffline = false;
       notifyListeners();
@@ -134,7 +134,7 @@ class ChatbotProvider with ChangeNotifier {
       await prefs.remove('conversation_messages_$userId');
       await prefs.remove('conversation_last_updated_$userId');
     } catch (e) {
-      debugPrint('Error clearing conversation data: $e');
+      // debugPrint('Error clearing conversation data: $e');
     }
   }
 
@@ -154,7 +154,7 @@ class ChatbotProvider with ChangeNotifier {
         _handleConnectivityChange(result as ConnectivityResult);
       }
     } catch (e) {
-      debugPrint('Error checking connectivity: $e');
+      // debugPrint('Error checking connectivity: $e');
       // Asumsikan online jika ada error
       _isOffline = false;
       notifyListeners();
@@ -225,9 +225,9 @@ class ChatbotProvider with ChangeNotifier {
         DateTime.now().toIso8601String(),
       );
 
-      debugPrint('Conversation saved to local storage with key: $storageKey');
+      // debugPrint('Conversation saved to local storage with key: $storageKey');
     } catch (e) {
-      debugPrint('Error saving conversation to local: $e');
+      // debugPrint('Error saving conversation to local: $e');
     }
   }
 
@@ -265,12 +265,12 @@ class ChatbotProvider with ChangeNotifier {
         sessionId: await _chatbotService.getDeviceId(),
       );
 
-      debugPrint(
-        'Conversation loaded from local storage with key: $storageKey',
-      );
+      // debugPrint(
+      //   'Conversation loaded from local storage with key: $storageKey',
+      // );
       return true;
     } catch (e) {
-      debugPrint('Error loading conversation from local: $e');
+      // debugPrint('Error loading conversation from local: $e');
       return false;
     }
   }
@@ -320,7 +320,7 @@ class ChatbotProvider with ChangeNotifier {
 
       _isFirstLoad = false;
     } catch (e) {
-      debugPrint('Error loading conversation: $e');
+      // debugPrint('Error loading conversation: $e');
       // Tambahkan pesan error untuk pengguna
       _messages.add(
         ChatMessage(
@@ -394,7 +394,7 @@ class ChatbotProvider with ChangeNotifier {
   // Kirim pesan
   Future<void> sendMessage(String message, {bool retrying = false}) async {
     if (message.trim().isEmpty) return;
-    debugPrint('Mengirim pesan: $message');
+    // debugPrint('Mengirim pesan: $message');
 
     // Kosongkan saran pertanyaan ketika pengguna mengirim pesan baru
     _suggestedQuestions = [];
@@ -429,7 +429,7 @@ class ChatbotProvider with ChangeNotifier {
         final data = await _chatbotService.createNewConversation();
         _conversation = data['conversation'];
       } catch (e) {
-        debugPrint('Error creating new conversation: $e');
+        // debugPrint('Error creating new conversation: $e');
         _messages.add(
           ChatMessage(
             id: -1,
@@ -479,11 +479,11 @@ class ChatbotProvider with ChangeNotifier {
       // Simpan percakapan ke storage lokal
       await _saveConversationToLocal();
     } catch (e) {
-      debugPrint('Error sending message: $e');
+      // debugPrint('Error sending message: $e');
 
       // Tampilkan detail error ke log untuk debugging
       final errorMessage = e.toString();
-      debugPrint('Detail error: $errorMessage');
+      // debugPrint('Detail error: $errorMessage');
 
       // Hapus pesan pengguna sementara
       _messages.removeLast();
@@ -547,7 +547,7 @@ class ChatbotProvider with ChangeNotifier {
       );
       return result;
     } catch (e) {
-      debugPrint('Error sending feedback: $e');
+      // debugPrint('Error sending feedback: $e');
       return false;
     }
   }
@@ -590,7 +590,7 @@ class ChatbotProvider with ChangeNotifier {
       // Simpan percakapan baru ke storage lokal
       await _saveConversationToLocal();
     } catch (e) {
-      debugPrint('Error clearing conversation: $e');
+      // debugPrint('Error clearing conversation: $e');
       _messages.add(
         ChatMessage(
           id: -1,

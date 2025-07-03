@@ -44,7 +44,7 @@ class TokenStorageService {
   Future<String?> getToken() async {
     // Jika token sudah ada di cache memori, gunakan itu
     if (_cachedToken != null && _cachedToken!.isNotEmpty) {
-      print('Returning cached token: $_cachedToken');
+      // print('Returning cached token: $_cachedToken');
       return _cachedToken;
     }
     

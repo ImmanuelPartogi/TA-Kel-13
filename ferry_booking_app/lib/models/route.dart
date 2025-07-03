@@ -27,7 +27,8 @@ class FerryRoute {
 
   factory FerryRoute.fromJson(Map<String, dynamic> json) {
     List<VehicleCategory>? vehicleCategories;
-    if (json.containsKey('vehicle_categories')) {
+    if (json.containsKey('vehicle_categories') &&
+        json['vehicle_categories'] != null) {
       vehicleCategories =
           (json['vehicle_categories'] as List)
               .map((item) => VehicleCategory.fromJson(item))
@@ -35,17 +36,17 @@ class FerryRoute {
     }
 
     return FerryRoute(
-      id: int.parse(json['id'].toString()),
-      origin: json['origin'],
-      destination: json['destination'],
-      routeCode: json['route_code'],
+      id: int.parse((json['id'] ?? 0).toString()),
+      origin: json['origin'] ?? '', // Tambahkan null check
+      destination: json['destination'] ?? '', // Tambahkan null check
+      routeCode: json['route_code'] ?? '', // Tambahkan null check
       distance:
           json['distance'] != null
               ? double.parse(json['distance'].toString())
               : null,
-      duration: int.parse(json['duration'].toString()),
-      basePrice: double.parse(json['base_price'].toString()),
-      status: json['status'],
+      duration: int.parse((json['duration'] ?? 0).toString()),
+      basePrice: double.parse((json['base_price'] ?? 0).toString()),
+      status: json['status'] ?? '', // Tambahkan null check
       statusReason: json['status_reason'],
       vehicleCategories: vehicleCategories,
     );

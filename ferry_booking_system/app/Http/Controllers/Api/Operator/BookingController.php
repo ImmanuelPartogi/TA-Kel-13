@@ -141,7 +141,7 @@ class BookingController extends Controller
                     'payments',
                     'tickets',
                     'vehicles',
-                    'bookingLogs.changedBy',
+                    'bookingLogs', // Hapus relasi changedBy
                 ])
                 ->firstOrFail();
 

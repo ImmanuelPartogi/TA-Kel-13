@@ -23,8 +23,8 @@ const BookingList = () => {
     user_name: searchParams.get('user_name') || '',
     route_id: searchParams.get('route_id') || '',
     status: searchParams.get('status') || '',
-    booking_date_from: searchParams.get('booking_date_from') || '',
-    booking_date_to: searchParams.get('booking_date_to') || '',
+    departure_date_from: searchParams.get('departure_date_from') || '', // Ubah dari booking_date_from
+    departure_date_to: searchParams.get('departure_date_to') || '',     // Ubah dari booking_date_to
     page: searchParams.get('page') || 1
   });
 
@@ -106,8 +106,8 @@ const BookingList = () => {
       user_name: '',
       route_id: '',
       status: '',
-      booking_date_from: '',
-      booking_date_to: '',
+      departure_date_from: '', // Ubah dari booking_date_from
+      departure_date_to: '',   // Ubah dari booking_date_to
       page: 1
     });
     setSearchParams(new URLSearchParams());
@@ -370,7 +370,7 @@ const BookingList = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="booking_date_from" className="block text-sm font-medium text-gray-700 mb-1">Tanggal Mulai</label>
+                  <label htmlFor="departure_date_from" className="block text-sm font-medium text-gray-700 mb-1">Tanggal Keberangkatan (Dari)</label>
                   <div className="relative rounded-md shadow-sm">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -379,17 +379,18 @@ const BookingList = () => {
                     </div>
                     <input
                       type="date"
-                      name="booking_date_from"
-                      id="booking_date_from"
-                      value={filters.booking_date_from}
+                      name="departure_date_from"
+                      id="departure_date_from"
+                      value={filters.departure_date_from}
                       onChange={handleFilterChange}
                       className="block w-full pl-10 pr-3 py-2.5 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
                     />
                   </div>
+                  <p className="mt-1 text-xs text-gray-500">Filter berdasarkan tanggal keberangkatan kapal</p>
                 </div>
 
                 <div>
-                  <label htmlFor="booking_date_to" className="block text-sm font-medium text-gray-700 mb-1">Tanggal Akhir</label>
+                  <label htmlFor="departure_date_to" className="block text-sm font-medium text-gray-700 mb-1">Tanggal Keberangkatan (Sampai)</label>
                   <div className="relative rounded-md shadow-sm">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -398,13 +399,14 @@ const BookingList = () => {
                     </div>
                     <input
                       type="date"
-                      name="booking_date_to"
-                      id="booking_date_to"
-                      value={filters.booking_date_to}
+                      name="departure_date_to"
+                      id="departure_date_to"
+                      value={filters.departure_date_to}
                       onChange={handleFilterChange}
                       className="block w-full pl-10 pr-3 py-2.5 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
                     />
                   </div>
+                  <p className="mt-1 text-xs text-gray-500">Filter sampai tanggal keberangkatan ini</p>
                 </div>
               </div>
 

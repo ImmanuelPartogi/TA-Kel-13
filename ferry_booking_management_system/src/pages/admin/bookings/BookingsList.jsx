@@ -11,25 +11,25 @@ const BookingsList = () => {
     last_page: 1,
     total: 0
   });
-  
+
   const [filters, setFilters] = useState({
     booking_code: '',
     user_name: '',
     route_id: '',
     status: '',
-    booking_date_from: '',
-    booking_date_to: ''
+    departure_date_from: '', // Ubah dari booking_date_from
+    departure_date_to: ''    // Ubah dari booking_date_to
   });
   const [alert, setAlert] = useState({ show: false, type: '', message: '' });
   const [viewMode, setViewMode] = useState('table'); // table or grid
 
   useEffect(() => {
     fetchBookings();
-    
+
     // Auto-hide alert after 5 seconds
     if (alert.show) {
       const timer = setTimeout(() => {
-        setAlert({...alert, show: false});
+        setAlert({ ...alert, show: false });
       }, 5000);
       return () => clearTimeout(timer);
     }
@@ -42,23 +42,23 @@ const BookingsList = () => {
         page,
         ...filters
       };
-      
+
       const response = await api.get('/admin-panel/bookings', { params });
-      
+
       // Handle response structure from Laravel
       if (response.data.success) {
         const data = response.data.data;
-        
+
         // Set bookings array from paginated data
         setBookings(data.bookings.data || []);
-        
+
         // Set pagination info
         setPagination({
           current_page: data.bookings.current_page || 1,
           last_page: data.bookings.last_page || 1,
           total: data.bookings.total || 0
         });
-        
+
         // Set routes
         setRoutes(data.routes || []);
       } else {
@@ -99,15 +99,15 @@ const BookingsList = () => {
       user_name: '',
       route_id: '',
       status: '',
-      booking_date_from: '',
-      booking_date_to: ''
+      departure_date_from: '', // Ubah dari booking_date_from
+      departure_date_to: ''    // Ubah dari booking_date_to
     });
     // Fetch bookings with reset filters
     setTimeout(() => fetchBookings(1), 0);
   };
 
   const getStatusConfig = (status) => {
-    switch(status) {
+    switch (status) {
       case 'PENDING':
         return {
           bg: 'bg-yellow-100',
@@ -186,19 +186,19 @@ const BookingsList = () => {
   // Helper function to format date
   const formatDate = (dateString, includeTime = false) => {
     if (!dateString) return 'N/A';
-    
+
     try {
       const options = {
         day: 'numeric',
         month: 'short',
         year: 'numeric'
       };
-      
+
       if (includeTime) {
         options.hour = '2-digit';
         options.minute = '2-digit';
       }
-      
+
       return new Date(dateString).toLocaleDateString('id-ID', options);
     } catch (error) {
       console.error('Error formatting date:', error);
@@ -221,13 +221,13 @@ const BookingsList = () => {
       <div className="bg-gradient-to-br from-blue-800 via-blue-600 to-blue-500 p-8 text-white relative">
         <div className="absolute inset-0 opacity-20">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" className="w-full h-full">
-            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                  fill="#fff" opacity="0.2" />
-            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z" 
-                  fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
+            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+              fill="#fff" opacity="0.2" />
+            <path d="M472.3 724.1c-142.9 52.5-285.8-46.9-404.6-124.4 104.1 31.6 255-30.3 307.6-130.9 52.5-100.6-17.3-178.1-96.4-193.9 207.6 26.6 285.8 337.7 193.4 449.2z"
+              fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeDasharray="10 20" />
           </svg>
         </div>
-        
+
         <div className="relative z-10">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div className="flex items-start">
@@ -240,7 +240,7 @@ const BookingsList = () => {
               </div>
             </div>
           </div>
-          
+
           {/* Quick Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-8">
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
@@ -250,7 +250,7 @@ const BookingsList = () => {
                 <span className="text-2xl font-bold">{pagination.total}</span>
               </div>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Booking Pending</p>
               <div className="flex items-center mt-1">
@@ -260,7 +260,7 @@ const BookingsList = () => {
                 </span>
               </div>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Booking Confirmed</p>
               <div className="flex items-center mt-1">
@@ -270,7 +270,7 @@ const BookingsList = () => {
                 </span>
               </div>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
               <p className="text-blue-100 text-sm">Booking Cancelled</p>
               <div className="flex items-center mt-1">
@@ -293,7 +293,7 @@ const BookingsList = () => {
                 <i className={`fas ${alert.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-2`}></i>
                 <span className="font-medium">{alert.type === 'success' ? 'Sukses' : 'Error'}</span>
               </div>
-              <button onClick={() => setAlert({...alert, show: false})} className="text-white/80 hover:text-white">
+              <button onClick={() => setAlert({ ...alert, show: false })} className="text-white/80 hover:text-white">
                 <i className="fas fa-times"></i>
               </button>
             </div>
@@ -311,7 +311,7 @@ const BookingsList = () => {
               Filter & Pencarian
             </h2>
           </div>
-          
+
           <div className="p-6 bg-white">
             <form onSubmit={handleSearch}>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -399,55 +399,57 @@ const BookingsList = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="booking_date_from" className="block text-sm font-medium text-gray-700 mb-1">Tanggal Booking Dari</label>
+                  <label htmlFor="departure_date_from" className="block text-sm font-medium text-gray-700 mb-1">Tanggal Keberangkatan Dari</label>
                   <div className="relative rounded-md shadow-sm">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <i className="fas fa-calendar-alt text-gray-400"></i>
                     </div>
                     <input
                       type="date"
-                      id="booking_date_from"
-                      name="booking_date_from"
-                      value={filters.booking_date_from}
+                      id="departure_date_from"
+                      name="departure_date_from"
+                      value={filters.departure_date_from}
                       onChange={handleFilterChange}
                       className="block w-full pl-10 pr-3 py-2.5 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
                     />
                   </div>
+                  <p className="mt-1 text-xs text-gray-500">Filter berdasarkan tanggal keberangkatan kapal</p>
                 </div>
 
                 <div>
-                  <label htmlFor="booking_date_to" className="block text-sm font-medium text-gray-700 mb-1">Tanggal Booking Sampai</label>
+                  <label htmlFor="departure_date_to" className="block text-sm font-medium text-gray-700 mb-1">Tanggal Keberangkatan Sampai</label>
                   <div className="relative rounded-md shadow-sm">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <i className="fas fa-calendar-alt text-gray-400"></i>
                     </div>
                     <input
                       type="date"
-                      id="booking_date_to"
-                      name="booking_date_to"
-                      value={filters.booking_date_to}
+                      id="departure_date_to"
+                      name="departure_date_to"
+                      value={filters.departure_date_to}
                       onChange={handleFilterChange}
                       className="block w-full pl-10 pr-3 py-2.5 sm:text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
                     />
                   </div>
+                  <p className="mt-1 text-xs text-gray-500">Filter sampai tanggal keberangkatan ini</p>
                 </div>
               </div>
 
               <div className="mt-6 flex justify-end space-x-3">
-                {(filters.booking_code || 
-                  filters.user_name || 
-                  filters.route_id || 
-                  filters.status || 
-                  filters.booking_date_from || 
-                  filters.booking_date_to) && (
-                  <button
-                    onClick={handleReset}
-                    type="button"
-                    className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
-                  >
-                    <i className="fas fa-times mr-2"></i> Reset
-                  </button>
-                )}
+                {(filters.booking_code ||
+                  filters.user_name ||
+                  filters.route_id ||
+                  filters.status ||
+                  filters.departure_date_from || // Ubah dari booking_date_from
+                  filters.departure_date_to) && ( // Ubah dari booking_date_to
+                    <button
+                      onClick={handleReset}
+                      type="button"
+                      className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+                    >
+                      <i className="fas fa-times mr-2"></i> Reset
+                    </button>
+                  )}
                 <button
                   type="submit"
                   className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
@@ -464,24 +466,24 @@ const BookingsList = () => {
           <p className="text-sm text-gray-600">
             {pagination.total > 0 ? (
               <>
-                Menampilkan <span className="font-medium">{getFirstItem()}</span> - 
-                <span className="font-medium"> {getLastItem()}</span> dari 
+                Menampilkan <span className="font-medium">{getFirstItem()}</span> -
+                <span className="font-medium"> {getLastItem()}</span> dari
                 <span className="font-medium"> {pagination.total}</span> booking
               </>
             ) : (
               <span>Tidak ada hasil yang ditemukan</span>
             )}
           </p>
-          
+
           <div className="flex items-center space-x-2">
             <div className="p-1 bg-gray-100 rounded-lg flex">
-              <button 
+              <button
                 onClick={() => setViewMode('table')}
                 className={`px-3 py-1 rounded ${viewMode === 'table' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-800'}`}
               >
                 <i className="fas fa-list"></i>
               </button>
-              <button 
+              <button
                 onClick={() => setViewMode('grid')}
                 className={`px-3 py-1 rounded ${viewMode === 'grid' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-800'}`}
               >
@@ -496,7 +498,7 @@ const BookingsList = () => {
           <div className="bg-white rounded-xl border border-gray-100 shadow-md p-8 text-center">
             <div className="inline-block relative">
               <div className="h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-500 animate-spin"></div>
-              <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-200 animate-spin" style={{animationDirection: 'reverse', animationDuration: '1.5s'}}></div>
+              <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-t-4 border-b-4 border-blue-200 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
             </div>
             <p className="mt-4 text-gray-600">Memuat data booking...</p>
           </div>
@@ -511,7 +513,7 @@ const BookingsList = () => {
             <h3 className="text-xl font-semibold text-gray-800 mb-2">Belum Ada Data Booking</h3>
             <p className="text-gray-600 mb-6">Belum ada booking yang ditemukan atau sesuai dengan filter yang Anda pilih</p>
             <div className="flex justify-center space-x-3">
-              <button 
+              <button
                 onClick={handleReset}
                 className="inline-flex items-center px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-sm"
               >
@@ -616,7 +618,7 @@ const BookingsList = () => {
                               <i className="fas fa-eye"></i>
                             </Link>
                             {booking.status === 'CONFIRMED' && (
-                              <Link 
+                              <Link
                                 to={`/admin/bookings/${booking.id}/reschedule`}
                                 className="btn-icon bg-purple-50 hover:bg-purple-100 text-purple-600 p-2 rounded-lg transition-colors"
                                 title="Reschedule">
@@ -665,18 +667,18 @@ const BookingsList = () => {
                       </span>
                     </div>
                   </div>
-                  
+
                   <div className="p-4">
                     <div className="mb-4">
                       <div className="text-xs text-gray-500 mb-1">Rute</div>
                       <div className="text-sm font-medium text-gray-800">
-                        {booking.schedule?.route ? 
-                          `${booking.schedule.route.origin} - ${booking.schedule.route.destination}` : 
+                        {booking.schedule?.route ?
+                          `${booking.schedule.route.origin} - ${booking.schedule.route.destination}` :
                           'N/A'
                         }
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-2 mb-4">
                       <div className="bg-blue-50 p-2 rounded-lg text-center">
                         <p className="text-xs text-blue-600 mb-1">Tanggal Keberangkatan</p>
@@ -687,7 +689,7 @@ const BookingsList = () => {
                           </span>
                         </div>
                       </div>
-                      
+
                       <div className="bg-emerald-50 p-2 rounded-lg text-center">
                         <p className="text-xs text-emerald-600 mb-1">Total</p>
                         <div className="flex items-center justify-center">
@@ -698,7 +700,7 @@ const BookingsList = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="bg-purple-50 p-3 rounded-lg mb-4 flex justify-between">
                       <div className="text-center flex-1">
                         <p className="text-xs text-purple-600 mb-1">Penumpang</p>
@@ -707,7 +709,7 @@ const BookingsList = () => {
                           <span className="text-lg font-semibold text-purple-700">{booking.passenger_count || 0}</span>
                         </div>
                       </div>
-                      
+
                       {booking.vehicle_count > 0 && (
                         <div className="text-center flex-1 border-l border-purple-100">
                           <p className="text-xs text-purple-600 mb-1">Kendaraan</p>
@@ -718,7 +720,7 @@ const BookingsList = () => {
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="flex justify-between border-t border-gray-100 pt-4">
                       <Link
                         to={`/admin/bookings/${booking.id}`}
@@ -728,7 +730,7 @@ const BookingsList = () => {
                         <i className="fas fa-eye"></i>
                       </Link>
                       {booking.status === 'CONFIRMED' && (
-                        <Link 
+                        <Link
                           to={`/admin/bookings/${booking.id}/reschedule`}
                           className="btn-icon bg-purple-50 hover:bg-purple-100 text-purple-600 p-2 rounded-lg transition-colors"
                           title="Reschedule"
@@ -757,26 +759,26 @@ const BookingsList = () => {
         {!loading && pagination.total > 0 && (
           <div className="flex flex-col md:flex-row justify-between items-center bg-white rounded-xl border border-gray-100 shadow-sm p-4">
             <div className="text-sm text-gray-600 mb-4 md:mb-0">
-              Menampilkan <span className="font-medium">{getFirstItem()}</span> - 
-              <span className="font-medium"> {getLastItem()}</span> dari 
+              Menampilkan <span className="font-medium">{getFirstItem()}</span> -
+              <span className="font-medium"> {getLastItem()}</span> dari
               <span className="font-medium"> {pagination.total}</span> hasil
             </div>
             <div className="flex space-x-1">
-              <button 
+              <button
                 onClick={() => handlePageChange(1)}
                 disabled={pagination.current_page === 1}
                 className="px-3 py-1 rounded-md bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
               >
                 <i className="fas fa-angle-double-left"></i>
               </button>
-              <button 
+              <button
                 onClick={() => handlePageChange(pagination.current_page - 1)}
                 disabled={pagination.current_page === 1}
                 className="px-3 py-1 rounded-md bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
               >
                 <i className="fas fa-angle-left"></i>
               </button>
-              
+
               {/* Page numbers */}
               <div className="flex space-x-1">
                 {Array.from({ length: Math.min(5, pagination.last_page) }, (_, i) => {
@@ -794,7 +796,7 @@ const BookingsList = () => {
                     // Middle cases
                     pageNum = pagination.current_page - 2 + i;
                   }
-                  
+
                   return (
                     <button
                       key={i}
@@ -807,15 +809,15 @@ const BookingsList = () => {
                   );
                 })}
               </div>
-              
-              <button 
+
+              <button
                 onClick={() => handlePageChange(pagination.current_page + 1)}
                 disabled={pagination.current_page === pagination.last_page}
                 className="px-3 py-1 rounded-md bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
               >
                 <i className="fas fa-angle-right"></i>
               </button>
-              <button 
+              <button
                 onClick={() => handlePageChange(pagination.last_page)}
                 disabled={pagination.current_page === pagination.last_page}
                 className="px-3 py-1 rounded-md bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"

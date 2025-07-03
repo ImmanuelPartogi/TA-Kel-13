@@ -96,8 +96,6 @@ class BookingProvider extends ChangeNotifier {
     for (var vehicle in _vehicles) {
       // Cara 1: Gunakan vehicle_category_id untuk mendapatkan harga dari kategori
       final category = _vehicleCategories.firstWhere(
-
-        
         (cat) => cat.id == vehicle.vehicle_category_id,
         orElse:
             () =>
@@ -108,17 +106,17 @@ class BookingProvider extends ChangeNotifier {
 
       if (category != null) {
         total += category.basePrice;
-        print(
-          'Calculating price for vehicle ${vehicle.licensePlate}: ${category.basePrice}',
-        );
+        // print(
+        //   'Calculating price for vehicle ${vehicle.licensePlate}: ${category.basePrice}',
+        // );
       } else {
         // Cara 2: Fallback ke getVehiclePriceByType jika kategori tidak ditemukan
         double price = _selectedRoute!.getVehiclePriceByType(vehicle.type);
         total += price;
-        print('Fallback price for vehicle ${vehicle.licensePlate}: $price');
+        // print('Fallback price for vehicle ${vehicle.licensePlate}: $price');
       }
     }
-    print('Total vehicle cost: $total');
+    // print('Total vehicle cost: $total');
     return total;
   }
 
@@ -277,9 +275,9 @@ class BookingProvider extends ChangeNotifier {
     if (route.vehicleCategories != null &&
         route.vehicleCategories!.isNotEmpty) {
       _vehicleCategories = route.vehicleCategories!;
-      print(
-        'Loaded ${_vehicleCategories.length} vehicle categories from route',
-      );
+      // print(
+      //   'Loaded ${_vehicleCategories.length} vehicle categories from route',
+      // );
     } else if (_vehicleCategories.isEmpty) {
       // Jika tidak ada, fetch dari API
       fetchVehicleCategories();
@@ -547,13 +545,38 @@ class BookingProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _bookings = await _bookingApi.getBookings();
+      // PERBAIKAN: Tambahkan delay kecil untuk mencegah overlapping requests
+      await Future.delayed(Duration(milliseconds: 50));
+
+      // Panggil API untuk mendapatkan bookings
+      final result = await _bookingApi.getBookings();
+
+      // Tetapkan hasil ke _bookings
+      _bookings = result;
       _isLoading = false;
+      _errorMessage = null;
       notifyListeners();
     } catch (e) {
       _isLoading = false;
-      _errorMessage = e.toString();
-      notifyListeners();
+
+      // Periksa apakah error menunjukkan data parsial
+      if (e.toString().contains('is_partial_data')) {
+        // Jika data parsial, jangan anggap sebagai error fatal
+        // debugPrint('Menerima data parsial: $e');
+
+        // Tetapkan data yang sudah ada (jika ada)
+        if (_bookings == null) {
+          _bookings = []; // Data kosong sebagai fallback
+        }
+
+        _errorMessage =
+            'Beberapa data mungkin tidak lengkap. Coba refresh untuk memperbarui.';
+        notifyListeners();
+      } else {
+        // Untuk error lain, tangani seperti biasa
+        _errorMessage = e.toString();
+        notifyListeners();
+      }
     }
   }
 

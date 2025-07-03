@@ -125,10 +125,22 @@ const BookingCheckIn = () => {
             timer: 3000,
             timerProgressBar: true,
             showConfirmButton: false,
+            allowOutsideClick: true,
+            willClose: () => {
+              console.log('Alert closed'); // Untuk debugging
+            },
+            didClose: () => {
+              console.log('Alert closed and removed from DOM'); // Untuk debugging
+            },
             customClass: {
-              popup: 'animate__animated animate__fadeInUp rounded-xl'
+              popup: 'rounded-xl'
             }
           });
+
+          // Tambahkan ini sebagai fallback
+          setTimeout(() => {
+            Swal.close();
+          }, 3500);
 
           // Update ticket status in UI
           if (response.data?.data?.ticket) {
@@ -193,13 +205,13 @@ const BookingCheckIn = () => {
   // Format datetime function
   const formatDateTime = (dateString) => {
     if (!dateString) return 'N/A';
-    
+
     try {
-      const options = { 
-        day: 'numeric', 
-        month: 'long', 
+      const options = {
+        day: 'numeric',
+        month: 'long',
         year: 'numeric',
-        hour: '2-digit', 
+        hour: '2-digit',
         minute: '2-digit'
       };
       return new Date(dateString).toLocaleString('id-ID', options);
@@ -215,17 +227,17 @@ const BookingCheckIn = () => {
     if (ticket.passenger_name && ticket.passenger_name.trim() !== '') {
       return ticket.passenger_name;
     }
-    
+
     // Jika tidak ada passenger_name, coba ambil dari relasi passenger
     if (ticket.passenger && ticket.passenger.name) {
       return ticket.passenger.name;
     }
-    
+
     // Jika tidak ada passenger, coba ambil dari relasi booking.user
     if (ticket.booking && ticket.booking.user && ticket.booking.user.name) {
       return ticket.booking.user.name;
     }
-    
+
     // Fallback jika tidak ada data nama
     return 'Nama tidak tersedia';
   };
@@ -238,7 +250,7 @@ const BookingCheckIn = () => {
           {/* Background pattern */}
           <div className="absolute inset-0 opacity-10">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" className="w-full h-full transform scale-150">
-              <path d="M769 229L1037 260.9M927 880L731 737 520 660 309 538 40 599 295 764 126.5 879.5 40 599-197 493 102 382-31 229 126.5 79.5-69-63" fill="none" stroke="white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="bevel"/>
+              <path d="M769 229L1037 260.9M927 880L731 737 520 660 309 538 40 599 295 764 126.5 879.5 40 599-197 493 102 382-31 229 126.5 79.5-69-63" fill="none" stroke="white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="bevel" />
             </svg>
           </div>
 

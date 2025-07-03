@@ -6,14 +6,62 @@ class BookingApi {
 
   // Get all bookings
   Future<List<Booking>> getBookings() async {
-    final response = await _apiService.get('bookings');
+    try {
+      final response = await _apiService.get('bookings');
 
-    if (response['success']) {
-      return (response['data'] as List)
-          .map((json) => Booking.fromJson(json))
-          .toList();
-    } else {
-      throw Exception(response['message']);
+      // Periksa flag data parsial
+      if (response['is_partial_data'] == true) {
+        print('Menerima data parsial: ${response['message']}');
+
+        // Tetap gunakan data yang ada meskipun parsial
+        if (response['data'] != null && response['data'] is List) {
+          List<Booking> result = [];
+
+          // Proses setiap booking dengan try-catch individual
+          for (var item in response['data']) {
+            try {
+              result.add(Booking.fromJson(item));
+            } catch (e) {
+              print('Error parsing individual booking: $e');
+              // Skip booking yang gagal di-parse
+            }
+          }
+
+          return result;
+        }
+
+        return []; // Kembalikan list kosong jika data tidak valid
+      }
+
+      // Periksa success flag
+      if (response['success'] == true) {
+        if (response['data'] != null && response['data'] is List) {
+          List<Booking> result = [];
+
+          // Proses setiap booking dengan try-catch individual
+          for (var item in response['data']) {
+            try {
+              result.add(Booking.fromJson(item));
+            } catch (e) {
+              print('Error parsing individual booking: $e');
+            }
+          }
+
+          return result;
+        }
+
+        return []; // Data kosong atau bukan list
+      } else {
+        throw Exception(response['message'] ?? 'Unknown error');
+      }
+    } catch (e) {
+      if (e.toString().contains('FormatException') ||
+          e.toString().contains('Format data tidak valid')) {
+        print('JSON parsing error in getBookings: $e');
+        throw Exception('is_partial_data: Error parsing booking data');
+      }
+
+      throw e;
     }
   }
 

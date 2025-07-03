@@ -6,6 +6,7 @@ import 'ticket.dart';
 import 'vehicle.dart';
 
 class Booking {
+  static final Map<String, DateTime?> _parsedDateCache = {};
   final int id;
   final String bookingCode;
   final int userId;
@@ -53,17 +54,50 @@ class Booking {
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
-    // Parse payments dengan validasi
+    // Fungsi helper untuk menangani nilai null pada integer
+    int safeParseInt(dynamic value, {int defaultValue = 0}) {
+      if (value == null) return defaultValue;
+      if (value is int) return value;
+      try {
+        return int.parse(value.toString());
+      } catch (e) {
+        print('Error parsing int: $value, error: $e');
+        return defaultValue;
+      }
+    }
+
+    // Fungsi helper untuk menangani nilai null pada double
+    double safeParseDouble(dynamic value, {double defaultValue = 0.0}) {
+      if (value == null) return defaultValue;
+      if (value is double) return value;
+      try {
+        return double.parse(value.toString());
+      } catch (e) {
+        print('Error parsing double: $value, error: $e');
+        return defaultValue;
+      }
+    }
+
+    // Parse payments dengan validasi yang lebih kuat
     List<Payment>? parsePayments() {
       if (json['payments'] == null) return null;
 
       try {
         final paymentsList = json['payments'] as List;
-        return paymentsList
-            .map((payment) => Payment.fromJson(payment))
-            .toList();
+        List<Payment> result = [];
+
+        for (var paymentData in paymentsList) {
+          try {
+            result.add(Payment.fromJson(paymentData));
+          } catch (e) {
+            print('Error parsing payment: $e');
+            // Skip payment yang gagal di-parse
+          }
+        }
+
+        return result.isEmpty ? null : result;
       } catch (e) {
-        print('Error parsing payments: $e');
+        print('Error parsing payments list: $e');
         return null;
       }
     }
@@ -78,21 +112,22 @@ class Booking {
             : null;
 
     return Booking(
-      id: json['id'],
-      bookingCode: json['booking_code'],
-      userId: json['user_id'],
-      scheduleId: json['schedule_id'],
+      id: safeParseInt(json['id'], defaultValue: -1),
+      bookingCode: json['booking_code'] ?? 'UNKNOWN',
+      userId: safeParseInt(json['user_id'], defaultValue: -1),
+      scheduleId: safeParseInt(json['schedule_id'], defaultValue: -1),
       departureDate:
-          json['departure_date'], // Ganti bookingDate -> departure_date
-      passengerCount: json['passenger_count'],
-      vehicleCount: json['vehicle_count'],
-      totalAmount: double.parse(json['total_amount'].toString()),
-      status: json['status'],
+          json['departure_date'] ??
+          DateTime.now().toIso8601String().split('T')[0],
+      passengerCount: safeParseInt(json['passenger_count']),
+      vehicleCount: safeParseInt(json['vehicle_count']),
+      totalAmount: safeParseDouble(json['total_amount']),
+      status: json['status'] ?? 'UNKNOWN',
       cancellationReason: json['cancellation_reason'],
       bookedBy: json['booked_by'] ?? 'MOBILE_APP',
       bookingChannel: json['booking_channel'],
       notes: json['notes'],
-      createdAt: json['created_at'],
+      createdAt: json['created_at'] ?? DateTime.now().toIso8601String(),
       schedule:
           json['schedule'] != null ? Schedule.fromJson(json['schedule']) : null,
       payments: parsedPayments,
@@ -269,50 +304,60 @@ class Booking {
 
   // Metode untuk mendapatkan DateTime gabungan tanggal dan waktu keberangkatan
   DateTime? get departureDateTime {
-    try {
-      if (schedule == null) return null;
+  try {
+    if (schedule == null) return null;
+    
+    // Buat key cache dari kombinasi departureDate dan departureTime
+    final cacheKey = "${this.departureDate}_${schedule!.departureTime}";
+    
+    // Cek apakah sudah ada di cache
+    if (_parsedDateCache.containsKey(cacheKey)) {
+      return _parsedDateCache[cacheKey];
+    }
+    
+    final departureDate = DateTime.parse(this.departureDate);
+    final departureTime = schedule!.departureTime;
+    DateTime? result;
 
-      final departureDate = DateTime.parse(this.departureDate);
-      final departureTime = schedule!.departureTime;
+    // Parsing berbagai kemungkinan format waktu
+    if (departureTime.contains('T')) {
+      // Format ISO
+      final timeDate = DateTime.parse(departureTime);
+      result = DateTime(
+        departureDate.year,
+        departureDate.month,
+        departureDate.day,
+        timeDate.hour,
+        timeDate.minute,
+        timeDate.second,
+      );
+    } else if (departureTime.contains(':')) {
+      // Format HH:MM:SS atau HH:MM
+      final parts = departureTime.split(':');
+      if (parts.length >= 2) {
+        final hour = int.tryParse(parts[0]) ?? 0;
+        final minute = int.tryParse(parts[1]) ?? 0;
+        final second = parts.length > 2 ? (int.tryParse(parts[2]) ?? 0) : 0;
 
-      // Parsing berbagai kemungkinan format waktu
-      if (departureTime.contains('T')) {
-        // Format ISO
-        final timeDate = DateTime.parse(departureTime);
-        return DateTime(
+        result = DateTime(
           departureDate.year,
           departureDate.month,
           departureDate.day,
-          timeDate.hour,
-          timeDate.minute,
-          timeDate.second,
+          hour,
+          minute,
+          second,
         );
-      } else if (departureTime.contains(':')) {
-        // Format HH:MM:SS atau HH:MM
-        final parts = departureTime.split(':');
-        if (parts.length >= 2) {
-          final hour = int.tryParse(parts[0]) ?? 0;
-          final minute = int.tryParse(parts[1]) ?? 0;
-          final second = parts.length > 2 ? (int.tryParse(parts[2]) ?? 0) : 0;
-
-          return DateTime(
-            departureDate.year,
-            departureDate.month,
-            departureDate.day,
-            hour,
-            minute,
-            second,
-          );
-        }
       }
-
-      // Return tanggal saja jika tidak bisa parse waktu
-      return departureDate;
-    } catch (e) {
-      print('Error getting departure date time: $e');
-      return null;
     }
+
+    // Simpan hasil ke cache
+    _parsedDateCache[cacheKey] = result;
+    return result;
+  } catch (e) {
+    print('Error getting departure date time: $e');
+    return null;
   }
+}
 
   // Metode untuk mendapatkan waktu keberangkatan yang diformat
   String get formattedDepartureTime {

@@ -19,6 +19,10 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use App\Helpers\DateHelper;
 
+// Tambahkan ini di awal file setelah namespace
+ini_set('memory_limit', '256M');
+ini_set('max_execution_time', 120);
+
 class BookingController extends Controller
 {
     protected $midtransService;
@@ -28,8 +32,12 @@ class BookingController extends Controller
         $this->midtransService = $midtransService;
     }
 
+    // Modifikasi pada fungsi index()
     public function index(Request $request)
     {
+        // Disable buffer output
+        if (ob_get_level()) ob_end_clean();
+
         $user = $request->user();
         $bookings = Booking::where('user_id', $user->id)
             ->with(['schedule.route', 'schedule.ferry', 'payments'])
@@ -45,7 +53,7 @@ class BookingController extends Controller
             'success' => true,
             'message' => 'Daftar booking berhasil diambil',
             'data' => $bookings
-        ], 200);
+        ], 200, ['Content-Type' => 'application/json'], JSON_PARTIAL_OUTPUT_ON_ERROR);
     }
 
     public function show($id)

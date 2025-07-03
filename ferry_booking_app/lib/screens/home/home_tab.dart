@@ -7,6 +7,7 @@ import 'package:ferry_booking_app/providers/ticket_status_provider.dart'; // Tam
 import 'package:ferry_booking_app/widgets/booking_card.dart';
 import 'package:ferry_booking_app/utils/date_time_helper.dart'; // Tambahkan helper untuk tanggal
 import 'dart:async'; // Untuk timer
+import 'package:async/async.dart'; // Import package async
 
 class HomeTab extends StatefulWidget {
   const HomeTab({Key? key}) : super(key: key);
@@ -25,6 +26,8 @@ class _HomeTabState extends State<HomeTab> with SingleTickerProviderStateMixin {
   Timer? _statusUpdateTimer;
   bool _isSyncing = false;
   bool _isInitialLoading = true; // Flag untuk loading awal
+  CancelableOperation? _bookingOperation; // Operation yang dapat dibatalkan
+  bool _isActive = true; // Flag untuk menandai apakah tab sedang aktif
 
   @override
   void initState() {
@@ -53,13 +56,12 @@ class _HomeTabState extends State<HomeTab> with SingleTickerProviderStateMixin {
 
     // Delay start of animation slightly for better UX
     Future.delayed(const Duration(milliseconds: 100), () {
-      _animationController.forward();
+      if (mounted) _animationController.forward();
     });
 
-    // Gunakan post-frame callback untuk menghindari setState selama build
+    // Gunakan post-frame callback untuk loading data
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadBookingsInitial();
-      _setupStatusSynchronization();
+      if (mounted) _loadBookingsInitial();
     });
   }
 
@@ -68,21 +70,61 @@ class _HomeTabState extends State<HomeTab> with SingleTickerProviderStateMixin {
     _animationController.dispose();
     _syncTimer?.cancel();
     _statusUpdateTimer?.cancel();
+    _bookingOperation?.cancel(); // Batalkan operasi yang sedang berjalan
+    _isActive = false;
     super.dispose();
+  }
+
+  // Method untuk dipanggil dari parent widget (TabController)
+  void setActive(bool active) {
+    if (_isActive != active) {
+      _isActive = active;
+      if (_isActive) {
+        // Reload data saat tab menjadi aktif kembali
+        _loadBookingsInitial();
+      } else {
+        // Batalkan operasi saat tab tidak aktif
+        _bookingOperation?.cancel();
+        _syncTimer?.cancel();
+      }
+    }
   }
 
   /// Load booking awal dengan loading indicator
   Future<void> _loadBookingsInitial() async {
-    final bookingProvider = Provider.of<BookingProvider>(
-      context,
-      listen: false,
-    );
+    if (!mounted) return;
+
+    setState(() {
+      _isInitialLoading = true;
+    });
 
     try {
-      await bookingProvider.getBookings();
+      final bookingProvider = Provider.of<BookingProvider>(
+        context,
+        listen: false,
+      );
+
+      // PERUBAHAN: Langsung panggil getBookings tanpa CancelableOperation
+      await bookingProvider.getBookings().timeout(
+        const Duration(seconds: 30), // Perpanjang timeout
+        onTimeout: () {
+          // debugPrint('Booking fetch operation timed out');
+          return;
+        },
+      );
+
+      if (mounted) {
+        setState(() {
+          _isInitialLoading = false;
+        });
+
+        // PERUBAHAN: Delay setup sinkronisasi untuk mencegah tumpang tindih
+        Future.delayed(Duration(seconds: 1), () {
+          if (mounted) _setupStatusSynchronization();
+        });
+      }
     } catch (e) {
-      debugPrint('Error loading bookings: $e');
-    } finally {
+      // debugPrint('Error loading bookings: $e');
       if (mounted) {
         setState(() {
           _isInitialLoading = false;
@@ -93,27 +135,22 @@ class _HomeTabState extends State<HomeTab> with SingleTickerProviderStateMixin {
 
   /// Setup timer untuk sinkronisasi status tiket di background
   void _setupStatusSynchronization() async {
-    // Sinkronisasi pertama kali
-    await _synchronizeStatuses();
+    // PERUBAHAN RADIKAL: Matikan sinkronisasi otomatis!
+    // await _synchronizeStatuses();
+    // _updateSyncTimer();
+    // _statusUpdateTimer = Timer.periodic(...);
 
-    // Atur timer berdasarkan waktu keberangkatan terdekat
-    _updateSyncTimer();
-
-    // Setup timer untuk secara periodik memeriksa apakah perlu mengubah interval sinkronisasi
-    _statusUpdateTimer = Timer.periodic(const Duration(minutes: 10), (_) {
-      if (mounted) {
-        // Pastikan mounted sebelum memanggil method
-        _updateSyncTimer();
-      }
-    });
+    // Ganti dengan single-time sync
+    if (mounted) {
+      await _synchronizeStatuses();
+    }
   }
 
   /// Update timer sinkronisasi berdasarkan keberangkatan terdekat
   void _updateSyncTimer() {
-    if (!mounted)
-      return; // Hindari akses ke context jika widget sudah unmounted
+    if (!mounted) return;
 
-    // Cancel timer yang ada
+    // PERUBAHAN: Batalkan timer yang ada dengan aman
     _syncTimer?.cancel();
 
     final bookingProvider = Provider.of<BookingProvider>(
@@ -138,34 +175,33 @@ class _HomeTabState extends State<HomeTab> with SingleTickerProviderStateMixin {
       upcomingTickets,
     );
 
-    // Atur interval sinkronisasi berdasarkan kedekatan waktu keberangkatan
-    // Meskipun sinkronisasi status tidak tersedia, kita tetap perlu refresh data booking
+    // PERUBAHAN: Perlambat interval sinkronisasi
     if (closestDeparture != null) {
       final difference = closestDeparture.difference(DateTime.now());
 
       if (difference.inHours < 2) {
-        // Jika kurang dari 2 jam, sync setiap 3 menit (tidak terlalu sering untuk menghindari beban API)
-        _syncTimer = Timer.periodic(
-          const Duration(minutes: 3),
-          (_) => _synchronizeStatuses(),
-        );
-      } else if (difference.inHours < 6) {
-        // Jika kurang dari 6 jam, sync setiap 5 menit
+        // Jika kurang dari 2 jam, sync setiap 5 menit (bukan 3 menit)
         _syncTimer = Timer.periodic(
           const Duration(minutes: 5),
           (_) => _synchronizeStatuses(),
         );
-      } else {
-        // Jika lebih dari 6 jam, sync setiap 10 menit
+      } else if (difference.inHours < 6) {
+        // Jika kurang dari 6 jam, sync setiap 10 menit (bukan 5 menit)
         _syncTimer = Timer.periodic(
           const Duration(minutes: 10),
           (_) => _synchronizeStatuses(),
         );
+      } else {
+        // Jika lebih dari 6 jam, sync setiap 15 menit (bukan 10 menit)
+        _syncTimer = Timer.periodic(
+          const Duration(minutes: 15),
+          (_) => _synchronizeStatuses(),
+        );
       }
     } else {
-      // Jika tidak ada tiket upcoming, sync setiap 15 menit
+      // Jika tidak ada tiket upcoming, sync setiap 30 menit (bukan 15 menit)
       _syncTimer = Timer.periodic(
-        const Duration(minutes: 15),
+        const Duration(minutes: 30),
         (_) => _synchronizeStatuses(),
       );
     }
@@ -173,29 +209,26 @@ class _HomeTabState extends State<HomeTab> with SingleTickerProviderStateMixin {
 
   /// Metode untuk sinkronisasi status tiket dengan server tanpa mengganggu UI
   Future<void> _synchronizeStatuses() async {
-    if (!mounted) return; // Tambahkan ini di awal method
-    if (_isSyncing) return;
+    if (!mounted || _isSyncing || !_isActive) return;
 
     setState(() {
       _isSyncing = true;
     });
 
     try {
-      // Hanya refresh data booking karena status sinkronisasi tidak tersedia
+      // Hanya refresh data booking
       final bookingProvider = Provider.of<BookingProvider>(
         context,
         listen: false,
       );
-      await bookingProvider.getBookings();
-
-      // Log untuk debugging
-      debugPrint('Bookings refreshed successfully');
+      await bookingProvider.getBookings().timeout(
+        const Duration(seconds: 20),
+        onTimeout: () {},
+      );
     } catch (e) {
-      // Log error tetapi tidak perlu menampilkan ke pengguna
-      // karena ini adalah proses background
-      debugPrint('Error refreshing bookings: $e');
+      // debugPrint('Error refreshing bookings: $e');
     } finally {
-      if (mounted) {
+      if (mounted && _isActive) {
         setState(() {
           _isSyncing = false;
         });

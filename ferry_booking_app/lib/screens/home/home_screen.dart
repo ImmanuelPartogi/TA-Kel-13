@@ -48,6 +48,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   // Tambahkan GlobalKey untuk GlobalFAB
   final GlobalKey<GlobalFABState> _fabKey = GlobalKey<GlobalFABState>();
+  final homeTabKey = GlobalKey<State<HomeTab>>();
+  final ticketListKey = GlobalKey<State<TicketListScreen>>();
+  final profileKey = GlobalKey<State<ProfileScreen>>();
 
   @override
   void initState() {
@@ -64,6 +67,60 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadInitialData();
+    });
+  }
+
+  void _onTabChanged(int index) {
+    setState(() {
+      _currentIndex = index;
+      _tabController.animateTo(index);
+    });
+
+    // Delay kecil untuk mencegah race condition
+    Future.delayed(Duration(milliseconds: 100), () {
+      try {
+        // Nonaktifkan semua tab dahulu
+        if (homeTabKey.currentState != null) {
+          // Panggil metode menggunakan dynamic call untuk menghindari type checking
+          final homeState = homeTabKey.currentState;
+          if (homeState != null) {
+            // Cek apakah metode tersedia dengan aman
+            try {
+              (homeState as dynamic).setActive(false);
+            } catch (_) {
+              // Abaikan jika metode tidak tersedia
+            }
+          }
+        }
+
+        if (ticketListKey.currentState != null) {
+          final ticketState = ticketListKey.currentState;
+          if (ticketState != null) {
+            try {
+              (ticketState as dynamic).setVisibility(false);
+            } catch (_) {
+              // Abaikan jika metode tidak tersedia
+            }
+          }
+        }
+
+        // Kemudian aktifkan tab yang dipilih
+        if (index == 0 && homeTabKey.currentState != null) {
+          try {
+            (homeTabKey.currentState as dynamic).setActive(true);
+          } catch (_) {
+            // Abaikan jika metode tidak tersedia
+          }
+        } else if (index == 1 && ticketListKey.currentState != null) {
+          try {
+            (ticketListKey.currentState as dynamic).setVisibility(true);
+          } catch (_) {
+            // Abaikan jika metode tidak tersedia
+          }
+        }
+      } catch (e) {
+        print('Error saat mengubah visibilitas tab: $e');
+      }
     });
   }
 
@@ -117,7 +174,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    _tabs = [const HomeTab(), const TicketListScreen(), const ProfileScreen()];
+    _tabs = [
+      HomeTab(key: homeTabKey),
+      TicketListScreen(key: ticketListKey),
+      ProfileScreen(key: profileKey),
+    ];
 
     return Scaffold(
       extendBody: true,
@@ -231,12 +292,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: BottomNavigationBar(
             currentIndex: _currentIndex,
-            onTap: (index) {
-              setState(() {
-                _currentIndex = index;
-                _tabController.animateTo(index);
-              });
-            },
+            onTap: _onTabChanged,
             elevation: 0,
             backgroundColor: Colors.white.withOpacity(0.9),
             selectedItemColor: theme.primaryColor,

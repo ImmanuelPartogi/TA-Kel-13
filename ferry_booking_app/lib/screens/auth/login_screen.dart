@@ -65,7 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
         // Navigasi ke halaman home jika login berhasil
         if (success && mounted) {
           _showSimpleSuccessMessage();
-          print('Login successful, navigating to home screen');
+          // print('Login successful, navigating to home screen');
           Navigator.pushReplacementNamed(context, '/home');
         } else {
           print('Login failed');

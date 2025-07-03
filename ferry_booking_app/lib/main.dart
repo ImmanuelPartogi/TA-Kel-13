@@ -37,10 +37,12 @@ import 'package:ferry_booking_app/screens/auth/forgot_password_screen.dart';
 import 'package:ferry_booking_app/screens/auth/reset_password_screen.dart';
 import 'package:ferry_booking_app/services/local_notification_service.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'dart:io';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  HttpOverrides.global = MyHttpOverrides();
   // Handler untuk error yang tidak tertangani
   FlutterError.onError = (FlutterErrorDetails details) {
     FlutterError.presentError(details);
@@ -71,6 +73,15 @@ Future<void> main() async {
   }
 
   runApp(const MyApp());
+}
+
+class MyHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback =
+          (X509Certificate cert, String host, int port) => true;
+  }
 }
 
 class MyApp extends StatelessWidget {

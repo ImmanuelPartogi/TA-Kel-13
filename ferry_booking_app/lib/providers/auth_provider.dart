@@ -97,14 +97,14 @@ class AuthProvider extends ChangeNotifier {
         }),
       );
 
-      print('STATUS CODE: ${response.statusCode}');
-      print('RESPONSE BODY: ${response.body}');
+      // print('STATUS CODE: ${response.statusCode}');
+      // print('RESPONSE BODY: ${response.body}');
 
       final data = jsonDecode(response.body);
 
-      if (data['errors'] != null) {
-        print('VALIDATION ERRORS: ${data['errors']}');
-      }
+      // if (data['errors'] != null) {
+      //   print('VALIDATION ERRORS: ${data['errors']}');
+      // }
 
       if (response.statusCode == 200 && data['success']) {
         // Get token from response
@@ -114,7 +114,7 @@ class AuthProvider extends ChangeNotifier {
         await _tokenStorage.saveToken(_token!);
 
         // Print token after saving for debugging
-        print('Token saved successfully: $_token');
+        // print('Token saved successfully: $_token');
 
         // Set user data and login state
         _user = User.fromJson(data['data']['user']);

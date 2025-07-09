@@ -1,4 +1,3 @@
-// src/services/api.js
 import axios from 'axios';
 
 // Debug: tampilkan nilai environment variable

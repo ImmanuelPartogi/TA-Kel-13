@@ -91,6 +91,505 @@ class BookingController extends Controller
     }
 
     /**
+     * Menampilkan form create booking
+     *
+     * @return JsonResponse
+     */
+    public function create(): JsonResponse
+    {
+        try {
+            // Ambil data untuk dropdown routes
+            $routes = Route::where('status', 'ACTIVE')
+                ->select('id', 'origin', 'destination', 'route_code', 'base_price')
+                ->get();
+
+            // Ambil data vehicle categories
+            $vehicleCategories = VehicleCategory::where('is_active', true)
+                ->select('id', 'code', 'name', 'vehicle_type', 'base_price')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data untuk form booking berhasil diambil',
+                'data' => [
+                    'routes' => $routes,
+                    'vehicle_categories' => $vehicleCategories
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data untuk form booking: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Mencari jadwal berdasarkan rute dan tanggal
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function getSchedulesForBooking(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'route_id' => 'required|exists:routes,id',
+                'date' => 'required|date|after_or_equal:today',
+                'passenger_count' => 'required|integer|min:1',
+                'vehicle_categories' => 'nullable|json'
+            ]);
+
+            $routeId = $validated['route_id'];
+            $date = Carbon::parse($validated['date']);
+            $dayOfWeek = $date->dayOfWeek + 1; // Konversi ke format 1-7 (Senin-Minggu)
+            $passengerCount = $validated['passenger_count'];
+
+            // Parse vehicle_categories jika ada
+            $vehicleCategories = [];
+            if (isset($validated['vehicle_categories'])) {
+                $vehicleCategories = json_decode($validated['vehicle_categories'], true);
+            }
+
+            // Ambil jadwal untuk rute dan hari yang dipilih
+            $schedules = Schedule::where('route_id', $routeId)
+                ->where('status', 'ACTIVE')
+                ->whereRaw("FIND_IN_SET(?, days)", [$dayOfWeek])
+                ->with(['ferry', 'route'])
+                ->get();
+
+            if ($schedules->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak ada jadwal tersedia untuk rute dan tanggal yang dipilih'
+                ], 404);
+            }
+
+            // Tambahkan log untuk debugging
+            Log::info('Jadwal ditemukan untuk rute dan hari', [
+                'route_id' => $routeId,
+                'day' => $dayOfWeek,
+                'date' => $date->format('Y-m-d'),
+                'jadwal_count' => $schedules->count()
+            ]);
+
+            // Ambil data tanggal jadwal
+            $scheduleIds = $schedules->pluck('id')->toArray();
+            $scheduleDates = ScheduleDate::whereIn('schedule_id', $scheduleIds)
+                ->where('date', $date->format('Y-m-d'))
+                ->where('status', 'ACTIVE')
+                ->get()
+                ->keyBy('schedule_id');
+
+            // Log untuk debugging
+            Log::info('Schedule dates ditemukan', [
+                'schedule_dates_count' => $scheduleDates->count()
+            ]);
+
+            // Hitung ketersediaan dan total harga untuk setiap jadwal
+            $availableSchedules = [];
+            foreach ($schedules as $schedule) {
+                $scheduleDate = $scheduleDates->get($schedule->id);
+
+                // Jika tidak ada data tanggal, jadwal tidak tersedia
+                if (!$scheduleDate) {
+                    continue;
+                }
+
+                // Cek ketersediaan kapasitas penumpang
+                $availablePassenger = $schedule->ferry->capacity_passenger - $scheduleDate->passenger_count;
+                if ($availablePassenger < $passengerCount) {
+                    continue;
+                }
+
+                // Cek ketersediaan kapasitas kendaraan
+                $isVehicleAvailable = true;
+                $vehicleTotalPrice = 0;
+
+                foreach ($vehicleCategories as $vehicleCategory) {
+                    $category = VehicleCategory::find($vehicleCategory['id']);
+                    if (!$category) continue;
+
+                    $count = $vehicleCategory['count'];
+
+                    switch ($category->vehicle_type) {
+                        case 'MOTORCYCLE':
+                            $available = $schedule->ferry->capacity_vehicle_motorcycle - $scheduleDate->motorcycle_count;
+                            if ($available < $count) {
+                                $isVehicleAvailable = false;
+                            }
+                            break;
+                        case 'CAR':
+                            $available = $schedule->ferry->capacity_vehicle_car - $scheduleDate->car_count;
+                            if ($available < $count) {
+                                $isVehicleAvailable = false;
+                            }
+                            break;
+                        case 'BUS':
+                            $available = $schedule->ferry->capacity_vehicle_bus - $scheduleDate->bus_count;
+                            if ($available < $count) {
+                                $isVehicleAvailable = false;
+                            }
+                            break;
+                        case 'TRUCK':
+                        case 'PICKUP':
+                        case 'TRONTON':
+                            $available = $schedule->ferry->capacity_vehicle_truck - $scheduleDate->truck_count;
+                            if ($available < $count) {
+                                $isVehicleAvailable = false;
+                            }
+                            break;
+                    }
+
+                    $vehicleTotalPrice += $category->base_price * $count;
+                }
+
+                // Jika kendaraan tidak tersedia, lewati jadwal ini
+                if (!$isVehicleAvailable) {
+                    continue;
+                }
+
+                // Hitung total harga
+                $basePrice = $schedule->route->base_price;
+                $totalPrice = ($basePrice * $passengerCount) + $vehicleTotalPrice;
+
+                // Tambahkan jadwal ke daftar tersedia
+                $availableSchedules[] = [
+                    'id' => $schedule->id,
+                    'route' => [
+                        'id' => $schedule->route->id,
+                        'origin' => $schedule->route->origin,
+                        'destination' => $schedule->route->destination
+                    ],
+                    'ferry' => [
+                        'id' => $schedule->ferry->id,
+                        'name' => $schedule->ferry->name
+                    ],
+                    'departure_time' => $schedule->departure_time,
+                    'arrival_time' => $schedule->arrival_time,
+                    'available_passenger' => $availablePassenger,
+                    'schedule_date_id' => $scheduleDate->id,
+                    'passenger_price' => $basePrice,
+                    'vehicle_price' => $vehicleTotalPrice,
+                    'total_price' => $totalPrice
+                ];
+            }
+
+            // Log hasil akhir
+            Log::info('Jadwal tersedia yang ditemukan', [
+                'available_schedules_count' => count($availableSchedules)
+            ]);
+
+            if (empty($availableSchedules)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak ada jadwal tersedia dengan kapasitas yang cukup untuk tanggal yang dipilih'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Jadwal tersedia berhasil diambil',
+                'data' => $availableSchedules
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error dalam getSchedulesForBooking', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil jadwal: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Mencari pengguna berdasarkan nama atau email
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function searchUsers(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'search' => 'required|string|min:3',
+            ]);
+
+            $search = $validated['search'];
+            $users = User::where('name', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%")
+                ->orWhere('phone', 'like', "%{$search}%")
+                ->select('id', 'name', 'email', 'phone')
+                ->limit(10)
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pengguna berhasil ditemukan',
+                'data' => $users
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mencari pengguna: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Menyimpan booking baru yang dibuat oleh admin
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function store(Request $request): JsonResponse
+    {
+        try {
+            // Validasi input
+            $validated = $request->validate([
+                'user_id' => 'nullable|exists:users,id',
+                'customer_name' => 'required_without:user_id|string|max:255',
+                'customer_contact' => 'nullable|string|max:50',
+                'schedule_id' => 'required|exists:schedules,id',
+                'schedule_date_id' => 'required|exists:schedule_dates,id',
+                'departure_date' => 'required|date|after_or_equal:today',
+                'passenger_count' => 'required|integer|min:1',
+                'passengers' => 'required|array|min:1',
+                'passengers.*.name' => 'required|string|max:255',
+                'passengers.*.id_number' => 'nullable|string|max:30',
+                'passengers.*.id_type' => 'nullable|string|in:KTP,SIM,PASSPORT,LAINNYA',
+                'vehicles' => 'nullable|array',
+                'vehicles.*.type' => 'required|string|in:MOTORCYCLE,CAR,BUS,TRUCK,PICKUP,TRONTON',
+                'vehicles.*.category_id' => 'required|exists:vehicle_categories,id',
+                'vehicles.*.license_plate' => 'required|string|max:20',
+                'vehicles.*.brand' => 'nullable|string|max:50',
+                'vehicles.*.model' => 'nullable|string|max:50',
+                'payment_method' => 'required|string|in:CASH,TRANSFER,DEBIT,CREDIT',
+                'total_amount' => 'required|numeric|min:0',
+            ]);
+
+            // Cek ketersediaan jadwal
+            $schedule = Schedule::findOrFail($validated['schedule_id']);
+            $scheduleDate = ScheduleDate::findOrFail($validated['schedule_date_id']);
+
+            if ($schedule->id != $scheduleDate->schedule_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Schedule date tidak sesuai dengan jadwal yang dipilih',
+                    'errors' => ['schedule_date_id' => ['Schedule date tidak sesuai dengan jadwal']]
+                ], 422);
+            }
+
+            if ($scheduleDate->status !== 'ACTIVE') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Jadwal untuk tanggal ini tidak aktif',
+                    'errors' => ['departure_date' => ['Jadwal untuk tanggal ini tidak aktif']]
+                ], 422);
+            }
+
+            // Cek kapasitas penumpang
+            if (($scheduleDate->passenger_count + $validated['passenger_count']) > $schedule->ferry->capacity_passenger) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Kapasitas penumpang tidak mencukupi',
+                    'errors' => ['passenger_count' => ['Kapasitas penumpang tidak mencukupi']]
+                ], 422);
+            }
+
+            // Cek kapasitas kendaraan
+            $vehicleCounts = [
+                'MOTORCYCLE' => 0,
+                'CAR' => 0,
+                'BUS' => 0,
+                'TRUCK' => 0  // Termasuk PICKUP dan TRONTON
+            ];
+
+            foreach ($validated['vehicles'] ?? [] as $vehicle) {
+                $type = $vehicle['type'];
+                if (in_array($type, ['TRUCK', 'PICKUP', 'TRONTON'])) {
+                    $vehicleCounts['TRUCK']++;
+                } else {
+                    $vehicleCounts[$type]++;
+                }
+            }
+
+            if (($scheduleDate->motorcycle_count + $vehicleCounts['MOTORCYCLE']) > $schedule->ferry->capacity_vehicle_motorcycle) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Kapasitas motor tidak mencukupi',
+                    'errors' => ['vehicles' => ['Kapasitas motor tidak mencukupi']]
+                ], 422);
+            }
+
+            if (($scheduleDate->car_count + $vehicleCounts['CAR']) > $schedule->ferry->capacity_vehicle_car) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Kapasitas mobil tidak mencukupi',
+                    'errors' => ['vehicles' => ['Kapasitas mobil tidak mencukupi']]
+                ], 422);
+            }
+
+            if (($scheduleDate->bus_count + $vehicleCounts['BUS']) > $schedule->ferry->capacity_vehicle_bus) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Kapasitas bus tidak mencukupi',
+                    'errors' => ['vehicles' => ['Kapasitas bus tidak mencukupi']]
+                ], 422);
+            }
+
+            if (($scheduleDate->truck_count + $vehicleCounts['TRUCK']) > $schedule->ferry->capacity_vehicle_truck) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Kapasitas truk tidak mencukupi',
+                    'errors' => ['vehicles' => ['Kapasitas truk tidak mencukupi']]
+                ], 422);
+            }
+
+            DB::beginTransaction();
+            try {
+                // Buat booking baru
+                $booking = new Booking([
+                    'booking_code' => 'FBS-' . strtoupper(Str::random(8)),
+                    'user_id' => $validated['user_id'] ?? Auth::id(), // Gunakan ID admin jika user_id tidak diisi
+                    'schedule_id' => $validated['schedule_id'],
+                    'departure_date' => $validated['departure_date'],
+                    'passenger_count' => $validated['passenger_count'],
+                    'vehicle_count' => count($validated['vehicles'] ?? []),
+                    'total_amount' => $validated['total_amount'],
+                    'status' => 'CONFIRMED', // Langsung konfirmasi karena admin yang membuat
+                    'booked_by' => 'COUNTER', // Menandakan bahwa booking dilakukan di counter
+                    'booking_channel' => 'ADMIN', // Menandakan bahwa booking dilakukan oleh admin
+                    'notes' => 'Booking dibuat oleh admin',
+                ]);
+
+                // Tambahkan catatan untuk penumpang offline jika tidak ada user_id
+                if (!isset($validated['user_id']) && isset($validated['customer_name'])) {
+                    $customerInfo = "Pembelian di loket oleh: " . $validated['customer_name'];
+                    if (isset($validated['customer_contact'])) {
+                        $customerInfo .= " | Kontak: " . $validated['customer_contact'];
+                    }
+                    $booking->notes = $customerInfo;
+                }
+
+                $booking->save();
+
+                // Buat tiket untuk setiap penumpang
+                foreach ($validated['passengers'] as $passenger) {
+                    $ticket = new Ticket([
+                        'ticket_code' => 'TKT-' . strtoupper(Str::random(8)),
+                        'booking_id' => $booking->id,
+                        'qr_code' => 'QR-' . strtoupper(Str::random(12)),
+                        'passenger_name' => $passenger['name'],
+                        'passenger_id_number' => $passenger['id_number'] ?? null,
+                        'passenger_id_type' => $passenger['id_type'] ?? null,
+                        'boarding_status' => 'NOT_BOARDED',
+                        'status' => 'ACTIVE',
+                        'checked_in' => false,
+                        'ticket_type' => 'PASSENGER'
+                    ]);
+
+                    $ticket->save();
+                }
+
+                // Buat data kendaraan jika ada
+                foreach ($validated['vehicles'] ?? [] as $vehicleData) {
+                    $vehicle = new Vehicle([
+                        'booking_id' => $booking->id,
+                        'user_id' => $validated['user_id'],
+                        'type' => $vehicleData['type'],
+                        'vehicle_category_id' => $vehicleData['category_id'],
+                        'license_plate' => $vehicleData['license_plate'],
+                        'brand' => $vehicleData['brand'] ?? null,
+                        'model' => $vehicleData['model'] ?? null
+                    ]);
+
+                    $vehicle->save();
+                }
+
+                // Buat pembayaran
+                $payment = new Payment([
+                    'booking_id' => $booking->id,
+                    'amount' => $validated['total_amount'],
+                    'payment_method' => $validated['payment_method'],
+                    'payment_channel' => 'COUNTER',
+                    'status' => 'SUCCESS', // Langsung success karena admin yang input
+                    'payment_date' => now()
+                ]);
+
+                $payment->save();
+
+                // Update kapasitas jadwal
+                $scheduleDate->passenger_count += $validated['passenger_count'];
+                $scheduleDate->motorcycle_count += $vehicleCounts['MOTORCYCLE'];
+                $scheduleDate->car_count += $vehicleCounts['CAR'];
+                $scheduleDate->bus_count += $vehicleCounts['BUS'];
+                $scheduleDate->truck_count += $vehicleCounts['TRUCK'];
+                $scheduleDate->save();
+
+                // Buat log booking
+                $bookingLog = new BookingLog([
+                    'booking_id' => $booking->id,
+                    'previous_status' => 'NEW',
+                    'new_status' => 'CONFIRMED',
+                    'changed_by_type' => 'ADMIN',
+                    'changed_by_id' => Auth::id(),
+                    'notes' => 'Booking dibuat oleh admin di counter',
+                    'ip_address' => $request->ip()
+                ]);
+
+                $bookingLog->save();
+
+                DB::commit();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Booking berhasil dibuat',
+                    'data' => [
+                        'booking' => $booking->fresh()->load(['user', 'schedule.route', 'schedule.ferry', 'tickets', 'vehicles', 'payments']),
+                    ]
+                ], 201);
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error('Error creating booking: ' . $e->getMessage());
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal membuat booking: ' . $e->getMessage()
+                ], 500);
+            }
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error in store booking: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membuat booking: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Menampilkan detail booking
      *
      * @param int $id

@@ -1,5 +1,5 @@
 <?php
-// app/Console/Kernel.php
+
 namespace App\Console;
 
 use Illuminate\Console\Scheduling\Schedule;
@@ -8,11 +8,8 @@ use Illuminate\Support\Facades\Log;
 
 class Kernel extends ConsoleKernel
 {
-    // File: app/Console/Kernel.php
-
     protected function schedule(Schedule $schedule)
     {
-        // Command yang sudah ada
         $schedule->command('tickets:manage-statuses')
             ->everyMinute()
             ->withoutOverlapping()

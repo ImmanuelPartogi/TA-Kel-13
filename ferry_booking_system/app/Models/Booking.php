@@ -186,8 +186,24 @@ class Booking extends Model
     public function scopeRefundable($query)
     {
         return $query->whereIn('status', [self::STATUS_CONFIRMED, self::STATUS_COMPLETED])
-            ->whereDoesntHave('refunds', function($q) {
+            ->whereDoesntHave('refunds', function ($q) {
                 $q->whereIn('status', ['PENDING', 'APPROVED', 'PROCESSING', 'COMPLETED']);
             });
+    }
+
+    /**
+     * Get the admin that created this booking (for counter bookings)
+     */
+    public function admin()
+    {
+        return $this->belongsTo(Admin::class, 'user_id');
+    }
+
+    /**
+     * Check if this booking is a counter booking
+     */
+    public function isCounterBooking()
+    {
+        return $this->booking_channel === 'ADMIN' && $this->booked_by === 'COUNTER';
     }
 }

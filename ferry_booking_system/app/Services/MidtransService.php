@@ -30,7 +30,7 @@ class MidtransService
     }
 
     /**
-     * Membuat transaksi dengan implementasi yang sesuai dokumentasi Midtrans
+     * Membuat transaksi
      */
     public function createTransaction(Booking $booking, array $options = [])
     {

@@ -35,6 +35,7 @@ import AdminScheduleDates from './pages/admin/schedules/ScheduleDates';
 import AdminBookingList from './pages/admin/bookings/BookingsList';
 import AdminBookingReschedule from './pages/admin/bookings/BookingReschedule';
 import AdminBookingShow from './pages/admin/bookings/BookingShow';
+import AdminBookingCreate from './pages/admin/bookings/BookingCreate';
 
 // Admin pages - Refunds
 import AdminRefundList from './pages/admin/refunds/RefundsList';
@@ -171,6 +172,7 @@ function App() {
           <Route path="bookings" element={<AdminBookingList />} />
           <Route path="bookings/:id/reschedule" element={<AdminBookingReschedule />} />
           <Route path="bookings/:id" element={<AdminBookingShow />} />
+          <Route path="bookings/create" element={<AdminBookingCreate />} />
 
           {/* *** REFUNDS MANAGEMENT - FIXED ORDER *** */}
           {/* IMPORTANT: Specific routes MUST come before parameterized routes */}

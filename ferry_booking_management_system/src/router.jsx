@@ -34,6 +34,8 @@ import AdminEdit from './pages/admin/admins/AdminEdit';
 import AdminShow from './pages/admin/admins/AdminShow';
 import AdminBookingList from './pages/admin/bookings/BookingsList';
 import AdminBookingShow from './pages/admin/bookings/BookingShow';
+import AdminBookingCreate from './pages/admin/bookings/BookingCreate';
+import AdminBookingReschedule from './pages/admin/bookings/BookingReschedule';
 import AdminReportIndex from './pages/admin/reports/ReportIndex';
 import BookingReport from './pages/admin/reports/BookingReport';
 import RevenueReport from './pages/admin/reports/RevenueReport';
@@ -323,6 +325,10 @@ const router = createBrowserRouter([
       {
         path: 'bookings/:id/reschedule',
         element: <Navigate to="/admin/bookings/:id" replace />
+      },
+      {
+        path: 'bookings/create',
+        element: <AdminBookingCreate />
       },
 
       // Reports Management

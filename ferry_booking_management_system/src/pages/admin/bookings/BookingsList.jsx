@@ -239,6 +239,13 @@ const BookingsList = () => {
                 <p className="mt-1 text-blue-100">Kelola seluruh booking tiket kapal ferry dalam sistem</p>
               </div>
             </div>
+
+            <div>
+              <Link to="/admin/bookings/create"
+                className="inline-flex items-center px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all duration-300 border border-white/20 shadow-sm">
+                <i className="fas fa-plus mr-2"></i> Tambah Pemesanan
+              </Link>
+            </div>
           </div>
 
           {/* Quick Stats */}
@@ -565,6 +572,14 @@ const BookingsList = () => {
                             </div>
                             <div className="ml-4">
                               <div className="text-sm font-medium text-gray-900">{booking.user?.name || 'N/A'}</div>
+                              {booking.booking_channel === 'ADMIN' && booking.booked_by === 'COUNTER' && (
+                                <div className="text-xs text-white bg-blue-500 rounded-full px-2 py-0.5 mt-1 inline-block">
+                                  <i className="fas fa-store-alt mr-1"></i> Pembelian Loket
+                                </div>
+                              )}
+                              {booking.notes && booking.notes.includes('Pembelian di loket oleh:') && (
+                                <div className="text-xs text-gray-500 mt-1">{booking.notes}</div>
+                              )}
                             </div>
                           </div>
                         </td>

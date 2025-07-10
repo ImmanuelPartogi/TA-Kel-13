@@ -36,7 +36,7 @@ const BookingCreate = () => {
         passenger_count: 1,
         vehicle_categories: [],
         vehicle_count: 0,
-        
+
         // Step 2: Pemilihan jadwal
         schedule_id: '',
         schedule_date_id: '',
@@ -44,27 +44,27 @@ const BookingCreate = () => {
         route_info: '',
         departure_time: '',
         arrival_time: '',
-        
+
         // Step 3: Data penumpang dan kendaraan
         user_id: '',
         user: null,
-        passengers: [{ 
-            name: '', 
-            id_number: '', 
-            id_type: 'KTP' 
+        passengers: [{
+            name: '',
+            id_number: '',
+            id_type: 'KTP'
         }],
         vehicles: [],
-        
+
         // Data untuk pelanggan loket
         customerType: 'counter', // Default ke pembelian di loket
         customer_name: '',
         customer_contact: '',
-        
+
         // Informasi pembayaran
         payment_method: 'CASH',
         payment_status: 'PENDING',
         total_amount: 0,
-        
+
         // Metadata
         created_by: 'ADMIN',
         booking_channel: 'COUNTER',
@@ -136,7 +136,7 @@ const BookingCreate = () => {
         } else {
             setSearchResults([]);
         }
-        
+
         // Cleanup function to cancel debounced search on unmount
         return () => {
             debouncedSearch.cancel();
@@ -168,10 +168,10 @@ const BookingCreate = () => {
         if (!bookingData.route_id) errors.route = 'Harap pilih rute';
         if (!bookingData.date) errors.date = 'Harap pilih tanggal';
         if (bookingData.passenger_count < 1) errors.passenger_count = 'Jumlah penumpang minimal 1';
-        
+
         if (Object.keys(errors).length > 0) {
             setFormErrors({ ...formErrors, ...errors });
-            
+
             // Tampilkan pesan error pertama
             const firstError = Object.values(errors)[0];
             toast.error(firstError);
@@ -196,16 +196,16 @@ const BookingCreate = () => {
                         id: vc.id,
                         count: vc.count
                     }));
-                
+
                 params.vehicle_categories = JSON.stringify(vehicleCategoriesData);
             }
 
             console.log('Mencari jadwal dengan parameter:', params);
-            
+
             const response = await api.get('/admin-panel/bookings/get-schedules', { params });
-            
+
             console.log('Schedule response:', response.data);
-            
+
             if (response.data.success) {
                 setSchedules(response.data.data);
                 setFormStage(2);
@@ -214,12 +214,12 @@ const BookingCreate = () => {
             }
         } catch (error) {
             console.error('Error fetching schedules:', error);
-            
+
             // Tampilkan pesan error yang lebih informatif
-            const errorMessage = error.response?.data?.message || 
-                                'Gagal memuat jadwal tersedia. Silakan coba lagi.';
+            const errorMessage = error.response?.data?.message ||
+                'Gagal memuat jadwal tersedia. Silakan coba lagi.';
             toast.error(errorMessage);
-            
+
             // Log detail error untuk debugging
             if (error.response?.data?.errors) {
                 console.error('Validation errors:', error.response.data.errors);
@@ -235,29 +235,29 @@ const BookingCreate = () => {
             toast.error('Jadwal tidak valid, silakan pilih jadwal lain');
             return;
         }
-        
+
         // Pastikan jadwal memiliki informasi penting
         if (!schedule.schedule_date_id) {
             toast.error('Data jadwal tidak lengkap. Silakan refresh halaman dan coba lagi');
             return;
         }
-        
+
         // Periksa ketersediaan kapasitas
         if (schedule.available_passenger < bookingData.passenger_count) {
             toast.error(`Kapasitas penumpang tidak mencukupi. Tersedia: ${schedule.available_passenger}, dibutuhkan: ${bookingData.passenger_count}`);
             return;
         }
-        
+
         // Verifikasi ketersediaan kendaraan jika ada
         const vehicleCategories = bookingData.vehicle_categories.filter(vc => vc.count > 0);
         let vehicleError = false;
-        
+
         vehicleCategories.forEach(vc => {
             const category = vehicleCategories.find(c => c.id === vc.id);
             if (!category) return;
-            
+
             // Periksa ketersediaan berdasarkan tipe kendaraan
-            switch(category.vehicle_type) {
+            switch (category.vehicle_type) {
                 case 'MOTORCYCLE':
                     if (schedule.available_motorcycle < vc.count) {
                         toast.error(`Kapasitas motor tidak mencukupi. Tersedia: ${schedule.available_motorcycle}, dibutuhkan: ${vc.count}`);
@@ -287,9 +287,9 @@ const BookingCreate = () => {
                     break;
             }
         });
-        
+
         if (vehicleError) return;
-        
+
         // Simpan data jadwal dengan informasi lengkap
         setSelectedSchedule(schedule);
         setBookingData({
@@ -302,11 +302,11 @@ const BookingCreate = () => {
             departure_time: schedule.departure_time,
             arrival_time: schedule.arrival_time
         });
-        
+
         // Log untuk debugging
         console.log('Jadwal dipilih:', schedule);
         console.log('Data booking diperbarui:', bookingData);
-        
+
         setFormStage(3);
     };
 
@@ -366,7 +366,7 @@ const BookingCreate = () => {
             ...bookingData,
             passengers: updatedPassengers
         });
-        
+
         // Reset error for passengers if necessary
         if (field === 'name' && value.trim() !== '') {
             setFormErrors({
@@ -379,27 +379,27 @@ const BookingCreate = () => {
     // Add vehicle field
     const addVehicle = () => {
         const totalVehicles = bookingData.vehicle_categories.reduce((sum, vc) => sum + vc.count, 0);
-        
+
         if (bookingData.vehicles.length < totalVehicles) {
             // Find the first vehicle category with remaining count
             const categories = bookingData.vehicle_categories.filter(vc => {
-                const existingCount = bookingData.vehicles.filter(v => 
+                const existingCount = bookingData.vehicles.filter(v =>
                     v.category_id === vc.id).length;
                 return existingCount < vc.count;
             });
-            
+
             const defaultCategory = categories.length > 0 ? categories[0] : null;
-            
+
             setBookingData({
                 ...bookingData,
                 vehicles: [
                     ...bookingData.vehicles,
-                    { 
-                        type: defaultCategory?.type || 'CAR', 
-                        category_id: defaultCategory?.id || '', 
-                        license_plate: '', 
-                        brand: '', 
-                        model: '' 
+                    {
+                        type: defaultCategory?.type || 'CAR',
+                        category_id: defaultCategory?.id || '',
+                        license_plate: '',
+                        brand: '',
+                        model: ''
                     }
                 ]
             });
@@ -444,7 +444,7 @@ const BookingCreate = () => {
             ...bookingData,
             vehicles: updatedVehicles
         });
-        
+
         // Reset error for vehicles if necessary
         if ((field === 'license_plate' || field === 'category_id') && value.trim() !== '') {
             setFormErrors({
@@ -458,14 +458,14 @@ const BookingCreate = () => {
     const handleVehicleCategoryChange = (categoryId, count) => {
         // Pastikan count adalah integer non-negatif
         const validCount = Math.max(0, parseInt(count) || 0);
-        
+
         // Buat salinan array agar tidak memodifikasi state langsung
         const updatedCategories = [...bookingData.vehicle_categories];
         const existingIndex = updatedCategories.findIndex(vc => vc.id === categoryId);
-        
+
         // Temukan data kategori untuk menambahkan informasi tambahan
         const categoryData = vehicleCategories.find(cat => cat.id === categoryId);
-        
+
         if (existingIndex >= 0) {
             if (validCount > 0) {
                 // Update data yang sudah ada dengan informasi tambahan
@@ -491,17 +491,17 @@ const BookingCreate = () => {
                 price: categoryData?.base_price || 0
             });
         }
-        
+
         // Hitung total kendaraan untuk digunakan dalam UI
         const totalVehicles = updatedCategories.reduce((sum, vc) => sum + vc.count, 0);
-        
+
         // Update state
         setBookingData({
             ...bookingData,
             vehicle_categories: updatedCategories,
             vehicle_count: totalVehicles
         });
-        
+
         // Jika kendaraan dihapus, hapus juga data kendaraan yang terkait
         if (totalVehicles < bookingData.vehicles.length) {
             // Pertahankan hanya sejumlah kendaraan yang dibutuhkan
@@ -512,11 +512,11 @@ const BookingCreate = () => {
             }));
         }
     };
-    
+
     // Validasi form booking
     const validateBooking = () => {
         const errors = {};
-        
+
         // Validasi pengguna atau data pelanggan loket
         if (bookingData.customerType === 'registered' && !bookingData.user_id) {
             errors.user = 'Harap pilih pengguna terlebih dahulu';
@@ -562,27 +562,27 @@ const BookingCreate = () => {
             ...formErrors,
             ...errors
         });
-        
+
         // Jika ada error, tampilkan error pertama
         if (Object.keys(errors).length > 0) {
             toast.error(Object.values(errors)[0]);
             return false;
         }
-        
+
         return true;
     };
 
     // Create booking dengan validasi dan penanganan error yang lebih baik
     const handleCreateBooking = async (e) => {
         e.preventDefault();
-        
+
         // Validasi form sebelum submit
         if (!validateBooking()) {
             return;
         }
-        
+
         setLoading(true);
-        
+
         try {
             // Persiapkan data yang akan dikirim dengan format yang benar
             const bookingPayload = {
@@ -633,7 +633,7 @@ const BookingCreate = () => {
             }
         } catch (error) {
             console.error('Error creating booking:', error);
-            
+
             // Tangani berbagai jenis error dengan lebih baik
             if (error.response) {
                 // Error dengan respons dari server
@@ -730,11 +730,11 @@ const BookingCreate = () => {
                                     name="passenger_count"
                                     className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                     value={bookingData.passenger_count}
-                                    onChange={(e) => setBookingData({ 
-                                        ...bookingData, 
+                                    onChange={(e) => setBookingData({
+                                        ...bookingData,
                                         passenger_count: parseInt(e.target.value) || 1,
                                         // Adjust passengers array based on new count
-                                        passengers: Array(parseInt(e.target.value) || 1).fill().map((_, i) => 
+                                        passengers: Array(parseInt(e.target.value) || 1).fill().map((_, i) =>
                                             bookingData.passengers[i] || { name: '', id_number: '', id_type: 'KTP' }
                                         ).slice(0, parseInt(e.target.value) || 1)
                                     })}
@@ -905,7 +905,7 @@ const BookingCreate = () => {
 
                         <div className="space-y-4">
                             <h3 className="text-lg font-medium text-gray-800">Data Pelanggan</h3>
-                            
+
                             <div className="bg-blue-50 p-4 rounded-md border border-blue-100 mb-4">
                                 <div className="flex items-center mb-2">
                                     <i className="fas fa-info-circle text-blue-500 mr-2"></i>
@@ -917,65 +917,121 @@ const BookingCreate = () => {
                                 </ul>
                             </div>
 
-                            <div className="flex space-x-4 mb-4">
-                                <div className="flex items-center">
-                                    <input
-                                        type="radio"
-                                        id="option_registered"
-                                        name="customer_type"
-                                        value="registered"
-                                        checked={bookingData.customerType === 'registered'}
-                                        onChange={() => setBookingData({...bookingData, customerType: 'registered', customer_name: '', customer_contact: ''})}
-                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500"
-                                    />
-                                    <label htmlFor="option_registered" className="ml-2 block text-sm text-gray-700">
-                                        Pengguna Terdaftar
-                                    </label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                <div
+                                    className={`border rounded-lg p-4 cursor-pointer transition-all ${bookingData.customerType === 'registered'
+                                        ? 'border-blue-500 bg-blue-50'
+                                        : 'border-gray-300 hover:border-gray-400'
+                                        }`}
+                                    onClick={() => setBookingData({ ...bookingData, customerType: 'registered', customer_name: '', customer_contact: '' })}
+                                >
+                                    <div className="flex items-start">
+                                        <div className="flex items-center h-5">
+                                            <input
+                                                type="radio"
+                                                id="option_registered"
+                                                name="customer_type"
+                                                value="registered"
+                                                checked={bookingData.customerType === 'registered'}
+                                                onChange={() => { }}
+                                                className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                                            />
+                                        </div>
+                                        <div className="ml-3 text-sm">
+                                            <label htmlFor="option_registered" className="font-medium text-gray-900">Pengguna Terdaftar</label>
+                                            <p className="text-gray-500">Pilih opsi ini untuk mencari dan memilih pengguna yang sudah terdaftar dalam sistem. Tiket akan terhubung dengan akun pengguna.</p>
+                                            <div className="mt-2 flex items-center text-blue-600">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                </svg>
+                                                <span className="text-sm font-medium">Dapat mengakses tiket dari aplikasi</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="flex items-center">
-                                    <input
-                                        type="radio"
-                                        id="option_counter"
-                                        name="customer_type"
-                                        value="counter"
-                                        checked={bookingData.customerType === 'counter'}
-                                        onChange={() => setBookingData({...bookingData, customerType: 'counter', user_id: '', user: null})}
-                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500"
-                                    />
-                                    <label htmlFor="option_counter" className="ml-2 block text-sm text-gray-700">
-                                        Pembelian di Loket
-                                    </label>
+
+                                <div
+                                    className={`border rounded-lg p-4 cursor-pointer transition-all ${bookingData.customerType === 'counter'
+                                        ? 'border-blue-500 bg-blue-50'
+                                        : 'border-gray-300 hover:border-gray-400'
+                                        }`}
+                                    onClick={() => setBookingData({ ...bookingData, customerType: 'counter', user_id: '', user: null })}
+                                >
+                                    <div className="flex items-start">
+                                        <div className="flex items-center h-5">
+                                            <input
+                                                type="radio"
+                                                id="option_counter"
+                                                name="customer_type"
+                                                value="counter"
+                                                checked={bookingData.customerType === 'counter'}
+                                                onChange={() => { }}
+                                                className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                                            />
+                                        </div>
+                                        <div className="ml-3 text-sm">
+                                            <label htmlFor="option_counter" className="font-medium text-gray-900">Pembelian di Loket</label>
+                                            <p className="text-gray-500">Pilih opsi ini untuk pembelian langsung di loket oleh pelanggan yang tidak memiliki akun terdaftar.</p>
+                                            <div className="mt-2 flex items-center text-green-600">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                                </svg>
+                                                <span className="text-sm font-medium">Cetak tiket fisik di loket</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
                             {bookingData.customerType === 'registered' && (
-                                <div className="relative">
-                                    <input
-                                        type="text"
-                                        placeholder="Cari pengguna berdasarkan nama/email/telepon (min. 3 karakter)"
-                                        className={`block w-full px-3 py-2 border ${formErrors.user || searchError ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
-                                        onChange={handleSearchUser}
-                                        value={searchTerm}
-                                        disabled={bookingData.user_id !== ''}
-                                    />
+                                <div className="bg-white shadow-sm rounded-md p-4 border border-gray-200">
+                                    <div className="flex items-center mb-3">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                        </svg>
+                                        <h4 className="text-md font-medium text-gray-700">Cari Pengguna Terdaftar</h4>
+                                    </div>
 
-                                    {searchingUser && (
-                                        <div className="absolute right-3 top-2">
-                                            <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                             </svg>
                                         </div>
-                                    )}
-                                    
+                                        <input
+                                            type="text"
+                                            placeholder="Cari berdasarkan nama, email, atau telepon"
+                                            className={`block w-full pl-10 pr-12 py-2 border ${formErrors.user || searchError ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
+                                            onChange={handleSearchUser}
+                                            value={searchTerm}
+                                            disabled={bookingData.user_id !== ''}
+                                        />
+
+                                        {searchingUser && (
+                                            <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                                <svg className="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="mt-2 text-sm text-gray-500 flex items-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span>Ketik minimal 3 karakter untuk memulai pencarian</span>
+                                    </div>
+
                                     {searchError && !searchingUser && (
                                         <p className="mt-1 text-sm text-red-600">{searchError}</p>
                                     )}
-                                    
+
                                     {searchTerm.length > 0 && searchTerm.length < 3 && (
                                         <p className="mt-1 text-sm text-gray-500">Masukkan minimal 3 karakter untuk memulai pencarian</p>
                                     )}
-                                    
+
                                     {formErrors.user && (
                                         <p className="mt-1 text-sm text-red-600">{formErrors.user}</p>
                                     )}
@@ -1024,29 +1080,71 @@ const BookingCreate = () => {
                             )}
 
                             {bookingData.customerType === 'counter' && (
-                                <div className="bg-yellow-50 p-4 rounded-md border border-yellow-100">
+                                <div className="bg-white shadow-sm rounded-md p-4 border border-gray-200">
+                                    <div className="flex items-center mb-3">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                        <h4 className="text-md font-medium text-gray-700">Data Pelanggan Loket</h4>
+                                    </div>
+
+                                    <div className="bg-blue-50 p-3 rounded-md border border-blue-100 mb-4">
+                                        <div className="flex items-center text-sm text-blue-700">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <span>Masukkan data pembeli untuk pembelian di loket. Tiket akan diterbitkan atas nama ini dan <strong>tidak terhubung dengan akun pengguna</strong>.</span>
+                                        </div>
+                                    </div>
+
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Nama Pelanggan *</label>
-                                            <input
-                                                type="text"
-                                                value={bookingData.customer_name || ''}
-                                                onChange={(e) => setBookingData({...bookingData, customer_name: e.target.value})}
-                                                className={`block w-full px-3 py-2 border ${formErrors.customer ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
-                                                required={bookingData.customerType === 'counter'}
-                                            />
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Nama Pelanggan <span className="text-red-500">*</span>
+                                            </label>
+                                            <div className="relative">
+                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                    </svg>
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    value={bookingData.customer_name || ''}
+                                                    onChange={(e) => setBookingData({ ...bookingData, customer_name: e.target.value })}
+                                                    className={`block w-full pl-10 px-3 py-2 border ${formErrors.customer ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
+                                                    required={bookingData.customerType === 'counter'}
+                                                    placeholder="Masukkan nama lengkap"
+                                                />
+                                            </div>
                                             {formErrors.customer && (
-                                                <p className="mt-1 text-sm text-red-600">{formErrors.customer}</p>
+                                                <p className="mt-1 text-sm text-red-600 flex items-center">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                    </svg>
+                                                    {formErrors.customer}
+                                                </p>
                                             )}
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Nomor Kontak (Opsional)</label>
-                                            <input
-                                                type="text"
-                                                value={bookingData.customer_contact || ''}
-                                                onChange={(e) => setBookingData({...bookingData, customer_contact: e.target.value})}
-                                                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                            />
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Nomor Kontak <span className="text-gray-500">(Opsional)</span>
+                                            </label>
+                                            <div className="relative">
+                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                                    </svg>
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    value={bookingData.customer_contact || ''}
+                                                    onChange={(e) => setBookingData({ ...bookingData, customer_contact: e.target.value })}
+                                                    className="block w-full pl-10 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                                    placeholder="Nomor telepon/HP"
+                                                />
+                                            </div>
+                                            <p className="mt-1 text-xs text-gray-500">Digunakan untuk menghubungi pelanggan jika diperlukan</p>
                                         </div>
                                     </div>
                                 </div>
@@ -1344,7 +1442,7 @@ const BookingCreate = () => {
                         {/* Ringkasan Pemesanan */}
                         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
                             <h3 className="text-lg font-medium text-gray-800 mb-4">Ringkasan Pemesanan</h3>
-                            
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <h4 className="font-medium text-gray-700 mb-2">Informasi Jadwal</h4>
@@ -1361,7 +1459,7 @@ const BookingCreate = () => {
                                         <span className="font-medium">Kapal:</span> {bookingData.ferry_name}
                                     </p>
                                 </div>
-                                
+
                                 <div>
                                     <h4 className="font-medium text-gray-700 mb-2">Informasi Penumpang & Kendaraan</h4>
                                     <p className="text-sm text-gray-600">
@@ -1379,20 +1477,20 @@ const BookingCreate = () => {
                                     )}
                                 </div>
                             </div>
-                            
+
                             <div className="mt-4 pt-4 border-t border-gray-200">
                                 <div className="flex justify-between items-center">
                                     <span className="text-gray-700">Subtotal Penumpang ({bookingData.passenger_count}x):</span>
                                     <span className="font-medium">{formatCurrency(selectedSchedule?.passenger_price * bookingData.passenger_count || 0)}</span>
                                 </div>
-                                
+
                                 {bookingData.vehicle_categories.length > 0 && (
                                     <div className="flex justify-between items-center mt-1">
                                         <span className="text-gray-700">Subtotal Kendaraan:</span>
                                         <span className="font-medium">{formatCurrency(selectedSchedule?.vehicle_price || 0)}</span>
                                     </div>
                                 )}
-                                
+
                                 <div className="flex justify-between items-center mt-2 text-lg font-bold">
                                     <span className="text-gray-800">Total:</span>
                                     <span className="text-blue-600">{formatCurrency(bookingData.total_amount)}</span>
@@ -1442,11 +1540,21 @@ const BookingCreate = () => {
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div className="flex items-start">
                         <div className="bg-white/20 backdrop-blur-sm p-3 rounded-lg mr-4">
-                            <i className="fas fa-ticket-alt text-xl"></i>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                            </svg>
                         </div>
                         <div>
                             <h1 className="text-2xl font-bold">Buat Booking Baru</h1>
-                            <p className="mt-1 text-blue-100">Pembuatan booking oleh admin untuk pelanggan di counter/loket</p>
+                            <p className="mt-1 text-blue-100">Buat pemesanan tiket untuk pelanggan di loket atau pengguna terdaftar</p>
+                        </div>
+                    </div>
+                    <div className="bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg">
+                        <div className="flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="text-sm">Booking yang dibuat oleh admin akan langsung berstatus <strong>CONFIRMED</strong></span>
                         </div>
                     </div>
                 </div>
@@ -1456,26 +1564,49 @@ const BookingCreate = () => {
             <div className="p-6">
                 {/* Stepper */}
                 <div className="mb-8">
-                    <div className="flex items-center justify-center">
-                        <div className="flex items-center">
-                            <div className={`flex items-center justify-center rounded-full h-8 w-8 ${formStage >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'}`}>
+                    <div className="flex flex-col md:flex-row items-center justify-center">
+                        <div className="flex items-center mb-2 md:mb-0">
+                            <div className={`flex items-center justify-center rounded-full h-10 w-10 ${formStage >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'}`}>
                                 1
                             </div>
-                            <span className={`ml-2 text-sm font-medium ${formStage >= 1 ? 'text-blue-600' : 'text-gray-500'}`}>Pilih Rute</span>
+                            <div className="ml-3">
+                                <span className={`text-sm font-medium ${formStage >= 1 ? 'text-blue-600' : 'text-gray-500'}`}>Pilih Rute</span>
+                                <p className="text-xs text-gray-500 hidden md:block">Tentukan rute dan tanggal</p>
+                            </div>
                         </div>
-                        <div className={`flex-1 h-0.5 mx-4 ${formStage >= 2 ? 'bg-blue-600' : 'bg-gray-200'}`}></div>
-                        <div className="flex items-center">
-                            <div className={`flex items-center justify-center rounded-full h-8 w-8 ${formStage >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'}`}>
+                        <div className={`hidden md:block flex-1 h-0.5 mx-4 ${formStage >= 2 ? 'bg-blue-600' : 'bg-gray-200'}`}></div>
+                        <div className="flex items-center mb-2 md:mb-0">
+                            <div className={`flex items-center justify-center rounded-full h-10 w-10 ${formStage >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'}`}>
                                 2
                             </div>
-                            <span className={`ml-2 text-sm font-medium ${formStage >= 2 ? 'text-blue-600' : 'text-gray-500'}`}>Pilih Jadwal</span>
+                            <div className="ml-3">
+                                <span className={`text-sm font-medium ${formStage >= 2 ? 'text-blue-600' : 'text-gray-500'}`}>Pilih Jadwal</span>
+                                <p className="text-xs text-gray-500 hidden md:block">Pilih jadwal keberangkatan</p>
+                            </div>
                         </div>
-                        <div className={`flex-1 h-0.5 mx-4 ${formStage >= 3 ? 'bg-blue-600' : 'bg-gray-200'}`}></div>
+                        <div className={`hidden md:block flex-1 h-0.5 mx-4 ${formStage >= 3 ? 'bg-blue-600' : 'bg-gray-200'}`}></div>
                         <div className="flex items-center">
-                            <div className={`flex items-center justify-center rounded-full h-8 w-8 ${formStage >= 3 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'}`}>
+                            <div className={`flex items-center justify-center rounded-full h-10 w-10 ${formStage >= 3 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'}`}>
                                 3
                             </div>
-                            <span className={`ml-2 text-sm font-medium ${formStage >= 3 ? 'text-blue-600' : 'text-gray-500'}`}>Data Penumpang</span>
+                            <div className="ml-3">
+                                <span className={`text-sm font-medium ${formStage >= 3 ? 'text-blue-600' : 'text-gray-500'}`}>Data Penumpang</span>
+                                <p className="text-xs text-gray-500 hidden md:block">Masukkan data penumpang dan pembayaran</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Deskripsi tahap saat ini */}
+                    <div className="mt-4 bg-gray-50 p-3 rounded-md border border-gray-200">
+                        <div className="flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="text-sm text-gray-700">
+                                {formStage === 1 && "Langkah 1: Pilih rute, tanggal keberangkatan, jumlah penumpang, dan kendaraan (opsional)."}
+                                {formStage === 2 && "Langkah 2: Pilih jadwal keberangkatan yang tersedia berdasarkan kriteria yang Anda pilih sebelumnya."}
+                                {formStage === 3 && "Langkah 3: Masukkan data penumpang, kendaraan, dan metode pembayaran untuk menyelesaikan booking."}
+                            </span>
                         </div>
                     </div>
                 </div>

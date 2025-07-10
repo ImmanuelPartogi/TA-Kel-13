@@ -466,7 +466,7 @@ class BookingController extends Controller
                 // Buat booking baru
                 $booking = new Booking([
                     'booking_code' => 'FBS-' . strtoupper(Str::random(8)),
-                    'user_id' => $validated['user_id'] ?? Auth::id(), // Gunakan ID admin jika user_id tidak diisi
+                    'user_id' => $validated['user_id'] ?? null, // NULL untuk pembelian loket
                     'schedule_id' => $validated['schedule_id'],
                     'departure_date' => $validated['departure_date'],
                     'passenger_count' => $validated['passenger_count'],
@@ -475,16 +475,31 @@ class BookingController extends Controller
                     'status' => 'CONFIRMED', // Langsung konfirmasi karena admin yang membuat
                     'booked_by' => 'COUNTER', // Menandakan bahwa booking dilakukan di counter
                     'booking_channel' => 'ADMIN', // Menandakan bahwa booking dilakukan oleh admin
-                    'notes' => 'Booking dibuat oleh admin',
+                    'notes' => isset($validated['user_id']) ? 'Booking dibuat oleh admin untuk pengguna terdaftar' : 'Booking dibuat oleh admin untuk pelanggan loket',
                 ]);
 
                 // Tambahkan catatan untuk penumpang offline jika tidak ada user_id
                 if (!isset($validated['user_id']) && isset($validated['customer_name'])) {
                     $customerInfo = "Pembelian di loket oleh: " . $validated['customer_name'];
-                    if (isset($validated['customer_contact'])) {
+                    if (isset($validated['customer_contact']) && !empty($validated['customer_contact'])) {
                         $customerInfo .= " | Kontak: " . $validated['customer_contact'];
                     }
                     $booking->notes = $customerInfo;
+
+                    // Log untuk pelanggan loket
+                    Log::info('Booking dibuat untuk pelanggan loket', [
+                        'customer_name' => $validated['customer_name'],
+                        'customer_contact' => $validated['customer_contact'] ?? 'Tidak ada',
+                        'admin_id' => Auth::id(),
+                        'booking_code' => $booking->booking_code
+                    ]);
+                } else if (isset($validated['user_id'])) {
+                    // Log untuk pengguna terdaftar
+                    Log::info('Booking dibuat untuk pengguna terdaftar', [
+                        'user_id' => $validated['user_id'],
+                        'admin_id' => Auth::id(),
+                        'booking_code' => $booking->booking_code
+                    ]);
                 }
 
                 $booking->save();
@@ -501,7 +516,7 @@ class BookingController extends Controller
                         'boarding_status' => 'NOT_BOARDED',
                         'status' => 'ACTIVE',
                         'checked_in' => false,
-                        'ticket_type' => 'PASSENGER'
+                        'ticket_type' => 'STANDARD'
                     ]);
 
                     $ticket->save();
@@ -511,7 +526,7 @@ class BookingController extends Controller
                 foreach ($validated['vehicles'] ?? [] as $vehicleData) {
                     $vehicle = new Vehicle([
                         'booking_id' => $booking->id,
-                        'user_id' => $validated['user_id'],
+                        'user_id' => $validated['user_id'] ?? null, // NULL untuk pembelian loket
                         'type' => $vehicleData['type'],
                         'vehicle_category_id' => $vehicleData['category_id'],
                         'license_plate' => $vehicleData['license_plate'],

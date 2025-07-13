@@ -369,10 +369,6 @@ class BookingController extends Controller
                 'schedule_date_id' => 'required|exists:schedule_dates,id',
                 'departure_date' => 'required|date|after_or_equal:today',
                 'passenger_count' => 'required|integer|min:1',
-                'passengers' => 'required|array|min:1',
-                'passengers.*.name' => 'required|string|max:255',
-                'passengers.*.id_number' => 'nullable|string|max:30',
-                'passengers.*.id_type' => 'nullable|string|in:KTP,SIM,PASSPORT,LAINNYA',
                 'vehicles' => 'nullable|array',
                 'vehicles.*.type' => 'required|string|in:MOTORCYCLE,CAR,BUS,TRUCK,PICKUP,TRONTON',
                 'vehicles.*.category_id' => 'required|exists:vehicle_categories,id',
@@ -504,15 +500,29 @@ class BookingController extends Controller
 
                 $booking->save();
 
-                // Buat tiket untuk setiap penumpang
-                foreach ($validated['passengers'] as $passenger) {
+                // Buat tiket berdasarkan jumlah penumpang
+                $ticketCount = $validated['passenger_count'];
+                for ($i = 0; $i < $ticketCount; $i++) {
+                    // Tentukan nama penumpang berdasarkan informasi yang tersedia
+                    $passengerName = '';
+                    if (isset($validated['user_id'])) {
+                        // Jika booking oleh pengguna terdaftar, gunakan nama pengguna
+                        $user = User::find($validated['user_id']);
+                        $passengerName = $user ? $user->name : 'Penumpang ' . ($i + 1);
+                    } else if (isset($validated['customer_name'])) {
+                        // Jika booking di loket, gunakan nama pelanggan
+                        $passengerName = $validated['customer_name'];
+                    } else {
+                        // Fallback
+                        $passengerName = 'Penumpang ' . ($i + 1);
+                    }
+
                     $ticket = new Ticket([
                         'ticket_code' => 'TKT-' . strtoupper(Str::random(8)),
                         'booking_id' => $booking->id,
                         'qr_code' => 'QR-' . strtoupper(Str::random(12)),
-                        'passenger_name' => $passenger['name'],
-                        'passenger_id_number' => $passenger['id_number'] ?? null,
-                        'passenger_id_type' => $passenger['id_type'] ?? null,
+                        'passenger_name' => $passengerName,
+                        'passenger_id_type' => 'KTP', // Default
                         'boarding_status' => 'NOT_BOARDED',
                         'status' => 'ACTIVE',
                         'checked_in' => false,

@@ -8,6 +8,9 @@ const RouteCreate = () => {
   const [errors, setErrors] = useState({});
   const [showReasonContainer, setShowReasonContainer] = useState(false);
   const [showExpiryDate, setShowExpiryDate] = useState(false);
+  const [validDestinations, setValidDestinations] = useState([]);
+  const [destinationError, setDestinationError] = useState('');
+
 
   const [formData, setFormData] = useState({
     route_code: '',
@@ -26,6 +29,30 @@ const RouteCreate = () => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
 
+    if (name === 'origin') {
+      // Reset field tujuan jika asal berubah
+      setFormData(prev => ({ ...prev, destination: '' }));
+
+      // Update daftar tujuan yang valid
+      const validDests = adminRouteService.getValidDestinations(value);
+      setValidDestinations(validDests);
+      setDestinationError('');
+    }
+
+    if (name === 'destination' && formData.origin) {
+      // Validasi kombinasi asal-tujuan
+      const isValid = adminRouteService.validateRouteOriginDestination(
+        formData.origin, value
+      );
+
+      if (!isValid) {
+        setDestinationError(`Tujuan ${value} tidak valid untuk asal ${formData.origin}`);
+      } else {
+        setDestinationError('');
+      }
+    }
+
+    // Kode status yang sudah ada
     if (name === 'status') {
       setShowReasonContainer(value !== 'ACTIVE');
       setShowExpiryDate(value === 'WEATHER_ISSUE');
@@ -34,6 +61,14 @@ const RouteCreate = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validasi asal-tujuan
+    if (!adminRouteService.validateRouteOriginDestination(
+      formData.origin, formData.destination
+    )) {
+      setErrors(['Kombinasi pelabuhan asal dan tujuan tidak valid']);
+      return;
+    }
     setLoading(true);
     setErrors([]);
 

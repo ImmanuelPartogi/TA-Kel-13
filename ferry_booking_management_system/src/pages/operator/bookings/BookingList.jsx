@@ -543,7 +543,7 @@ const BookingList = () => {
                                   </div>
                                 </div>
                                 <div className="ml-3">
-                                  <p className="text-sm font-medium text-gray-900">{booking.user?.name || 'Pengguna Tidak Ditemukan'}</p>
+                                  <p className="text-sm font-medium text-gray-900">{booking.user?.name || booking.notes}</p>
                                   <p className="text-xs text-gray-500">{booking.user?.email || ''}</p>
                                 </div>
                               </div>

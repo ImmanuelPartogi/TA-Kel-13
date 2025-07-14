@@ -1,6 +1,66 @@
 import { api } from './api';
 
 export class adminRouteService {
+  // Tambahkan pemetaan pelabuhan yang valid
+  validPortMappings = {
+    'Balige': ['Parapat', 'Samosir', 'Ajibata', 'Tomok', 'Onanrunggu'],
+    'Parapat': ['Balige', 'Samosir', 'Tomok'],
+    'Samosir': ['Balige', 'Parapat', 'Ajibata'],
+    'Ajibata': ['Balige', 'Samosir', 'Tomok'],
+    'Tomok': ['Parapat', 'Ajibata'],
+  };
+
+  /**
+   * Fungsi untuk validasi kombinasi asal dan tujuan
+   * @param {string} origin - Pelabuhan asal
+   * @param {string} destination - Pelabuhan tujuan
+   * @returns {boolean} - Apakah kombinasi valid
+   */
+  validateRouteOriginDestination(origin, destination) {
+    if (!origin || !destination) return true; // Biarkan validasi required menanganinya
+
+    // Ubah ke title case untuk standarisasi
+    const normalizedOrigin = this.normalizePortName(origin);
+    const normalizedDestination = this.normalizePortName(destination);
+
+    // Cek apakah asal ada dalam pemetaan
+    if (!this.validPortMappings[normalizedOrigin]) return false;
+
+    // Cek apakah tujuan valid untuk asal tersebut
+    return this.validPortMappings[normalizedOrigin].includes(normalizedDestination);
+  }
+
+  /**
+   * Fungsi bantuan untuk standarisasi nama pelabuhan
+   * @param {string} portName - Nama pelabuhan
+   * @returns {string} - Nama pelabuhan yang sudah distandarisasi
+   */
+  normalizePortName(portName) {
+    if (!portName) return '';
+    return portName.trim().replace(/\w\S*/g, (txt) => {
+      return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+    });
+  }
+
+  /**
+   * Mendapatkan tujuan yang valid berdasarkan asal
+   * @param {string} origin - Pelabuhan asal
+   * @returns {Array} - Daftar tujuan yang valid
+   */
+  getValidDestinations(origin) {
+    if (!origin) return [];
+    const normalizedOrigin = this.normalizePortName(origin);
+    return this.validPortMappings[normalizedOrigin] || [];
+  }
+
+  /**
+   * Mendapatkan semua nama pelabuhan yang tersedia
+   * @returns {Array} - Daftar nama pelabuhan
+   */
+  getAllPorts() {
+    return Object.keys(this.validPortMappings);
+  }
+
   /**
    * Mendapatkan daftar route dengan filter
    * @param {Object} params - Filter parameters

@@ -128,22 +128,68 @@ class BookingProvider extends ChangeNotifier {
   bool isVehicleTypeAvailable(String type) {
     if (_selectedSchedule?.ferry == null) return false;
 
+    // Cek kapasitas dari jadwal yang dipilih, bukan hanya dari ferry
     switch (type) {
       case 'MOTORCYCLE':
-        return (_ferryVehicleCapacity['MOTORCYCLE'] ?? 0) > 0;
+        return (_selectedSchedule!.availableMotorcycle ?? 0) > 0;
       case 'CAR':
-        return (_ferryVehicleCapacity['CAR'] ?? 0) > 0;
+        return (_selectedSchedule!.availableCar ?? 0) > 0;
       case 'BUS':
-        return (_ferryVehicleCapacity['BUS'] ?? 0) > 0;
+        return (_selectedSchedule!.availableBus ?? 0) > 0;
       case 'TRUCK':
-        return (_ferryVehicleCapacity['TRUCK'] ?? 0) > 0;
+        return (_selectedSchedule!.availableTruck ?? 0) > 0;
       case 'PICKUP': // PICKUP dihitung sebagai TRUCK
-        return (_ferryVehicleCapacity['TRUCK'] ?? 0) > 0;
+        return (_selectedSchedule!.availableTruck ?? 0) > 0;
       case 'TRONTON': // TRONTON dihitung sebagai TRUCK
-        return (_ferryVehicleCapacity['TRUCK'] ?? 0) > 0;
+        return (_selectedSchedule!.availableTruck ?? 0) > 0;
       default:
         return false;
     }
+  }
+
+  // Tambahkan metode untuk mendapatkan jumlah kapasitas tersedia untuk jenis kendaraan tertentu
+  int getAvailableVehicleCapacity(String type) {
+    if (_selectedSchedule?.ferry == null) return 0;
+
+    switch (type) {
+      case 'MOTORCYCLE':
+        return _selectedSchedule!.availableMotorcycle ?? 0;
+      case 'CAR':
+        return _selectedSchedule!.availableCar ?? 0;
+      case 'BUS':
+        return _selectedSchedule!.availableBus ?? 0;
+      case 'TRUCK':
+      case 'PICKUP':
+      case 'TRONTON':
+        return _selectedSchedule!.availableTruck ?? 0;
+      default:
+        return 0;
+    }
+  }
+
+  // Tambahkan metode untuk memeriksa apakah ada jenis kendaraan yang tersedia
+  bool hasAnyVehicleTypeAvailable() {
+    if (_selectedSchedule?.ferry == null) return false;
+
+    return (_selectedSchedule!.availableMotorcycle ?? 0) > 0 ||
+        (_selectedSchedule!.availableCar ?? 0) > 0 ||
+        (_selectedSchedule!.availableBus ?? 0) > 0 ||
+        (_selectedSchedule!.availableTruck ?? 0) > 0;
+  }
+
+  // Tambahkan metode untuk memeriksa apakah masih ada kapasitas penumpang tersedia
+  bool hasPassengerCapacityAvailable() {
+    if (_selectedSchedule == null) return false;
+
+    final availablePassengers = _selectedSchedule!.availablePassenger ?? 0;
+    return availablePassengers > 0;
+  }
+
+  // Tambahkan metode untuk mendapatkan jumlah kapasitas penumpang tersedia
+  int getAvailablePassengerCapacity() {
+    if (_selectedSchedule == null) return 0;
+
+    return _selectedSchedule!.availablePassenger ?? 0;
   }
 
   // Metode untuk mendapatkan kategori kendaraan yang tersedia

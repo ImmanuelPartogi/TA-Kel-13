@@ -110,21 +110,44 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen>
     );
 
     if (bookingProvider.vehicles.length >= AppConfig.maxVehiclesPerBooking) {
-      // Tampilkan dialog sebagai pengganti snackbar
       showDialog(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Batas Maksimum'),
-          content: Text(
-            'Maksimal ${AppConfig.maxVehiclesPerBooking} kendaraan per pemesanan',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Mengerti'),
+        builder:
+            (context) => AlertDialog(
+              title: const Text('Batas Maksimum'),
+              content: Text(
+                'Maksimal ${AppConfig.maxVehiclesPerBooking} kendaraan per pemesanan',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Mengerti'),
+                ),
+              ],
             ),
-          ],
-        ),
+      );
+      return;
+    }
+
+    // Gunakan metode baru untuk mengecek apakah ada jenis kendaraan yang tersedia
+    final hasAvailableVehicles = bookingProvider.hasAnyVehicleTypeAvailable();
+
+    if (!hasAvailableVehicles) {
+      showDialog(
+        context: context,
+        builder:
+            (context) => AlertDialog(
+              title: const Text('Kapasitas Penuh'),
+              content: const Text(
+                'Maaf, seluruh kapasitas kendaraan untuk jadwal ini telah penuh.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Mengerti'),
+                ),
+              ],
+            ),
       );
       return;
     }
@@ -137,8 +160,6 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen>
             onSave: (vehicle) {
               bookingProvider.addVehicle(vehicle);
               Navigator.pop(context);
-              
-              // Hapus snackbar yang mengganggu dialog
             },
           ),
     );
@@ -160,7 +181,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen>
             onSave: (updatedVehicle) {
               bookingProvider.updateVehicle(index, updatedVehicle);
               Navigator.pop(context);
-              
+
               // Hapus snackbar yang mengganggu dialog
             },
           ),
@@ -209,7 +230,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen>
                 onPressed: () {
                   bookingProvider.removeVehicle(index);
                   Navigator.of(context).pop();
-                  
+
                   // Hapus snackbar yang mengganggu dialog
                 },
                 child: Row(
@@ -319,6 +340,8 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen>
                         children: [
                           // Information Card
                           _buildInformationCard(theme),
+
+                          _buildVehicleCapacityInfo(bookingProvider),
 
                           // Vehicle Prices Section
                           buildDetailedPriceSection(
@@ -442,7 +465,9 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen>
                         _isLoading ||
                                 _vehicleCategories.isEmpty ||
                                 vehicles.length >=
-                                    AppConfig.maxVehiclesPerBooking
+                                    AppConfig.maxVehiclesPerBooking ||
+                                !bookingProvider
+                                    .hasAnyVehicleTypeAvailable() // Tambahkan kondisi ini
                             ? null
                             : _addVehicle,
                     style: ButtonStyle(
@@ -574,6 +599,200 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildVehicleCapacityInfo(BookingProvider bookingProvider) {
+    final schedule = bookingProvider.selectedSchedule;
+    if (schedule == null || schedule.ferry == null) {
+      return const SizedBox.shrink();
+    }
+
+    // Periksa apakah ada jenis kendaraan yang tersedia
+    final hasAvailableVehicles = bookingProvider.hasAnyVehicleTypeAvailable();
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: hasAvailableVehicles ? Colors.blue.shade50 : Colors.red.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color:
+              hasAvailableVehicles ? Colors.blue.shade200 : Colors.red.shade200,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                hasAvailableVehicles
+                    ? Icons.directions_car
+                    : Icons.error_outline,
+                color:
+                    hasAvailableVehicles
+                        ? Colors.blue.shade700
+                        : Colors.red.shade700,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                hasAvailableVehicles
+                    ? 'Kapasitas Kendaraan Tersedia'
+                    : 'Kapasitas Kendaraan Penuh',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color:
+                      hasAvailableVehicles
+                          ? Colors.blue.shade800
+                          : Colors.red.shade800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildCapacityItem(
+                icon: Icons.motorcycle,
+                type: 'MOTORCYCLE',
+                available: schedule.availableMotorcycle ?? 0,
+                total: schedule.ferry!.capacityVehicleMotorcycle,
+                label: 'Motor',
+              ),
+              _buildCapacityItem(
+                icon: Icons.directions_car,
+                type: 'CAR',
+                available: schedule.availableCar ?? 0,
+                total: schedule.ferry!.capacityVehicleCar,
+                label: 'Mobil',
+              ),
+              _buildCapacityItem(
+                icon: Icons.directions_bus,
+                type: 'BUS',
+                available: schedule.availableBus ?? 0,
+                total: schedule.ferry!.capacityVehicleBus,
+                label: 'Bus',
+              ),
+              _buildCapacityItem(
+                icon: Icons.local_shipping,
+                type: 'TRUCK',
+                available: schedule.availableTruck ?? 0,
+                total: schedule.ferry!.capacityVehicleTruck,
+                label: 'Truk',
+              ),
+            ],
+          ),
+          // Tambahkan pesan ketika kapasitas habis
+          if (!hasAvailableVehicles)
+            Container(
+              margin: const EdgeInsets.only(top: 16),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.red.shade700,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Maaf, semua jenis kendaraan telah mencapai kapasitas maksimum. Anda tidak dapat menambahkan kendaraan lagi.',
+                      style: TextStyle(
+                        color: Colors.red.shade700,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCapacityItem({
+    required IconData icon,
+    required String type,
+    required int available,
+    required int total,
+    required String label,
+  }) {
+    final bool isAvailable = available > 0;
+    Color color = isAvailable ? Colors.green : Colors.red;
+    if (isAvailable && available < total * 0.3) {
+      color = Colors.orange; // Hampir penuh
+    }
+
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: 24),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.w500,
+            color: Colors.grey.shade800,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$available',
+              style: TextStyle(fontWeight: FontWeight.bold, color: color),
+            ),
+            Text(
+              '/$total',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+            ),
+          ],
+        ),
+        // Tambahkan status kapasitas
+        if (!isAvailable)
+          Container(
+            margin: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.red.shade100,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              'Penuh',
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.red.shade700,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -1059,7 +1278,6 @@ class __VehicleDialogState extends State<_VehicleDialog> {
     return validTypes[originalType] ??
         'CAR'; // Default ke CAR jika tidak ditemukan
   }
-  
 
   late TextEditingController _licensePlateController;
   late TextEditingController _brandController;
@@ -1257,18 +1475,19 @@ class __VehicleDialogState extends State<_VehicleDialog> {
       // Tampilkan dialog alih-alih snackbar
       showDialog(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Tidak Tersedia'),
-          content: Text(
-            'Jenis kendaraan ${_getVehicleTypeName(selectedCategory.vehicleType)} tidak tersedia untuk kapal ini',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Mengerti'),
+        builder:
+            (context) => AlertDialog(
+              title: const Text('Kapasitas Penuh'),
+              content: Text(
+                'Jenis kendaraan ${_getVehicleTypeName(selectedCategory.vehicleType)} telah penuh. Silakan pilih jenis kendaraan lain.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Mengerti'),
+                ),
+              ],
             ),
-          ],
-        ),
       );
       return;
     }
@@ -1298,7 +1517,7 @@ class __VehicleDialogState extends State<_VehicleDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.85,
+          maxHeight: MediaQuery.of(context).size.height * 0.9,
           maxWidth: MediaQuery.of(context).size.width * 0.9,
         ),
         child: Form(
@@ -1425,7 +1644,7 @@ class __VehicleDialogState extends State<_VehicleDialog> {
                           _getVehicleTypeName(vehicleType),
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 15,
+                            fontSize: 13,
                             color:
                                 isAvailable
                                     ? Colors.black87
@@ -1440,14 +1659,33 @@ class __VehicleDialogState extends State<_VehicleDialog> {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.grey.shade200,
+                              color: Colors.red.shade100,
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              'Tidak tersedia',
+                              'Penuh',
                               style: TextStyle(
                                 fontSize: 10,
-                                color: Colors.grey.shade600,
+                                color: Colors.red.shade700,
+                              ),
+                            ),
+                          ),
+                        ] else ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade100,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Tersedia ${_getAvailableCapacity(vehicleType, bookingProvider)}',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.green.shade700,
                               ),
                             ),
                           ),
@@ -1646,6 +1884,11 @@ class __VehicleDialogState extends State<_VehicleDialog> {
       category.vehicleType,
     );
 
+    // Dapatkan kapasitas tersedia
+    final int availableCapacity = bookingProvider.getAvailableVehicleCapacity(
+      category.vehicleType,
+    );
+
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp ',
@@ -1668,12 +1911,16 @@ class __VehicleDialogState extends State<_VehicleDialog> {
                     ? categoryColor
                     : isAvailable
                     ? Colors.grey.shade300
-                    : Colors.grey.shade200,
+                    : Colors
+                        .red
+                        .shade200, // Ubah warna border untuk kapasitas penuh
             width: isSelected ? 2 : 1,
           ),
           color:
               !isAvailable
-                  ? Colors.grey.shade100
+                  ? Colors
+                      .red
+                      .shade50 // Warna latar untuk kapasitas penuh
                   : isSelected
                   ? categoryColor.withOpacity(0.1)
                   : Colors.white,
@@ -1687,14 +1934,20 @@ class __VehicleDialogState extends State<_VehicleDialog> {
                 color:
                     isAvailable
                         ? categoryColor.withOpacity(0.1)
-                        : Colors.grey.shade200,
+                        : Colors
+                            .red
+                            .shade100, // Warna latar badge untuk kapasitas penuh
                 shape: BoxShape.circle,
               ),
               child:
                   isSelected
                       ? Icon(Icons.check_circle, color: categoryColor, size: 14)
                       : !isAvailable
-                      ? Icon(Icons.block, color: Colors.grey.shade400, size: 14)
+                      ? Icon(
+                        Icons.block,
+                        color: Colors.red.shade400,
+                        size: 14,
+                      ) // Ikon blokir untuk kapasitas penuh
                       : Text(
                         category.code.substring(0, 3),
                         style: TextStyle(
@@ -1720,25 +1973,44 @@ class __VehicleDialogState extends State<_VehicleDialog> {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: isAvailable ? categoryColor : Colors.grey.shade400,
+                      color:
+                          isAvailable
+                              ? categoryColor
+                              : Colors
+                                  .red
+                                  .shade400, // Ubah warna teks untuk kapasitas penuh
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  Text(
-                    isAvailable
-                        ? currencyFormat.format(category.basePrice)
-                        : 'Tidak Tersedia',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color:
-                          isAvailable
-                              ? theme.primaryColor
-                              : Colors.grey.shade400,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Text(
+                        isAvailable
+                            ? currencyFormat.format(category.basePrice)
+                            : 'Penuh', // Tampilkan 'Penuh' alih-alih 'Tidak Tersedia'
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color:
+                              isAvailable
+                                  ? theme.primaryColor
+                                  : Colors
+                                      .red
+                                      .shade400, // Ubah warna teks untuk kapasitas penuh
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (isAvailable && availableCapacity > 0)
+                        Text(
+                          ' (${availableCapacity})',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.green.shade700,
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),
@@ -1785,6 +2057,19 @@ class __VehicleDialogState extends State<_VehicleDialog> {
       default:
         return vehicleType;
     }
+  }
+
+  String _getAvailableCapacity(
+    String vehicleType,
+    BookingProvider bookingProvider,
+  ) {
+    // Gunakan metode baru dari BookingProvider
+    final availableCapacity = bookingProvider.getAvailableVehicleCapacity(
+      vehicleType,
+    );
+
+    // Tampilkan pesan "Penuh" jika kapasitas 0
+    return availableCapacity > 0 ? '$availableCapacity' : 'Penuh';
   }
 
   Color _getCategoryColor(String code) {

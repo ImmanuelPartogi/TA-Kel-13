@@ -418,8 +418,3 @@ php artisan serve
 6. System automatically updates ticket status after use or expiration
 7. Queue management system ensures efficient boarding process
 
-
-
-## 📝 License
-
-This project is licensed under the [NAZI License](LICENSE).
